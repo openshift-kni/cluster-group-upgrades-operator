@@ -1,0 +1,12 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: Group
+metadata:
+  name: group1
+spec:
+  # Add fields here
+  sites:
+    - site1
+  policies:
+    - policy1
+  upgradeStrategy:
+    type: Serial

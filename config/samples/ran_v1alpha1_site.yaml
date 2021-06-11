@@ -1,0 +1,7 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: Site
+metadata:
+  name: site-sample
+spec:
+  # Add fields here
+  foo: bar
