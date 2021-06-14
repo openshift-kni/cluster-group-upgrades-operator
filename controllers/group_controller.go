@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -54,7 +55,6 @@ type GroupReconciler struct {
 func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("group", req.NamespacedName)
 
-	// your logic here
 	group := &ranv1alpha1.Group{}
 	err := r.Get(ctx, req.NamespacedName, group)
 	if err != nil {
@@ -65,24 +65,33 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	if group.Spec.UpgradeStrategy.Type == "Serial" {
-		for _, v := range group.Spec.Sites {
-			err = r.ensurePlacementRule(ctx, group, v)
+	// Reconcile resources
+	for _, site := range group.Spec.Sites {
+		err = r.ensurePlacementRule(ctx, group, site)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
+			err = r.ensurePolicy(ctx, group, site, groupPolicyTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			err = r.ensurePlacementBinding(ctx, group, v)
 		}
-
+		err = r.ensurePlacementBinding(ctx, group, site, "group1-site1-upgrade-cluster-policy")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
+
+	// Create upgrade plan
+
+	// Remediate policies depending on compliance state and upgrade plan
 
 	return ctrl.Result{}, nil
 }
 
-func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, cluster string) error {
-	r.Log.Info("Creating PlacementRule object", "cluster", cluster)
-	pr := r.newPlacementRule(ctx, group, cluster)
-	r.Log.Info("Created PlacementRule object", "placementRule", pr)
+func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, site string) error {
+	pr := r.newPlacementRule(ctx, group, site)
 
 	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
 		return err
@@ -95,7 +104,7 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 		Version: "v1",
 	})
 	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      group.Name + "-" + cluster + "-" + "placement-rule",
+		Name:      pr.GetName(),
 		Namespace: group.Namespace,
 	}, foundPlacementRule)
 	if err != nil && errors.IsNotFound((err)) {
@@ -103,7 +112,7 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API PlacementRule object for", "placementRule", pr)
+		r.Log.Info("Created API object", "placementRule", pr)
 	} else if err != nil {
 		return err
 	}
@@ -111,11 +120,11 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 	return nil
 }
 
-func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alpha1.Group, cluster string) *unstructured.Unstructured {
+func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alpha1.Group, site string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + cluster + "-" + "placement-rule",
+			"name":      group.Name + "-" + site + "-" + "placement-rule",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app": "cluster-group-lcm",
@@ -129,7 +138,7 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 			},
 			"clusters": []map[string]interface{}{
 				{
-					"name": cluster,
+					"name": site,
 				},
 			},
 		},
@@ -143,10 +152,8 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 	return u
 }
 
-func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, cluster string) error {
-	r.Log.Info("Creating PlacementBinding object", "cluster", cluster)
-	pb := r.newPlacementBinding(ctx, group, cluster)
-	r.Log.Info("Created PlacementBinding object", "placementBinding", pb)
+func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, site string, policy string) error {
+	pb := r.newPlacementBinding(ctx, group, site, policy)
 
 	if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
 		return err
@@ -159,7 +166,7 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 		Version: "v1",
 	})
 	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      group.Name + "-" + cluster + "-" + "placement-binding",
+		Name:      pb.GetName(),
 		Namespace: group.Namespace,
 	}, foundPlacementBinding)
 	if err != nil && errors.IsNotFound((err)) {
@@ -167,7 +174,7 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API PlacementBinding object for", "placementBinding", pb)
+		r.Log.Info("Created API object", "placementBinding", pb)
 	} else if err != nil {
 		return err
 	}
@@ -175,11 +182,11 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 	return nil
 }
 
-func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, cluster string) *unstructured.Unstructured {
+func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, site string, policyName string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + cluster + "-" + "placement-binding",
+			"name":      group.Name + "-" + site + "-" + "placement-binding",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app": "cluster-group-lcm",
@@ -187,13 +194,13 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 		},
 		"spec": map[string]interface{}{
 			"placementRef": map[string]interface{}{
-				"name":     group.Name + "-" + cluster + "-" + "placement-rule",
+				"name":     group.Name + "-" + site + "-" + "placement-rule",
 				"kind":     "PlacementRule",
 				"apiGroup": "apps.open-cluster-management.io",
 			},
 			"subjects": []map[string]interface{}{
 				{
-					"name":     "policy-test",
+					"name":     policyName,
 					"kind":     "Policy",
 					"apiGroup": "policy.open-cluster-management.io",
 				},
@@ -205,6 +212,52 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 		Kind:    "PlacementBinding",
 		Version: "v1",
 	})
+
+	return u
+}
+
+func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, site string, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
+	pol := r.newPolicy(ctx, group, site, groupPolicyTemplate)
+
+	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
+		return err
+	}
+
+	foundPolicy := &unstructured.Unstructured{}
+	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "Policy",
+		Version: "v1",
+	})
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      pol.GetName(),
+		Namespace: group.Namespace,
+	}, foundPolicy)
+	if err != nil && errors.IsNotFound((err)) {
+		err = r.Client.Create(ctx, pol)
+		if err != nil {
+			return err
+		}
+		r.Log.Info("Created API object for", "policy", pol)
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Group, site string, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
+	u := &unstructured.Unstructured{}
+	err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, u)
+	if err != nil {
+		return nil
+	}
+
+	u.SetName(group.Name + "-" + site + "-" + u.GetName() + "-" + "policy")
+	u.SetNamespace(group.GetNamespace())
+
+	specObject := u.Object["spec"].(map[string]interface{})
+	specObject["remediationAction"] = "inform"
 
 	return u
 }
@@ -225,9 +278,16 @@ func (r *GroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Version: "v1",
 	})
 
+	policyUnstructured := &unstructured.Unstructured{}
+	policyUnstructured.SetGroupVersionKind(schema.GroupVersionKind{
+		Kind:    "Policy",
+		Group:   "policy.open-cluster-management.io",
+		Version: "v1",
+	})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.Group{}).
 		Owns(placementRuleUnstructured).
 		Owns(placementBindingUnstructured).
+		Owns(policyUnstructured).
 		Complete(r)
 }

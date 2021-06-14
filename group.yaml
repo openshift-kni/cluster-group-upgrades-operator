@@ -6,7 +6,47 @@ spec:
   # Add fields here
   sites:
     - site1
-  policies:
-    - policy1
+    - site2
+    - site3
+  groupPolicyTemplates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: Policy
+        metadata:
+          name: upgrade-cluster
+          annotations:
+            policy.open-cluster-management.io/standards: NIST SP 800-53
+            policy.open-cluster-management.io/categories: CM Configuration Management
+            policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+        spec:
+          disabled: false
+          policy-templates:
+            - objectDefinition:
+                apiVersion: policy.open-cluster-management.io/v1
+                kind: ConfigurationPolicy
+                metadata:
+                  name: upgrade-cluster
+                spec:
+                  namespaceSelector:
+                    exclude:
+                      - kube-*
+                    include:
+                      - '*'
+                  object-templates:
+                    - complianceType: musthave
+                      objectDefinition:
+                        apiVersion: config.openshift.io/v1
+                        kind: ClusterVersion
+                        metadata:
+                          name: version
+                        spec:
+                          channel: stable-4.5
+                          desiredUpdate:
+                            version: 4.5.3
+                          upstream: 'https://api.openshift.com/api/upgrades_info/v1/graph'
+                  remediationAction: inform
+                  severity: high
+          remediationAction: inform
   upgradeStrategy:
-    type: Serial
+    type: Parallel
+  remediationAction: enforce

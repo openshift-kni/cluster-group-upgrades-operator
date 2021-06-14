@@ -36,12 +36,22 @@ spec:
           spec:
             description: GroupSpec defines the desired state of Group
             properties:
-              policies:
-                description: Policies defines the list of names of Policy objects
-                  of the Group.
+              groupPolicyTemplates:
+                description: GroupPolicyTemplates defines the list of Policy object
+                  definitions of the Group.
                 items:
-                  type: string
+                  description: GroupPolicyTemplate defines the object definition of
+                    a Policy of the Group
+                  properties:
+                    objectDefinition:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  type: object
                 type: array
+              onFailureAction:
+                type: string
+              remediationAction:
+                type: string
               sites:
                 description: Sites defines the list of names of Site objects of the
                   Group.

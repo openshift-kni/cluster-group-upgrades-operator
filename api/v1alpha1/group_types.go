@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -28,6 +29,12 @@ type UpgradeStrategySpec struct {
 	Type string `json:"type,omitempty"`
 }
 
+// GroupPolicyTemplate defines the object definition of a Policy of the Group
+type GroupPolicyTemplate struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ObjectDefinition runtime.RawExtension `json:"objectDefinition,omitempty"`
+}
+
 // GroupSpec defines the desired state of Group
 type GroupSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -35,9 +42,11 @@ type GroupSpec struct {
 
 	// Sites defines the list of names of Site objects of the Group.
 	Sites []string `json:"sites,omitempty"`
-	// Policies defines the list of names of Policy objects of the Group.
-	Policies        []string            `json:"policies,omitempty"`
-	UpgradeStrategy UpgradeStrategySpec `json:"upgradeStrategy,omitempty"`
+	// GroupPolicyTemplates defines the list of Policy object definitions of the Group.
+	GroupPolicyTemplates []GroupPolicyTemplate `json:"groupPolicyTemplates,omitempty"`
+	UpgradeStrategy      UpgradeStrategySpec   `json:"upgradeStrategy,omitempty"`
+	OnFailureAction      string                `json:"onFailureAction,omitempty"`
+	RemediationAction    string                `json:"remediationAction,omitempty"`
 }
 
 // GroupStatus defines the observed state of Group
