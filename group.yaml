@@ -48,5 +48,5 @@ spec:
                   severity: high
           remediationAction: inform
   upgradeStrategy:
-    type: Parallel
+    type: Serial
   remediationAction: enforce

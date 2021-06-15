@@ -71,21 +71,61 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if err != nil {
 			return ctrl.Result{}, err
 		}
+		err = r.ensurePlacementBinding(ctx, group, site, "group1-site1-upgrade-cluster-policy")
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		// add site policies as subjects to placementBinding
 		for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
 			err = r.ensurePolicy(ctx, group, site, groupPolicyTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-		}
-		err = r.ensurePlacementBinding(ctx, group, site, "group1-site1-upgrade-cluster-policy")
-		if err != nil {
-			return ctrl.Result{}, err
+			// add group policies as subjects to placementBinding
 		}
 	}
 
 	// Create upgrade plan
-
+	upgradePlan := make([][]string, len(group.Spec.Sites))
+	if group.Spec.UpgradeStrategy.Type == "Parallel" {
+		upgradePlan[0] = group.Spec.Sites
+	} else {
+		for i, site := range group.Spec.Sites {
+			upgradePlan[i] = []string{site}
+		}
+	}
+	r.Log.Info("Upgrade plan created", "upgradePlan", upgradePlan)
 	// Remediate policies depending on compliance state and upgrade plan
+	for _, upgradeBatch := range upgradePlan {
+		for _, site := range upgradeBatch {
+			foundPlacementBinding := &unstructured.Unstructured{}
+			foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "policy.open-cluster-management.io",
+				Kind:    "PlacementBinding",
+				Version: "v1",
+			})
+			pb := &unstructured.Unstructured{}
+			pb.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "policy.open-cluster-management.io",
+				Kind:    "PlacementBinding",
+				Version: "v1",
+			})
+			pb.SetName(group.Name + "-" + site + "-" + "placement-binding")
+			err := r.Client.Get(ctx, client.ObjectKey{
+				Name:      pb.GetName(),
+				Namespace: group.Namespace,
+			}, foundPlacementBinding)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			specObject := foundPlacementBinding.Object["spec"].(map[string]interface{})
+			subjects := specObject["subjects"].([]interface{})
+			for _, s := range subjects {
+				r.Log.Info("Processing PlacementBinding", "subject", s)
+			}
+		}
+
+	}
 
 	return ctrl.Result{}, nil
 }
