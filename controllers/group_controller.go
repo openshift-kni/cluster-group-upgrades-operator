@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -42,6 +43,12 @@ type GroupReconciler struct {
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=groups,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=groups/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=groups/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps.open-cluster-management.io/v1,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=apps.open-cluster-management.io/v1,resources=placementrules/finalizers,verbs=update
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings/finalizers,verbs=update
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -65,73 +72,41 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Reconcile resources
-	for _, site := range group.Spec.Sites {
-		err = r.ensurePlacementRule(ctx, group, site)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		err = r.ensurePlacementBinding(ctx, group, site, "group1-site1-upgrade-cluster-policy")
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		// add site policies as subjects to placementBinding
-		for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
-			err = r.ensurePolicy(ctx, group, site, groupPolicyTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			// add group policies as subjects to placementBinding
-		}
-	}
-
 	// Create upgrade plan
-	upgradePlan := make([][]string, len(group.Spec.Sites))
+	var upgradePlan [][]string
 	if group.Spec.UpgradeStrategy.Type == "Parallel" {
-		upgradePlan[0] = group.Spec.Sites
+		upgradePlan = append(upgradePlan, group.Spec.Sites)
 	} else {
-		for i, site := range group.Spec.Sites {
-			upgradePlan[i] = []string{site}
+		for _, site := range group.Spec.Sites {
+			upgradePlan = append(upgradePlan, []string{site})
 		}
 	}
 	r.Log.Info("Upgrade plan created", "upgradePlan", upgradePlan)
-	// Remediate policies depending on compliance state and upgrade plan
-	for _, upgradeBatch := range upgradePlan {
-		for _, site := range upgradeBatch {
-			foundPlacementBinding := &unstructured.Unstructured{}
-			foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "policy.open-cluster-management.io",
-				Kind:    "PlacementBinding",
-				Version: "v1",
-			})
-			pb := &unstructured.Unstructured{}
-			pb.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "policy.open-cluster-management.io",
-				Kind:    "PlacementBinding",
-				Version: "v1",
-			})
-			pb.SetName(group.Name + "-" + site + "-" + "placement-binding")
-			err := r.Client.Get(ctx, client.ObjectKey{
-				Name:      pb.GetName(),
-				Namespace: group.Namespace,
-			}, foundPlacementBinding)
+
+	// Reconcile resources
+	for i, upgradeBatch := range upgradePlan {
+		err = r.ensurePlacementRule(ctx, group, i+1, upgradeBatch)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
+			err = r.ensurePolicy(ctx, group, i+1, groupPolicyTemplate)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
-			specObject := foundPlacementBinding.Object["spec"].(map[string]interface{})
-			subjects := specObject["subjects"].([]interface{})
-			for _, s := range subjects {
-				r.Log.Info("Processing PlacementBinding", "subject", s)
+			err = r.ensurePlacementBinding(ctx, group, i+1, groupPolicyTemplate)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
 		}
-
 	}
+	// Remediate policies depending on compliance state and upgrade plan
 
 	return ctrl.Result{}, nil
 }
 
-func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, site string) error {
-	pr := r.newPlacementRule(ctx, group, site)
+func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, batch int, sites []string) error {
+	pr := r.newPlacementRule(ctx, group, batch, sites)
 
 	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
 		return err
@@ -160,11 +135,11 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 	return nil
 }
 
-func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alpha1.Group, site string) *unstructured.Unstructured {
+func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alpha1.Group, batch int, sites []string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + site + "-" + "placement-rule",
+			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + "placement-rule",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app": "cluster-group-lcm",
@@ -173,16 +148,20 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 		"spec": map[string]interface{}{
 			"clusterConditions": []map[string]interface{}{
 				{
-					"type": "OK",
-				},
-			},
-			"clusters": []map[string]interface{}{
-				{
-					"name": site,
+					"type":   "ManagedClusterConditionAvailable",
+					"status": "True",
 				},
 			},
 		},
 	}
+
+	var clusters []map[string]interface{}
+	for _, site := range sites {
+		clusters = append(clusters, map[string]interface{}{"name": site})
+	}
+	specObject := u.Object["spec"].(map[string]interface{})
+	specObject["clusters"] = clusters
+
 	u.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
 		Kind:    "PlacementRule",
@@ -192,8 +171,8 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 	return u
 }
 
-func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, site string, policy string) error {
-	pb := r.newPlacementBinding(ctx, group, site, policy)
+func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
+	pb := r.newPlacementBinding(ctx, group, batch, groupPolicyTemplate)
 
 	if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
 		return err
@@ -222,28 +201,32 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 	return nil
 }
 
-func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, site string, policyName string) *unstructured.Unstructured {
+func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
+	policyUnstructured := &unstructured.Unstructured{}
+	err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, policyUnstructured)
+	if err != nil {
+		return nil
+	}
+
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + site + "-" + "placement-binding",
+			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + "placement-binding",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app": "cluster-group-lcm",
 			},
 		},
-		"spec": map[string]interface{}{
-			"placementRef": map[string]interface{}{
-				"name":     group.Name + "-" + site + "-" + "placement-rule",
-				"kind":     "PlacementRule",
-				"apiGroup": "apps.open-cluster-management.io",
-			},
-			"subjects": []map[string]interface{}{
-				{
-					"name":     policyName,
-					"kind":     "Policy",
-					"apiGroup": "policy.open-cluster-management.io",
-				},
+		"placementRef": map[string]interface{}{
+			"name":     group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + "placement-rule",
+			"kind":     "PlacementRule",
+			"apiGroup": "apps.open-cluster-management.io",
+		},
+		"subjects": []map[string]interface{}{
+			{
+				"name":     group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + policyUnstructured.GetName() + "-" + "policy",
+				"kind":     "Policy",
+				"apiGroup": "policy.open-cluster-management.io",
 			},
 		},
 	}
@@ -256,8 +239,8 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 	return u
 }
 
-func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, site string, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
-	pol := r.newPolicy(ctx, group, site, groupPolicyTemplate)
+func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
+	pol := r.newPolicy(ctx, group, batch, groupPolicyTemplate)
 
 	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
 		return err
@@ -286,14 +269,14 @@ func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.G
 	return nil
 }
 
-func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Group, site string, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
+func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, u)
 	if err != nil {
 		return nil
 	}
 
-	u.SetName(group.Name + "-" + site + "-" + u.GetName() + "-" + "policy")
+	u.SetName(group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + u.GetName() + "-" + "policy")
 	u.SetNamespace(group.GetNamespace())
 
 	specObject := u.Object["spec"].(map[string]interface{})

@@ -3,50 +3,60 @@ kind: Group
 metadata:
   name: group1
 spec:
-  # Add fields here
   sites:
-    - site1
-    - site2
-    - site3
+    - spoke1
+    - spoke2
   groupPolicyTemplates:
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: Policy
         metadata:
-          name: upgrade-cluster
+          name: policy-deployment
           annotations:
-            policy.open-cluster-management.io/standards: NIST SP 800-53
+            policy.open-cluster-management.io/standards: NIST 800-53
             policy.open-cluster-management.io/categories: CM Configuration Management
             policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
         spec:
+          remediationAction: inform
           disabled: false
           policy-templates:
             - objectDefinition:
                 apiVersion: policy.open-cluster-management.io/v1
                 kind: ConfigurationPolicy
                 metadata:
-                  name: upgrade-cluster
+                  name: policy-nginx-deployment
                 spec:
+                  remediationAction: inform
+                  severity: low
                   namespaceSelector:
                     exclude:
                       - kube-*
                     include:
-                      - '*'
+                      - default
                   object-templates:
                     - complianceType: musthave
                       objectDefinition:
-                        apiVersion: config.openshift.io/v1
-                        kind: ClusterVersion
+                        apiVersion: apps/v1
+                        kind: Deployment
                         metadata:
-                          name: version
+                          name: nginx-deployment
+                          labels:
+                            app: nginx
                         spec:
-                          channel: stable-4.5
-                          desiredUpdate:
-                            version: 4.5.3
-                          upstream: 'https://api.openshift.com/api/upgrades_info/v1/graph'
-                  remediationAction: inform
-                  severity: high
-          remediationAction: inform
+                          replicas: 3
+                          selector:
+                            matchLabels:
+                              app: nginx
+                          template:
+                            metadata:
+                              labels:
+                                app: nginx
+                            spec:
+                              containers:
+                                - name: nginx
+                                  image: 'nginx:1.14.2'
+                                  ports:
+                                    - containerPort: 80
   upgradeStrategy:
-    type: Serial
+    type: Parallel
   remediationAction: enforce
