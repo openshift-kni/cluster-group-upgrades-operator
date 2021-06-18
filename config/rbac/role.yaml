@@ -7,7 +7,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - apps.open-cluster-management.io/v1
+  - apps.open-cluster-management.io
   resources:
   - placementrules
   verbs:
@@ -19,7 +19,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps.open-cluster-management.io/v1
+  - apps.open-cluster-management.io
   resources:
   - placementrules/finalizers
   verbs:

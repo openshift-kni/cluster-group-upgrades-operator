@@ -58,5 +58,5 @@ spec:
                                   ports:
                                     - containerPort: 80
   upgradeStrategy:
-    type: Parallel
-  remediationAction: enforce
+    type: Serial
+  remediationAction: inform
