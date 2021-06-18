@@ -25,6 +25,18 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - managedclusters
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
   - policy.open-cluster-management.io
   resources:
   - placementbindings
