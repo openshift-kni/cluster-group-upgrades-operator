@@ -285,6 +285,12 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 
 	u.SetName(group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + u.GetName() + "-" + "policy")
 	u.SetNamespace(group.GetNamespace())
+	labels := u.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["app"] = "cluster-group-lcm"
+	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})
 	specObject["remediationAction"] = "inform"
@@ -294,13 +300,6 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 
 /*
 func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.Group, batch int, site string) error {
-	foundManagedCluster := &unstructured.Unstructured{}
-	foundManagedCluster.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "ManagedCluster",
-		Version: "v1",
-	})
-
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -343,6 +342,7 @@ func (r *GroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Group:   "policy.open-cluster-management.io",
 		Version: "v1",
 	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.Group{}).
 		Owns(placementRuleUnstructured).
