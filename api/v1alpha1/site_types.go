@@ -18,10 +18,17 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// SitePolicyTemplate defines the object definition of a Policy of the Group
+type SitePolicyTemplate struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ObjectDefinition runtime.RawExtension `json:"objectDefinition,omitempty"`
+}
 
 // SiteSpec defines the desired state of Site
 type SiteSpec struct {
@@ -30,8 +37,8 @@ type SiteSpec struct {
 
 	// Cluster specifies the name of the cluster of the Site.
 	Cluster string `json:"cluster,omitempty"`
-	// Policies defines the list of ACM policies of the Site.
-	Policies []string `json:"policies,omitempty"`
+	// SitePolicyTemplates defines the list of Policy object definitions of the Site.
+	SitePolicyTemplates []SitePolicyTemplate `json:"sitePolicyTemplates,omitempty"`
 }
 
 // SiteStatus defines the observed state of Site

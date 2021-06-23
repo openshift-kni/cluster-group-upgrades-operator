@@ -39,10 +39,17 @@ spec:
               cluster:
                 description: Cluster specifies the name of the cluster of the Site.
                 type: string
-              policies:
-                description: Policies defines the list of ACM policies of the Site.
+              sitePolicyTemplates:
+                description: SitePolicyTemplates defines the list of Policy object
+                  definitions of the Site.
                 items:
-                  type: string
+                  description: SitePolicyTemplate defines the object definition of
+                    a Policy of the Group
+                  properties:
+                    objectDefinition:
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                  type: object
                 type: array
             type: object
           status:
