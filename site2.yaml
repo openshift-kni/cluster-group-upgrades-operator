@@ -9,7 +9,8 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: Policy
         metadata:
-          name: spoke2-namespace
+          name: bar-namespace
+          namespace: default
           annotations:
             policy.open-cluster-management.io/standards: NIST 800-53
             policy.open-cluster-management.io/categories: CM Configuration Management
@@ -22,7 +23,7 @@ spec:
                 apiVersion: policy.open-cluster-management.io/v1
                 kind: ConfigurationPolicy
                 metadata:
-                  name: policy-namespace-spoke2-ns
+                  name: policy-namespace-bar-ns
                 spec:
                   remediationAction: inform # will be overridden by remediationAction in parent policy
                   severity: low
@@ -32,7 +33,7 @@ spec:
                   object-templates:
                     - complianceType: musthave
                       objectDefinition:
-                        kind: Namespace # must have namespace 'spoke2'
+                        kind: Namespace # must have namespace 'bar'
                         apiVersion: v1
                         metadata:
-                          name: spoke2
+                          name: bar

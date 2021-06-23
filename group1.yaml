@@ -4,14 +4,15 @@ metadata:
   name: group1
 spec:
   sites:
-    - spoke1
-    - spoke2
+    - site1
+    - site2
   groupPolicyTemplates:
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: Policy
         metadata:
           name: prod-namespace
+          namespace: default
           annotations:
             policy.open-cluster-management.io/standards: NIST 800-53
             policy.open-cluster-management.io/categories: CM Configuration Management
@@ -39,5 +40,5 @@ spec:
                         metadata:
                           name: prod
   upgradeStrategy:
-    type: Serial
+    type: Parallel
   remediationAction: inform

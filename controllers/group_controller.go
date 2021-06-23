@@ -26,6 +26,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -100,15 +101,19 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 		}
 	}
-	/*
-		// Remediate policies depending on compliance state and upgrade plan.
-		if group.Spec.RemediationAction == "enforce" {
-			for i, upgradeBatch := range upgradePlan {
-				for _, site := range upgradeBatch {
-					r.remediateSite(ctx, group, i+1, site)
+
+	// Remediate policies depending on compliance state and upgrade plan.
+	if group.Spec.RemediationAction == "enforce" {
+		if group.Spec.UpgradeStrategy.Type == "Parallel" {
+			for _, site := range upgradePlan[0] {
+				err = r.remediateSite(ctx, group, 1, site)
+				if err != nil {
+					return ctrl.Result{}, err
 				}
 			}
-		}*/
+		}
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -134,7 +139,7 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object", "placementRule", pr)
+		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
 	} else if err != nil {
 		return err
 	}
@@ -164,7 +169,14 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 
 	var clusters []map[string]interface{}
 	for _, site := range sites {
-		clusters = append(clusters, map[string]interface{}{"name": site})
+		s := &ranv1alpha1.Site{}
+		nn := types.NamespacedName{Namespace: group.Namespace, Name: site}
+		err := r.Get(ctx, nn, s)
+		if err != nil {
+			r.Log.Error(err, "Failed to get Site")
+			return nil
+		}
+		clusters = append(clusters, map[string]interface{}{"name": s.Spec.Cluster})
 	}
 	specObject := u.Object["spec"].(map[string]interface{})
 	specObject["clusters"] = clusters
@@ -200,7 +212,7 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object", "placementBinding", pb)
+		r.Log.Info("Created API PlacementBindingObject object", "placementBinding", pb)
 	} else if err != nil {
 		return err
 	}
@@ -268,7 +280,7 @@ func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.G
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object for", "policy", pol)
+		r.Log.Info("Created API Policy object", "policy", pol)
 	} else if err != nil {
 		return err
 	}
@@ -298,27 +310,78 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 	return u
 }
 
-/*
 func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.Group, batch int, site string) error {
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      pol.GetName(),
-		Namespace: group.Namespace,
-	}, foundPolicy)
-	if err != nil && errors.IsNotFound((err)) {
-		return err
-		r.Log.Info("Created API object for", "policy", pol)
-	} else if err != nil {
+	s := &ranv1alpha1.Site{}
+	nn := types.NamespacedName{Namespace: group.Namespace, Name: site}
+	err := r.Get(ctx, nn, s)
+	if err != nil {
 		return err
 	}
 
+	for _, sitePolicyTemplate := range s.Spec.SitePolicyTemplates {
+		u := &unstructured.Unstructured{}
+		err := json.Unmarshal(sitePolicyTemplate.ObjectDefinition.Raw, u)
+		if err != nil {
+			return err
+		}
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Name:      site + "-" + u.GetName() + "-" + "policy",
+			Namespace: group.Namespace,
+		}, foundPolicy)
+		if err != nil {
+			return err
+		}
+
+		specObject := foundPolicy.Object["spec"].(map[string]interface{})
+		specObject["remediationAction"] = "enforce"
+		err = r.Client.Update(ctx, foundPolicy)
+		if err != nil {
+			return err
+		}
+		r.Log.Info("Set remediationAction to enforce on site Policy object", "policy", foundPolicy)
+	}
+
+	for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
+		u := &unstructured.Unstructured{}
+		err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, u)
+		if err != nil {
+			return err
+		}
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Name:      group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + u.GetName() + "-" + "policy",
+			Namespace: group.Namespace,
+		}, foundPolicy)
+		if err != nil {
+			return err
+		}
+
+		specObject := foundPolicy.Object["spec"].(map[string]interface{})
+		specObject["remediationAction"] = "enforce"
+		err = r.Client.Update(ctx, foundPolicy)
+		if err != nil {
+			return err
+		}
+		r.Log.Info("Set remediationAction to enforce on group Policy object", "policy", foundPolicy)
+	}
+
 	return nil
-}*/
+}
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
