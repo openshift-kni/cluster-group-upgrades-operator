@@ -119,13 +119,11 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Remediate policies depending on compliance state and upgrade plan.
-	if group.Spec.RemediationAction == "enforce" {
-		if group.Spec.UpgradeStrategy.Type == "Parallel" {
-			for _, site := range upgradePlan[0] {
-				err = r.remediateSite(ctx, group, 1, site)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
+	for _, upgradeBatch := range upgradePlan {
+		for _, site := range upgradeBatch {
+			err = r.remediateSite(ctx, group, 1, site)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
 		}
 	}
