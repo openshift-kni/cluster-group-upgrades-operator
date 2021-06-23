@@ -40,6 +40,8 @@ type GroupSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
+	// Canaries defines the list of names of Site objects that should be upgraded first when remediateAction is set to enforce
+	Canaries []string `json:"canaries,omitempty"`
 	// Sites defines the list of names of Site objects of the Group.
 	Sites []string `json:"sites,omitempty"`
 	// GroupPolicyTemplates defines the list of Policy object definitions of the Group.

@@ -36,6 +36,12 @@ spec:
           spec:
             description: GroupSpec defines the desired state of Group
             properties:
+              canaries:
+                description: Canaries defines the list of names of Site objects that
+                  should be upgraded first when remediateAction is set to enforce
+                items:
+                  type: string
+                type: array
               groupPolicyTemplates:
                 description: GroupPolicyTemplates defines the list of Policy object
                   definitions of the Group.

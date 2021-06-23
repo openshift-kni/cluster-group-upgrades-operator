@@ -75,11 +75,27 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Create upgrade plan
 	var upgradePlan [][]string
+	isCanary := make(map[string]bool)
+	if len(group.Spec.Canaries) > 0 {
+		for _, canary := range group.Spec.Canaries {
+			upgradePlan = append(upgradePlan, []string{canary})
+			isCanary[canary] = true
+		}
+
+	}
 	if group.Spec.UpgradeStrategy.Type == "Parallel" {
-		upgradePlan = append(upgradePlan, group.Spec.Sites)
+		var batch []string
+		for _, site := range group.Spec.Sites {
+			if !isCanary[site] {
+				batch = append(batch, site)
+			}
+		}
+		upgradePlan = append(upgradePlan, batch)
 	} else {
 		for _, site := range group.Spec.Sites {
-			upgradePlan = append(upgradePlan, []string{site})
+			if !isCanary[site] {
+				upgradePlan = append(upgradePlan, []string{site})
+			}
 		}
 	}
 	r.Log.Info("Upgrade plan", "upgradePlan", upgradePlan)
