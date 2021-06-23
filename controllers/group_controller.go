@@ -28,7 +28,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+
+	//	"sigs.k8s.io/controller-runtime/pkg/event"
+	//	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
 )
@@ -79,7 +81,7 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			upgradePlan = append(upgradePlan, []string{site})
 		}
 	}
-	r.Log.Info("Upgrade plan created", "upgradePlan", upgradePlan)
+	r.Log.Info("Upgrade plan", "upgradePlan", upgradePlan)
 
 	// Reconcile resources
 	for i, upgradeBatch := range upgradePlan {
@@ -98,17 +100,24 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			}
 		}
 	}
-	// Remediate policies depending on compliance state and upgrade plan
-
+	/*
+		// Remediate policies depending on compliance state and upgrade plan.
+		if group.Spec.RemediationAction == "enforce" {
+			for i, upgradeBatch := range upgradePlan {
+				for _, site := range upgradeBatch {
+					r.remediateSite(ctx, group, i+1, site)
+				}
+			}
+		}*/
 	return ctrl.Result{}, nil
 }
 
 func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, batch int, sites []string) error {
 	pr := r.newPlacementRule(ctx, group, batch, sites)
 
-	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
+	/*	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
 		return err
-	}
+	}*/
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -171,11 +180,11 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 
 func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
 	pb := r.newPlacementBinding(ctx, group, batch, groupPolicyTemplate)
-
-	if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
-		return err
-	}
-
+	/*
+		if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
+			return err
+		}
+	*/
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -240,9 +249,9 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
 	pol := r.newPolicy(ctx, group, batch, groupPolicyTemplate)
 
-	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
+	/*	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
 		return err
-	}
+	}*/
 
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
@@ -282,6 +291,35 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 
 	return u
 }
+
+/*
+func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.Group, batch int, site string) error {
+	foundManagedCluster := &unstructured.Unstructured{}
+	foundManagedCluster.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "cluster.open-cluster-management.io",
+		Kind:    "ManagedCluster",
+		Version: "v1",
+	})
+
+	foundPolicy := &unstructured.Unstructured{}
+	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "Policy",
+		Version: "v1",
+	})
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      pol.GetName(),
+		Namespace: group.Namespace,
+	}, foundPolicy)
+	if err != nil && errors.IsNotFound((err)) {
+		return err
+		r.Log.Info("Created API object for", "policy", pol)
+	} else if err != nil {
+		return err
+	}
+
+	return nil
+}*/
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *GroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
