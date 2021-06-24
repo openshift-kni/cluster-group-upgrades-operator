@@ -18,24 +18,34 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+
+// CommonPolicyTemplate defines the object definition of a Policy of the Common.
+type CommonPolicyTemplate struct {
+	// +kubebuilder:pruning:PreserveUnknownFields
+	ObjectDefinition runtime.RawExtension `json:"objectDefinition,omitempty"`
+}
 
 // CommonSpec defines the desired state of Common
 type CommonSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Foo is an example field of Common. Edit common_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	// CommonPolicyTemplates defines the list of Policy object definitions of the Common.
+	CommonPolicyTemplates []CommonPolicyTemplate `json:"commonPolicyTemplates,omitempty"`
 }
 
 // CommonStatus defines the observed state of Common
 type CommonStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	PlacementBindings []string `json:"placementBindings"`
+	PlacementRules    []string `json:"placementRules"`
+	Policies          []string `json:"policies"`
 }
 
 //+kubebuilder:object:root=true
