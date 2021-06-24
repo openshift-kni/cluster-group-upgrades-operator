@@ -25,4 +25,13 @@ resources:
   kind: Site
   path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: openshift.io
+  group: ran
+  kind: Common
+  path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
+  version: v1alpha1
 version: "3"

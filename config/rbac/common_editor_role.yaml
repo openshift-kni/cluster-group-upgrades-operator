@@ -1,0 +1,24 @@
+# permissions for end users to edit commons.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: common-editor-role
+rules:
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - commons
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - commons/status
+  verbs:
+  - get
