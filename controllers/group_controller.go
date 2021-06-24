@@ -130,6 +130,11 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		}
 	}
 
+	err = r.updateStatus(ctx, group)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -156,11 +161,6 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 			return err
 		}
 		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
-		group.Status.PlacementRules = append(group.Status.PlacementRules, pr.GetName())
-		r.Status().Update(ctx, group)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -235,11 +235,6 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 			return err
 		}
 		r.Log.Info("Created API PlacementBindingObject object", "placementBinding", pb)
-		group.Status.PlacementBindings = append(group.Status.PlacementBindings, pb.GetName())
-		r.Status().Update(ctx, group)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -309,11 +304,6 @@ func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.G
 			return err
 		}
 		r.Log.Info("Created API Policy object", "policy", pol)
-		group.Status.Policies = append(group.Status.Policies, pol.GetName())
-		r.Status().Update(ctx, group)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -415,6 +405,67 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 	}
 
 	return nil
+}
+
+func (r *GroupReconciler) updateStatus(ctx context.Context, group *ranv1alpha1.Group) error {
+	var labelsForGroup = map[string]string{"app": "cluster-group-lcm", "cluster-group-lcm/group-owner": group.GetName()}
+	listOpts := []client.ListOption{
+		client.InNamespace(group.Namespace),
+		client.MatchingLabels(labelsForGroup),
+	}
+
+	placementRulesList := &unstructured.UnstructuredList{}
+	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "apps.open-cluster-management.io",
+		Kind:    "PlacementRuleList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
+		return err
+	}
+	placementRulesNames := getUnstructuredItemsNames(placementRulesList.Items)
+	group.Status.PlacementRules = placementRulesNames
+
+	placementBindingsList := &unstructured.UnstructuredList{}
+	placementBindingsList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PlacementBindingList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementBindingsList, listOpts...); err != nil {
+		return err
+	}
+	placementBindingsNames := getUnstructuredItemsNames(placementBindingsList.Items)
+	group.Status.PlacementBindings = placementBindingsNames
+
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return err
+	}
+	policiesNames := getUnstructuredItemsNames(policiesList.Items)
+	group.Status.Policies = policiesNames
+
+	err := r.Status().Update(ctx, group)
+	if err != nil {
+		return err
+	}
+	r.Log.Info("Updated Group status", "placementRulesNames", placementRulesNames, "placementBindingsNames", placementBindingsNames, "policiesNames", policiesNames)
+
+	return nil
+}
+
+func getUnstructuredItemsNames(items []unstructured.Unstructured) []string {
+	var unstructuredItemsNames []string
+	for _, item := range items {
+		unstructuredItemsNames = append(unstructuredItemsNames, item.GetName())
+	}
+
+	return unstructuredItemsNames
 }
 
 // SetupWithManager sets up the controller with the Manager.
