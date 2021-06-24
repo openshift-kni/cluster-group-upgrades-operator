@@ -168,7 +168,8 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + "placement-rule",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
-				"app": "cluster-group-lcm",
+				"app":                           "cluster-group-lcm",
+				"cluster-group-lcm/group-owner": group.Name,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -247,7 +248,8 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + "placement-binding",
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
-				"app": "cluster-group-lcm",
+				"app":                           "cluster-group-lcm",
+				"cluster-group-lcm/group-owner": group.Name,
 			},
 		},
 		"placementRef": map[string]interface{}{
@@ -316,6 +318,7 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 		labels = make(map[string]string)
 	}
 	labels["app"] = "cluster-group-lcm"
+	labels["cluster-group-lcm/group-owner"] = group.Name
 	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})

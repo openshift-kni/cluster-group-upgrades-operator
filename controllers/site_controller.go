@@ -119,7 +119,8 @@ func (r *SiteReconciler) newPlacementRule(ctx context.Context, site *ranv1alpha1
 			"name":      site.Name + "-" + "placement-rule",
 			"namespace": site.Namespace,
 			"labels": map[string]interface{}{
-				"app": "cluster-group-lcm",
+				"app":                          "cluster-group-lcm",
+				"cluster-group-lcm/site-owner": site.Name,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -189,7 +190,8 @@ func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alp
 			"name":      site.Name + "-" + "placement-binding",
 			"namespace": site.Namespace,
 			"labels": map[string]interface{}{
-				"app": "cluster-group-lcm",
+				"app":                          "cluster-group-lcm",
+				"cluster-group-lcm/site-owner": site.Name,
 			},
 		},
 		"placementRef": map[string]interface{}{
@@ -250,9 +252,16 @@ func (r *SiteReconciler) newPolicy(ctx context.Context, site *ranv1alpha1.Site, 
 	if err != nil {
 		return nil
 	}
-
+	// TODO: Validate the unmarshaled object
 	u.SetName(site.Name + "-" + u.GetName() + "-" + "policy")
 	u.SetNamespace(site.GetNamespace())
+	labels := u.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["app"] = "cluster-group-lcm"
+	labels["cluster-group-lcm/site-owner"] = site.Name
+	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})
 	specObject["remediationAction"] = "inform"
