@@ -55,7 +55,9 @@ type GroupSpec struct {
 type GroupStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Conditions []metav1.Condition `json:"conditions"`
+	PlacementBindings []string `json:"placementBindings"`
+	PlacementRules    []string `json:"placementRules"`
+	Policies          []string `json:"policies"`
 }
 
 //+kubebuilder:object:root=true

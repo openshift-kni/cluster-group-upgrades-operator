@@ -45,6 +45,9 @@ type SiteSpec struct {
 type SiteStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
+	PlacementBindings []string `json:"placementBindings"`
+	PlacementRules    []string `json:"placementRules"`
+	Policies          []string `json:"policies"`
 }
 
 //+kubebuilder:object:root=true

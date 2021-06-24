@@ -54,6 +54,26 @@ spec:
             type: object
           status:
             description: SiteStatus defines the observed state of Site
+            properties:
+              placementBindings:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  type: string
+                type: array
+              placementRules:
+                items:
+                  type: string
+                type: array
+              policies:
+                items:
+                  type: string
+                type: array
+            required:
+            - placementBindings
+            - placementRules
+            - policies
             type: object
         type: object
     served: true

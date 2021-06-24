@@ -104,7 +104,12 @@ func (r *SiteReconciler) ensurePlacementRule(ctx context.Context, site *ranv1alp
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object", "placementRule", pr)
+		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
+		site.Status.PlacementRules = append(site.Status.PlacementRules, pr.GetName())
+		r.Status().Update(ctx, site)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -169,7 +174,12 @@ func (r *SiteReconciler) ensurePlacementBinding(ctx context.Context, site *ranv1
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object", "placementBinding", pb)
+		r.Log.Info("Created API PlacementBinding object", "placementBinding", pb)
+		site.Status.PlacementBindings = append(site.Status.PlacementBindings, pb.GetName())
+		r.Status().Update(ctx, site)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -238,7 +248,12 @@ func (r *SiteReconciler) ensurePolicy(ctx context.Context, site *ranv1alpha1.Sit
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Created API object for", "policy", pol)
+		r.Log.Info("Created API Policy object for", "policy", pol)
+		site.Status.Policies = append(site.Status.Policies, pol.GetName())
+		r.Status().Update(ctx, site)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}

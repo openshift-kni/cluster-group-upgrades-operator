@@ -119,11 +119,13 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	}
 
 	// Remediate policies depending on compliance state and upgrade plan.
-	for _, upgradeBatch := range upgradePlan {
-		for _, site := range upgradeBatch {
-			err = r.remediateSite(ctx, group, 1, site)
-			if err != nil {
-				return ctrl.Result{}, err
+	if group.Spec.RemediationAction == "enforce" {
+		for _, upgradeBatch := range upgradePlan {
+			for _, site := range upgradeBatch {
+				err = r.remediateSite(ctx, group, 1, site)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
 			}
 		}
 	}
@@ -154,6 +156,11 @@ func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1a
 			return err
 		}
 		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
+		group.Status.PlacementRules = append(group.Status.PlacementRules, pr.GetName())
+		r.Status().Update(ctx, group)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -228,6 +235,11 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 			return err
 		}
 		r.Log.Info("Created API PlacementBindingObject object", "placementBinding", pb)
+		group.Status.PlacementBindings = append(group.Status.PlacementBindings, pb.GetName())
+		r.Status().Update(ctx, group)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
@@ -297,6 +309,11 @@ func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.G
 			return err
 		}
 		r.Log.Info("Created API Policy object", "policy", pol)
+		group.Status.Policies = append(group.Status.Policies, pol.GetName())
+		r.Status().Update(ctx, group)
+		if err != nil {
+			return err
+		}
 	} else if err != nil {
 		return err
 	}
