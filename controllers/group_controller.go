@@ -335,9 +335,49 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 }
 
 func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.Group, batch int, site string) error {
+	c := &ranv1alpha1.Common{}
+	cnn := types.NamespacedName{Namespace: group.Namespace, Name: "common"}
+	err := r.Get(ctx, cnn, c)
+	if err != nil && !errors.IsNotFound(err) {
+		return err
+	}
+
+	if c != nil {
+		for _, commonPolicyTemplate := range c.Spec.CommonPolicyTemplates {
+			u := &unstructured.Unstructured{}
+			err := json.Unmarshal(commonPolicyTemplate.ObjectDefinition.Raw, u)
+			if err != nil {
+				return err
+			}
+
+			foundPolicy := &unstructured.Unstructured{}
+			foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "policy.open-cluster-management.io",
+				Kind:    "Policy",
+				Version: "v1",
+			})
+
+			err = r.Client.Get(ctx, client.ObjectKey{
+				Name:      "common" + "-" + u.GetName() + "-" + "policy",
+				Namespace: group.Namespace,
+			}, foundPolicy)
+			if err != nil {
+				return err
+			}
+
+			specObject := foundPolicy.Object["spec"].(map[string]interface{})
+			specObject["remediationAction"] = "enforce"
+			err = r.Client.Update(ctx, foundPolicy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Set remediationAction to enforce on Common Policy object", "policy", foundPolicy)
+		}
+	}
+
 	s := &ranv1alpha1.Site{}
 	nn := types.NamespacedName{Namespace: group.Namespace, Name: site}
-	err := r.Get(ctx, nn, s)
+	err = r.Get(ctx, nn, s)
 	if err != nil {
 		return err
 	}
@@ -370,7 +410,7 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Set remediationAction to enforce on site Policy object", "policy", foundPolicy)
+		r.Log.Info("Set remediationAction to enforce on Site Policy object", "policy", foundPolicy)
 	}
 
 	for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
@@ -401,7 +441,7 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 		if err != nil {
 			return err
 		}
-		r.Log.Info("Set remediationAction to enforce on group Policy object", "policy", foundPolicy)
+		r.Log.Info("Set remediationAction to enforce on Group Policy object", "policy", foundPolicy)
 	}
 
 	return nil

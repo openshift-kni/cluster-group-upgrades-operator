@@ -57,6 +57,32 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
+  - commons
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - commons/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - commons/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ran.openshift.io
+  resources:
   - groups
   verbs:
   - create
