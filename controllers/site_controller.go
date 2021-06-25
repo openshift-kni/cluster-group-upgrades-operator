@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
 )
@@ -89,9 +90,9 @@ func (r *SiteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 func (r *SiteReconciler) ensurePlacementRule(ctx context.Context, site *ranv1alpha1.Site) error {
 	pr := r.newPlacementRule(ctx, site)
 
-	/*	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(site, pr, r.Scheme); err != nil {
 		return err
-	}*/
+	}
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -158,11 +159,11 @@ func (r *SiteReconciler) newPlacementRule(ctx context.Context, site *ranv1alpha1
 
 func (r *SiteReconciler) ensurePlacementBinding(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) error {
 	pb := r.newPlacementBinding(ctx, site, sitePolicyTemplate)
-	/*
-		if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
-			return err
-		}
-	*/
+
+	if err := controllerutil.SetControllerReference(site, pb, r.Scheme); err != nil {
+		return err
+	}
+
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -233,9 +234,9 @@ func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alp
 func (r *SiteReconciler) ensurePolicy(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) error {
 	pol := r.newPolicy(ctx, site, sitePolicyTemplate)
 
-	/*	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(site, pol, r.Scheme); err != nil {
 		return err
-	}*/
+	}
 
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{

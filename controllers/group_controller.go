@@ -29,6 +29,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	//	"sigs.k8s.io/controller-runtime/pkg/event"
 	//	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -141,9 +142,9 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 func (r *GroupReconciler) ensurePlacementRule(ctx context.Context, group *ranv1alpha1.Group, batch int, sites []string) error {
 	pr := r.newPlacementRule(ctx, group, batch, sites)
 
-	/*	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(group, pr, r.Scheme); err != nil {
 		return err
-	}*/
+	}
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -214,11 +215,11 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 
 func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
 	pb := r.newPlacementBinding(ctx, group, batch, groupPolicyTemplate)
-	/*
-		if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
-			return err
-		}
-	*/
+
+	if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
+		return err
+	}
+
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -284,9 +285,9 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
 	pol := r.newPolicy(ctx, group, batch, groupPolicyTemplate)
 
-	/*	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
 		return err
-	}*/
+	}
 
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
