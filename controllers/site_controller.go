@@ -202,6 +202,7 @@ func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alp
 		u := &unstructured.Unstructured{}
 		err := json.Unmarshal(sitePolicyTemplate.ObjectDefinition.Raw, u)
 		if err != nil {
+			r.Log.Info("Unable to unmarshall site policy template")
 			return nil
 		}
 

@@ -104,15 +104,13 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
-			err = r.ensurePolicy(ctx, group, i+1, groupPolicyTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			err = r.ensurePlacementBinding(ctx, group, i+1, groupPolicyTemplate)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		err = r.ensurePolicies(ctx, group, i+1)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		err = r.ensurePlacementBinding(ctx, group, i+1)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -241,8 +239,8 @@ func (r *GroupReconciler) newPlacementRule(ctx context.Context, group *ranv1alph
 	return u
 }
 
-func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
-	pb := r.newPlacementBinding(ctx, group, batch, groupPolicyTemplate)
+func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int) error {
+	pb := r.newPlacementBinding(ctx, group, batch)
 
 	if err := controllerutil.SetControllerReference(group, pb, r.Scheme); err != nil {
 		return err
@@ -271,11 +269,22 @@ func (r *GroupReconciler) ensurePlacementBinding(ctx context.Context, group *ran
 	return nil
 }
 
-func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
-	policyUnstructured := &unstructured.Unstructured{}
-	err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, policyUnstructured)
-	if err != nil {
-		return nil
+func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1alpha1.Group, batch int) *unstructured.Unstructured {
+	var subjects []map[string]interface{}
+	for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
+		u := &unstructured.Unstructured{}
+		err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, u)
+		if err != nil {
+			r.Log.Info("Unable to unmarshal group policy template")
+			return nil
+		}
+
+		subject := make(map[string]interface{})
+		subject["name"] = group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + u.GetName() + "-" + "policy"
+		subject["kind"] = "Policy"
+		subject["apiGroup"] = "policy.open-cluster-management.io"
+
+		subjects = append(subjects, subject)
 	}
 
 	u := &unstructured.Unstructured{}
@@ -293,13 +302,7 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
-		"subjects": []map[string]interface{}{
-			{
-				"name":     group.Name + "-" + "batch" + "-" + strconv.Itoa(batch) + "-" + policyUnstructured.GetName() + "-" + "policy",
-				"kind":     "Policy",
-				"apiGroup": "policy.open-cluster-management.io",
-			},
-		},
+		"subjects": subjects,
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -310,39 +313,42 @@ func (r *GroupReconciler) newPlacementBinding(ctx context.Context, group *ranv1a
 	return u
 }
 
-func (r *GroupReconciler) ensurePolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) error {
-	pol := r.newPolicy(ctx, group, batch, groupPolicyTemplate)
+func (r *GroupReconciler) ensurePolicies(ctx context.Context, group *ranv1alpha1.Group, batch int) error {
+	for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
+		policy := r.newPolicy(ctx, group, batch, groupPolicyTemplate.ObjectDefinition)
 
-	if err := controllerutil.SetControllerReference(group, pol, r.Scheme); err != nil {
-		return err
-	}
-
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      pol.GetName(),
-		Namespace: group.Namespace,
-	}, foundPolicy)
-	if err != nil && errors.IsNotFound((err)) {
-		err = r.Client.Create(ctx, pol)
-		if err != nil {
+		if err := controllerutil.SetControllerReference(group, policy, r.Scheme); err != nil {
 			return err
 		}
-		r.Log.Info("Created API Policy object", "policy", pol)
-	} else if err != nil {
-		return err
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+		err := r.Client.Get(ctx, client.ObjectKey{
+			Name:      policy.GetName(),
+			Namespace: group.Namespace,
+		}, foundPolicy)
+		if err != nil && errors.IsNotFound((err)) {
+			err = r.Client.Create(ctx, policy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Created API Policy object", "policy", policy)
+		} else if err != nil {
+			return err
+		}
+
 	}
 
 	return nil
 }
 
-func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, groupPolicyTemplate ranv1alpha1.GroupPolicyTemplate) *unstructured.Unstructured {
+func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Group, batch int, objectDefinition runtime.RawExtension) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
-	err := json.Unmarshal(groupPolicyTemplate.ObjectDefinition.Raw, u)
+	err := json.Unmarshal(objectDefinition.Raw, u)
 	if err != nil {
 		return nil
 	}
@@ -527,11 +533,13 @@ func (r *GroupReconciler) updateStatus(ctx context.Context, group *ranv1alpha1.G
 	for _, policy := range policiesList.Items {
 		policyStatus := &ranv1alpha1.PolicyStatus{}
 		policyStatus.Name = policy.GetName()
-		statusObject := policy.Object["status"].(map[string]interface{})
-		if statusObject["compliant"] != nil {
-			policyStatus.ComplianceState = statusObject["compliant"].(string)
-		} else {
+		if policy.Object["status"] == nil {
 			policyStatus.ComplianceState = "NonCompliant"
+		} else {
+			statusObject := policy.Object["status"].(map[string]interface{})
+			if statusObject["compliant"] != nil {
+				policyStatus.ComplianceState = statusObject["compliant"].(string)
+			}
 		}
 		policiesStatus = append(policiesStatus, *policyStatus)
 	}
