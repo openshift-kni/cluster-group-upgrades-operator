@@ -75,16 +75,23 @@ func (r *CommonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 		return ctrl.Result{}, err
 	}
 
-	err = r.ensurePlacementRule(ctx, common)
-	if err != nil {
+	sitesList := &ranv1alpha1.SiteList{}
+	if err := r.List(ctx, sitesList); err != nil {
 		return ctrl.Result{}, err
 	}
-	for _, commonPolicyTemplate := range common.Spec.CommonPolicyTemplates {
-		err = r.ensurePolicy(ctx, common, commonPolicyTemplate)
+
+	for _, site := range sitesList.Items {
+		err = r.ensurePlacementRule(ctx, common, &site)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		err = r.ensurePlacementBinding(ctx, common, commonPolicyTemplate)
+
+		err = r.ensurePolicies(ctx, common, &site)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+
+		err = r.ensurePlacementBinding(ctx, common, &site)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -98,8 +105,8 @@ func (r *CommonReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctr
 	return ctrl.Result{}, nil
 }
 
-func (r *CommonReconciler) ensurePlacementRule(ctx context.Context, common *ranv1alpha1.Common) error {
-	pr := r.newPlacementRule(ctx, common)
+func (r *CommonReconciler) ensurePlacementRule(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site) error {
+	pr := r.newPlacementRule(ctx, common, site)
 
 	if err := controllerutil.SetControllerReference(common, pr, r.Scheme); err != nil {
 		return err
@@ -121,11 +128,6 @@ func (r *CommonReconciler) ensurePlacementRule(ctx context.Context, common *ranv
 			return err
 		}
 		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
-		common.Status.PlacementRules = append(common.Status.PlacementRules, pr.GetName())
-		r.Status().Update(ctx, common)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -133,11 +135,11 @@ func (r *CommonReconciler) ensurePlacementRule(ctx context.Context, common *ranv
 	return nil
 }
 
-func (r *CommonReconciler) newPlacementRule(ctx context.Context, common *ranv1alpha1.Common) *unstructured.Unstructured {
+func (r *CommonReconciler) newPlacementRule(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      common.Name + "-" + "placement-rule",
+			"name":      common.Name + "-" + site.Name + "-" + "placement-rule",
 			"namespace": common.Namespace,
 			"labels": map[string]interface{}{
 				"app":                            "cluster-group-lcm",
@@ -151,8 +153,10 @@ func (r *CommonReconciler) newPlacementRule(ctx context.Context, common *ranv1al
 					"status": "True",
 				},
 			},
-			"clusterSelector": map[string]interface{}{
-				"matchLabels": map[string]interface{}{},
+			"clusters": []map[string]interface{}{
+				{
+					"name": site.Spec.Cluster,
+				},
 			},
 		},
 	}
@@ -166,8 +170,8 @@ func (r *CommonReconciler) newPlacementRule(ctx context.Context, common *ranv1al
 	return u
 }
 
-func (r *CommonReconciler) ensurePlacementBinding(ctx context.Context, common *ranv1alpha1.Common, commonPolicyTemplate ranv1alpha1.CommonPolicyTemplate) error {
-	pb := r.newPlacementBinding(ctx, common, commonPolicyTemplate)
+func (r *CommonReconciler) ensurePlacementBinding(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site) error {
+	pb := r.newPlacementBinding(ctx, common, site)
 
 	if err := controllerutil.SetControllerReference(common, pb, r.Scheme); err != nil {
 		return err
@@ -189,11 +193,6 @@ func (r *CommonReconciler) ensurePlacementBinding(ctx context.Context, common *r
 			return err
 		}
 		r.Log.Info("Created API PlacementBinding object", "placementBinding", pb)
-		common.Status.PlacementBindings = append(common.Status.PlacementBindings, pb.GetName())
-		r.Status().Update(ctx, common)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -201,17 +200,28 @@ func (r *CommonReconciler) ensurePlacementBinding(ctx context.Context, common *r
 	return nil
 }
 
-func (r *CommonReconciler) newPlacementBinding(ctx context.Context, common *ranv1alpha1.Common, commonPolicyTemplate ranv1alpha1.CommonPolicyTemplate) *unstructured.Unstructured {
-	policyUnstructured := &unstructured.Unstructured{}
-	err := json.Unmarshal(commonPolicyTemplate.ObjectDefinition.Raw, policyUnstructured)
-	if err != nil {
-		return nil
+func (r *CommonReconciler) newPlacementBinding(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site) *unstructured.Unstructured {
+	var subjects []map[string]interface{}
+	for _, commonPolicyTemplate := range common.Spec.CommonPolicyTemplates {
+		u := &unstructured.Unstructured{}
+		err := json.Unmarshal(commonPolicyTemplate.ObjectDefinition.Raw, u)
+		if err != nil {
+			r.Log.Info("Unable to unmarshall common policy template")
+			return nil
+		}
+
+		subject := make(map[string]interface{})
+		subject["name"] = common.Name + "-" + site.Name + "-" + u.GetName() + "-" + "policy"
+		subject["kind"] = "Policy"
+		subject["apiGroup"] = "policy.open-cluster-management.io"
+
+		subjects = append(subjects, subject)
 	}
 
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      common.Name + "-" + "placement-binding",
+			"name":      common.Name + "-" + site.Name + "-" + "placement-binding",
 			"namespace": common.Namespace,
 			"labels": map[string]interface{}{
 				"app":                            "cluster-group-lcm",
@@ -219,17 +229,11 @@ func (r *CommonReconciler) newPlacementBinding(ctx context.Context, common *ranv
 			},
 		},
 		"placementRef": map[string]interface{}{
-			"name":     common.Name + "-" + "placement-rule",
+			"name":     common.Name + "-" + site.Name + "-" + "placement-rule",
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
-		"subjects": []map[string]interface{}{
-			{
-				"name":     common.Name + "-" + policyUnstructured.GetName() + "-" + "policy",
-				"kind":     "Policy",
-				"apiGroup": "policy.open-cluster-management.io",
-			},
-		},
+		"subjects": subjects,
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -240,44 +244,46 @@ func (r *CommonReconciler) newPlacementBinding(ctx context.Context, common *ranv
 	return u
 }
 
-func (r *CommonReconciler) ensurePolicy(ctx context.Context, common *ranv1alpha1.Common, commonPolicyTemplate ranv1alpha1.CommonPolicyTemplate) error {
-	pol := r.newPolicy(ctx, common, commonPolicyTemplate)
+func (r *CommonReconciler) ensurePolicies(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site) error {
+	for _, commonPolicyTemplate := range common.Spec.CommonPolicyTemplates {
+		policy := r.newPolicy(ctx, common, site, commonPolicyTemplate.ObjectDefinition)
 
-	if err := controllerutil.SetControllerReference(common, pol, r.Scheme); err != nil {
-		return err
-	}
-
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      pol.GetName(),
-		Namespace: common.Namespace,
-	}, foundPolicy)
-	if err != nil && errors.IsNotFound((err)) {
-		err = r.Client.Create(ctx, pol)
-		if err != nil {
+		if err := controllerutil.SetControllerReference(common, policy, r.Scheme); err != nil {
 			return err
 		}
-		r.Log.Info("Created API Policy object for", "policy", pol)
-	} else if err != nil {
-		return err
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+		err := r.Client.Get(ctx, client.ObjectKey{
+			Name:      policy.GetName(),
+			Namespace: common.Namespace,
+		}, foundPolicy)
+		if err != nil && errors.IsNotFound((err)) {
+			err = r.Client.Create(ctx, policy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Created API Policy object for", "policy", policy)
+		} else if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (r *CommonReconciler) newPolicy(ctx context.Context, common *ranv1alpha1.Common, commonPolicyTemplate ranv1alpha1.CommonPolicyTemplate) *unstructured.Unstructured {
+func (r *CommonReconciler) newPolicy(ctx context.Context, common *ranv1alpha1.Common, site *ranv1alpha1.Site, objectDefinition runtime.RawExtension) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
-	err := json.Unmarshal(commonPolicyTemplate.ObjectDefinition.Raw, u)
+	err := json.Unmarshal(objectDefinition.Raw, u)
 	if err != nil {
 		return nil
 	}
 	// TODO: Validate the unmarshaled object
-	u.SetName(common.Name + "-" + u.GetName() + "-" + "policy")
+	u.SetName(common.Name + "-" + site.Name + "-" + u.GetName() + "-" + "policy")
 	u.SetNamespace(common.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -294,10 +300,10 @@ func (r *CommonReconciler) newPolicy(ctx context.Context, common *ranv1alpha1.Co
 }
 
 func (r *CommonReconciler) updateStatus(ctx context.Context, common *ranv1alpha1.Common) error {
-	var labelsForSite = map[string]string{"app": "cluster-group-lcm", "cluster-group-lcm/common-owner": common.GetName()}
+	var labelsForCommon = map[string]string{"app": "cluster-group-lcm", "cluster-group-lcm/common-owner": common.GetName()}
 	listOpts := []client.ListOption{
 		client.InNamespace(common.Namespace),
-		client.MatchingLabels(labelsForSite),
+		client.MatchingLabels(labelsForCommon),
 	}
 
 	placementRulesList := &unstructured.UnstructuredList{}
@@ -310,6 +316,9 @@ func (r *CommonReconciler) updateStatus(ctx context.Context, common *ranv1alpha1
 		return err
 	}
 	placementRulesNames := getUnstructuredItemsNames(placementRulesList.Items)
+	if placementRulesNames == nil {
+		placementRulesNames = []string{}
+	}
 	common.Status.PlacementRules = placementRulesNames
 
 	placementBindingsList := &unstructured.UnstructuredList{}
@@ -322,6 +331,9 @@ func (r *CommonReconciler) updateStatus(ctx context.Context, common *ranv1alpha1
 		return err
 	}
 	placementBindingsNames := getUnstructuredItemsNames(placementBindingsList.Items)
+	if placementBindingsNames == nil {
+		placementBindingsNames = []string{}
+	}
 	common.Status.PlacementBindings = placementBindingsNames
 
 	policiesList := &unstructured.UnstructuredList{}
@@ -344,6 +356,9 @@ func (r *CommonReconciler) updateStatus(ctx context.Context, common *ranv1alpha1
 			policyStatus.ComplianceState = "NonCompliant"
 		}
 		policiesStatus = append(policiesStatus, *policyStatus)
+	}
+	if policiesStatus == nil {
+		policiesStatus = []ranv1alpha1.PolicyStatus{}
 	}
 	common.Status.Policies = policiesStatus
 
