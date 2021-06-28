@@ -65,7 +65,13 @@ spec:
                 type: array
               policies:
                 items:
-                  type: string
+                  description: PolicyStatus defines the observed state of a Policy
+                  properties:
+                    complianceState:
+                      type: string
+                    name:
+                      type: string
+                  type: object
                 type: array
             required:
             - placementBindings

@@ -51,13 +51,19 @@ type GroupSpec struct {
 	RemediationAction    string                `json:"remediationAction,omitempty"`
 }
 
+// PolicyStatus defines the observed state of a Policy
+type PolicyStatus struct {
+	Name            string `json:"name,omitempty"`
+	ComplianceState string `json:"complianceState,omitempty"`
+}
+
 // GroupStatus defines the observed state of Group
 type GroupStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	PlacementBindings []string `json:"placementBindings"`
-	PlacementRules    []string `json:"placementRules"`
-	Policies          []string `json:"policies"`
+	PlacementBindings []string       `json:"placementBindings"`
+	PlacementRules    []string       `json:"placementRules"`
+	Policies          []PolicyStatus `json:"policies"`
 }
 
 //+kubebuilder:object:root=true

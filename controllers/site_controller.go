@@ -84,6 +84,11 @@ func (r *SiteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
+	err = r.updateStatus(ctx, site)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -254,11 +259,6 @@ func (r *SiteReconciler) ensurePolicy(ctx context.Context, site *ranv1alpha1.Sit
 			return err
 		}
 		r.Log.Info("Created API Policy object for", "policy", pol)
-		site.Status.Policies = append(site.Status.Policies, pol.GetName())
-		r.Status().Update(ctx, site)
-		if err != nil {
-			return err
-		}
 	} else if err != nil {
 		return err
 	}
@@ -287,6 +287,69 @@ func (r *SiteReconciler) newPolicy(ctx context.Context, site *ranv1alpha1.Site, 
 	specObject["remediationAction"] = "inform"
 
 	return u
+}
+
+func (r *SiteReconciler) updateStatus(ctx context.Context, site *ranv1alpha1.Site) error {
+	var labelsForSite = map[string]string{"app": "cluster-group-lcm", "cluster-group-lcm/site-owner": site.GetName()}
+	listOpts := []client.ListOption{
+		client.InNamespace(site.Namespace),
+		client.MatchingLabels(labelsForSite),
+	}
+
+	placementRulesList := &unstructured.UnstructuredList{}
+	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "apps.open-cluster-management.io",
+		Kind:    "PlacementRuleList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
+		return err
+	}
+	placementRulesNames := getUnstructuredItemsNames(placementRulesList.Items)
+	site.Status.PlacementRules = placementRulesNames
+
+	placementBindingsList := &unstructured.UnstructuredList{}
+	placementBindingsList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PlacementBindingList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementBindingsList, listOpts...); err != nil {
+		return err
+	}
+	placementBindingsNames := getUnstructuredItemsNames(placementBindingsList.Items)
+	site.Status.PlacementBindings = placementBindingsNames
+
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return err
+	}
+	var policiesStatus []ranv1alpha1.PolicyStatus
+	for _, policy := range policiesList.Items {
+		policyStatus := &ranv1alpha1.PolicyStatus{}
+		policyStatus.Name = policy.GetName()
+		statusObject := policy.Object["status"].(map[string]interface{})
+		if statusObject["compliant"] != nil {
+			policyStatus.ComplianceState = statusObject["compliant"].(string)
+		} else {
+			policyStatus.ComplianceState = "NonCompliant"
+		}
+		policiesStatus = append(policiesStatus, *policyStatus)
+	}
+	site.Status.Policies = policiesStatus
+
+	err := r.Status().Update(ctx, site)
+	if err != nil {
+		return err
+	}
+	r.Log.Info("Updated Site status")
+
+	return nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

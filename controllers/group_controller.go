@@ -485,14 +485,25 @@ func (r *GroupReconciler) updateStatus(ctx context.Context, group *ranv1alpha1.G
 	if err := r.List(ctx, policiesList, listOpts...); err != nil {
 		return err
 	}
-	policiesNames := getUnstructuredItemsNames(policiesList.Items)
-	group.Status.Policies = policiesNames
+	var policiesStatus []ranv1alpha1.PolicyStatus
+	for _, policy := range policiesList.Items {
+		policyStatus := &ranv1alpha1.PolicyStatus{}
+		policyStatus.Name = policy.GetName()
+		statusObject := policy.Object["status"].(map[string]interface{})
+		if statusObject["compliant"] != nil {
+			policyStatus.ComplianceState = statusObject["compliant"].(string)
+		} else {
+			policyStatus.ComplianceState = "NonCompliant"
+		}
+		policiesStatus = append(policiesStatus, *policyStatus)
+	}
+	group.Status.Policies = policiesStatus
 
 	err := r.Status().Update(ctx, group)
 	if err != nil {
 		return err
 	}
-	r.Log.Info("Updated Group status", "placementRulesNames", placementRulesNames, "placementBindingsNames", placementBindingsNames, "policiesNames", policiesNames)
+	r.Log.Info("Updated Group status")
 
 	return nil
 }
