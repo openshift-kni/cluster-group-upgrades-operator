@@ -73,15 +73,14 @@ func (r *SiteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	for _, sitePolicyTemplate := range site.Spec.SitePolicyTemplates {
-		err = r.ensurePolicy(ctx, site, sitePolicyTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		err = r.ensurePlacementBinding(ctx, site, sitePolicyTemplate)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
+
+	err = r.ensurePolicies(ctx, site)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	err = r.ensurePlacementBinding(ctx, site)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	err = r.updateStatus(ctx, site)
@@ -162,8 +161,8 @@ func (r *SiteReconciler) newPlacementRule(ctx context.Context, site *ranv1alpha1
 	return u
 }
 
-func (r *SiteReconciler) ensurePlacementBinding(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) error {
-	pb := r.newPlacementBinding(ctx, site, sitePolicyTemplate)
+func (r *SiteReconciler) ensurePlacementBinding(ctx context.Context, site *ranv1alpha1.Site) error {
+	pb := r.newPlacementBinding(ctx, site)
 
 	if err := controllerutil.SetControllerReference(site, pb, r.Scheme); err != nil {
 		return err
@@ -197,11 +196,21 @@ func (r *SiteReconciler) ensurePlacementBinding(ctx context.Context, site *ranv1
 	return nil
 }
 
-func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) *unstructured.Unstructured {
-	policyUnstructured := &unstructured.Unstructured{}
-	err := json.Unmarshal(sitePolicyTemplate.ObjectDefinition.Raw, policyUnstructured)
-	if err != nil {
-		return nil
+func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alpha1.Site) *unstructured.Unstructured {
+	var subjects []map[string]interface{}
+	for _, sitePolicyTemplate := range site.Spec.SitePolicyTemplates {
+		u := &unstructured.Unstructured{}
+		err := json.Unmarshal(sitePolicyTemplate.ObjectDefinition.Raw, u)
+		if err != nil {
+			return nil
+		}
+
+		subject := make(map[string]interface{})
+		subject["name"] = site.Name + "-" + u.GetName() + "-" + "policy"
+		subject["kind"] = "Policy"
+		subject["apiGroup"] = "policy.open-cluster-management.io"
+
+		subjects = append(subjects, subject)
 	}
 
 	u := &unstructured.Unstructured{}
@@ -219,13 +228,7 @@ func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alp
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
-		"subjects": []map[string]interface{}{
-			{
-				"name":     site.Name + "-" + policyUnstructured.GetName() + "-" + "policy",
-				"kind":     "Policy",
-				"apiGroup": "policy.open-cluster-management.io",
-			},
-		},
+		"subjects": subjects,
 	}
 	u.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -236,39 +239,41 @@ func (r *SiteReconciler) newPlacementBinding(ctx context.Context, site *ranv1alp
 	return u
 }
 
-func (r *SiteReconciler) ensurePolicy(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) error {
-	pol := r.newPolicy(ctx, site, sitePolicyTemplate)
+func (r *SiteReconciler) ensurePolicies(ctx context.Context, site *ranv1alpha1.Site) error {
+	for _, sitePolicyTemplate := range site.Spec.SitePolicyTemplates {
+		policy := r.newPolicy(ctx, site, sitePolicyTemplate.ObjectDefinition)
 
-	if err := controllerutil.SetControllerReference(site, pol, r.Scheme); err != nil {
-		return err
-	}
-
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      pol.GetName(),
-		Namespace: site.Namespace,
-	}, foundPolicy)
-	if err != nil && errors.IsNotFound((err)) {
-		err = r.Client.Create(ctx, pol)
-		if err != nil {
+		if err := controllerutil.SetControllerReference(site, policy, r.Scheme); err != nil {
 			return err
 		}
-		r.Log.Info("Created API Policy object for", "policy", pol)
-	} else if err != nil {
-		return err
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+		err := r.Client.Get(ctx, client.ObjectKey{
+			Name:      policy.GetName(),
+			Namespace: site.Namespace,
+		}, foundPolicy)
+		if err != nil && errors.IsNotFound((err)) {
+			err = r.Client.Create(ctx, policy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Created API Policy object for", "policy", policy)
+		} else if err != nil {
+			return err
+		}
 	}
 
 	return nil
 }
 
-func (r *SiteReconciler) newPolicy(ctx context.Context, site *ranv1alpha1.Site, sitePolicyTemplate ranv1alpha1.SitePolicyTemplate) *unstructured.Unstructured {
+func (r *SiteReconciler) newPolicy(ctx context.Context, site *ranv1alpha1.Site, objectDefinition runtime.RawExtension) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
-	err := json.Unmarshal(sitePolicyTemplate.ObjectDefinition.Raw, u)
+	err := json.Unmarshal(objectDefinition.Raw, u)
 	if err != nil {
 		return nil
 	}
