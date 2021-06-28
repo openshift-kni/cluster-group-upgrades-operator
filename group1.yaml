@@ -40,5 +40,5 @@ spec:
                         metadata:
                           name: prod
   upgradeStrategy:
-    type: Parallel
+    maxConcurrency: 1
   remediationAction: inform

@@ -3,7 +3,7 @@ kind: Site
 metadata:
   name: site2
 spec:
-  cluster: spoke2
+  cluster: spoke2-dev
   sitePolicyTemplates:
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
