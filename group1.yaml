@@ -40,5 +40,5 @@ spec:
                         metadata:
                           name: prod
   upgradeStrategy:
-    maxConcurrency: 1
+    maxConcurrency: 2
   remediationAction: inform

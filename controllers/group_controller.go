@@ -118,12 +118,43 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 
 	// Remediate policies depending on compliance state and upgrade plan.
 	if group.Spec.RemediationAction == "enforce" {
-		for _, upgradeBatch := range upgradePlan {
+		for i, upgradeBatch := range upgradePlan {
+			batchCompliant := true
 			for _, site := range upgradeBatch {
-				err = r.remediateSite(ctx, group, 1, site)
+				err := r.remediateSite(ctx, group, i+1, site)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
+				siteCompliant := true
+				var labelsForGroup = map[string]string{"app": "cluster-group-lcm"}
+				listOpts := []client.ListOption{
+					client.InNamespace(group.GetName()),
+					client.MatchingLabels(labelsForGroup),
+				}
+				policiesList := &unstructured.UnstructuredList{}
+				policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+					Group:   "policy.open-cluster-management.io",
+					Kind:    "PolicyList",
+					Version: "v1",
+				})
+				if err := r.List(ctx, policiesList, listOpts...); err != nil {
+					return ctrl.Result{}, err
+				}
+				for _, policy := range policiesList.Items {
+					statusObject := policy.Object["status"].(map[string]interface{})
+					if statusObject["compliant"] != nil {
+						siteCompliant = siteCompliant && (statusObject["compliant"].(string) == "Compliant")
+					} else {
+						siteCompliant = false
+					}
+				}
+				batchCompliant = batchCompliant && siteCompliant
+			}
+			if !batchCompliant {
+				r.Log.Info("Upgrade batch not fully compliant yet", "upgradeBatch", upgradeBatch)
+				break
+			} else {
+				r.Log.Info("Upgrade batch fully compliant", "upgradeBatch", upgradeBatch)
 			}
 		}
 	}
@@ -333,6 +364,7 @@ func (r *GroupReconciler) newPolicy(ctx context.Context, group *ranv1alpha1.Grou
 }
 
 func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.Group, batch int, site string) error {
+	r.Log.Info("Remediating Site", "site", site)
 	c := &ranv1alpha1.Common{}
 	cnn := types.NamespacedName{Namespace: group.Namespace, Name: "common"}
 	err := r.Get(ctx, cnn, c)
@@ -364,12 +396,14 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 			}
 
 			specObject := foundPolicy.Object["spec"].(map[string]interface{})
-			specObject["remediationAction"] = "enforce"
-			err = r.Client.Update(ctx, foundPolicy)
-			if err != nil {
-				return err
+			if specObject["remediationAction"] == "inform" {
+				specObject["remediationAction"] = "enforce"
+				err = r.Client.Update(ctx, foundPolicy)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Set remediationAction to enforce on Common Policy object", "policy", foundPolicy)
 			}
-			r.Log.Info("Set remediationAction to enforce on Common Policy object", "policy", foundPolicy)
 		}
 	}
 
@@ -403,12 +437,14 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 		}
 
 		specObject := foundPolicy.Object["spec"].(map[string]interface{})
-		specObject["remediationAction"] = "enforce"
-		err = r.Client.Update(ctx, foundPolicy)
-		if err != nil {
-			return err
+		if specObject["remediationAction"] == "inform" {
+			specObject["remediationAction"] = "enforce"
+			err = r.Client.Update(ctx, foundPolicy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Set remediationAction to enforce on Site Policy object", "policy", foundPolicy)
 		}
-		r.Log.Info("Set remediationAction to enforce on Site Policy object", "policy", foundPolicy)
 	}
 
 	for _, groupPolicyTemplate := range group.Spec.GroupPolicyTemplates {
@@ -434,12 +470,14 @@ func (r *GroupReconciler) remediateSite(ctx context.Context, group *ranv1alpha1.
 		}
 
 		specObject := foundPolicy.Object["spec"].(map[string]interface{})
-		specObject["remediationAction"] = "enforce"
-		err = r.Client.Update(ctx, foundPolicy)
-		if err != nil {
-			return err
+		if specObject["remediationAction"] == "inform" {
+			specObject["remediationAction"] = "enforce"
+			err = r.Client.Update(ctx, foundPolicy)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Set remediationAction to enforce on Group Policy object", "policy", foundPolicy)
 		}
-		r.Log.Info("Set remediationAction to enforce on Group Policy object", "policy", foundPolicy)
 	}
 
 	return nil
