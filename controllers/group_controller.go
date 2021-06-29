@@ -119,50 +119,56 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 	}
-	/*
-		// Remediate policies depending on compliance state and upgrade plan.
-		if group.Spec.RemediationAction == "enforce" {
-			for i, upgradeBatch := range upgradePlan {
-				batchCompliant := true
-				for _, site := range upgradeBatch {
-					err := r.remediateSite(ctx, group, i+1, site)
+
+	// Remediate policies depending on compliance state and upgrade plan.
+	if group.Spec.RemediationAction == "enforce" {
+		for i, remediateBatch := range remediationPlan {
+			// Get policies with label cluster-group-lcm/batch=i
+			// Set remediationAction to enforce on list
+			// Get policies with label cluster-group-lcm/batch=i
+			// Set batchCompliant to false if any of the policies is non-compliant
+			r.Log.Info("Remediating sites", "remediateBatch", remediateBatch)
+			r.Log.Info("Batch", "i", i+1)
+			batchCompliant := true
+			var labelsForBatch = map[string]string{"cluster-group-lcm/batch": strconv.Itoa(i + 1)}
+			listOpts := []client.ListOption{
+				client.InNamespace(group.Namespace),
+				client.MatchingLabels(labelsForBatch),
+			}
+			policiesList := &unstructured.UnstructuredList{}
+			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "policy.open-cluster-management.io",
+				Kind:    "PolicyList",
+				Version: "v1",
+			})
+			if err := r.List(ctx, policiesList, listOpts...); err != nil {
+				return ctrl.Result{}, err
+			}
+			for _, policy := range policiesList.Items {
+				specObject := policy.Object["spec"].(map[string]interface{})
+				if specObject["remediationAction"] == "inform" {
+					specObject["remediationAction"] = "enforce"
+					err = r.Client.Update(ctx, &policy)
 					if err != nil {
 						return ctrl.Result{}, err
 					}
-					siteCompliant := true
-					var labelsForGroup = map[string]string{"app": "cluster-group-lcm"}
-					listOpts := []client.ListOption{
-						client.InNamespace(group.GetName()),
-						client.MatchingLabels(labelsForGroup),
-					}
-					policiesList := &unstructured.UnstructuredList{}
-					policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-						Group:   "policy.open-cluster-management.io",
-						Kind:    "PolicyList",
-						Version: "v1",
-					})
-					if err := r.List(ctx, policiesList, listOpts...); err != nil {
-						return ctrl.Result{}, err
-					}
-					for _, policy := range policiesList.Items {
-						statusObject := policy.Object["status"].(map[string]interface{})
-						if statusObject["compliant"] != nil {
-							siteCompliant = siteCompliant && (statusObject["compliant"].(string) == "Compliant")
-						} else {
-							siteCompliant = false
-						}
-					}
-					batchCompliant = batchCompliant && siteCompliant
+					r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
 				}
-				if !batchCompliant {
-					r.Log.Info("Upgrade batch not fully compliant yet", "upgradeBatch", upgradeBatch)
-					break
-				} else {
-					r.Log.Info("Upgrade batch fully compliant", "upgradeBatch", upgradeBatch)
+
+				statusObject := policy.Object["status"].(map[string]interface{})
+				if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
+					batchCompliant = false
 				}
 			}
+
+			if !batchCompliant {
+				r.Log.Info("Upgrade batch not fully compliant yet")
+				break
+			} else {
+				r.Log.Info("Upgrade batch fully compliant")
+			}
 		}
-	*/
+	}
 
 	err = r.updateStatus(ctx, group)
 	if err != nil {
