@@ -71,6 +71,6 @@ spec:
                         apiVersion: v1
                         metadata:
                           name: prod2
-  upgradeStrategy:
-    maxConcurrency: 2
+  remediationStrategy:
+    maxConcurrency: 1
   remediationAction: inform

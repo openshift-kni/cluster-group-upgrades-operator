@@ -52,25 +52,25 @@ spec:
                 type: string
               remediationAction:
                 type: string
-              sites:
-                description: Sites defines the list of names of Site objects of the
-                  Group.
-                items:
-                  type: string
-                type: array
-              upgradeStrategy:
-                description: UpgradeStrategySpec defines the upgrade policy
+              remediationStrategy:
+                description: RemediationStrategySpec defines the remediation policy
                 properties:
                   canaries:
                     description: Canaries defines the list of names of Site objects
-                      that should be upgraded first when remediateAction is set to
-                      enforce
+                      that should be remediated first when remediateAction is set
+                      to enforce
                     items:
                       type: string
                     type: array
                   maxConcurrency:
                     type: integer
                 type: object
+              sites:
+                description: Sites defines the list of names of Site objects of the
+                  Group.
+                items:
+                  type: string
+                type: array
             type: object
           status:
             description: GroupStatus defines the observed state of Group

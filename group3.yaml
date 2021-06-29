@@ -1,12 +1,13 @@
 apiVersion: ran.openshift.io/v1alpha1
 kind: Group
 metadata:
-  name: group1
+  name: group3
 spec:
-  canaries:
-    - site2
   sites:
     - site1
+    - site2
+    - site3
+    - site4
   groupPolicyTemplates:
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
@@ -41,5 +42,8 @@ spec:
                         metadata:
                           name: prod3
   upgradeStrategy:
-    type: Parallel
+    maxConcurrency: 2
+    canaries:
+    - site1
+    - site2
   remediationAction: inform

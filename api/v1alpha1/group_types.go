@@ -24,9 +24,9 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// UpgradeStrategySpec defines the upgrade policy
-type UpgradeStrategySpec struct {
-	// Canaries defines the list of names of Site objects that should be upgraded first when remediateAction is set to enforce
+// RemediationStrategySpec defines the remediation policy
+type RemediationStrategySpec struct {
+	// Canaries defines the list of names of Site objects that should be remediated first when remediateAction is set to enforce
 	Canaries       []string `json:"canaries,omitempty"`
 	MaxConcurrency int      `json:"maxConcurrency,omitempty"`
 }
@@ -45,10 +45,10 @@ type GroupSpec struct {
 	// Sites defines the list of names of Site objects of the Group.
 	Sites []string `json:"sites,omitempty"`
 	// GroupPolicyTemplates defines the list of Policy object definitions of the Group.
-	GroupPolicyTemplates []GroupPolicyTemplate `json:"groupPolicyTemplates,omitempty"`
-	UpgradeStrategy      UpgradeStrategySpec   `json:"upgradeStrategy,omitempty"`
-	OnFailureAction      string                `json:"onFailureAction,omitempty"`
-	RemediationAction    string                `json:"remediationAction,omitempty"`
+	GroupPolicyTemplates []GroupPolicyTemplate   `json:"groupPolicyTemplates,omitempty"`
+	RemediationStrategy  RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	OnFailureAction      string                  `json:"onFailureAction,omitempty"`
+	RemediationAction    string                  `json:"remediationAction,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
