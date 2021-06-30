@@ -22,6 +22,7 @@ import (
 	"strconv"
 
 	"github.com/go-logr/logr"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -30,9 +31,9 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-
-	//	"sigs.k8s.io/controller-runtime/pkg/event"
-	//	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
 )
@@ -200,14 +201,25 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 			Namespace: group.Namespace,
 		}, foundPlacementRule)
 
-		if err != nil && errors.IsNotFound((err)) {
-			err = r.Client.Create(ctx, pr)
-			if err != nil {
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, pr)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Created API PlacementRule object", "pb", pr)
+			} else {
 				return err
 			}
-			r.Log.Info("Created API PlacementRule object", "placementRule", pr)
-		} else if err != nil {
-			return err
+		} else {
+			if !equality.Semantic.DeepEqual(foundPlacementRule.Object["spec"], pr.Object["spec"]) {
+				foundPlacementRule.Object["spec"] = pr.Object["spec"]
+				err = r.Client.Update(ctx, foundPlacementRule)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Updated API PlacementRule object", "foundPlacementRule", foundPlacementRule)
+			}
 		}
 	}
 
@@ -231,14 +243,24 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 		Namespace: group.Namespace,
 	}, foundPlacementRule)
 
-	if err != nil && errors.IsNotFound((err)) {
-		err = r.Client.Create(ctx, pr)
-		if err != nil {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, pr)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Created API PlacementRule object", "pb", pr)
+		} else {
 			return err
 		}
-		r.Log.Info("Created API PlacementRule object", "placementRule", pr)
-	} else if err != nil {
-		return err
+	} else {
+		if !equality.Semantic.DeepEqual(foundPlacementRule.Object["spec"], pr.Object["spec"]) {
+			err = r.Client.Update(ctx, foundPlacementRule)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Updated API PlacementRule object", "foundPlacementRule", foundPlacementRule)
+		}
 	}
 
 	return nil
@@ -357,14 +379,27 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 				Namespace: group.Namespace,
 			}, foundPolicy)
 
-			if err != nil && errors.IsNotFound((err)) {
-				err = r.Client.Create(ctx, policy)
-				if err != nil {
+			if err != nil {
+				if errors.IsNotFound(err) {
+					err = r.Client.Create(ctx, policy)
+					if err != nil {
+						return err
+					}
+					r.Log.Info("Created API Policy object", "policy", policy)
+				} else {
 					return err
 				}
-				r.Log.Info("Created API Policy object", "policy", policy)
-			} else if err != nil {
-				return err
+			} else {
+				if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
+					foundPolicy.Object["spec"] = policy.Object["spec"]
+					specObject := foundPolicy.Object["spec"].(map[string]interface{})
+					specObject["remediationAction"] = group.Spec.RemediationAction
+					err = r.Client.Update(ctx, foundPolicy)
+					if err != nil {
+						return err
+					}
+					r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+				}
 			}
 		}
 	}
@@ -395,14 +430,27 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 				Namespace: group.Namespace,
 			}, foundPolicy)
 
-			if err != nil && errors.IsNotFound((err)) {
-				err = r.Client.Create(ctx, policy)
-				if err != nil {
+			if err != nil {
+				if errors.IsNotFound(err) {
+					err = r.Client.Create(ctx, policy)
+					if err != nil {
+						return err
+					}
+					r.Log.Info("Created API Policy object", "policy", policy)
+				} else {
 					return err
 				}
-				r.Log.Info("Created API Policy object", "policy", policy)
-			} else if err != nil {
-				return err
+			} else {
+				if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
+					foundPolicy.Object["spec"] = policy.Object["spec"]
+					specObject := foundPolicy.Object["spec"].(map[string]interface{})
+					specObject["remediationAction"] = group.Spec.RemediationAction
+					err = r.Client.Update(ctx, foundPolicy)
+					if err != nil {
+						return err
+					}
+					r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+				}
 			}
 		}
 	}
@@ -425,16 +473,26 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 			Namespace: group.Namespace,
 		}, foundPolicy)
 
-		if err != nil && errors.IsNotFound((err)) {
-			err = r.Client.Create(ctx, policy)
-			if err != nil {
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, policy)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Created API Policy object", "policy", policy)
+			} else {
 				return err
 			}
-			r.Log.Info("Created API Policy object", "policy", policy)
-		} else if err != nil {
-			return err
+		} else {
+			if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
+				foundPolicy.Object["spec"] = policy.Object["spec"]
+				err = r.Client.Update(ctx, foundPolicy)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+			}
 		}
-
 	}
 
 	return nil
@@ -537,14 +595,26 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 			Namespace: group.Namespace,
 		}, foundPlacementBinding)
 
-		if err != nil && errors.IsNotFound((err)) {
-			err = r.Client.Create(ctx, pb)
-			if err != nil {
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, pb)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Created API PlacementBinding object", "pb", pb)
+			} else {
 				return err
 			}
-			r.Log.Info("Created API PlacementBindingObject object", "placementBinding", pb)
-		} else if err != nil {
-			return err
+		} else {
+			if !equality.Semantic.DeepEqual(foundPlacementBinding.Object["placementRef"], pb.Object["placementRef"]) || !equality.Semantic.DeepEqual(foundPlacementBinding.Object["subjects"], pb.Object["subjects"]) {
+				foundPlacementBinding.Object["placementRef"] = pb.Object["placementRef"]
+				foundPlacementBinding.Object["subjects"] = pb.Object["subjects"]
+				err = r.Client.Update(ctx, foundPlacementBinding)
+				if err != nil {
+					return err
+				}
+				r.Log.Info("Updated API PlacementBinding object", "foundPlacementBinding", foundPlacementBinding)
+			}
 		}
 	}
 	// ensure batch placement bindings
@@ -568,14 +638,26 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 		Namespace: group.Namespace,
 	}, foundPlacementBinding)
 
-	if err != nil && errors.IsNotFound((err)) {
-		err = r.Client.Create(ctx, pb)
-		if err != nil {
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, pb)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Created API PlacementBinding object", "pb", pb)
+		} else {
 			return err
 		}
-		r.Log.Info("Created API PlacementBindingObject object", "placementBinding", pb)
-	} else if err != nil {
-		return err
+	} else {
+		if !equality.Semantic.DeepEqual(foundPlacementBinding.Object["placementRef"], pb.Object["placementRef"]) || !equality.Semantic.DeepEqual(foundPlacementBinding.Object["subjects"], pb.Object["subjects"]) {
+			foundPlacementBinding.Object["placementRef"] = pb.Object["placementRef"]
+			foundPlacementBinding.Object["subjects"] = pb.Object["subjects"]
+			err = r.Client.Update(ctx, foundPlacementBinding)
+			if err != nil {
+				return err
+			}
+			r.Log.Info("Updated API PlacementBinding object", "foundPlacementBinding", foundPlacementBinding)
+		}
 	}
 
 	return nil
@@ -799,5 +881,45 @@ func (r *GroupReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(placementRuleUnstructured).
 		Owns(placementBindingUnstructured).
 		Owns(policyUnstructured).
+		Watches(&source.Kind{Type: &ranv1alpha1.Site{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			groupsList := &ranv1alpha1.GroupList{}
+			client := mgr.GetClient()
+
+			err := client.List(context.TODO(), groupsList)
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
+			for _, group := range groupsList.Items {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: group.Namespace,
+						Name:      group.Name,
+					},
+				})
+			}
+			return reconcileRequests
+		})).
+		Watches(&source.Kind{Type: &ranv1alpha1.Common{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			groupsList := &ranv1alpha1.GroupList{}
+			client := mgr.GetClient()
+
+			err := client.List(context.TODO(), groupsList)
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
+			for _, group := range groupsList.Items {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: group.Namespace,
+						Name:      group.Name,
+					},
+				})
+			}
+			return reconcileRequests
+		})).
 		Complete(r)
 }
