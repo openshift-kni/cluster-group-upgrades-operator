@@ -392,8 +392,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 			} else {
 				if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
 					foundPolicy.Object["spec"] = policy.Object["spec"]
-					specObject := foundPolicy.Object["spec"].(map[string]interface{})
-					specObject["remediationAction"] = group.Spec.RemediationAction
+					unstructured.SetNestedField(foundPolicy.Object, group.Spec.RemediationAction, "spec", "remediationAction")
 					err = r.Client.Update(ctx, foundPolicy)
 					if err != nil {
 						return err
@@ -443,8 +442,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 			} else {
 				if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
 					foundPolicy.Object["spec"] = policy.Object["spec"]
-					specObject := foundPolicy.Object["spec"].(map[string]interface{})
-					specObject["remediationAction"] = group.Spec.RemediationAction
+					unstructured.SetNestedField(foundPolicy.Object, group.Spec.RemediationAction, "spec", "remediationAction")
 					err = r.Client.Update(ctx, foundPolicy)
 					if err != nil {
 						return err
@@ -486,6 +484,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 		} else {
 			if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
 				foundPolicy.Object["spec"] = policy.Object["spec"]
+				unstructured.SetNestedField(foundPolicy.Object, group.Spec.RemediationAction, "spec", "remediationAction")
 				err = r.Client.Update(ctx, foundPolicy)
 				if err != nil {
 					return err
