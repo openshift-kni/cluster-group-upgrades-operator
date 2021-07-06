@@ -22,15 +22,17 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
 )
 
-var _ = Describe("Common Controller", func() {
-
-	const timeout = time.Second * 30
-	const interval = time.Second * 1
+var _ = Describe("Group Controller", func() {
+	const (
+		timeout  = time.Second * 10
+		duration = time.Second * 10
+		interval = time.Millisecond * 250
+	)
 
 	BeforeEach(func() {
 		// Add any setup steps that needs to be executed before each test
@@ -40,21 +42,17 @@ var _ = Describe("Common Controller", func() {
 		// Add any teardown steps that needs to be executed after each test
 	})
 
-	Context("When creating Common object", func() {
-		It("Should create successfully if name is set to common", func() {
-			common := &ranv1alpha1.Common{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "ran.openshift.io/v1alpha1",
-					Kind:       "Common",
-				},
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "commony",
+	Context("When creating Group object", func() {
+		It("Should create batch placement rule", func() {
+			By("By creating a new Group")
+			group := &ranv1alpha1.Group{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "group1",
 					Namespace: "default",
 				},
-				Spec: ranv1alpha1.CommonSpec{},
 			}
 
-			Expect(k8sClient.Create(context.Background(), common)).Should(Succeed())
+			Expect(k8sClient.Create(context.Background(), group)).Should(Succeed())
 		})
 	})
 })
