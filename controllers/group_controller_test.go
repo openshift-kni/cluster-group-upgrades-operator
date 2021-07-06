@@ -22,9 +22,8 @@ import (
 
 	. "github.com/onsi/ginkgo"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("Group Controller", func() {
