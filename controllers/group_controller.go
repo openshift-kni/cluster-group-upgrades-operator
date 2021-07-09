@@ -525,7 +525,7 @@ func (r *GroupReconciler) newCommonBatchPolicy(ctx context.Context, group *ranv1
 		return nil, err
 	}
 
-	u.SetName(common + "-" + group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName() + "-" + "policy")
+	u.SetName(common + "-" + group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName())
 	u.SetNamespace(group.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -550,7 +550,7 @@ func (r *GroupReconciler) newSitePolicy(ctx context.Context, group *ranv1alpha1.
 		return nil, err
 	}
 
-	u.SetName(site + "-" + u.GetName() + "-" + "policy")
+	u.SetName(site + "-" + u.GetName())
 	u.SetNamespace(group.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -575,7 +575,7 @@ func (r *GroupReconciler) newGroupBatchPolicy(ctx context.Context, group *ranv1a
 		return nil, err
 	}
 
-	u.SetName(group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName() + "-" + "policy")
+	u.SetName(group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName())
 	u.SetNamespace(group.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -704,7 +704,7 @@ func (r *GroupReconciler) newSitePlacementBinding(ctx context.Context, group *ra
 		}
 
 		subject := make(map[string]interface{})
-		subject["name"] = site + "-" + u.GetName() + "-" + "policy"
+		subject["name"] = site + "-" + u.GetName()
 		subject["kind"] = "Policy"
 		subject["apiGroup"] = "policy.open-cluster-management.io"
 
@@ -755,7 +755,7 @@ func (r *GroupReconciler) newBatchPlacementBinding(ctx context.Context, group *r
 		}
 
 		subject := make(map[string]interface{})
-		subject["name"] = common.Name + "-" + group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName() + "-" + "policy"
+		subject["name"] = common.Name + "-" + group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName()
 		subject["kind"] = "Policy"
 		subject["apiGroup"] = "policy.open-cluster-management.io"
 
@@ -770,7 +770,7 @@ func (r *GroupReconciler) newBatchPlacementBinding(ctx context.Context, group *r
 		}
 
 		subject := make(map[string]interface{})
-		subject["name"] = group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName() + "-" + "policy"
+		subject["name"] = group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + u.GetName()
 		subject["kind"] = "Policy"
 		subject["apiGroup"] = "policy.open-cluster-management.io"
 
