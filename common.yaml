@@ -2,6 +2,7 @@ apiVersion: ran.openshift.io/v1alpha1
 kind: Common
 metadata:
   name: common
+  namespace: default
 spec:
   commonPolicyTemplates:
     - objectDefinition:

@@ -2,14 +2,15 @@ apiVersion: ran.openshift.io/v1alpha1
 kind: Site
 metadata:
   name: site2
+  namespace: default
 spec:
-  cluster: spoke2-dev
+  cluster: spoke2
   sitePolicyTemplates:
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
         kind: Policy
         metadata:
-          name: bar-namespace
+          name: site2-namespace
           namespace: default
           annotations:
             policy.open-cluster-management.io/standards: NIST 800-53
@@ -23,7 +24,7 @@ spec:
                 apiVersion: policy.open-cluster-management.io/v1
                 kind: ConfigurationPolicy
                 metadata:
-                  name: policy-namespace-bar-ns
+                  name: policy-namespace-site2-ns
                 spec:
                   remediationAction: inform # will be overridden by remediationAction in parent policy
                   severity: low
@@ -33,7 +34,7 @@ spec:
                   object-templates:
                     - complianceType: musthave
                       objectDefinition:
-                        kind: Namespace # must have namespace 'bar'
+                        kind: Namespace # must have namespace 'site2'
                         apiVersion: v1
                         metadata:
-                          name: bar
+                          name: site2
