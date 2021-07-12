@@ -11,7 +11,6 @@ spec:
         kind: Policy
         metadata:
           name: site2-namespace
-          namespace: default
           annotations:
             policy.open-cluster-management.io/standards: NIST 800-53
             policy.open-cluster-management.io/categories: CM Configuration Management

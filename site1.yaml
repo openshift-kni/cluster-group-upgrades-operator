@@ -10,7 +10,7 @@ spec:
         apiVersion: policy.open-cluster-management.io/v1
         kind: Policy
         metadata:
-          name: site-namespace
+          name: site1-namespace
           annotations:
             policy.open-cluster-management.io/standards: NIST 800-53
             policy.open-cluster-management.io/categories: CM Configuration Management
@@ -23,7 +23,7 @@ spec:
                 apiVersion: policy.open-cluster-management.io/v1
                 kind: ConfigurationPolicy
                 metadata:
-                  name: policy-namespace-site-ns
+                  name: policy-namespace-site1-ns
                 spec:
                   remediationAction: inform # will be overridden by remediationAction in parent policy
                   severity: low
