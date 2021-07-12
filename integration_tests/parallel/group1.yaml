@@ -1,0 +1,45 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: Group
+metadata:
+  name: group1
+  namespace: default
+spec:
+  sites:
+    - site1
+    - site2
+  groupPolicyTemplates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: Policy
+        metadata:
+          name: group1-namespace
+          namespace: default
+          annotations:
+            policy.open-cluster-management.io/standards: NIST 800-53
+            policy.open-cluster-management.io/categories: CM Configuration Management
+            policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+        spec:
+          remediationAction: inform
+          disabled: false
+          policy-templates:
+            - objectDefinition:
+                apiVersion: policy.open-cluster-management.io/v1
+                kind: ConfigurationPolicy
+                metadata:
+                  name: policy-namespace-group1-ns
+                spec:
+                  remediationAction: inform # will be overridden by remediationAction in parent policy
+                  severity: low
+                  namespaceSelector:
+                    exclude: ["kube-*"]
+                    include: ["default"]
+                  object-templates:
+                    - complianceType: musthave
+                      objectDefinition:
+                        kind: Namespace # must have namespace 'group1'
+                        apiVersion: v1
+                        metadata:
+                          name: group1
+  remediationStrategy:
+    maxConcurrency: 2
+  remediationAction: inform

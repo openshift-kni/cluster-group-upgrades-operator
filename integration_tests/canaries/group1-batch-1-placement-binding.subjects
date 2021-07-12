@@ -1,0 +1,1 @@
+[{"apiGroup":"policy.open-cluster-management.io","kind":"Policy","name":"common-group1-batch-1-common-namespace"},{"apiGroup":"policy.open-cluster-management.io","kind":"Policy","name":"group1-batch-1-group1-namespace"}]
