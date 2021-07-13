@@ -227,7 +227,7 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Updated API PlacementRule object", "foundPlacementRule", foundPlacementRule)
+				r.Log.Info("Updated API PlacementRule object", "placementRule", foundPlacementRule.GetName())
 			}
 		}
 	}
@@ -269,7 +269,7 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 			if err != nil {
 				return nil, err
 			}
-			r.Log.Info("Updated API PlacementRule object", "foundPlacementRule", foundPlacementRule)
+			r.Log.Info("Updated API PlacementRule object", "placementRule", foundPlacementRule.GetName())
 		}
 	}
 
@@ -413,7 +413,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 					if err != nil {
 						return nil, err
 					}
-					r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+					r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
 				}
 			}
 		}
@@ -467,7 +467,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 					if err != nil {
 						return nil, err
 					}
-					r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+					r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
 				}
 			}
 		}
@@ -510,7 +510,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Updated API Policy object", "foundPolicy", foundPolicy)
+				r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
 			}
 		}
 	}
@@ -636,7 +636,7 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Updated API PlacementBinding object", "foundPlacementBinding", foundPlacementBinding)
+				r.Log.Info("Updated API PlacementBinding object", "placementBinding", foundPlacementBinding.GetName())
 			}
 		}
 	}
@@ -680,7 +680,7 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 			if err != nil {
 				return nil, err
 			}
-			r.Log.Info("Updated API PlacementBinding object", "foundPlacementBinding", foundPlacementBinding)
+			r.Log.Info("Updated API PlacementBinding object", "placementBinding", foundPlacementBinding.GetName())
 		}
 	}
 
