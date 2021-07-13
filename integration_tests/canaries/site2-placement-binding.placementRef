@@ -1,1 +1,1 @@
-{"apiGroup":"apps.open-cluster-management.io","kind":"PlacementRule","name":"site2-placement-rule"}
+{"apiGroup":"apps.open-cluster-management.io","kind":"PlacementRule","name":"site2"}
