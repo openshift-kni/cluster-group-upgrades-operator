@@ -216,7 +216,7 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Created API PlacementRule object", "pr", pr)
+				r.Log.Info("Created API PlacementRule object", "placementRule", pr.GetName())
 			} else {
 				return nil, err
 			}
@@ -259,7 +259,7 @@ func (r *GroupReconciler) ensureBatchPlacementRules(ctx context.Context, group *
 			if err != nil {
 				return nil, err
 			}
-			r.Log.Info("Created API PlacementRule object", "pb", pr)
+			r.Log.Info("Created API PlacementRule object", "placementRule", pr.GetName())
 		} else {
 			return nil, err
 		}
@@ -280,7 +280,7 @@ func (r *GroupReconciler) newSitePlacementRule(ctx context.Context, group *ranv1
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      site + "-" + "placement-rule",
+			"name":      site,
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app":                     "cluster-group-lcm",
@@ -322,7 +322,7 @@ func (r *GroupReconciler) newBatchPlacementRule(ctx context.Context, group *ranv
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + "placement-rule",
+			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app":                     "cluster-group-lcm",
@@ -401,7 +401,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 					if err != nil {
 						return nil, err
 					}
-					r.Log.Info("Created API Policy object", "policy", policy)
+					r.Log.Info("Created API Policy object", "policy", policy.GetName())
 				} else {
 					return nil, err
 				}
@@ -455,7 +455,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 					if err != nil {
 						return nil, err
 					}
-					r.Log.Info("Created API Policy object", "policy", policy)
+					r.Log.Info("Created API Policy object", "policy", policy.GetName())
 				} else {
 					return nil, err
 				}
@@ -498,7 +498,7 @@ func (r *GroupReconciler) ensureBatchPolicies(ctx context.Context, group *ranv1a
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Created API Policy object", "policy", policy)
+				r.Log.Info("Created API Policy object", "policy", policy.GetName())
 			} else {
 				return nil, err
 			}
@@ -624,7 +624,7 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 				if err != nil {
 					return nil, err
 				}
-				r.Log.Info("Created API PlacementBinding object", "pb", pb)
+				r.Log.Info("Created API PlacementBinding object", "placementBinding", pb.GetName())
 			} else {
 				return nil, err
 			}
@@ -668,7 +668,7 @@ func (r *GroupReconciler) ensureBatchPlacementBindings(ctx context.Context, grou
 			if err != nil {
 				return nil, err
 			}
-			r.Log.Info("Created API PlacementBinding object", "pb", pb)
+			r.Log.Info("Created API PlacementBinding object", "placementBinding", pb.GetName())
 		} else {
 			return nil, err
 		}
@@ -714,7 +714,7 @@ func (r *GroupReconciler) newSitePlacementBinding(ctx context.Context, group *ra
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      site + "-" + "placement-binding",
+			"name":      site,
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app":                     "cluster-group-lcm",
@@ -722,7 +722,7 @@ func (r *GroupReconciler) newSitePlacementBinding(ctx context.Context, group *ra
 			},
 		},
 		"placementRef": map[string]interface{}{
-			"name":     site + "-" + "placement-rule",
+			"name":     site,
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
@@ -780,7 +780,7 @@ func (r *GroupReconciler) newBatchPlacementBinding(ctx context.Context, group *r
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + "placement-binding",
+			"name":      group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
 			"namespace": group.Namespace,
 			"labels": map[string]interface{}{
 				"app":                     "cluster-group-lcm",
@@ -788,7 +788,7 @@ func (r *GroupReconciler) newBatchPlacementBinding(ctx context.Context, group *r
 			},
 		},
 		"placementRef": map[string]interface{}{
-			"name":     group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex) + "-" + "placement-rule",
+			"name":     group.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
