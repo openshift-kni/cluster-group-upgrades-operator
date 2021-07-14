@@ -6,44 +6,60 @@ spec:
   sites:
     - site1
     - site2
-    - site3
-    - site4
   groupPolicyTemplates:
-    - objectDefinition:
-        apiVersion: policy.open-cluster-management.io/v1
-        kind: Policy
-        metadata:
-          name: prod3-namespace
-          namespace: default
-          annotations:
-            policy.open-cluster-management.io/standards: NIST 800-53
-            policy.open-cluster-management.io/categories: CM Configuration Management
-            policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
-        spec:
-          remediationAction: inform
-          disabled: false
-          policy-templates:
-            - objectDefinition:
-                apiVersion: policy.open-cluster-management.io/v1
-                kind: ConfigurationPolicy
-                metadata:
-                  name: policy-namespace-prod3-ns
-                spec:
-                  remediationAction: inform # will be overridden by remediationAction in parent policy
-                  severity: low
-                  namespaceSelector:
-                    exclude: ["kube-*"]
-                    include: ["default"]
-                  object-templates:
-                    - complianceType: musthave
-                      objectDefinition:
-                        kind: Namespace # must have namespace 'prod3'
-                        apiVersion: v1
-                        metadata:
-                          name: prod3
-  upgradeStrategy:
-    maxConcurrency: 2
-    canaries:
-    - site1
-    - site2
-  remediationAction: inform
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: Policy
+      metadata:
+        name: upgrade-cluster
+        annotations:
+          policy.open-cluster-management.io/standards: NIST SP 800-53
+          policy.open-cluster-management.io/categories: CM Configuration Management
+          policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+      spec:
+        disabled: false
+        policy-templates:
+          - objectDefinition:
+              apiVersion: policy.open-cluster-management.io/v1
+              kind: ConfigurationPolicy
+              metadata:
+                name: upgrade-cluster
+                object-templates:
+                  - complianceType: musthave
+                    objectDefinition:
+                      apiVersion: config.openshift.io/v1
+                      kind: ClusterVersion
+                      metadata:
+                        name: version
+                      spec:
+                        channel: 4.9.0-0.nightly
+                        desiredUpdate:
+                          version: 4.9.0-0.nightly-2021-07-12-203753
+                          image: http://registry.ci.openshift.org/ocp/release:4.9.0-0.nightly-2021-07-12-203753
+                          force: true
+                        upstream: https://amd64.ocp.releases.ci.openshift.org/graph
+                remediationAction: inform
+                severity: high
+          - objectDefinition:
+              apiVersion: policy.open-cluster-management.io/v1
+              kind: ConfigurationPolicy
+              metadata:
+                name: check-installed-version-status
+              spec:
+                remediationAction: inform # will be overridden by remediationAction in parent policy
+                severity: high
+                object-templates:
+                  - complianceType: musthave
+                    objectDefinition:
+                      apiVersion: config.openshift.io/v1
+                      kind: ClusterVersion
+                      metadata:
+                          name: version
+                      status:
+                        history:
+                          - state: Completed
+                            version: 4.9.0-0.nightly-2021-07-12-203753
+        remediationAction: inform        
+  remediationStrategy:
+    maxConcurrency: 1
+  remediationAction: enforce
