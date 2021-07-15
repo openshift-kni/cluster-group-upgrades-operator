@@ -1,0 +1,4 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: Group
+metadata:
+  name: group4

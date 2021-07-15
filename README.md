@@ -14,7 +14,7 @@ A Site CR defines ACM policies that are specific to a particular cluster managed
 A Group CR defines ACM policies that are applicable to the sites belonging to it.
 
 By setting the **remediationStrategy** spec field of the Group CR, you can specify how many remediations can be performed concurrently. That way you can perform remediations serially (one cluster after another), in parallel (all clusters at once) or a in batches of N clusters. It also allows to specify a list of canary Site objects, which will be remediated before the rest of Site objects of the Group.
-Check files **common.yaml, site1.yaml, site2.yaml, group[1-3].yaml** for examples
+Check files within **samples** folder for examples.
 
 ## How to deploy
 
