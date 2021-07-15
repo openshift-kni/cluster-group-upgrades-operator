@@ -18,9 +18,8 @@ Check files **common.yaml, site1.yaml, site2.yaml, group[1-3].yaml** for example
 
 ## How to deploy
 
-1. Export **KUBECONFIG** environment variable to point to your cluster running RHACM
-2. Run **make docker-build docker-push IMG=*your_repo_image***
-3. Run **make deploy IMG=*your_repo_image***
+1. Run **make docker-build docker-push IMG=*your_repo_image***
+2. Run **make deploy IMG=*your_repo_image***
 
 ## How to test
 
