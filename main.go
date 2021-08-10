@@ -31,8 +31,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
-	"github.com/redhat-ztp/cluster-group-lcm/controllers"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers"
 	//+kubebuilder:scaffold:imports
 )
 

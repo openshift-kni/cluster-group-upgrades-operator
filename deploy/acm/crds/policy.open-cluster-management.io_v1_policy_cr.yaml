@@ -1,0 +1,23 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: example-policy
+spec:
+  remediationAction: inform
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: iam.policies.ibm.com/v1alpha1
+        kind: IamPolicy
+        metadata:
+          name: policy-grc-rbactest-example
+        spec:
+          maxClusterRoleBindingUsers: 5
+          namespaceSelector:
+            exclude:
+              - kube-*
+              - openshift-*
+            include:
+              - '*'
+          remediationAction: inform
+          severity: medium
