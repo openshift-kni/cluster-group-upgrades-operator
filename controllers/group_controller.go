@@ -106,71 +106,72 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
 
 	// Reconcile resources
-	var placementRules []string
-	var placementBindings []string
-	var policies []string
-	for i, remediateBatch := range remediationPlan {
-		placementRulesForBatch, err := r.ensureBatchPlacementRules(ctx, group, remediateBatch, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		placementRules = append(placementRules, placementRulesForBatch...)
+	placementRules := []string{}
+	placementBindings := []string{}
+	policies := []string{}
 
-		policiesForBatch, err := r.ensureBatchPolicies(ctx, group, remediateBatch, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		policies = append(policies, policiesForBatch...)
-
-		placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, group, remediateBatch, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		placementBindings = append(placementBindings, placementBindingsForBatch...)
-	}
-
-	// Remediate policies depending on compliance state and upgrade plan.
-	if group.Spec.RemediationAction == "enforce" {
+	if group.Spec.GroupPolicyTemplates != nil {
 		for i, remediateBatch := range remediationPlan {
-			r.Log.Info("Remediating sites", "remediateBatch", remediateBatch)
-			r.Log.Info("Batch", "i", i+1)
-			batchCompliant := true
-			var labelsForBatch = map[string]string{"cluster-group-lcm/batch": strconv.Itoa(i + 1)}
-			listOpts := []client.ListOption{
-				client.InNamespace(group.Namespace),
-				client.MatchingLabels(labelsForBatch),
-			}
-			policiesList := &unstructured.UnstructuredList{}
-			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "policy.open-cluster-management.io",
-				Kind:    "PolicyList",
-				Version: "v1",
-			})
-			if err := r.List(ctx, policiesList, listOpts...); err != nil {
+			placementRulesForBatch, err := r.ensureBatchPlacementRules(ctx, group, remediateBatch, i+1)
+			if err != nil {
 				return ctrl.Result{}, err
 			}
-			for _, policy := range policiesList.Items {
-				specObject := policy.Object["spec"].(map[string]interface{})
-				if specObject["remediationAction"] == "inform" {
-					specObject["remediationAction"] = "enforce"
-					err = r.Client.Update(ctx, &policy)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-					r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
-				}
-
-				statusObject := policy.Object["status"].(map[string]interface{})
-				if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
-					batchCompliant = false
-				}
+			placementRules = append(placementRules, placementRulesForBatch...)
+			policiesForBatch, err := r.ensureBatchPolicies(ctx, group, remediateBatch, i+1)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
+			policies = append(policies, policiesForBatch...)
+			placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, group, remediateBatch, i+1)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			placementBindings = append(placementBindings, placementBindingsForBatch...)
+		}
 
-			if !batchCompliant {
-				r.Log.Info("Remediate batch not fully compliant yet")
-				break
-			} else {
-				r.Log.Info("Remediate batch fully compliant")
+		// Remediate policies depending on compliance state and upgrade plan.
+		if group.Spec.RemediationAction == "enforce" {
+			for i, remediateBatch := range remediationPlan {
+				r.Log.Info("Remediating sites", "remediateBatch", remediateBatch)
+				r.Log.Info("Batch", "i", i+1)
+				batchCompliant := true
+				var labelsForBatch = map[string]string{"cluster-group-lcm/batch": strconv.Itoa(i + 1)}
+				listOpts := []client.ListOption{
+					client.InNamespace(group.Namespace),
+					client.MatchingLabels(labelsForBatch),
+				}
+				policiesList := &unstructured.UnstructuredList{}
+				policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+					Group:   "policy.open-cluster-management.io",
+					Kind:    "PolicyList",
+					Version: "v1",
+				})
+				if err := r.List(ctx, policiesList, listOpts...); err != nil {
+					return ctrl.Result{}, err
+				}
+				for _, policy := range policiesList.Items {
+					specObject := policy.Object["spec"].(map[string]interface{})
+					if specObject["remediationAction"] == "inform" {
+						specObject["remediationAction"] = "enforce"
+						err = r.Client.Update(ctx, &policy)
+						if err != nil {
+							return ctrl.Result{}, err
+						}
+						r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
+					}
+
+					statusObject := policy.Object["status"].(map[string]interface{})
+					if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
+						batchCompliant = false
+					}
+				}
+
+				if !batchCompliant {
+					r.Log.Info("Remediate batch not fully compliant yet")
+					break
+				} else {
+					r.Log.Info("Remediate batch fully compliant")
+				}
 			}
 		}
 	}
@@ -809,7 +810,7 @@ func (r *GroupReconciler) updateStatus(ctx context.Context, group *ranv1alpha1.G
 	group.Status.PlacementRules = placementRules
 	group.Status.PlacementBindings = placementBindings
 
-	var policiesStatus []ranv1alpha1.PolicyStatus
+	policiesStatus := []ranv1alpha1.PolicyStatus{}
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",

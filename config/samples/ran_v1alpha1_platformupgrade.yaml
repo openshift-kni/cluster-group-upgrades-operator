@@ -1,0 +1,7 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: PlatformUpgrade
+metadata:
+  name: platformupgrade-sample
+spec:
+  # Add fields here
+  foo: bar

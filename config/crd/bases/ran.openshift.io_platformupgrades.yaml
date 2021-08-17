@@ -1,0 +1,107 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: platformupgrades.ran.openshift.io
+spec:
+  group: ran.openshift.io
+  names:
+    kind: PlatformUpgrade
+    listKind: PlatformUpgradeList
+    plural: platformupgrades
+    singular: platformupgrade
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PlatformUpgrade is the Schema for the platformupgrades API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PlatformUpgradeSpec defines the desired state of PlatformUpgrade
+            properties:
+              channel:
+                type: string
+              clusters:
+                items:
+                  type: string
+                type: array
+              group:
+                description: Group specifies the name of the Group object of the PlatformUpgrade.
+                type: string
+              remediationAction:
+                type: string
+              remediationStrategy:
+                description: RemediationStrategySpec defines the remediation policy
+                properties:
+                  canaries:
+                    description: Canaries defines the list of names of Site objects
+                      that should be remediated first when remediateAction is set
+                      to enforce
+                    items:
+                      type: string
+                    type: array
+                  maxConcurrency:
+                    type: integer
+                type: object
+              upstream:
+                type: string
+              version:
+                type: string
+            type: object
+          status:
+            description: PlatformUpgradeStatus defines the observed state of PlatformUpgrade
+            properties:
+              placementBindings:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  type: string
+                type: array
+              placementRules:
+                items:
+                  type: string
+                type: array
+              policies:
+                items:
+                  description: PolicyStatus defines the observed state of a Policy
+                  properties:
+                    complianceState:
+                      type: string
+                    name:
+                      type: string
+                  type: object
+                type: array
+            required:
+            - placementBindings
+            - placementRules
+            - policies
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

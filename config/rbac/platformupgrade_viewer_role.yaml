@@ -1,0 +1,20 @@
+# permissions for end users to view platformupgrades.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platformupgrade-viewer-role
+rules:
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - platformupgrades
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - platformupgrades/status
+  verbs:
+  - get

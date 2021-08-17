@@ -1,0 +1,15 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: PlatformUpgrade
+metadata:
+  name: test
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  remediationAction: inform
+  remediationStrategy:
+    maxConcurrency: 1
+  channel: stable-4.6
+  version: "4.6"
+  upstream: https://api.openshift.com/api/upgrades_info/v1/graph
