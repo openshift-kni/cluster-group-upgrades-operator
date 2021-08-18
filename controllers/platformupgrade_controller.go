@@ -29,9 +29,13 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
 )
@@ -66,7 +70,9 @@ spec:
                 spec:
                   channel: {{ .Channel }}
                   desiredUpdate:
-                    version: {{ .Version }}
+                    version: "{{ .Version }}"
+                    image: {{ .Image }}
+                    force: True
                   upstream: {{ .Upstream }}
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
@@ -130,7 +136,8 @@ spec:
                 status:
                   history:
                     - state: Completed 
-                      version: {{ .Version }}    
+                      version: "{{ .Version }}"    
+                      image: {{ .Image }}
   remediationAction: inform     
 `
 
@@ -144,6 +151,10 @@ type PlatformUpgradeReconciler struct {
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=platformupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=platformupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=platformupgrades/finalizers,verbs=update
+//+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -415,7 +426,11 @@ func (r *PlatformUpgradeReconciler) newBatchPolicy(ctx context.Context, platform
 	var buf bytes.Buffer
 	tmpl := template.New("policy")
 	tmpl.Parse(policyTemplate)
-	tmpl.Execute(&buf, map[string]string{"Channel": platformUpgrade.Spec.Channel, "Version": platformUpgrade.Spec.Version, "upstream": platformUpgrade.Spec.Upstream})
+	tmpl.Execute(&buf, map[string]string{"Channel": platformUpgrade.Spec.Channel,
+		"Version":  platformUpgrade.Spec.Version,
+		"Image":    platformUpgrade.Spec.Image,
+		"Upstream": platformUpgrade.Spec.Upstream,
+	})
 	u := &unstructured.Unstructured{}
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 	_, _, err := dec.Decode(buf.Bytes(), nil, u)
@@ -659,7 +674,71 @@ func (r *PlatformUpgradeReconciler) deleteOldResources(ctx context.Context, plat
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *PlatformUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	placementRuleUnstructured := &unstructured.Unstructured{}
+	placementRuleUnstructured.SetGroupVersionKind(schema.GroupVersionKind{
+		Kind:    "PlacementRule",
+		Group:   "apps.open-cluster-management.io",
+		Version: "v1",
+	})
+
+	placementBindingUnstructured := &unstructured.Unstructured{}
+	placementBindingUnstructured.SetGroupVersionKind(schema.GroupVersionKind{
+		Kind:    "PlacementBinding",
+		Group:   "policy.open-cluster-management.io",
+		Version: "v1",
+	})
+
+	policyUnstructured := &unstructured.Unstructured{}
+	policyUnstructured.SetGroupVersionKind(schema.GroupVersionKind{
+		Kind:    "Policy",
+		Group:   "policy.open-cluster-management.io",
+		Version: "v1",
+	})
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.PlatformUpgrade{}).
+		Owns(placementRuleUnstructured).
+		Owns(placementBindingUnstructured).
+		Owns(policyUnstructured).
+		Watches(&source.Kind{Type: &ranv1alpha1.Site{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			groupsList := &ranv1alpha1.GroupList{}
+			client := mgr.GetClient()
+
+			err := client.List(context.TODO(), groupsList)
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
+			for _, group := range groupsList.Items {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: group.Namespace,
+						Name:      group.Name,
+					},
+				})
+			}
+			return reconcileRequests
+		})).
+		Watches(&source.Kind{Type: &ranv1alpha1.Common{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
+			groupsList := &ranv1alpha1.GroupList{}
+			client := mgr.GetClient()
+
+			err := client.List(context.TODO(), groupsList)
+			if err != nil {
+				return []reconcile.Request{}
+			}
+
+			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
+			for _, group := range groupsList.Items {
+				reconcileRequests = append(reconcileRequests, reconcile.Request{
+					NamespacedName: types.NamespacedName{
+						Namespace: group.Namespace,
+						Name:      group.Name,
+					},
+				})
+			}
+			return reconcileRequests
+		})).
 		Complete(r)
 }

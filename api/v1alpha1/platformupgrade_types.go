@@ -35,6 +35,7 @@ type PlatformUpgradeSpec struct {
 	RemediationAction   string                  `json:"remediationAction,omitempty"`
 	Channel             string                  `json:"channel,omitempty"`
 	Version             string                  `json:"version,omitempty"`
+	Image               string                  `json:"image,omitempty"`
 	Upstream            string                  `json:"upstream,omitempty"`
 }
 

@@ -45,6 +45,8 @@ spec:
               group:
                 description: Group specifies the name of the Group object of the PlatformUpgrade.
                 type: string
+              image:
+                type: string
               remediationAction:
                 type: string
               remediationStrategy:
