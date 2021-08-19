@@ -2,7 +2,7 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: site1-placement-rule
+  name: site1
   namespace: default
 spec:
   clusterConditions:
@@ -14,7 +14,7 @@ spec:
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: site2-placement-rule
+  name: site2
   namespace: default
 spec:
   clusterConditions:
@@ -26,7 +26,7 @@ spec:
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: group1-batch-1-placement-rule
+  name: group1-batch-1
   namespace: default
 spec:
   clusterConditions:
@@ -40,53 +40,53 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: site1-placement-binding
+  name: site1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: site1-placement-rule
+  name: site1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: site1-site1-namespace-policy
+  name: site1-site1-namespace
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: site2-placement-binding
+  name: site2
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: site2-placement-rule
+  name: site2
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: site2-site2-namespace-policy
+  name: site2-site2-namespace
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: group1-batch-1-placement-binding
+  name: group1-batch-1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: group1-batch-1-placement-rule
+  name: group1-batch-1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: common-group1-batch-1-common-namespace-policy
+  name: common-group1-batch-1-common-namespace
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: group1-batch-1-group1-namespace-policy
+  name: group1-batch-1-group1-namespace
 ---
 # Check generated policies
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: common-group1-batch-1-common-namespace-policy
+  name: common-group1-batch-1-common-namespace
   namespace: default
 spec:
   disabled: false
@@ -116,7 +116,7 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: site1-site1-namespace-policy
+  name: site1-site1-namespace
   namespace: default
 spec:
   disabled: false
@@ -146,7 +146,7 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: site2-site2-namespace-policy
+  name: site2-site2-namespace
   namespace: default
 spec:
   disabled: false
@@ -176,7 +176,7 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: group1-batch-1-group1-namespace-policy
+  name: group1-batch-1-group1-namespace
   namespace: default
 spec:
   disabled: false
