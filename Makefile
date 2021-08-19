@@ -53,7 +53,19 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+# Kind configuration
+KIND_NAME ?= test-upgrades-operator
+KIND_ACM_NAMESPACE ?= open-cluster-management
+KIND_VERSION ?= latest
+ifneq ($(KIND_VERSION), latest)
+	KIND_ARGS = --image kindest/node:$(KIND_VERSION)
+else
+	KIND_ARGS =
+endif
 all: build
+
+# Testing configuration
+TEST_NAMESPACE ?= default
 
 ##@ General
 
@@ -187,6 +199,8 @@ ifneq ($(origin CATALOG_BASE_IMG), undefined)
 FROM_INDEX_OPT := --from-index $(CATALOG_BASE_IMG)
 endif
 
+
+
 # Build a catalog image by adding bundle images to an empty catalog using the operator package manager tool, 'opm'.
 # This recipe invokes 'opm' in 'semver' bundle add mode. For more information on add modes, see:
 # https://github.com/operator-framework/community-operators/blob/7f1438c/docs/packaging-operator.md#updating-your-existing-operator
@@ -198,3 +212,43 @@ catalog-build: opm ## Build a catalog image.
 .PHONY: catalog-push
 catalog-push: ## Push a catalog image.
 	$(MAKE) docker-push IMG=$(CATALOG_IMG)
+
+############################################################
+# Cluster deployment test section
+############################################################
+.PHONY: kind-bootstrap-cluster
+kind-bootstrap-cluster: kind-create-cluster install-acm-crds kind-deploy-policy-propagator-controller
+
+# In order to use the Upgrades operator we need the policy controller to run so that
+# all the needed upgrades policies and placements are created.
+kind-deploy-policy-propagator-controller:
+	@echo "Installing policy-propagator"
+	kubectl create ns $(KIND_ACM_NAMESPACE)
+	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
+
+# Specify KIND_VERSION to indicate the version tag of the KinD image
+kind-create-cluster:
+	@echo "Creating kind cluster"
+	kind create cluster --name $(KIND_NAME) $(KIND_ARGS)
+
+kind-delete-cluster:
+	kind delete cluster --name $(KIND_NAME)
+
+# ACM specific CRDs have to exist before being able to start running the tests.
+install-acm-crds:
+	@echo "Installing ACM CRDs"
+	kubectl apply -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
+	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_placementbindings_crd.yaml
+	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
+	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
+
+uninstall-acm-crds:
+	kubectl delete -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
+	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_placementbindings_crd.yaml
+	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
+	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
+
+kuttl-test:
+	kubectl-kuttl test
+
+complete-kuttl-test: kind-bootstrap-cluster deploy kuttl-test

@@ -1,0 +1,199 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: governance-policy-propagator
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      name: governance-policy-propagator
+  template:
+    metadata:
+      labels:
+        name: governance-policy-propagator
+    spec:
+      serviceAccountName: governance-policy-propagator
+      containers:
+        - name: governance-policy-propagator
+          image: quay.io/open-cluster-management/governance-policy-propagator:latest-dev
+          command:
+          - governance-policy-propagator
+          ports:
+          - containerPort: 8383
+          imagePullPolicy: Always
+          env:
+            - name: WATCH_NAMESPACE
+              value: ""
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: OPERATOR_NAME
+              value: "governance-policy-propagator"
+
+---
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: governance-policy-propagator-global
+subjects:
+- kind: ServiceAccount
+  name: governance-policy-propagator
+  namespace: open-cluster-management
+roleRef:
+  kind: ClusterRole
+  name: governance-policy-propagator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: governance-policy-propagator
+rules:
+- apiGroups:
+  - tower.ansible.com
+  resources:
+  - ansiblejobs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  - configmaps
+  - configmaps/finalizers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - policy.open-cluster-management.io
+  resources:
+  - '*'
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps.open-cluster-management.io
+  resources:
+  - '*'
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - managedclusters
+  verbs:
+  - get
+  - list
+  - watch
+
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: governance-policy-propagator
+subjects:
+- kind: ServiceAccount
+  name: governance-policy-propagator
+roleRef:
+  kind: Role
+  name: governance-policy-propagator
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  creationTimestamp: null
+  name: governance-policy-propagator
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  - services
+  - services/finalizers
+  - endpoints
+  - persistentvolumeclaims
+  - events
+  - configmaps
+  - secrets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  - daemonsets
+  - replicasets
+  - statefulsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - monitoring.coreos.com
+  resources:
+  - servicemonitors
+  verbs:
+  - get
+  - create
+- apiGroups:
+  - apps
+  resourceNames:
+  - governance-policy-propagator
+  resources:
+  - deployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+- apiGroups:
+  - apps
+  resources:
+  - replicasets
+  - deployments
+  verbs:
+  - get
+
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: governance-policy-propagator
+

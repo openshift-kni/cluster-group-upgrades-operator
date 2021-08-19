@@ -5,7 +5,7 @@ plugins:
   manifests.sdk.operatorframework.io/v2: {}
   scorecard.sdk.operatorframework.io/v2: {}
 projectName: cluster-group-lcm
-repo: github.com/redhat-ztp/cluster-group-lcm
+repo:
 resources:
 - api:
     crdVersion: v1
@@ -14,7 +14,7 @@ resources:
   domain: openshift.io
   group: ran
   kind: Group
-  path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
+  path: github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -23,7 +23,7 @@ resources:
   domain: openshift.io
   group: ran
   kind: Site
-  path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
+  path: github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1
   version: v1alpha1
 - api:
     crdVersion: v1
@@ -32,6 +32,6 @@ resources:
   domain: openshift.io
   group: ran
   kind: Common
-  path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
+  path: github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	"sigs.k8s.io/controller-runtime/pkg/source"
 
-	ranv1alpha1 "github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 )
 
 // GroupReconciler reconciles a Group object
@@ -115,11 +115,13 @@ func (r *GroupReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl
 			return ctrl.Result{}, err
 		}
 		placementRules = append(placementRules, placementRulesForBatch...)
+
 		policiesForBatch, err := r.ensureBatchPolicies(ctx, group, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		policies = append(policies, policiesForBatch...)
+
 		placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, group, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -303,12 +305,12 @@ func (r *GroupReconciler) newSitePlacementRule(ctx context.Context, group *ranv1
 	nn := types.NamespacedName{Namespace: group.Namespace, Name: site}
 	err := r.Get(ctx, nn, s)
 	if err != nil {
+		r.Log.Info("Site not found!")
 		return nil, err
 	}
 	clusters = append(clusters, map[string]interface{}{"name": s.Spec.Cluster})
 	specObject := u.Object["spec"].(map[string]interface{})
 	specObject["clusters"] = clusters
-
 	u.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
 		Kind:    "PlacementRule",

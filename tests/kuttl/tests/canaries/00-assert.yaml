@@ -1,0 +1,262 @@
+# Check placement rules
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: site1-placement-rule
+  namespace: default
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusters:
+  - name: spoke1
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: site2-placement-rule
+  namespace: default
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusters:
+  - name: spoke2
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: group1-batch-1-placement-rule
+  namespace: default
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusters:
+  - name: spoke2
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: group1-batch-2-placement-rule
+  namespace: default
+spec:
+  clusterConditions:
+  - status: "True"
+    type: ManagedClusterConditionAvailable
+  clusters:
+  - name: spoke1
+---
+# Check placement bindings
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: site1-placement-binding
+  namespace: default
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: site1-placement-rule
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: site1-site1-namespace-policy
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: site2-placement-binding
+  namespace: default
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: site2-placement-rule
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: site2-site2-namespace-policy
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: group1-batch-1-placement-binding
+  namespace: default
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: group1-batch-1-placement-rule
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: common-group1-batch-1-common-namespace-policy
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: group1-batch-1-group1-namespace-policy
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: group1-batch-2-placement-binding
+  namespace: default
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: group1-batch-2-placement-rule
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: common-group1-batch-2-common-namespace-policy
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: group1-batch-2-group1-namespace-policy
+---
+# Check generated policies
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: common-group1-batch-1-common-namespace-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-namespace-common-ns
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: common
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: site1-site1-namespace-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-namespace-site1-ns
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: site1
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: site2-site2-namespace-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-namespace-site2-ns
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: site2
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: group1-batch-1-group1-namespace-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-namespace-group1-ns
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: group1
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: group1-batch-2-group1-namespace-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-namespace-group1-ns
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              name: group1
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
