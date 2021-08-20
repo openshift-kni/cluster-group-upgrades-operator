@@ -47,13 +47,18 @@ spec:
                 properties:
                   channel:
                     type: string
-                  force:
-                    type: boolean
-                  image:
-                    type: string
+                  desiredUpdate:
+                    description: DesiredUpdateSpec models the desiredUpdate field
+                      of ClusterVersion
+                    properties:
+                      force:
+                        type: boolean
+                      image:
+                        type: string
+                      version:
+                        type: string
+                    type: object
                   upstream:
-                    type: string
-                  version:
                     type: string
                 type: object
               remediationAction:

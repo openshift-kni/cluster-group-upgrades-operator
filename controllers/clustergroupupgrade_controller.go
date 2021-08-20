@@ -437,9 +437,9 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, Clus
 	tmpl := template.New("policy")
 	tmpl.Parse(policyTemplate)
 	tmpl.Execute(&buf, map[string]string{"Channel": ClusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
-		"Version":  ClusterGroupUpgrade.Spec.PlatformUpgrade.Version,
-		"Image":    ClusterGroupUpgrade.Spec.PlatformUpgrade.Image,
-		"Force":    strconv.FormatBool(ClusterGroupUpgrade.Spec.PlatformUpgrade.Force),
+		"Version":  ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Version,
+		"Image":    ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Image,
+		"Force":    strconv.FormatBool(ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Force),
 		"Upstream": ClusterGroupUpgrade.Spec.PlatformUpgrade.Upstream,
 	})
 	u := &unstructured.Unstructured{}

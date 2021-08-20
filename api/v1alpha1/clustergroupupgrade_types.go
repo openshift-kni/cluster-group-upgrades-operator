@@ -23,13 +23,18 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
+type DesiredUpdateSpec struct {
+	Version string `json:"version,omitempty"`
+	Image   string `json:"image,omitempty"`
+	Force   bool   `json:"force,omitempty"`
+}
+
 // PlatformUpgradeSpec defines the configuration of a platform upgrade
 type PlatformUpgradeSpec struct {
-	Channel  string `json:"channel,omitempty"`
-	Version  string `json:"version,omitempty"`
-	Image    string `json:"image,omitempty"`
-	Force    bool   `json:"force,omitempty"`
-	Upstream string `json:"upstream,omitempty"`
+	Channel       string            `json:"channel,omitempty"`
+	Upstream      string            `json:"upstream,omitempty"`
+	DesiredUpdate DesiredUpdateSpec `json:"desiredUpdate,omitempty"`
 }
 
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
