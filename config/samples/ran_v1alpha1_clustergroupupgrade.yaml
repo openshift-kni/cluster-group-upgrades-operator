@@ -1,7 +1,7 @@
 apiVersion: ran.openshift.io/v1alpha1
-kind: PlatformUpgrade
+kind: ClusterGroupUpgrade
 metadata:
-  name: platformupgrade-sample
+  name: ClusterGroupUpgrade-sample
 spec:
   # Add fields here
   foo: bar

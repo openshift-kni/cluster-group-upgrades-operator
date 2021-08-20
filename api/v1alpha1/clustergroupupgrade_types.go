@@ -23,12 +23,12 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
-// PlatformUpgradeSpec defines the desired state of PlatformUpgrade
-type PlatformUpgradeSpec struct {
+// ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
+type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Group specifies the name of the Group object of the PlatformUpgrade.
+	// Group specifies the name of the Group object of the ClusterGroupUpgrade.
 	Group               string                  `json:"group,omitempty"`
 	Clusters            []string                `json:"clusters,omitempty"`
 	RemediationStrategy RemediationStrategySpec `json:"remediationStrategy,omitempty"`
@@ -40,8 +40,8 @@ type PlatformUpgradeSpec struct {
 	Upstream            string                  `json:"upstream,omitempty"`
 }
 
-// PlatformUpgradeStatus defines the observed state of PlatformUpgrade
-type PlatformUpgradeStatus struct {
+// ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
+type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	PlacementBindings []string       `json:"placementBindings"`
@@ -52,24 +52,24 @@ type PlatformUpgradeStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 
-// PlatformUpgrade is the Schema for the platformupgrades API
-type PlatformUpgrade struct {
+// ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
+type ClusterGroupUpgrade struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   PlatformUpgradeSpec   `json:"spec,omitempty"`
-	Status PlatformUpgradeStatus `json:"status,omitempty"`
+	Spec   ClusterGroupUpgradeSpec   `json:"spec,omitempty"`
+	Status ClusterGroupUpgradeStatus `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 
-// PlatformUpgradeList contains a list of PlatformUpgrade
-type PlatformUpgradeList struct {
+// ClusterGroupUpgradeList contains a list of ClusterGroupUpgrade
+type ClusterGroupUpgradeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []PlatformUpgrade `json:"items"`
+	Items           []ClusterGroupUpgrade `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&PlatformUpgrade{}, &PlatformUpgradeList{})
+	SchemeBuilder.Register(&ClusterGroupUpgrade{}, &ClusterGroupUpgradeList{})
 }

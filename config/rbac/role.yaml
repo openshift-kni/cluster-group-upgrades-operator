@@ -57,6 +57,32 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
+  - ClusterGroupUpgrades
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - ClusterGroupUpgrades/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - ClusterGroupUpgrades/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ran.openshift.io
+  resources:
   - commons
   verbs:
   - create
@@ -102,32 +128,6 @@ rules:
   - ran.openshift.io
   resources:
   - groups/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - platformupgrades
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - platformupgrades/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - platformupgrades/status
   verbs:
   - get
   - patch

@@ -102,12 +102,12 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Common")
 		os.Exit(1)
 	}
-	if err = (&controllers.PlatformUpgradeReconciler{
+	if err = (&controllers.ClusterGroupUpgradeReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("PlatformUpgrade"),
+		Log:    ctrl.Log.WithName("controllers").WithName("ClusterGroupUpgrade"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "PlatformUpgrade")
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterGroupUpgrade")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

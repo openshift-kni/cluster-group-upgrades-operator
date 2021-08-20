@@ -1,13 +1,13 @@
-# permissions for end users to edit platformupgrades.
+# permissions for end users to edit ClusterGroupUpgrades.
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: platformupgrade-editor-role
+  name: ClusterGroupUpgrade-editor-role
 rules:
 - apiGroups:
   - ran.openshift.io
   resources:
-  - platformupgrades
+  - ClusterGroupUpgrades
   verbs:
   - create
   - delete
@@ -19,6 +19,6 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
-  - platformupgrades/status
+  - ClusterGroupUpgrades/status
   verbs:
   - get

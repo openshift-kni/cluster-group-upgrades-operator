@@ -40,7 +40,7 @@ resources:
   controller: true
   domain: openshift.io
   group: ran
-  kind: PlatformUpgrade
+  kind: ClusterGroupUpgrade
   path: github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1
   version: v1alpha1
 version: "3"

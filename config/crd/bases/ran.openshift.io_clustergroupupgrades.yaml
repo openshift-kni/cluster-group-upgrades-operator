@@ -6,20 +6,21 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.4.1
   creationTimestamp: null
-  name: platformupgrades.ran.openshift.io
+  name: clustergroupupgrades.ran.openshift.io
 spec:
   group: ran.openshift.io
   names:
-    kind: PlatformUpgrade
-    listKind: PlatformUpgradeList
-    plural: platformupgrades
-    singular: platformupgrade
+    kind: ClusterGroupUpgrade
+    listKind: ClusterGroupUpgradeList
+    plural: clustergroupupgrades
+    singular: clustergroupupgrade
   scope: Namespaced
   versions:
   - name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PlatformUpgrade is the Schema for the platformupgrades API
+        description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -34,7 +35,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: PlatformUpgradeSpec defines the desired state of PlatformUpgrade
+            description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
               channel:
                 type: string
@@ -45,7 +46,7 @@ spec:
               force:
                 type: boolean
               group:
-                description: Group specifies the name of the Group object of the PlatformUpgrade.
+                description: Group specifies the name of the Group object of the ClusterGroupUpgrade.
                 type: string
               image:
                 type: string
@@ -70,7 +71,7 @@ spec:
                 type: string
             type: object
           status:
-            description: PlatformUpgradeStatus defines the observed state of PlatformUpgrade
+            description: ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
             properties:
               placementBindings:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
