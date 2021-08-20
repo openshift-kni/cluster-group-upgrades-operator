@@ -41,6 +41,6 @@ resources:
   domain: openshift.io
   group: ran
   kind: PlatformUpgrade
-  path: github.com/redhat-ztp/cluster-group-lcm/api/v1alpha1
+  path: github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1
   version: v1alpha1
 version: "3"
