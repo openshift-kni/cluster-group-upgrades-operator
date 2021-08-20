@@ -37,17 +37,25 @@ spec:
           spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
-              channel:
-                type: string
               clusters:
-                description: Group specifies the name of the Group object of the ClusterGroupUpgrade.
                 items:
                   type: string
                 type: array
-              force:
-                type: boolean
-              image:
-                type: string
+              platformUpgrade:
+                description: PlatformUpgradeSpec defines the configuration of a platform
+                  upgrade
+                properties:
+                  channel:
+                    type: string
+                  force:
+                    type: boolean
+                  image:
+                    type: string
+                  upstream:
+                    type: string
+                  version:
+                    type: string
+                type: object
               remediationAction:
                 type: string
               remediationStrategy:
@@ -63,10 +71,6 @@ spec:
                   maxConcurrency:
                     type: integer
                 type: object
-              upstream:
-                type: string
-              version:
-                type: string
             type: object
           status:
             description: ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade

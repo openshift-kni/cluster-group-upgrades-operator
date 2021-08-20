@@ -436,11 +436,11 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, Clus
 	var buf bytes.Buffer
 	tmpl := template.New("policy")
 	tmpl.Parse(policyTemplate)
-	tmpl.Execute(&buf, map[string]string{"Channel": ClusterGroupUpgrade.Spec.Channel,
-		"Version":  ClusterGroupUpgrade.Spec.Version,
-		"Image":    ClusterGroupUpgrade.Spec.Image,
-		"Force":    strconv.FormatBool(ClusterGroupUpgrade.Spec.Force),
-		"Upstream": ClusterGroupUpgrade.Spec.Upstream,
+	tmpl.Execute(&buf, map[string]string{"Channel": ClusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
+		"Version":  ClusterGroupUpgrade.Spec.PlatformUpgrade.Version,
+		"Image":    ClusterGroupUpgrade.Spec.PlatformUpgrade.Image,
+		"Force":    strconv.FormatBool(ClusterGroupUpgrade.Spec.PlatformUpgrade.Force),
+		"Upstream": ClusterGroupUpgrade.Spec.PlatformUpgrade.Upstream,
 	})
 	u := &unstructured.Unstructured{}
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)

@@ -23,6 +23,15 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// PlatformUpgradeSpec defines the configuration of a platform upgrade
+type PlatformUpgradeSpec struct {
+	Channel  string `json:"channel,omitempty"`
+	Version  string `json:"version,omitempty"`
+	Image    string `json:"image,omitempty"`
+	Force    bool   `json:"force,omitempty"`
+	Upstream string `json:"upstream,omitempty"`
+}
+
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
@@ -31,11 +40,7 @@ type ClusterGroupUpgradeSpec struct {
 	Clusters            []string                `json:"clusters,omitempty"`
 	RemediationStrategy RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	RemediationAction   string                  `json:"remediationAction,omitempty"`
-	Channel             string                  `json:"channel,omitempty"`
-	Version             string                  `json:"version,omitempty"`
-	Image               string                  `json:"image,omitempty"`
-	Force               bool                    `json:"force,omitempty"`
-	Upstream            string                  `json:"upstream,omitempty"`
+	PlatformUpgrade     PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
 }
 
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
