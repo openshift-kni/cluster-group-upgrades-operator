@@ -40,14 +40,12 @@ spec:
               channel:
                 type: string
               clusters:
+                description: Group specifies the name of the Group object of the ClusterGroupUpgrade.
                 items:
                   type: string
                 type: array
               force:
                 type: boolean
-              group:
-                description: Group specifies the name of the Group object of the ClusterGroupUpgrade.
-                type: string
               image:
                 type: string
               remediationAction:

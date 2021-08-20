@@ -28,8 +28,6 @@ type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// Group specifies the name of the Group object of the ClusterGroupUpgrade.
-	Group               string                  `json:"group,omitempty"`
 	Clusters            []string                `json:"clusters,omitempty"`
 	RemediationStrategy RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	RemediationAction   string                  `json:"remediationAction,omitempty"`
