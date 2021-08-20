@@ -36,6 +36,7 @@ type PlatformUpgradeSpec struct {
 	Channel             string                  `json:"channel,omitempty"`
 	Version             string                  `json:"version,omitempty"`
 	Image               string                  `json:"image,omitempty"`
+	Force               bool                    `json:"force,omitempty"`
 	Upstream            string                  `json:"upstream,omitempty"`
 }
 

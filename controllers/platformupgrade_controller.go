@@ -70,9 +70,15 @@ spec:
                 spec:
                   channel: {{ .Channel }}
                   desiredUpdate:
-                    version: "{{ .Version }}"
+{{ if .Version }}
+                    version: {{ .Version }}
+{{ end }}
+{{ if .Image }}
                     image: {{ .Image }}
-                    force: True
+{{ end }}
+{{ if eq .Force "true" }}
+                    force: {{ .Force }}
+{{ end }}
                   upstream: {{ .Upstream }}
     - objectDefinition:
         apiVersion: policy.open-cluster-management.io/v1
@@ -136,8 +142,12 @@ spec:
                 status:
                   history:
                     - state: Completed 
-                      version: "{{ .Version }}"    
+{{ if .Version }}
+                      version: {{ .Version }}
+{{ end }}
+{{ if .Image }}
                       image: {{ .Image }}
+{{ end }}
   remediationAction: inform     
 `
 
@@ -429,6 +439,7 @@ func (r *PlatformUpgradeReconciler) newBatchPolicy(ctx context.Context, platform
 	tmpl.Execute(&buf, map[string]string{"Channel": platformUpgrade.Spec.Channel,
 		"Version":  platformUpgrade.Spec.Version,
 		"Image":    platformUpgrade.Spec.Image,
+		"Force":    strconv.FormatBool(platformUpgrade.Spec.Force),
 		"Upstream": platformUpgrade.Spec.Upstream,
 	})
 	u := &unstructured.Unstructured{}

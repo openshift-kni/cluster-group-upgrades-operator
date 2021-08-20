@@ -11,6 +11,7 @@ spec:
   remediationStrategy:
     maxConcurrency: 1
   channel: stable-4.8
-  image: quay.io/openshift-release-dev/ocp-release:4.8.0-x86_64
   version: 4.8.0
+  image: quay.io/openshift-release-dev/ocp-release:4.8.0-x86_64
+  force: true
   upstream: https://amd64.ocp.releases.ci.openshift.org/graph

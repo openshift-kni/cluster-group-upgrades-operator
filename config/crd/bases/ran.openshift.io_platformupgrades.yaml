@@ -42,6 +42,8 @@ spec:
                 items:
                   type: string
                 type: array
+              force:
+                type: boolean
               group:
                 description: Group specifies the name of the Group object of the PlatformUpgrade.
                 type: string
