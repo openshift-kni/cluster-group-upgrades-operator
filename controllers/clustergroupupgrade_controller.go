@@ -353,7 +353,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 			"namespace": ClusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/ClusterGroupUpgrade": ClusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/batch":               strconv.Itoa(batchIndex),
 			},
 		},
@@ -456,7 +456,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, Clus
 		labels = make(map[string]string)
 	}
 	labels["app"] = "openshift-cluster-group-upgrades"
-	labels["openshift-cluster-group-upgrades/ClusterGroupUpgrade"] = ClusterGroupUpgrade.Name
+	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = ClusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
 	u.SetLabels(labels)
 
@@ -533,7 +533,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 			"namespace": ClusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/ClusterGroupUpgrade": ClusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.Name,
 			},
 		},
 		"placementRef": map[string]interface{}{
@@ -596,7 +596,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, Cluste
 }
 
 func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var labelsForClusterGroupUpgrade = map[string]string{"app": "openshift-cluster-group-upgrades", "openshift-cluster-group-upgrades/ClusterGroupUpgrade": ClusterGroupUpgrade.GetName()}
+	var labelsForClusterGroupUpgrade = map[string]string{"app": "openshift-cluster-group-upgrades", "openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.GetName()}
 	listOpts := []client.ListOption{
 		client.InNamespace(ClusterGroupUpgrade.Namespace),
 		client.MatchingLabels(labelsForClusterGroupUpgrade),
