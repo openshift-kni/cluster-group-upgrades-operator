@@ -8,6 +8,7 @@ Prerequisites:
 
 ```bash
  make kind-bootstrap-cluster
+ make docker-build
  make deploy
  make kuttl-test
 ```
@@ -18,6 +19,11 @@ or simply
 make complete-kuttl-test
 ```
 
+For un-deploying the Upgrades operator:
+```bash
+make undeploy
+```
+
 For development, a more suited approach is:
 ```bash
  make kind-bootstrap-cluster
@@ -25,6 +31,10 @@ For development, a more suited approach is:
  make kuttl-test
 ```
 
+For deleting the cluster:
+```bash
+make kind-delete-cluster
+```
 <!---
 Date: August/10/2021
 -->

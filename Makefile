@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.1
+VERSION ?= 0.0.2
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
@@ -29,7 +29,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
 # openshift.io/cluster-group-lcm-bundle:$VERSION and openshift.io/cluster-group-lcm-catalog:$VERSION.
-IMAGE_TAG_BASE ?= quay.io/ricarril/cluster-group-lcm
+IMAGE_TAG_BASE ?= quay.io/openshift-kni/cluster-group-upgrades-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.
 # You can use it as an arg. (E.g make bundle-build BUNDLE_IMG=<some-registry>/<project-name-bundle>:<tag>)
@@ -111,7 +111,7 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
-docker-build: test ## Build docker image with the manager.
+docker-build: ## Build docker image with the manager.
 	docker build -t ${IMG} .
 
 docker-push: ## Push docker image with the manager.
@@ -234,6 +234,10 @@ kind-create-cluster:
 kind-delete-cluster:
 	kind delete cluster --name $(KIND_NAME)
 
+kind-load-operator-image:
+	@echo "Load Upgrades operator image to kind cluster"
+	kind load docker-image ${IMG} --name ${KIND_NAME}
+
 # ACM specific CRDs have to exist before being able to start running the tests.
 install-acm-crds:
 	@echo "Installing ACM CRDs"
@@ -249,6 +253,7 @@ uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
 
 kuttl-test:
+	@echo "Running KUTTL tests"
 	kubectl-kuttl test
 
-complete-kuttl-test: kind-bootstrap-cluster deploy kuttl-test
+complete-kuttl-test: kind-bootstrap-cluster docker-build kind-load-operator-image deploy kuttl-test

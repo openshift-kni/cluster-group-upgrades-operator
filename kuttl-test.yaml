@@ -3,7 +3,7 @@ kind: TestSuite
 testDirs:
 - tests/kuttl/tests/
 crdDir: ./config/crd/bases/
-timeout: 60
+timeout: 90
 parallel: 1
 
 namespace: default
