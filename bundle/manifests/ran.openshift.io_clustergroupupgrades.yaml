@@ -58,7 +58,7 @@ spec:
                 description: RemediationStrategySpec defines the remediation policy
                 properties:
                   canaries:
-                    description: Canaries defines the list of names of Site objects that should be remediated first when remediateAction is set to enforce
+                    description: Canaries defines the list of managed clusters that should be remediated first when remediateAction is set to enforce
                     items:
                       type: string
                     type: array
