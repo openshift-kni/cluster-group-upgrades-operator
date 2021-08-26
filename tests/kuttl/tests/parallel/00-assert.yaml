@@ -2,7 +2,7 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: canaries-batch-1
+  name: parallel-batch-1
   namespace: default
 spec:
   clusterConditions:
@@ -10,27 +10,40 @@ spec:
     type: ManagedClusterConditionAvailable
   clusters:
   - name: spoke1
+  - name: spoke2
+  - name: spoke3
+  - name: spoke4
+  - name: spoke5
+  - name: spoke6
 ---
 # Check placement bindings
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: canaries-batch-1
+  name: parallel-batch-1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: canaries-batch-1
+  name: parallel-batch-1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: canaries-batch-1
+  name: parallel-batch-1
 ---
 # Check generated policies
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: common-group1-batch-1-common-namespace
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  labels:
+    app: openshift-cluster-group-upgrades
+    openshift-cluster-group-upgrades/batch: "1"
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: parallel
+  name: parallel-batch-1
   namespace: default
 spec:
   disabled: false
@@ -39,7 +52,29 @@ spec:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-common-ns
+        name: upgrade-cluster
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
+            metadata:
+              name: version
+            spec:
+              channel: stable-4.8
+              desiredUpdate:
+                force: true
+                image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                version: 4.8.1
+              upstream: https://amd64.ocp.releases.ci.openshift.org/graph
+        remediationAction: inform
+        severity: high
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-upgrade-check-co-available
       spec:
         namespaceSelector:
           exclude:
@@ -47,12 +82,56 @@ spec:
           include:
           - default
         object-templates:
-        - complianceType: musthave
+        - complianceType: mustnothave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: common
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "False"
+                type: Available
         remediationAction: inform
         severity: low
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-upgrade-check-co-not-degraded
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: mustnothave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "True"
+                type: Degraded
+        remediationAction: inform
+        severity: low
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: check-installed-version-status
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
+            metadata:
+              name: version
+            status:
+              history:
+              - image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                state: Completed
+                version: 4.8.1
+        remediationAction: inform
+        severity: high
   remediationAction: inform

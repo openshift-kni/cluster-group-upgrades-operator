@@ -23,6 +23,13 @@ import (
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
 // NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
 
+// RemediationStrategySpec defines the remediation policy
+type RemediationStrategySpec struct {
+	// Canaries defines the list of names of Site objects that should be remediated first when remediateAction is set to enforce
+	Canaries       []string `json:"canaries,omitempty"`
+	MaxConcurrency int      `json:"maxConcurrency,omitempty"`
+}
+
 // DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
 type DesiredUpdateSpec struct {
 	Version string `json:"version,omitempty"`
@@ -46,6 +53,12 @@ type ClusterGroupUpgradeSpec struct {
 	RemediationStrategy RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	RemediationAction   string                  `json:"remediationAction,omitempty"`
 	PlatformUpgrade     PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
+}
+
+// PolicyStatus defines the observed state of a Policy
+type PolicyStatus struct {
+	Name            string `json:"name,omitempty"`
+	ComplianceState string `json:"complianceState,omitempty"`
 }
 
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade

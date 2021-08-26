@@ -2,11 +2,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  - command: oc delete -f ../../../../deploy/upgrades/serial/common.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/serial/site1.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/serial/site2.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/serial/group1.yaml
+  - command: oc delete -f ../../../../deploy/upgrades/serial/clustergroupupgrade.yaml
     namespaced: true

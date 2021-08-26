@@ -29,13 +29,9 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	"sigs.k8s.io/controller-runtime/pkg/source"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 )
@@ -711,25 +707,5 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Owns(placementRuleUnstructured).
 		Owns(placementBindingUnstructured).
 		Owns(policyUnstructured).
-		Watches(&source.Kind{Type: &ranv1alpha1.Site{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-			groupsList := &ranv1alpha1.GroupList{}
-			client := mgr.GetClient()
-
-			err := client.List(context.TODO(), groupsList)
-			if err != nil {
-				return []reconcile.Request{}
-			}
-
-			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
-			for _, group := range groupsList.Items {
-				reconcileRequests = append(reconcileRequests, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Namespace: group.Namespace,
-						Name:      group.Name,
-					},
-				})
-			}
-			return reconcileRequests
-		})).
 		Complete(r)
 }
