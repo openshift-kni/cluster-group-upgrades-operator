@@ -14,4 +14,4 @@ data:
       resourceName: 9a2365a3.openshift.io
 kind: ConfigMap
 metadata:
-  name: cluster-group-lcm-manager-config
+  name: cluster-group-upgrades-operator-manager-config

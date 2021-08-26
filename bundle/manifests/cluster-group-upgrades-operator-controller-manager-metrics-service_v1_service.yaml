@@ -4,7 +4,7 @@ metadata:
   creationTimestamp: null
   labels:
     control-plane: controller-manager
-  name: cluster-group-lcm-controller-manager-metrics-service
+  name: cluster-group-upgrades-operator-controller-manager-metrics-svc
 spec:
   ports:
   - name: https

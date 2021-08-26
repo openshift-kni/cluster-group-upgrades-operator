@@ -57,7 +57,7 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
-  - ClusterGroupUpgrades
+  - clustergroupupgrades
   verbs:
   - create
   - delete
@@ -69,91 +69,13 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
-  - ClusterGroupUpgrades/finalizers
+  - clustergroupupgrades/finalizers
   verbs:
   - update
 - apiGroups:
   - ran.openshift.io
   resources:
-  - ClusterGroupUpgrades/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - commons
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - commons/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - commons/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - groups
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - groups/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - groups/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - sites
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - sites/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - sites/status
+  - clustergroupupgrades/status
   verbs:
   - get
   - patch

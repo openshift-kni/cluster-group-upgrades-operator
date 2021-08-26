@@ -2,6 +2,5 @@
 resources:
 - ran_v1alpha1_group.yaml
 - ran_v1alpha1_site.yaml
-- ran_v1alpha1_common.yaml
-- ran_v1alpha1_ClusterGroupUpgrade.yaml
+- ran_v1alpha1_clustergroupupgrade.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

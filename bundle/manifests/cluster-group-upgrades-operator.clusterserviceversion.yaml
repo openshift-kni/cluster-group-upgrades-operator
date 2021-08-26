@@ -6,9 +6,9 @@ metadata:
       [
         {
           "apiVersion": "ran.openshift.io/v1alpha1",
-          "kind": "Common",
+          "kind": "ClusterGroupUpgrade",
           "metadata": {
-            "name": "common-sample"
+            "name": "ClusterGroupUpgrade-sample"
           },
           "spec": {
             "foo": "bar"
@@ -38,29 +38,25 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: cluster-group-lcm.v0.0.1
+  name: cluster-group-upgrades-operator.v0.0.2
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: Common is the Schema for the commons API
-      displayName: Common
-      kind: Common
-      name: commons.ran.openshift.io
+    - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
+      displayName: Cluster Group Upgrade
+      kind: ClusterGroupUpgrade
+      name: clustergroupupgrades.ran.openshift.io
       version: v1alpha1
-    - description: Group is the Schema for the groups API
-      displayName: Group
-      kind: Group
+    - kind: Group
       name: groups.ran.openshift.io
       version: v1alpha1
-    - description: Site is the Schema for the sites API
-      displayName: Site
-      kind: Site
+    - kind: Site
       name: sites.ran.openshift.io
       version: v1alpha1
-  description: Cluster Group LCM operator allows you to manage software lifecycle of groups of clusters
-  displayName: cluster-group-lcm
+  description: cluster-group-upgrades-operator is an operator that facilitates platform upgrades of group of clusters
+  displayName: cluster-group-upgrades-operator
   icon:
   - base64data: ""
     mediatype: ""
@@ -119,7 +115,7 @@ spec:
         - apiGroups:
           - ran.openshift.io
           resources:
-          - commons
+          - clustergroupupgrades
           verbs:
           - create
           - delete
@@ -131,65 +127,13 @@ spec:
         - apiGroups:
           - ran.openshift.io
           resources:
-          - commons/finalizers
+          - clustergroupupgrades/finalizers
           verbs:
           - update
         - apiGroups:
           - ran.openshift.io
           resources:
-          - commons/status
-          verbs:
-          - get
-          - patch
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - groups
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - groups/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - groups/status
-          verbs:
-          - get
-          - patch
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - sites
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - sites/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - sites/status
+          - clustergroupupgrades/status
           verbs:
           - get
           - patch
@@ -206,9 +150,9 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        serviceAccountName: cluster-group-lcm-controller-manager
+        serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - name: cluster-group-lcm-controller-manager
+      - name: cluster-group-upgrades-controller-manager
         spec:
           replicas: 1
           selector:
@@ -238,7 +182,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/ricarril/cluster-group-lcm:0.0.1
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.2
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -263,7 +207,7 @@ spec:
                   allowPrivilegeEscalation: false
               securityContext:
                 runAsNonRoot: true
-              serviceAccountName: cluster-group-lcm-controller-manager
+              serviceAccountName: cluster-group-upgrades-controller-manager
               terminationGracePeriodSeconds: 10
       permissions:
       - rules:
@@ -298,7 +242,7 @@ spec:
           verbs:
           - create
           - patch
-        serviceAccountName: cluster-group-lcm-controller-manager
+        serviceAccountName: cluster-group-upgrades-controller-manager
     strategy: deployment
   installModes:
   - supported: false
@@ -310,15 +254,11 @@ spec:
   - supported: true
     type: AllNamespaces
   keywords:
-  - acm
-  - multicluster
-  - software lifecycle management
-  - lcm
+  - acm lifecyclemanagement upgrades cluster
   links:
-  - name: Cluster Group Lcm
-    url: https://cluster-group-lcm.domain
+  - name: Cluster Group Upgrades Operator
+    url: https://cluster-group-upgrades-operator.domain
   maturity: alpha
   provider:
     name: Red Hat
-    url: redhat.com
-  version: 0.0.1
+  version: 0.0.2

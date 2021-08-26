@@ -1,7 +1,0 @@
-apiVersion: ran.openshift.io/v1alpha1
-kind: Site
-metadata:
-  name: site1
-  namespace: default
-spec:
-  cluster: spoke1

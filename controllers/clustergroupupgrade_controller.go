@@ -158,9 +158,9 @@ type ClusterGroupUpgradeReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=ran.openshift.io,resources=ClusterGroupUpgrades,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=ran.openshift.io,resources=ClusterGroupUpgrades/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=ran.openshift.io,resources=ClusterGroupUpgrades/finalizers,verbs=update
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
@@ -712,26 +712,6 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Owns(placementBindingUnstructured).
 		Owns(policyUnstructured).
 		Watches(&source.Kind{Type: &ranv1alpha1.Site{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
-			groupsList := &ranv1alpha1.GroupList{}
-			client := mgr.GetClient()
-
-			err := client.List(context.TODO(), groupsList)
-			if err != nil {
-				return []reconcile.Request{}
-			}
-
-			reconcileRequests := make([]reconcile.Request, len(groupsList.Items))
-			for _, group := range groupsList.Items {
-				reconcileRequests = append(reconcileRequests, reconcile.Request{
-					NamespacedName: types.NamespacedName{
-						Namespace: group.Namespace,
-						Name:      group.Name,
-					},
-				})
-			}
-			return reconcileRequests
-		})).
-		Watches(&source.Kind{Type: &ranv1alpha1.Common{}}, handler.EnqueueRequestsFromMapFunc(func(a client.Object) []reconcile.Request {
 			groupsList := &ranv1alpha1.GroupList{}
 			client := mgr.GetClient()
 
