@@ -63,8 +63,8 @@ type ClusterGroupUpgradeReconciler struct {
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("ClusterGroupUpgrade", req.NamespacedName)
 
-	ClusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
-	err := r.Get(ctx, req.NamespacedName, ClusterGroupUpgrade)
+	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
+	err := r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -76,22 +76,22 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Create remediation plan
 	var remediationPlan [][]string
 	isCanary := make(map[string]bool)
-	if ClusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(ClusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
-		for _, canary := range ClusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
+	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
+		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
 			remediationPlan = append(remediationPlan, []string{canary})
 			isCanary[canary] = true
 		}
 
 	}
 	var clusters []string
-	for _, cluster := range ClusterGroupUpgrade.Spec.Clusters {
+	for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
 		if !isCanary[cluster] {
 			clusters = append(clusters, cluster)
 		}
 	}
-	for i := 0; i < len(clusters); i += ClusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
+	for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
 		var batch []string
-		for j := i; j < i+ClusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
+		for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
 			site := clusters[j]
 			if !isCanary[site] {
 				batch = append(batch, site)
@@ -108,17 +108,17 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	var placementBindings []string
 	var policies []string
 	for i, remediateBatch := range remediationPlan {
-		placementRulesForBatch, err := r.ensureBatchPlacementRules(ctx, ClusterGroupUpgrade, remediateBatch, i+1)
+		placementRulesForBatch, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		placementRules = append(placementRules, placementRulesForBatch...)
-		policiesForBatch, err := r.ensureBatchPolicies(ctx, ClusterGroupUpgrade, remediateBatch, i+1)
+		policiesForBatch, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		policies = append(policies, policiesForBatch...)
-		placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, ClusterGroupUpgrade, remediateBatch, i+1)
+		placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
@@ -126,14 +126,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Remediate policies depending on compliance state and upgrade plan.
-	if ClusterGroupUpgrade.Spec.RemediationAction == "enforce" {
+	if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
 		for i, remediateBatch := range remediationPlan {
 			r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
 			r.Log.Info("Batch", "i", i+1)
 			batchCompliant := true
 			var labelsForBatch = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1)}
 			listOpts := []client.ListOption{
-				client.InNamespace(ClusterGroupUpgrade.Namespace),
+				client.InNamespace(clusterGroupUpgrade.Namespace),
 				client.MatchingLabels(labelsForBatch),
 			}
 			policiesList := &unstructured.UnstructuredList{}
@@ -172,27 +172,27 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 
 	// Update status
-	err = r.updateStatus(ctx, ClusterGroupUpgrade, placementRules, placementBindings, policies)
+	err = r.updateStatus(ctx, clusterGroupUpgrade, placementRules, placementBindings, policies)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Delete old resources
-	r.deleteOldResources(ctx, ClusterGroupUpgrade)
+	r.deleteOldResources(ctx, clusterGroupUpgrade)
 
 	return ctrl.Result{}, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRules(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var placementRules []string
 
-	pr, err := r.newBatchPlacementRule(ctx, ClusterGroupUpgrade, batch, batchIndex)
+	pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, batch, batchIndex)
 	if err != nil {
 		return nil, err
 	}
 	placementRules = append(placementRules, pr.GetName())
 
-	if err := controllerutil.SetControllerReference(ClusterGroupUpgrade, pr, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -204,7 +204,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRules(ctx context.Co
 	})
 	err = r.Client.Get(ctx, client.ObjectKey{
 		Name:      pr.GetName(),
-		Namespace: ClusterGroupUpgrade.Namespace,
+		Namespace: clusterGroupUpgrade.Namespace,
 	}, foundPlacementRule)
 
 	if err != nil {
@@ -230,15 +230,15 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRules(ctx context.Co
 	return placementRules, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      ClusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
-			"namespace": ClusterGroupUpgrade.Namespace,
+			"name":      clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/batch":               strconv.Itoa(batchIndex),
 			},
 		},
@@ -268,16 +268,16 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var policies []string
 
-	policy, err := r.newBatchPolicy(ctx, ClusterGroupUpgrade, batchIndex)
+	policy, err := r.newBatchPolicy(ctx, clusterGroupUpgrade, batchIndex)
 	if err != nil {
 		return nil, err
 	}
 	policies = append(policies, policy.GetName())
 
-	if err := controllerutil.SetControllerReference(ClusterGroupUpgrade, policy, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -289,7 +289,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context,
 	})
 	err = r.Client.Get(ctx, client.ObjectKey{
 		Name:      policy.GetName(),
-		Namespace: ClusterGroupUpgrade.Namespace,
+		Namespace: clusterGroupUpgrade.Namespace,
 	}, foundPolicy)
 
 	if err != nil {
@@ -305,7 +305,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context,
 	} else {
 		if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
 			foundPolicy.Object["spec"] = policy.Object["spec"]
-			unstructured.SetNestedField(foundPolicy.Object, ClusterGroupUpgrade.Spec.RemediationAction, "spec", "remediationAction")
+			unstructured.SetNestedField(foundPolicy.Object, clusterGroupUpgrade.Spec.RemediationAction, "spec", "remediationAction")
 			err = r.Client.Update(ctx, foundPolicy)
 			if err != nil {
 				return nil, err
@@ -317,15 +317,15 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context,
 	return policies, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var buf bytes.Buffer
 	tmpl := template.New("policy")
 	tmpl.Parse(platformUpgradeTemplate)
-	tmpl.Execute(&buf, map[string]string{"Channel": ClusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
-		"Version":  ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Version,
-		"Image":    ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Image,
-		"Force":    strconv.FormatBool(ClusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Force),
-		"Upstream": ClusterGroupUpgrade.Spec.PlatformUpgrade.Upstream,
+	tmpl.Execute(&buf, map[string]string{"Channel": clusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
+		"Version":  clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Version,
+		"Image":    clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Image,
+		"Force":    strconv.FormatBool(clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Force),
+		"Upstream": clusterGroupUpgrade.Spec.PlatformUpgrade.Upstream,
 	})
 	u := &unstructured.Unstructured{}
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
@@ -334,14 +334,14 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, Clus
 		return nil, err
 	}
 
-	u.SetName(ClusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex))
-	u.SetNamespace(ClusterGroupUpgrade.GetNamespace())
+	u.SetName(clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex))
+	u.SetNamespace(clusterGroupUpgrade.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
 		labels = make(map[string]string)
 	}
 	labels["app"] = "openshift-cluster-group-upgrades"
-	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = ClusterGroupUpgrade.Name
+	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
 	u.SetLabels(labels)
 
@@ -351,17 +351,17 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, Clus
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var placementBindings []string
 
 	// ensure batch placement bindings
-	pb, err := r.newBatchPlacementBinding(ctx, ClusterGroupUpgrade, batchIndex)
+	pb, err := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, batchIndex)
 	if err != nil {
 		return nil, err
 	}
 	placementBindings = append(placementBindings, pb.GetName())
 
-	if err := controllerutil.SetControllerReference(ClusterGroupUpgrade, pb, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
 		return nil, err
 	}
 
@@ -373,7 +373,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context
 	})
 	err = r.Client.Get(ctx, client.ObjectKey{
 		Name:      pb.GetName(),
-		Namespace: ClusterGroupUpgrade.Namespace,
+		Namespace: clusterGroupUpgrade.Namespace,
 	}, foundPlacementBinding)
 
 	if err != nil {
@@ -401,11 +401,11 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context
 	return placementBindings, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var subjects []map[string]interface{}
 
 	subject := make(map[string]interface{})
-	subject["name"] = ClusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex)
+	subject["name"] = clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex)
 	subject["kind"] = "Policy"
 	subject["apiGroup"] = "policy.open-cluster-management.io"
 
@@ -414,15 +414,15 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      ClusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
-			"namespace": ClusterGroupUpgrade.Namespace,
+			"name":      clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
 			},
 		},
 		"placementRef": map[string]interface{}{
-			"name":     ClusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"name":     clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
@@ -437,9 +437,9 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, placementRules []string, placementBindings []string, policies []string) error {
-	ClusterGroupUpgrade.Status.PlacementRules = placementRules
-	ClusterGroupUpgrade.Status.PlacementBindings = placementBindings
+func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, placementRules []string, placementBindings []string, policies []string) error {
+	clusterGroupUpgrade.Status.PlacementRules = placementRules
+	clusterGroupUpgrade.Status.PlacementBindings = placementBindings
 
 	var policiesStatus []ranv1alpha1.PolicyStatus
 	foundPolicy := &unstructured.Unstructured{}
@@ -451,7 +451,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, Cluste
 	for _, policy := range policies {
 		err := r.Client.Get(ctx, client.ObjectKey{
 			Name:      policy,
-			Namespace: ClusterGroupUpgrade.Namespace,
+			Namespace: clusterGroupUpgrade.Namespace,
 		}, foundPolicy)
 		if err != nil {
 			return err
@@ -469,9 +469,9 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, Cluste
 		}
 		policiesStatus = append(policiesStatus, *policyStatus)
 	}
-	ClusterGroupUpgrade.Status.Policies = policiesStatus
+	clusterGroupUpgrade.Status.Policies = policiesStatus
 
-	err := r.Status().Update(ctx, ClusterGroupUpgrade)
+	err := r.Status().Update(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return err
 	}
@@ -480,10 +480,10 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, Cluste
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, ClusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var labelsForClusterGroupUpgrade = map[string]string{"app": "openshift-cluster-group-upgrades", "openshift-cluster-group-upgrades/clusterGroupUpgrade": ClusterGroupUpgrade.GetName()}
+func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	var labelsForClusterGroupUpgrade = map[string]string{"app": "openshift-cluster-group-upgrades", "openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.GetName()}
 	listOpts := []client.ListOption{
-		client.InNamespace(ClusterGroupUpgrade.Namespace),
+		client.InNamespace(clusterGroupUpgrade.Namespace),
 		client.MatchingLabels(labelsForClusterGroupUpgrade),
 	}
 
@@ -498,7 +498,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 	}
 	for _, foundPlacementRule := range placementRulesList.Items {
 		foundInStatus := false
-		for _, statusPlacementRule := range ClusterGroupUpgrade.Status.PlacementRules {
+		for _, statusPlacementRule := range clusterGroupUpgrade.Status.PlacementRules {
 			if foundPlacementRule.GetName() == statusPlacementRule {
 				foundInStatus = true
 				break
@@ -524,7 +524,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 	}
 	for _, foundPlacementBinding := range placementBindingsList.Items {
 		foundInStatus := false
-		for _, statusPlacementBinding := range ClusterGroupUpgrade.Status.PlacementBindings {
+		for _, statusPlacementBinding := range clusterGroupUpgrade.Status.PlacementBindings {
 			if foundPlacementBinding.GetName() == statusPlacementBinding {
 				foundInStatus = true
 				break
@@ -550,7 +550,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 	}
 	for _, foundPolicy := range policiesList.Items {
 		foundInStatus := false
-		for _, statusPolicy := range ClusterGroupUpgrade.Status.Policies {
+		for _, statusPolicy := range clusterGroupUpgrade.Status.Policies {
 			if foundPolicy.GetName() == statusPolicy.Name {
 				foundInStatus = true
 				break
