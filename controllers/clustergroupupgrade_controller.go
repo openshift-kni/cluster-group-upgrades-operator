@@ -108,21 +108,21 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	var placementBindings []string
 	var policies []string
 	for i, remediateBatch := range remediationPlan {
-		placementRulesForBatch, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+		batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		placementRules = append(placementRules, placementRulesForBatch...)
-		policiesForBatch, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+		placementRules = append(placementRules, batchPlacementRules...)
+		batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		policies = append(policies, policiesForBatch...)
-		placementBindingsForBatch, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+		policies = append(policies, batchPolicies...)
+		batchPlacementBindings, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		placementBindings = append(placementBindings, placementBindingsForBatch...)
+		placementBindings = append(placementBindings, batchPlacementBindings...)
 	}
 
 	// Remediate policies depending on compliance state and upgrade plan.
@@ -131,10 +131,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
 			r.Log.Info("Batch", "i", i+1)
 			batchCompliant := true
-			var labelsForBatch = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1)}
+			var platformUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
+				"openshift-cluster-group-upgrades/policyType": "platformUpgrade"}
 			listOpts := []client.ListOption{
 				client.InNamespace(clusterGroupUpgrade.Namespace),
-				client.MatchingLabels(labelsForBatch),
+				client.MatchingLabels(platformUpgradeBatchPolicyLabels),
 			}
 			policiesList := &unstructured.UnstructuredList{}
 			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
@@ -163,11 +164,49 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if !batchCompliant {
-				r.Log.Info("Remediate batch not fully compliant yet")
+				r.Log.Info("Platform upgrade policies for batch not fully compliant yet")
+				break
+			}
+
+			var operatorUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
+				"openshift-cluster-group-upgrades/policyType": "operatorUpgrade"}
+			listOpts = []client.ListOption{
+				client.InNamespace(clusterGroupUpgrade.Namespace),
+				client.MatchingLabels(operatorUpgradeBatchPolicyLabels),
+			}
+			policiesList = &unstructured.UnstructuredList{}
+			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+				Group:   "policy.open-cluster-management.io",
+				Kind:    "PolicyList",
+				Version: "v1",
+			})
+			if err := r.List(ctx, policiesList, listOpts...); err != nil {
+				return ctrl.Result{}, err
+			}
+			for _, policy := range policiesList.Items {
+				specObject := policy.Object["spec"].(map[string]interface{})
+				if specObject["remediationAction"] == "inform" {
+					specObject["remediationAction"] = "enforce"
+					err = r.Client.Update(ctx, &policy)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
+				}
+
+				statusObject := policy.Object["status"].(map[string]interface{})
+				if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
+					batchCompliant = false
+				}
+			}
+
+			if !batchCompliant {
+				r.Log.Info("Operator upgrade policies for batch not fully compliant yet")
 				break
 			} else {
 				r.Log.Info("Remediate batch fully compliant")
 			}
+
 		}
 	}
 
@@ -368,12 +407,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx contex
 	var buf bytes.Buffer
 	tmpl := template.New("cluster-upgrade-policy")
 	tmpl.Parse(platformUpgradeTemplate)
-	tmpl.Execute(&buf, map[string]string{"Channel": clusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
-		"Version":  clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Version,
-		"Image":    clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Image,
-		"Force":    strconv.FormatBool(clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Force),
-		"Upstream": clusterGroupUpgrade.Spec.PlatformUpgrade.Upstream,
-	})
+	tmpl.Execute(&buf, clusterGroupUpgrade.Spec.PlatformUpgrade)
 	u := &unstructured.Unstructured{}
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
 	_, _, err := dec.Decode(buf.Bytes(), nil, u)
@@ -390,7 +424,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx contex
 	labels["app"] = "openshift-cluster-group-upgrades"
 	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
-	labels["openshift-cluster-group-upgrades/policyType"] = "cluster"
+	labels["openshift-cluster-group-upgrades/policyType"] = "platformUpgrade"
 	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})
@@ -402,7 +436,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx contex
 func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var buf bytes.Buffer
 	tmpl := template.New("operator-upgrade-policy")
-	tmpl.Parse(platformUpgradeTemplate)
+	tmpl.Parse(operatorUpgradeTemplate)
 	tmpl.Execute(&buf, clusterGroupUpgrade.Spec.OperatorUpgrades)
 	u := &unstructured.Unstructured{}
 	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
@@ -420,7 +454,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx contex
 	labels["app"] = "openshift-cluster-group-upgrades"
 	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
-	labels["openshift-cluster-group-upgrades/policyType"] = "operator"
+	labels["openshift-cluster-group-upgrades/policyType"] = "operatorUpgrade"
 	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})
@@ -429,11 +463,11 @@ func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx contex
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchPlacementRules []string, batchPolicies []string, batchIndex int) ([]string, error) {
 	var placementBindings []string
 
 	// ensure batch placement bindings
-	pb, err := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, batchIndex)
+	pb, err := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, batchIndex)
 	if err != nil {
 		return nil, err
 	}
@@ -479,7 +513,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context
 	return placementBindings, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchPlacementRules []string, batchPolicies []string, batchIndex int) (*unstructured.Unstructured, error) {
 	var subjects []map[string]interface{}
 
 	subject := make(map[string]interface{})

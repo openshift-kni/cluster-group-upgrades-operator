@@ -46,14 +46,14 @@ spec:
                 spec:
                   channel: {{ .Channel }}
                   desiredUpdate:
-{{ if .Version }}
-                    version: {{ .Version }}
+{{ if .DesiredUpdate.Version }}
+                    version: {{ .DesiredUpdate.Version }}
 {{ end }}
-{{ if .Image }}
-                    image: {{ .Image }}
+{{ if .DesiredUpdate.Image }}
+                    image: {{ .DesiredUpdate.Image }}
 {{ end }}
-{{ if eq .Force "true" }}
-                    force: {{ .Force }}
+{{ if .DesiredUpdate.Force }}
+                    force: {{ .DesiredUpdate.Force }}
 {{ end }}
                   upstream: {{ .Upstream }}
     - objectDefinition:
@@ -128,6 +128,7 @@ spec:
 `
 
 const operatorUpgradeTemplate = `
+{{ range $index, $element := . }}
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
@@ -157,12 +158,12 @@ spec:
                 apiVersion: operators.coreos.com/v1alpha1
                 kind: Subscription
                 metadata:
-                  name: {{ .Name }}-upgrade
-                  namespace: {{ . Namespace }}
+                  name: {{ $element.Name }}-upgrade
+                  namespace: {{ $element.Namespace }}
                 spec:
-                  channel: "{{ .Channel }}"
+                  channel: "{{ $element.Channel }}"
                   installPlanApproval: Automatic
-                  name: {{ .Name }}
+                  name: {{ $element.Name }}
                   source: "redhat-operators"
                   sourceNamespace: openshift-marketplace
 `
