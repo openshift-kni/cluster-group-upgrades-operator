@@ -271,55 +271,102 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var policies []string
 
-	policy, err := r.newBatchPolicy(ctx, clusterGroupUpgrade, batchIndex)
-	if err != nil {
-		return nil, err
-	}
-	policies = append(policies, policy.GetName())
-
-	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	err = r.Client.Get(ctx, client.ObjectKey{
-		Name:      policy.GetName(),
-		Namespace: clusterGroupUpgrade.Namespace,
-	}, foundPolicy)
-
-	if err != nil {
-		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, policy)
-			if err != nil {
-				return nil, err
-			}
-			r.Log.Info("Created API Policy object", "policy", policy.GetName())
-		} else {
+	if clusterGroupUpgrade.Spec.PlatformUpgrade != nil {
+		policy, err := r.newBatchPlatformUpgradePolicy(ctx, clusterGroupUpgrade, batchIndex)
+		if err != nil {
 			return nil, err
 		}
-	} else {
-		if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
-			foundPolicy.Object["spec"] = policy.Object["spec"]
-			unstructured.SetNestedField(foundPolicy.Object, clusterGroupUpgrade.Spec.RemediationAction, "spec", "remediationAction")
-			err = r.Client.Update(ctx, foundPolicy)
-			if err != nil {
+		policies = append(policies, policy.GetName())
+
+		if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+			return nil, err
+		}
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Name:      policy.GetName(),
+			Namespace: clusterGroupUpgrade.Namespace,
+		}, foundPolicy)
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, policy)
+				if err != nil {
+					return nil, err
+				}
+				r.Log.Info("Created API Policy object", "policy", policy.GetName())
+			} else {
 				return nil, err
 			}
-			r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
+		} else {
+			if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
+				foundPolicy.Object["spec"] = policy.Object["spec"]
+				unstructured.SetNestedField(foundPolicy.Object, clusterGroupUpgrade.Spec.RemediationAction, "spec", "remediationAction")
+				err = r.Client.Update(ctx, foundPolicy)
+				if err != nil {
+					return nil, err
+				}
+				r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
+			}
+		}
+	}
+
+	if clusterGroupUpgrade.Spec.OperatorUpgrades != nil {
+		policy, err := r.newBatchOperatorUpgradePolicy(ctx, clusterGroupUpgrade, batchIndex)
+		if err != nil {
+			return nil, err
+		}
+		policies = append(policies, policy.GetName())
+
+		if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+			return nil, err
+		}
+
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+		err = r.Client.Get(ctx, client.ObjectKey{
+			Name:      policy.GetName(),
+			Namespace: clusterGroupUpgrade.Namespace,
+		}, foundPolicy)
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = r.Client.Create(ctx, policy)
+				if err != nil {
+					return nil, err
+				}
+				r.Log.Info("Created API Policy object", "policy", policy.GetName())
+			} else {
+				return nil, err
+			}
+		} else {
+			if !equality.Semantic.DeepEqual(foundPolicy.Object["spec"], policy.Object["spec"]) {
+				foundPolicy.Object["spec"] = policy.Object["spec"]
+				unstructured.SetNestedField(foundPolicy.Object, clusterGroupUpgrade.Spec.RemediationAction, "spec", "remediationAction")
+				err = r.Client.Update(ctx, foundPolicy)
+				if err != nil {
+					return nil, err
+				}
+				r.Log.Info("Updated API Policy object", "policy", foundPolicy.GetName())
+			}
 		}
 	}
 
 	return policies, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var buf bytes.Buffer
-	tmpl := template.New("policy")
+	tmpl := template.New("cluster-upgrade-policy")
 	tmpl.Parse(platformUpgradeTemplate)
 	tmpl.Execute(&buf, map[string]string{"Channel": clusterGroupUpgrade.Spec.PlatformUpgrade.Channel,
 		"Version":  clusterGroupUpgrade.Spec.PlatformUpgrade.DesiredUpdate.Version,
@@ -343,6 +390,37 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPolicy(ctx context.Context, clus
 	labels["app"] = "openshift-cluster-group-upgrades"
 	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
+	labels["openshift-cluster-group-upgrades/policyType"] = "cluster"
+	u.SetLabels(labels)
+
+	specObject := u.Object["spec"].(map[string]interface{})
+	specObject["remediationAction"] = "inform"
+
+	return u, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
+	var buf bytes.Buffer
+	tmpl := template.New("operator-upgrade-policy")
+	tmpl.Parse(platformUpgradeTemplate)
+	tmpl.Execute(&buf, clusterGroupUpgrade.Spec.OperatorUpgrades)
+	u := &unstructured.Unstructured{}
+	dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
+	_, _, err := dec.Decode(buf.Bytes(), nil, u)
+	if err != nil {
+		return nil, err
+	}
+
+	u.SetName(clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex))
+	u.SetNamespace(clusterGroupUpgrade.GetNamespace())
+	labels := u.GetLabels()
+	if labels == nil {
+		labels = make(map[string]string)
+	}
+	labels["app"] = "openshift-cluster-group-upgrades"
+	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
+	labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
+	labels["openshift-cluster-group-upgrades/policyType"] = "operator"
 	u.SetLabels(labels)
 
 	specObject := u.Object["spec"].(map[string]interface{})

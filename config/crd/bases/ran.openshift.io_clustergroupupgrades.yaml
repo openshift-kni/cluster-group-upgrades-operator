@@ -41,6 +41,19 @@ spec:
                 items:
                   type: string
                 type: array
+              operatorUpgrades:
+                items:
+                  description: OperatorUpgradeSpec defines the configuration of an
+                    operator upgrade
+                  properties:
+                    channel:
+                      type: string
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
               platformUpgrade:
                 description: PlatformUpgradeSpec defines the configuration of a platform
                   upgrade

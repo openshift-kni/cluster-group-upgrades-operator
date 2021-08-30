@@ -37,6 +37,13 @@ type DesiredUpdateSpec struct {
 	Force   bool   `json:"force,omitempty"`
 }
 
+// OperatorUpgradeSpec defines the configuration of an operator upgrade
+type OperatorUpgradeSpec struct {
+	Channel   string `json:"channel,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
 // PlatformUpgradeSpec defines the configuration of a platform upgrade
 type PlatformUpgradeSpec struct {
 	Channel       string            `json:"channel,omitempty"`
@@ -49,10 +56,11 @@ type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	Clusters            []string                `json:"clusters,omitempty"`
-	RemediationStrategy RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	RemediationAction   string                  `json:"remediationAction,omitempty"`
-	PlatformUpgrade     PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
+	Clusters            []string                 `json:"clusters,omitempty"`
+	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	RemediationAction   string                   `json:"remediationAction,omitempty"`
+	PlatformUpgrade     *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
+	OperatorUpgrades    []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
