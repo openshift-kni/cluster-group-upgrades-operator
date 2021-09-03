@@ -1,0 +1,12 @@
+# See the OWNERS docs at https://go.k8s.io/owners
+
+aliases:
+  upgrades-operator-reviewers:
+    - rcarrillocruz
+    - fedepaol
+    - yrobla
+    - irinamihai
+  upgrades-operator-approvers:
+    - rcarrillocruz
+    - yrobla
+    - irinamihai
