@@ -128,11 +128,11 @@ spec:
 `
 
 const operatorUpgradeTemplate = `
-{{ range $index, $element := . }}
+{{ range . }}
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: upgrade-operator
+  name: upgrade-operator-{{ .Name }}
   annotations:
     policy.open-cluster-management.io/standards: NIST SP 800-53
     policy.open-cluster-management.io/categories: CM Configuration Management
@@ -158,12 +158,13 @@ spec:
                 apiVersion: operators.coreos.com/v1alpha1
                 kind: Subscription
                 metadata:
-                  name: {{ $element.Name }}-upgrade
-                  namespace: {{ $element.Namespace }}
+                  name: {{ .Name }}
+                  namespace: {{ .Namespace }}
                 spec:
-                  channel: "{{ $element.Channel }}"
+                  channel: "{{ .Channel }}"
                   installPlanApproval: Automatic
-                  name: {{ $element.Name }}
+                  name: {{ .Name }}
                   source: "redhat-operators"
                   sourceNamespace: openshift-marketplace
+{{ end }}
 `
