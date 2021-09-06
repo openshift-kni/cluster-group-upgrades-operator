@@ -164,8 +164,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if !batchCompliant {
-				r.Log.Info("Platform upgrade policies for batch not fully compliant yet")
+				r.Log.Info("Platform upgrade policies for batch still running")
 				break
+			} else {
+				r.Log.Info("Platform upgrade policies for batch completed")
 			}
 
 			var operatorUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
@@ -201,12 +203,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if !batchCompliant {
-				r.Log.Info("Operator upgrade policies for batch not fully compliant yet")
+				r.Log.Info("Operator upgrade policies for batch still running")
 				break
 			} else {
-				r.Log.Info("Remediate batch fully compliant")
+				r.Log.Info("Operator upgrades policies for batch completed")
 			}
 
+			r.Log.Info("Batch upgrade completed")
 		}
 	}
 
