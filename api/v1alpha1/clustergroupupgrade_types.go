@@ -73,9 +73,10 @@ type PolicyStatus struct {
 type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	PlacementBindings []string       `json:"placementBindings"`
-	PlacementRules    []string       `json:"placementRules"`
-	Policies          []PolicyStatus `json:"policies"`
+	PlacementBindings []string           `json:"placementBindings"`
+	PlacementRules    []string           `json:"placementRules"`
+	Policies          []PolicyStatus     `json:"policies"`
+	Conditions        []metav1.Condition `json:"conditions"`
 }
 
 //+kubebuilder:object:root=true
