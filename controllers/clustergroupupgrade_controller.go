@@ -25,6 +25,8 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -71,6 +73,16 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 		r.Log.Error(err, "Failed to get ClusterGroupUpgrade")
 		return ctrl.Result{}, err
+	}
+
+	// If the CR has just been created, set initial condition
+	if meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready") == nil {
+		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionTrue,
+			Reason:  "UpgradeNotEnforced",
+			Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
+		})
 	}
 
 	// Create remediation plan
@@ -127,6 +139,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Remediate policies depending on compliance state and upgrade plan.
 	if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
+		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  metav1.ConditionFalse,
+			Reason:  "UpgradeNotCompleted",
+			Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant",
+		})
+
 		for i, remediateBatch := range remediationPlan {
 			r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
 			r.Log.Info("Batch", "i", i+1)
@@ -210,6 +229,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			r.Log.Info("Batch upgrade completed")
+			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+				Type:    "Ready",
+				Status:  metav1.ConditionTrue,
+				Reason:  "UpgradeCompleted",
+				Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
+			})
 		}
 	}
 
