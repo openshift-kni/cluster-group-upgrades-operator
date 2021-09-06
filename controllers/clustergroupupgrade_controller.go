@@ -516,12 +516,13 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBindings(ctx context
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchPlacementRules []string, batchPolicies []string, batchIndex int) (*unstructured.Unstructured, error) {
 	var subjects []map[string]interface{}
 
-	subject := make(map[string]interface{})
-	subject["name"] = clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex)
-	subject["kind"] = "Policy"
-	subject["apiGroup"] = "policy.open-cluster-management.io"
-
-	subjects = append(subjects, subject)
+	for _, batchPolicy := range batchPolicies {
+		subject := make(map[string]interface{})
+		subject["name"] = batchPolicy
+		subject["kind"] = "Policy"
+		subject["apiGroup"] = "policy.open-cluster-management.io"
+		subjects = append(subjects, subject)
+	}
 
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
@@ -534,7 +535,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 			},
 		},
 		"placementRef": map[string]interface{}{
-			"name":     clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"name":     batchPlacementRules[0],
 			"kind":     "PlacementRule",
 			"apiGroup": "apps.open-cluster-management.io",
 		},
