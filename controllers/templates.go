@@ -118,11 +118,11 @@ spec:
                 status:
                   history:
                     - state: Completed 
-{{ if .Version }}
-                      version: {{ .Version }}
+{{ if .DesiredUpdate.Version }}
+                      version: {{ .DesiredUpdate.Version }}
 {{ end }}
-{{ if .Image }}
-                      image: {{ .Image }}
+{{ if .DesiredUpdate.Image }}
+                      image: {{ .DesiredUpdate.Image }}
 {{ end }}
   remediationAction: inform     
 `

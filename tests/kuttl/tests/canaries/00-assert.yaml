@@ -2,7 +2,7 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: canaries-batch-1
+  name: canaries-1
   namespace: default
 spec:
   clusterConditions:
@@ -14,7 +14,7 @@ spec:
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: canaries-batch-2
+  name: canaries-2
   namespace: default
 spec:
   clusterConditions:
@@ -31,30 +31,30 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: canaries-batch-1
+  name: canaries-1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: canaries-batch-1
+  name: canaries-1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: canaries-batch-1
+  name: canaries-platform-1
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: canaries-batch-2
+  name: canaries-2
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: canaries-batch-2
+  name: canaries-2
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: canaries-batch-2
+  name: canaries-platform-2
 ---
 # Check generated policies
 apiVersion: policy.open-cluster-management.io/v1
@@ -68,7 +68,8 @@ metadata:
     app: openshift-cluster-group-upgrades
     openshift-cluster-group-upgrades/batch: "1"
     openshift-cluster-group-upgrades/clusterGroupUpgrade: canaries
-  name: canaries-batch-1
+    openshift-cluster-group-upgrades/policyType: platformUpgrade
+  name: canaries-platform-1
   namespace: default
 spec:
   disabled: false
@@ -172,7 +173,8 @@ metadata:
     app: openshift-cluster-group-upgrades
     openshift-cluster-group-upgrades/batch: "2"
     openshift-cluster-group-upgrades/clusterGroupUpgrade: canaries
-  name: canaries-batch-2
+    openshift-cluster-group-upgrades/policyType: platformUpgrade
+  name: canaries-platform-2
   namespace: default
 spec:
   disabled: false

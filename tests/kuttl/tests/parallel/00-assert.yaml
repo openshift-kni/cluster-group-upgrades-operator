@@ -2,7 +2,7 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: parallel-batch-1
+  name: parallel-1
   namespace: default
 spec:
   clusterConditions:
@@ -20,16 +20,16 @@ spec:
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: parallel-batch-1
+  name: parallel-1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: parallel-batch-1
+  name: parallel-1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: parallel-batch-1
+  name: parallel-platform-1
 ---
 # Check generated policies
 apiVersion: policy.open-cluster-management.io/v1
@@ -43,7 +43,8 @@ metadata:
     app: openshift-cluster-group-upgrades
     openshift-cluster-group-upgrades/batch: "1"
     openshift-cluster-group-upgrades/clusterGroupUpgrade: parallel
-  name: parallel-batch-1
+    openshift-cluster-group-upgrades/policyType: platformUpgrade
+  name: parallel-platform-1
   namespace: default
 spec:
   disabled: false
