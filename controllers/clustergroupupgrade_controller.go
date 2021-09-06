@@ -273,7 +273,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"name":      clusterGroupUpgrade.Name + "-" + strconv.Itoa(batchIndex),
 			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
@@ -415,7 +415,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx contex
 		return nil, err
 	}
 
-	u.SetName(clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex))
+	u.SetName(clusterGroupUpgrade.Name + "-" + "platform" + "-" + strconv.Itoa(batchIndex))
 	u.SetNamespace(clusterGroupUpgrade.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -445,7 +445,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx contex
 		return nil, err
 	}
 
-	u.SetName(clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex))
+	u.SetName(clusterGroupUpgrade.Name + "-" + "operator" + "-" + strconv.Itoa(batchIndex))
 	u.SetNamespace(clusterGroupUpgrade.GetNamespace())
 	labels := u.GetLabels()
 	if labels == nil {
@@ -527,7 +527,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      clusterGroupUpgrade.Name + "-" + "batch" + "-" + strconv.Itoa(batchIndex),
+			"name":      clusterGroupUpgrade.Name + "-" + strconv.Itoa(batchIndex),
 			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
