@@ -2,7 +2,7 @@
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: site1
+  name: canaries-1
   namespace: default
 spec:
   clusterConditions:
@@ -14,7 +14,7 @@ spec:
 apiVersion: apps.open-cluster-management.io/v1
 kind: PlacementRule
 metadata:
-  name: site2
+  name: canaries-2
   namespace: default
 spec:
   clusterConditions:
@@ -22,99 +22,54 @@ spec:
     type: ManagedClusterConditionAvailable
   clusters:
   - name: spoke2
----
-apiVersion: apps.open-cluster-management.io/v1
-kind: PlacementRule
-metadata:
-  name: group1-batch-1
-  namespace: default
-spec:
-  clusterConditions:
-  - status: "True"
-    type: ManagedClusterConditionAvailable
-  clusters:
-  - name: spoke2
----
-apiVersion: apps.open-cluster-management.io/v1
-kind: PlacementRule
-metadata:
-  name: group1-batch-2
-  namespace: default
-spec:
-  clusterConditions:
-  - status: "True"
-    type: ManagedClusterConditionAvailable
-  clusters:
-  - name: spoke1
+  - name: spoke3
+  - name: spoke4
+  - name: spoke5
+  - name: spoke6
 ---
 # Check placement bindings
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: site1
+  name: canaries-1
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: site1
+  name: canaries-1
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: site1-site1-namespace
+  name: canaries-platform-1
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
 metadata:
-  name: site2
+  name: canaries-2
   namespace: default
 placementRef:
   apiGroup: apps.open-cluster-management.io
   kind: PlacementRule
-  name: site2
+  name: canaries-2
 subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
-  name: site2-site2-namespace
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: PlacementBinding
-metadata:
-  name: group1-batch-1
-  namespace: default
-placementRef:
-  apiGroup: apps.open-cluster-management.io
-  kind: PlacementRule
-  name: group1-batch-1
-subjects:
-- apiGroup: policy.open-cluster-management.io
-  kind: Policy
-  name: common-group1-batch-1-common-namespace
-- apiGroup: policy.open-cluster-management.io
-  kind: Policy
-  name: group1-batch-1-group1-namespace
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: PlacementBinding
-metadata:
-  name: group1-batch-2
-  namespace: default
-placementRef:
-  apiGroup: apps.open-cluster-management.io
-  kind: PlacementRule
-  name: group1-batch-2
-subjects:
-- apiGroup: policy.open-cluster-management.io
-  kind: Policy
-  name: common-group1-batch-2-common-namespace
-- apiGroup: policy.open-cluster-management.io
-  kind: Policy
-  name: group1-batch-2-group1-namespace
+  name: canaries-platform-2
 ---
 # Check generated policies
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: common-group1-batch-1-common-namespace
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  labels:
+    app: openshift-cluster-group-upgrades
+    openshift-cluster-group-upgrades/batch: "1"
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: canaries
+    openshift-cluster-group-upgrades/policyType: platformUpgrade
+  name: canaries-platform-1
   namespace: default
 spec:
   disabled: false
@@ -123,7 +78,29 @@ spec:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-common-ns
+        name: upgrade-cluster
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
+            metadata:
+              name: version
+            spec:
+              channel: stable-4.8
+              desiredUpdate:
+                force: true
+                image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                version: 4.8.1
+              upstream: https://amd64.ocp.releases.ci.openshift.org/graph
+        remediationAction: inform
+        severity: high
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-upgrade-check-co-available
       spec:
         namespaceSelector:
           exclude:
@@ -131,20 +108,73 @@ spec:
           include:
           - default
         object-templates:
-        - complianceType: musthave
+        - complianceType: mustnothave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: common
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "False"
+                type: Available
         remediationAction: inform
         severity: low
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: policy-upgrade-check-co-not-degraded
+      spec:
+        namespaceSelector:
+          exclude:
+          - kube-*
+          include:
+          - default
+        object-templates:
+        - complianceType: mustnothave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "True"
+                type: Degraded
+        remediationAction: inform
+        severity: low
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: check-installed-version-status
+      spec:
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
+            metadata:
+              name: version
+            status:
+              history:
+              - image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                state: Completed
+                version: 4.8.1
+        remediationAction: inform
+        severity: high
   remediationAction: inform
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: Policy
 metadata:
-  name: site1-site1-namespace
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  labels:
+    app: openshift-cluster-group-upgrades
+    openshift-cluster-group-upgrades/batch: "2"
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: canaries
+    openshift-cluster-group-upgrades/policyType: platformUpgrade
+  name: canaries-platform-2
   namespace: default
 spec:
   disabled: false
@@ -153,37 +183,29 @@ spec:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-site1-ns
+        name: upgrade-cluster
       spec:
-        namespaceSelector:
-          exclude:
-          - kube-*
-          include:
-          - default
         object-templates:
         - complianceType: musthave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
             metadata:
-              name: site1
+              name: version
+            spec:
+              channel: stable-4.8
+              desiredUpdate:
+                force: true
+                image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                version: 4.8.1
+              upstream: https://amd64.ocp.releases.ci.openshift.org/graph
         remediationAction: inform
-        severity: low
-  remediationAction: inform
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: Policy
-metadata:
-  name: site2-site2-namespace
-  namespace: default
-spec:
-  disabled: false
-  policy-templates:
+        severity: high
   - objectDefinition:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-site2-ns
+        name: policy-upgrade-check-co-available
       spec:
         namespaceSelector:
           exclude:
@@ -191,29 +213,21 @@ spec:
           include:
           - default
         object-templates:
-        - complianceType: musthave
+        - complianceType: mustnothave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: site2
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "False"
+                type: Available
         remediationAction: inform
         severity: low
-  remediationAction: inform
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: Policy
-metadata:
-  name: group1-batch-1-group1-namespace
-  namespace: default
-spec:
-  disabled: false
-  policy-templates:
   - objectDefinition:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-group1-ns
+        name: policy-upgrade-check-co-not-degraded
       spec:
         namespaceSelector:
           exclude:
@@ -221,42 +235,34 @@ spec:
           include:
           - default
         object-templates:
-        - complianceType: musthave
+        - complianceType: mustnothave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
-            metadata:
-              name: group1
+            apiVersion: config.openshift.io/v1
+            kind: ClusterOperator
+            status:
+              conditions:
+              - status: "True"
+                type: Degraded
         remediationAction: inform
         severity: low
-  remediationAction: inform
----
-apiVersion: policy.open-cluster-management.io/v1
-kind: Policy
-metadata:
-  name: group1-batch-2-group1-namespace
-  namespace: default
-spec:
-  disabled: false
-  policy-templates:
   - objectDefinition:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: policy-namespace-group1-ns
+        name: check-installed-version-status
       spec:
-        namespaceSelector:
-          exclude:
-          - kube-*
-          include:
-          - default
         object-templates:
         - complianceType: musthave
           objectDefinition:
-            apiVersion: v1
-            kind: Namespace
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
             metadata:
-              name: group1
+              name: version
+            status:
+              history:
+              - image: quay.io/openshift-release-dev/ocp-release:4.8.1-x86_64
+                state: Completed
+                version: 4.8.1
         remediationAction: inform
-        severity: low
+        severity: high
   remediationAction: inform

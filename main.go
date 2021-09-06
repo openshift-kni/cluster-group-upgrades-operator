@@ -78,28 +78,12 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controllers.GroupReconciler{
+	if err = (&controllers.ClusterGroupUpgradeReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Group"),
+		Log:    ctrl.Log.WithName("controllers").WithName("ClusterGroupUpgrade"),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Group")
-		os.Exit(1)
-	}
-	if err = (&controllers.SiteReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Site"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Site")
-		os.Exit(1)
-	}
-	if err = (&controllers.CommonReconciler{
-		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("Common"),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Common")
+		setupLog.Error(err, "unable to create controller", "controller", "ClusterGroupUpgrade")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

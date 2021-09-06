@@ -2,11 +2,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  - command: oc delete -f ../../../../deploy/upgrades/canaries/common.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/canaries/site1.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/canaries/site2.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/upgrades/canaries/group1.yaml
+  - command: oc delete -f ../../../../deploy/upgrades/canaries/clustergroupupgrade.yaml
     namespaced: true

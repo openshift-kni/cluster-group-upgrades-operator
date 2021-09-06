@@ -1,20 +1,13 @@
-# Cluster Group LCM operator
+# Cluster Group Upgrades operator
 
 ## What is
 
-Cluster Group LCM operator is a Kubernetes operator that facilitates software lifecycle management of fleets of clusters. It uses Red Hat Advanced Cluster Management (RHACM) for performing changes on target clusters, in particular by using RHACM policies.
-Cluster Group LCM uses the following CRs as abstractions for defining state of clusters:
+Cluster Group Upgrades operator is a Kubernetes operator that facilitates software lifecycle management of fleets of clusters. It uses Red Hat Advanced Cluster Management (RHACM) for performing changes on target clusters, in particular by using RHACM policies.
+Cluster Group Upgrades operator uses the following CRDs:
 
-* Common
-* Site
-* Group
+* ClusterGroupUpgrade
 
-A Common CR defines ACM policies that are common to all clusters managed by ACM.
-A Site CR defines ACM policies that are specific to a particular cluster managed by ACM.
-A Group CR defines ACM policies that are applicable to the sites belonging to it.
-
-By setting the **remediationStrategy** spec field of the Group CR, you can specify how many remediations can be performed concurrently. That way you can perform remediations serially (one cluster after another), in parallel (all clusters at once) or a in batches of N clusters. It also allows to specify a list of canary Site objects, which will be remediated before the rest of Site objects of the Group.
-Check files within **samples** folder for examples.
+A ClusterGroupUpgrade CR defines a desired upgrade to a group clusters.
 
 ## How to deploy
 

@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 0.0.2
+VERSION ?= 0.0.3
 
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
@@ -28,7 +28,7 @@ BUNDLE_METADATA_OPTS ?= $(BUNDLE_CHANNELS) $(BUNDLE_DEFAULT_CHANNEL)
 # This variable is used to construct full image tags for bundle and catalog images.
 #
 # For example, running 'make bundle-build bundle-push catalog-build catalog-push' will build and push both
-# openshift.io/cluster-group-lcm-bundle:$VERSION and openshift.io/cluster-group-lcm-catalog:$VERSION.
+# openshift.io/cluster-group-upgrades-operator-bundle:$VERSION and openshift.io/cluster-group-upgrades-operator-catalog:$VERSION.
 IMAGE_TAG_BASE ?= quay.io/openshift-kni/cluster-group-upgrades-operator
 
 # BUNDLE_IMG defines the image:tag used for the bundle.

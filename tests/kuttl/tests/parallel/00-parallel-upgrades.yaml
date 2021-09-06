@@ -2,11 +2,5 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  - command: oc apply -f ../../../../deploy/upgrades/parallel/common.yaml
-    namespaced: true
-  - command: oc apply -f ../../../../deploy/upgrades/parallel/site1.yaml
-    namespaced: true
-  - command: oc apply -f ../../../../deploy/upgrades/parallel/site2.yaml
-    namespaced: true
-  - command: oc apply -f ../../../../deploy/upgrades/parallel/group1.yaml
+  - command: oc apply -f ../../../../deploy/upgrades/parallel/clustergroupupgrade.yaml
     namespaced: true

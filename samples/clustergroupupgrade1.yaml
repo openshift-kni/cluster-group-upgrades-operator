@@ -1,0 +1,25 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: test
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke3
+  - spoke4
+  - spoke5
+  - spoke6
+  remediationAction: inform
+  remediationStrategy:
+    canaries:
+    - spoke1
+    maxConcurrency: 2
+  platformUpgrade:
+    channel: stable-4.8
+    desiredUpdate:
+      version: 4.8.2
+      image: quay.io/openshift-release-dev/ocp-release:4.8.2-x86_64
+      force: true
+    upstream: https://amd64.ocp.releases.ci.openshift.org/graph
