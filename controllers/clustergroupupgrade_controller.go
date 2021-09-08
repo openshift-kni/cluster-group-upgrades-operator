@@ -118,19 +118,16 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return ctrl.Result{}, err
 			}
 			placementRules = append(placementRules, batchPlacementRules...)
-			clusterGroupUpgrade.Status.PlacementRules = placementRules
 			batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 			policies = append(policies, batchPolicies...)
-			clusterGroupUpgrade.Status.Policies = policies
 			batchPlacementBindings, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 			placementBindings = append(placementBindings, batchPlacementBindings...)
-			clusterGroupUpgrade.Status.PlacementBindings = placementBindings
 		}
 
 		if clusterGroupUpgrade.Spec.RemediationAction == "inform" {
@@ -165,8 +162,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
 				r.Log.Info("Batch", "i", i+1)
 
-				var platformUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
-					"openshift-cluster-group-upgrades/policyType": "platformUpgrade"}
+				var platformUpgradeBatchPolicyLabels = map[string]string{
+					"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+					"openshift-cluster-group-upgrades/batch":               strconv.Itoa(i + 1),
+					"openshift-cluster-group-upgrades/policyType":          "platformUpgrade"}
 				listOpts := []client.ListOption{
 					client.InNamespace(clusterGroupUpgrade.Namespace),
 					client.MatchingLabels(platformUpgradeBatchPolicyLabels),
@@ -205,8 +204,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 				r.Log.Info("Platform upgrade policies for batch completed")
 
-				var operatorUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
-					"openshift-cluster-group-upgrades/policyType": "operatorUpgrade"}
+				var operatorUpgradeBatchPolicyLabels = map[string]string{
+					"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+					"openshift-cluster-group-upgrades/batch":               strconv.Itoa(i + 1),
+					"openshift-cluster-group-upgrades/policyType":          "operatorUpgrade"}
 				listOpts = []client.ListOption{
 					client.InNamespace(clusterGroupUpgrade.Namespace),
 					client.MatchingLabels(operatorUpgradeBatchPolicyLabels),
@@ -271,9 +272,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
-	// Delete old resources
-	//r.deleteOldResources(ctx, clusterGroupUpgrade)
 
 	return ctrl.Result{}, nil
 }
@@ -606,33 +604,12 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	if clusterGroupUpgrade.Status.PlacementRules == nil {
-		clusterGroupUpgrade.Status.PlacementRules = make([]string, 0)
-	}
-	if clusterGroupUpgrade.Status.PlacementBindings == nil {
-		clusterGroupUpgrade.Status.PlacementBindings = make([]string, 0)
-	}
-	if clusterGroupUpgrade.Status.Policies == nil {
-		clusterGroupUpgrade.Status.Policies = make([]string, 0)
-	}
-
-	err := r.Status().Update(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return err
-	}
-	r.Log.Info("Updated ClusterGroupUpgrade status")
-
-	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var labelsForClusterGroupUpgrade = map[string]string{"app": "openshift-cluster-group-upgrades", "openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.GetName()}
+func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	listOpts := []client.ListOption{
 		client.InNamespace(clusterGroupUpgrade.Namespace),
-		client.MatchingLabels(labelsForClusterGroupUpgrade),
+		client.MatchingLabels(placementRuleLabels),
 	}
-
 	placementRulesList := &unstructured.UnstructuredList{}
 	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
@@ -640,25 +617,18 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 		Version: "v1",
 	})
 	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
-		return err
-	}
-	for _, foundPlacementRule := range placementRulesList.Items {
-		foundInStatus := false
-		for _, statusPlacementRule := range clusterGroupUpgrade.Status.PlacementRules {
-			if foundPlacementRule.GetName() == statusPlacementRule {
-				foundInStatus = true
-				break
-			}
-		}
-		if !foundInStatus {
-			err := r.Delete(ctx, &foundPlacementRule)
-			if err != nil {
-				return err
-			}
-			r.Log.Info("Deleted API PlacementRule object", "foundPlacementRule", foundPlacementRule)
-		}
+		return nil, err
 	}
 
+	return placementRulesList, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) getPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var placementBindingLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(placementBindingLabels),
+	}
 	placementBindingsList := &unstructured.UnstructuredList{}
 	placementBindingsList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -666,25 +636,18 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 		Version: "v1",
 	})
 	if err := r.List(ctx, placementBindingsList, listOpts...); err != nil {
-		return err
-	}
-	for _, foundPlacementBinding := range placementBindingsList.Items {
-		foundInStatus := false
-		for _, statusPlacementBinding := range clusterGroupUpgrade.Status.PlacementBindings {
-			if foundPlacementBinding.GetName() == statusPlacementBinding {
-				foundInStatus = true
-				break
-			}
-		}
-		if !foundInStatus {
-			err := r.Delete(ctx, &foundPlacementBinding)
-			if err != nil {
-				return err
-			}
-			r.Log.Info("Deleted API PlacementBinding object", "foundPlacementBinding", foundPlacementBinding)
-		}
+		return nil, err
 	}
 
+	return placementBindingsList, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) getPolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var policyLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(policyLabels),
+	}
 	policiesList := &unstructured.UnstructuredList{}
 	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -692,24 +655,127 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 		Version: "v1",
 	})
 	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return nil, err
+	}
+
+	return policiesList, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) getPlatformUpgradePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var platformUpgradePolicyLabels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/policyType":          "platformUpgrade"}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(platformUpgradePolicyLabels),
+	}
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return nil, err
+	}
+
+	return policiesList, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) getOperatorUpgradePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var operatorUpgradePolicyLabels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/policyType":          "operatorUpgrade"}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(operatorUpgradePolicyLabels),
+	}
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return nil, err
+	}
+
+	return policiesList, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade)
+	if err != nil {
 		return err
 	}
-	for _, foundPolicy := range policiesList.Items {
-		foundInStatus := false
-		for _, statusPolicy := range clusterGroupUpgrade.Status.Policies {
-			if foundPolicy.GetName() == statusPolicy {
-				foundInStatus = true
-				break
-			}
-		}
-		if !foundInStatus {
-			err := r.Delete(ctx, &foundPolicy)
-			if err != nil {
-				return err
-			}
-			r.Log.Info("Deleted API Policy object", "foundPolicy", foundPolicy)
-		}
+	placementRulesStatus := make([]string, 0)
+	for _, placementRule := range placementRules.Items {
+		placementRulesStatus = append(placementRulesStatus, placementRule.GetName())
 	}
+	clusterGroupUpgrade.Status.PlacementRules = placementRulesStatus
+
+	placementBindings, err := r.getPlacementBindings(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	placementBindingsStatus := make([]string, 0)
+	for _, placementBinding := range placementBindings.Items {
+		placementBindingsStatus = append(placementBindingsStatus, placementBinding.GetName())
+	}
+	clusterGroupUpgrade.Status.PlacementBindings = placementBindingsStatus
+
+	policies, err := r.getPolicies(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	policiesStatus := make([]string, 0)
+	for _, policy := range policies.Items {
+		policiesStatus = append(policiesStatus, policy.GetName())
+	}
+	clusterGroupUpgrade.Status.Policies = policiesStatus
+
+	compliantPolicies := 0
+	platformUpgradePolicyStatus := make([]ranv1alpha1.PolicyStatus, 0)
+	platformUpgradePolicies, err := r.getPlatformUpgradePolicies(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	for _, policy := range platformUpgradePolicies.Items {
+		policyStatus := ranv1alpha1.PolicyStatus{}
+		policyStatus.Name = policy.GetName()
+		statusObject := policy.Object["status"].(map[string]interface{})
+
+		policyStatus.ComplianceState = statusObject["compliant"].(string)
+		if policyStatus.ComplianceState == "Compliant" {
+			compliantPolicies++
+		}
+		platformUpgradePolicyStatus = append(platformUpgradePolicyStatus, policyStatus)
+	}
+	clusterGroupUpgrade.Status.Status.PlatformUpgradePolicies = platformUpgradePolicyStatus
+
+	operatorUpgradePolicyStatus := make([]ranv1alpha1.PolicyStatus, 0)
+	operatorUpgradePolicies, err := r.getOperatorUpgradePolicies(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	for _, policy := range operatorUpgradePolicies.Items {
+		policyStatus := ranv1alpha1.PolicyStatus{}
+		policyStatus.Name = policy.GetName()
+		statusObject := policy.Object["status"].(map[string]interface{})
+		policyStatus.ComplianceState = statusObject["compliant"].(string)
+		if policyStatus.ComplianceState == "Compliant" {
+			compliantPolicies++
+		}
+		operatorUpgradePolicyStatus = append(operatorUpgradePolicyStatus, policyStatus)
+	}
+	clusterGroupUpgrade.Status.Status.OperatorUpgradePolicies = operatorUpgradePolicyStatus
+
+	clusterGroupUpgrade.Status.Status.Progress = (compliantPolicies / len(clusterGroupUpgrade.Status.Policies)) * 100
+	err = r.Status().Update(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	r.Log.Info("Updated ClusterGroupUpgrade status")
 
 	return nil
 }
