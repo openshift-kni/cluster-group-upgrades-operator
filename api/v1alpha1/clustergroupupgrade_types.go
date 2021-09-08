@@ -75,8 +75,9 @@ type ClusterGroupUpgradeStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	PlacementBindings []string           `json:"placementBindings"`
 	PlacementRules    []string           `json:"placementRules"`
-	Policies          []PolicyStatus     `json:"policies"`
+	Policies          []string           `json:"policies"`
 	Conditions        []metav1.Condition `json:"conditions"`
+	RemediationPlan   [][]string         `json:"remediationPlan"`
 }
 
 //+kubebuilder:object:root=true

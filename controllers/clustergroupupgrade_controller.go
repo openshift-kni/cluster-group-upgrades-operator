@@ -75,177 +75,205 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// If the CR has just been created, set initial condition
-	if meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready") == nil {
-		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  metav1.ConditionTrue,
-			Reason:  "UpgradeNotEnforced",
-			Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
-		})
-	}
-
-	// Create remediation plan
-	var remediationPlan [][]string
-	isCanary := make(map[string]bool)
-	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
-		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
-			remediationPlan = append(remediationPlan, []string{canary})
-			isCanary[canary] = true
-		}
-
-	}
-	var clusters []string
-	for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
-		if !isCanary[cluster] {
-			clusters = append(clusters, cluster)
-		}
-	}
-	for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
-		var batch []string
-		for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
-			site := clusters[j]
-			if !isCanary[site] {
-				batch = append(batch, site)
-			}
-		}
-		if len(batch) > 0 {
-			remediationPlan = append(remediationPlan, batch)
-		}
-	}
-	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
-
-	// Reconcile resources
 	var placementRules []string
 	var placementBindings []string
 	var policies []string
-	for i, remediateBatch := range remediationPlan {
-		batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		placementRules = append(placementRules, batchPlacementRules...)
-		batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		policies = append(policies, batchPolicies...)
-		batchPlacementBindings, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		placementBindings = append(placementBindings, batchPlacementBindings...)
-	}
-
-	// Remediate policies depending on compliance state and upgrade plan.
-	if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
-		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  metav1.ConditionFalse,
-			Reason:  "UpgradeCompleted",
-			Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant",
-		})
-
-		for i, remediateBatch := range remediationPlan {
-			r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
-			r.Log.Info("Batch", "i", i+1)
-			batchCompliant := true
-			var platformUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
-				"openshift-cluster-group-upgrades/policyType": "platformUpgrade"}
-			listOpts := []client.ListOption{
-				client.InNamespace(clusterGroupUpgrade.Namespace),
-				client.MatchingLabels(platformUpgradeBatchPolicyLabels),
+	readyCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready")
+	if readyCondition == nil {
+		// Create remediation plan
+		var remediationPlan [][]string
+		isCanary := make(map[string]bool)
+		if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
+			for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
+				remediationPlan = append(remediationPlan, []string{canary})
+				isCanary[canary] = true
 			}
-			policiesList := &unstructured.UnstructuredList{}
-			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "policy.open-cluster-management.io",
-				Kind:    "PolicyList",
-				Version: "v1",
-			})
-			if err := r.List(ctx, policiesList, listOpts...); err != nil {
+
+		}
+		var clusters []string
+		for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
+			if !isCanary[cluster] {
+				clusters = append(clusters, cluster)
+			}
+		}
+		for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
+			var batch []string
+			for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
+				site := clusters[j]
+				if !isCanary[site] {
+					batch = append(batch, site)
+				}
+			}
+			if len(batch) > 0 {
+				remediationPlan = append(remediationPlan, batch)
+			}
+		}
+		r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
+		clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
+
+		// Reconcile resources
+		for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+			batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+			if err != nil {
 				return ctrl.Result{}, err
 			}
-			for _, policy := range policiesList.Items {
-				specObject := policy.Object["spec"].(map[string]interface{})
-				if specObject["remediationAction"] == "inform" {
-					specObject["remediationAction"] = "enforce"
-					err = r.Client.Update(ctx, &policy)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-					r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
-				}
-
-				statusObject := policy.Object["status"].(map[string]interface{})
-				if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
-					batchCompliant = false
-				}
-			}
-
-			if !batchCompliant {
-				r.Log.Info("Platform upgrade policies for batch still running")
-				break
-			} else {
-				r.Log.Info("Platform upgrade policies for batch completed")
-			}
-
-			var operatorUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
-				"openshift-cluster-group-upgrades/policyType": "operatorUpgrade"}
-			listOpts = []client.ListOption{
-				client.InNamespace(clusterGroupUpgrade.Namespace),
-				client.MatchingLabels(operatorUpgradeBatchPolicyLabels),
-			}
-			policiesList = &unstructured.UnstructuredList{}
-			policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-				Group:   "policy.open-cluster-management.io",
-				Kind:    "PolicyList",
-				Version: "v1",
-			})
-			if err := r.List(ctx, policiesList, listOpts...); err != nil {
+			placementRules = append(placementRules, batchPlacementRules...)
+			clusterGroupUpgrade.Status.PlacementRules = placementRules
+			batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+			if err != nil {
 				return ctrl.Result{}, err
 			}
-			for _, policy := range policiesList.Items {
-				specObject := policy.Object["spec"].(map[string]interface{})
-				if specObject["remediationAction"] == "inform" {
-					specObject["remediationAction"] = "enforce"
-					err = r.Client.Update(ctx, &policy)
-					if err != nil {
-						return ctrl.Result{}, err
-					}
-					r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy)
-				}
-
-				statusObject := policy.Object["status"].(map[string]interface{})
-				if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
-					batchCompliant = false
-				}
+			policies = append(policies, batchPolicies...)
+			clusterGroupUpgrade.Status.Policies = policies
+			batchPlacementBindings, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
+			if err != nil {
+				return ctrl.Result{}, err
 			}
+			placementBindings = append(placementBindings, batchPlacementBindings...)
+			clusterGroupUpgrade.Status.PlacementBindings = placementBindings
+		}
 
-			if !batchCompliant {
-				r.Log.Info("Operator upgrade policies for batch still running")
-				break
-			} else {
-				r.Log.Info("Operator upgrades policies for batch completed")
-			}
-
-			r.Log.Info("Batch upgrade completed")
+		if clusterGroupUpgrade.Spec.RemediationAction == "inform" {
 			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 				Type:    "Ready",
-				Status:  metav1.ConditionTrue,
+				Status:  metav1.ConditionFalse,
+				Reason:  "UpgradeNotEnforced",
+				Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
+			})
+		} else {
+			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+				Type:    "Ready",
+				Status:  metav1.ConditionFalse,
 				Reason:  "UpgradeCompleted",
-				Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
+				Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
 			})
 		}
+	} else if readyCondition.Status == metav1.ConditionFalse {
+		if readyCondition.Reason == "UpgradeNotEnforced" {
+			if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
+				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+					Type:    "Ready",
+					Status:  metav1.ConditionFalse,
+					Reason:  "UpgradeCompleted",
+					Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant",
+				})
+			}
+		} else if readyCondition.Reason == "UpgradeCompleted" {
+			// Remediate policies depending on compliance state and upgrade plan.
+			isUpgradeComplete := false
+			for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+				r.Log.Info("Remediating clusters", "remediateBatch", remediateBatch)
+				r.Log.Info("Batch", "i", i+1)
+
+				var platformUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
+					"openshift-cluster-group-upgrades/policyType": "platformUpgrade"}
+				listOpts := []client.ListOption{
+					client.InNamespace(clusterGroupUpgrade.Namespace),
+					client.MatchingLabels(platformUpgradeBatchPolicyLabels),
+				}
+				policiesList := &unstructured.UnstructuredList{}
+				policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+					Group:   "policy.open-cluster-management.io",
+					Kind:    "PolicyList",
+					Version: "v1",
+				})
+				if err := r.List(ctx, policiesList, listOpts...); err != nil {
+					return ctrl.Result{}, err
+				}
+
+				isBatchPlatformUpgradePolicyCompliant := true
+				for _, policy := range policiesList.Items {
+					specObject := policy.Object["spec"].(map[string]interface{})
+					if specObject["remediationAction"] == "inform" {
+						specObject["remediationAction"] = "enforce"
+						err = r.Client.Update(ctx, &policy)
+						if err != nil {
+							return ctrl.Result{}, err
+						}
+						r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy.GetName())
+					}
+
+					statusObject := policy.Object["status"].(map[string]interface{})
+					if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
+						r.Log.Info("Platform upgrade policies for batch still running")
+						isBatchPlatformUpgradePolicyCompliant = false
+					}
+				}
+				if !isBatchPlatformUpgradePolicyCompliant {
+					break
+				}
+
+				r.Log.Info("Platform upgrade policies for batch completed")
+
+				var operatorUpgradeBatchPolicyLabels = map[string]string{"openshift-cluster-group-upgrades/batch": strconv.Itoa(i + 1),
+					"openshift-cluster-group-upgrades/policyType": "operatorUpgrade"}
+				listOpts = []client.ListOption{
+					client.InNamespace(clusterGroupUpgrade.Namespace),
+					client.MatchingLabels(operatorUpgradeBatchPolicyLabels),
+				}
+				policiesList = &unstructured.UnstructuredList{}
+				policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+					Group:   "policy.open-cluster-management.io",
+					Kind:    "PolicyList",
+					Version: "v1",
+				})
+				if err := r.List(ctx, policiesList, listOpts...); err != nil {
+					return ctrl.Result{}, err
+				}
+
+				isBatchOperatorUpgradePolicyCompliant := true
+				for _, policy := range policiesList.Items {
+					specObject := policy.Object["spec"].(map[string]interface{})
+					if specObject["remediationAction"] == "inform" {
+						specObject["remediationAction"] = "enforce"
+						err = r.Client.Update(ctx, &policy)
+						if err != nil {
+							return ctrl.Result{}, err
+						}
+						r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy.GetName())
+					}
+
+					statusObject := policy.Object["status"].(map[string]interface{})
+					if statusObject["compliant"] == nil || statusObject["compliant"] != "Compliant" {
+						r.Log.Info("Operator upgrade policies for batch still running")
+						isBatchOperatorUpgradePolicyCompliant = false
+					}
+				}
+				if !isBatchOperatorUpgradePolicyCompliant {
+					break
+				}
+
+				r.Log.Info("Operator upgrades policies for batch completed")
+
+				r.Log.Info("Batch upgrade completed")
+
+				if i == (len(clusterGroupUpgrade.Status.RemediationPlan) - 1) {
+					isUpgradeComplete = true
+				}
+			}
+
+			if isUpgradeComplete {
+				r.Log.Info("Upgrade is completed")
+				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+					Type:    "Ready",
+					Status:  metav1.ConditionTrue,
+					Reason:  "UpgradeCompleted",
+					Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
+				})
+			}
+		}
+	} else {
+		// Delete ACM objects on completion
 	}
 
 	// Update status
-	err = r.updateStatus(ctx, clusterGroupUpgrade, placementRules, placementBindings, policies)
+	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	// Delete old resources
-	r.deleteOldResources(ctx, clusterGroupUpgrade)
+	//r.deleteOldResources(ctx, clusterGroupUpgrade)
 
 	return ctrl.Result{}, nil
 }
@@ -578,39 +606,16 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, placementRules []string, placementBindings []string, policies []string) error {
-	clusterGroupUpgrade.Status.PlacementRules = placementRules
-	clusterGroupUpgrade.Status.PlacementBindings = placementBindings
-
-	var policiesStatus []ranv1alpha1.PolicyStatus
-	foundPolicy := &unstructured.Unstructured{}
-	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "Policy",
-		Version: "v1",
-	})
-	for _, policy := range policies {
-		err := r.Client.Get(ctx, client.ObjectKey{
-			Name:      policy,
-			Namespace: clusterGroupUpgrade.Namespace,
-		}, foundPolicy)
-		if err != nil {
-			return err
-		}
-
-		policyStatus := &ranv1alpha1.PolicyStatus{}
-		policyStatus.Name = foundPolicy.GetName()
-		if foundPolicy.Object["status"] == nil {
-			policyStatus.ComplianceState = "NonCompliant"
-		} else {
-			statusObject := foundPolicy.Object["status"].(map[string]interface{})
-			if statusObject["compliant"] != nil {
-				policyStatus.ComplianceState = statusObject["compliant"].(string)
-			}
-		}
-		policiesStatus = append(policiesStatus, *policyStatus)
+func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	if clusterGroupUpgrade.Status.PlacementRules == nil {
+		clusterGroupUpgrade.Status.PlacementRules = make([]string, 0)
 	}
-	clusterGroupUpgrade.Status.Policies = policiesStatus
+	if clusterGroupUpgrade.Status.PlacementBindings == nil {
+		clusterGroupUpgrade.Status.PlacementBindings = make([]string, 0)
+	}
+	if clusterGroupUpgrade.Status.Policies == nil {
+		clusterGroupUpgrade.Status.Policies = make([]string, 0)
+	}
 
 	err := r.Status().Update(ctx, clusterGroupUpgrade)
 	if err != nil {
@@ -692,7 +697,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteOldResources(ctx context.Context, 
 	for _, foundPolicy := range policiesList.Items {
 		foundInStatus := false
 		for _, statusPolicy := range clusterGroupUpgrade.Status.Policies {
-			if foundPolicy.GetName() == statusPolicy.Name {
+			if foundPolicy.GetName() == statusPolicy {
 				foundInStatus = true
 				break
 			}
