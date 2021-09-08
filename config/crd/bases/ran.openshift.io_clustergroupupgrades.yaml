@@ -174,19 +174,20 @@ spec:
                 type: array
               policies:
                 items:
-                  description: PolicyStatus defines the observed state of a Policy
-                  properties:
-                    complianceState:
-                      type: string
-                    name:
-                      type: string
-                  type: object
+                  type: string
+                type: array
+              remediationPlan:
+                items:
+                  items:
+                    type: string
+                  type: array
                 type: array
             required:
             - conditions
             - placementBindings
             - placementRules
             - policies
+            - remediationPlan
             type: object
         type: object
     served: true
