@@ -114,7 +114,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
 					Reason:  "UpgradeCompleted",
-					Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant",
+					Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant or it has just been enforced",
 				})
 			}
 		} else if readyCondition.Reason == "UpgradeCompleted" {
@@ -884,7 +884,6 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	if err != nil {
 		return err
 	}
-	r.Log.Info("Updated ClusterGroupUpgrade status")
 
 	return nil
 }
