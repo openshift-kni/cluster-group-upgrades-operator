@@ -187,6 +187,9 @@ spec:
               status:
                 description: UpgradeStatus defines the observed state of the upgrade
                 properties:
+                  completedAt:
+                    format: date-time
+                    type: string
                   compliancePercentage:
                     type: integer
                   operatorUpgradePolicies:

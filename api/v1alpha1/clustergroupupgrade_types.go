@@ -69,6 +69,7 @@ type UpgradeStatus struct {
 	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
 	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
 	StartedAt               metav1.Time    `json:"startedAt,omitempty"`
+	CompletedAt             metav1.Time    `json:"completedAt,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
