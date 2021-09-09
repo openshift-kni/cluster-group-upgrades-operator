@@ -209,6 +209,9 @@ spec:
                           type: string
                       type: object
                     type: array
+                  startedAt:
+                    format: date-time
+                    type: string
                 required:
                 - compliancePercentage
                 type: object
