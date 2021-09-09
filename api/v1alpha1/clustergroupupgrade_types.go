@@ -52,15 +52,22 @@ type PlatformUpgradeSpec struct {
 }
 
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
+//+kubebuilder:printcolumn:name="Compliance Percentage",type="integer",JSONPath=".status.status.compliancePercentage"
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-
 	Clusters            []string                 `json:"clusters,omitempty"`
 	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	RemediationAction   string                   `json:"remediationAction,omitempty"`
 	PlatformUpgrade     *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
 	OperatorUpgrades    []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
+}
+
+// UpgradeStatus defines the observed state of the upgrade
+type UpgradeStatus struct {
+	CompliancePercentage    int            `json:"compliancePercentage"`
+	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
+	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
@@ -73,11 +80,12 @@ type PolicyStatus struct {
 type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	PlacementBindings []string           `json:"placementBindings"`
-	PlacementRules    []string           `json:"placementRules"`
-	Policies          []string           `json:"policies"`
-	Conditions        []metav1.Condition `json:"conditions"`
-	RemediationPlan   [][]string         `json:"remediationPlan"`
+	PlacementBindings []string           `json:"placementBindings,omitempty"`
+	PlacementRules    []string           `json:"placementRules,omitempty"`
+	Policies          []string           `json:"policies,omitempty"`
+	Conditions        []metav1.Condition `json:"conditions,omitempty"`
+	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
+	Status            UpgradeStatus      `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
