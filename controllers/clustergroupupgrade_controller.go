@@ -226,7 +226,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		}
 	} else {
-		// Delete ACM objects on completion
+		clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
+		err := r.deletePlacementRules(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.deletePlacementBindings(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		r.deletePolicies(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Update status
@@ -718,9 +730,55 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 	clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
 }
 
-/*
+func (r *ClusterGroupUpgradeReconciler) deletePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(placementRuleLabels),
+	}
+	placementRulesList := &unstructured.UnstructuredList{}
+	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "apps.open-cluster-management.io",
+		Kind:    "PlacementRuleList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
+		return err
+	}
 
-func (r *ClusterGroupUpgradeReconciler) deletePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	for _, policy := range placementRulesList.Items {
+		if err := r.Delete(ctx, &policy); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) deletePlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	var placementBindingLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(placementBindingLabels),
+	}
+	placementBindingsList := &unstructured.UnstructuredList{}
+	placementBindingsList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PlacementBindingList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, placementBindingsList, listOpts...); err != nil {
+		return err
+	}
+
+	for _, placementBinding := range placementBindingsList.Items {
+		if err := r.Delete(ctx, &placementBinding); err != nil {
+
+		}
+	}
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) deletePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	var policyLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	listOpts := []client.ListOption{
 		client.InNamespace(clusterGroupUpgrade.Namespace),
@@ -733,17 +791,16 @@ func (r *ClusterGroupUpgradeReconciler) deletePolicies(ctx context.Context, clus
 		Version: "v1",
 	})
 	if err := r.List(ctx, policiesList, listOpts...); err != nil {
-		return nil, err
+		return err
 	}
 
 	for _, policy := range policiesList.Items {
-		if err := r.Delete(ctx, policy); err != nil {
+		if err := r.Delete(ctx, &policy); err != nil {
 
 		}
 	}
-	return policiesList, nil
+	return nil
 }
-*/
 
 func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade)
@@ -819,7 +876,10 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	}
 	clusterGroupUpgrade.Status.Status.OperatorUpgradePolicies = operatorUpgradePolicyStatus
 
-	clusterGroupUpgrade.Status.Status.CompliancePercentage = (compliantPolicies / len(clusterGroupUpgrade.Status.Policies)) * 100
+	if len(clusterGroupUpgrade.Status.Policies) != 0 {
+		clusterGroupUpgrade.Status.Status.CompliancePercentage = (compliantPolicies / len(clusterGroupUpgrade.Status.Policies)) * 100
+	}
+
 	err = r.Status().Update(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return err
