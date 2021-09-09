@@ -109,6 +109,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
+				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
