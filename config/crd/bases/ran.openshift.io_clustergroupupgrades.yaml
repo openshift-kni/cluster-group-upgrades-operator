@@ -187,6 +187,8 @@ spec:
               status:
                 description: UpgradeStatus defines the observed state of the upgrade
                 properties:
+                  compliancePercentage:
+                    type: integer
                   operatorUpgradePolicies:
                     items:
                       description: PolicyStatus defines the observed state of a Policy
@@ -207,10 +209,8 @@ spec:
                           type: string
                       type: object
                     type: array
-                  progress:
-                    type: integer
                 required:
-                - progress
+                - compliancePercentage
                 type: object
             type: object
         type: object

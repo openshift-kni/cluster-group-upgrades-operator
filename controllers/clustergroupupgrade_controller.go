@@ -75,59 +75,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	var placementRules []string
-	var placementBindings []string
-	var policies []string
 	readyCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready")
 	if readyCondition == nil {
-		// Create remediation plan
-		var remediationPlan [][]string
-		isCanary := make(map[string]bool)
-		if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
-			for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
-				remediationPlan = append(remediationPlan, []string{canary})
-				isCanary[canary] = true
-			}
-
-		}
-		var clusters []string
-		for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
-			if !isCanary[cluster] {
-				clusters = append(clusters, cluster)
-			}
-		}
-		for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
-			var batch []string
-			for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
-				site := clusters[j]
-				if !isCanary[site] {
-					batch = append(batch, site)
-				}
-			}
-			if len(batch) > 0 {
-				remediationPlan = append(remediationPlan, batch)
-			}
-		}
-		r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
-		clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
-
-		// Reconcile resources
-		for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
-			batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			placementRules = append(placementRules, batchPlacementRules...)
-			batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			policies = append(policies, batchPolicies...)
-			batchPlacementBindings, err := r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-			placementBindings = append(placementBindings, batchPlacementBindings...)
+		r.buildRemediationPlan(ctx, clusterGroupUpgrade)
+		err := r.reconcileResources(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return ctrl.Result{}, err
 		}
 
 		if clusterGroupUpgrade.Spec.RemediationAction == "inform" {
@@ -147,6 +100,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	} else if readyCondition.Status == metav1.ConditionFalse {
 		if readyCondition.Reason == "UpgradeNotEnforced" {
+			// We build remediation plan and reconcile resources again since the upgrade has not started
+			// and user may want to change settings
+			r.buildRemediationPlan(ctx, clusterGroupUpgrade)
+			err := r.reconcileResources(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+
 			if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
@@ -703,6 +664,86 @@ func (r *ClusterGroupUpgradeReconciler) getOperatorUpgradePolicies(ctx context.C
 	return policiesList, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	// Reconcile resources
+	for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+		batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+		if err != nil {
+			return err
+		}
+		batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+		if err != nil {
+			return err
+		}
+		_, err = r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+	// Create remediation plan
+	var remediationPlan [][]string
+	isCanary := make(map[string]bool)
+	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
+		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
+			remediationPlan = append(remediationPlan, []string{canary})
+			isCanary[canary] = true
+		}
+
+	}
+	var clusters []string
+	for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
+		if !isCanary[cluster] {
+			clusters = append(clusters, cluster)
+		}
+	}
+	for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
+		var batch []string
+		for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
+			site := clusters[j]
+			if !isCanary[site] {
+				batch = append(batch, site)
+			}
+		}
+		if len(batch) > 0 {
+			remediationPlan = append(remediationPlan, batch)
+		}
+	}
+	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
+	clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
+}
+
+/*
+
+func (r *ClusterGroupUpgradeReconciler) deletePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
+	var policyLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	listOpts := []client.ListOption{
+		client.InNamespace(clusterGroupUpgrade.Namespace),
+		client.MatchingLabels(policyLabels),
+	}
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return nil, err
+	}
+
+	for _, policy := range policiesList.Items {
+		if err := r.Delete(ctx, policy); err != nil {
+
+		}
+	}
+	return policiesList, nil
+}
+*/
+
 func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade)
 	if err != nil {
@@ -744,8 +785,11 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		policyStatus := ranv1alpha1.PolicyStatus{}
 		policyStatus.Name = policy.GetName()
 		statusObject := policy.Object["status"].(map[string]interface{})
-
-		policyStatus.ComplianceState = statusObject["compliant"].(string)
+		if statusObject["compliant"] == nil {
+			policyStatus.ComplianceState = "NonCompliant"
+		} else {
+			policyStatus.ComplianceState = statusObject["compliant"].(string)
+		}
 		if policyStatus.ComplianceState == "Compliant" {
 			compliantPolicies++
 		}
@@ -762,7 +806,11 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		policyStatus := ranv1alpha1.PolicyStatus{}
 		policyStatus.Name = policy.GetName()
 		statusObject := policy.Object["status"].(map[string]interface{})
-		policyStatus.ComplianceState = statusObject["compliant"].(string)
+		if statusObject["compliant"] == nil {
+			policyStatus.ComplianceState = "NonCompliant"
+		} else {
+			policyStatus.ComplianceState = statusObject["compliant"].(string)
+		}
 		if policyStatus.ComplianceState == "Compliant" {
 			compliantPolicies++
 		}
@@ -770,7 +818,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	}
 	clusterGroupUpgrade.Status.Status.OperatorUpgradePolicies = operatorUpgradePolicyStatus
 
-	clusterGroupUpgrade.Status.Status.Progress = (compliantPolicies / len(clusterGroupUpgrade.Status.Policies)) * 100
+	clusterGroupUpgrade.Status.Status.CompliancePercentage = (compliantPolicies / len(clusterGroupUpgrade.Status.Policies)) * 100
 	err = r.Status().Update(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return err

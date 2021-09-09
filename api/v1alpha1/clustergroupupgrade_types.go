@@ -52,6 +52,7 @@ type PlatformUpgradeSpec struct {
 }
 
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
+//+kubebuilder:printcolumn:name="Compliance Percentage",type="integer",JSONPath=".status.status.compliancePercentage"
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -64,7 +65,7 @@ type ClusterGroupUpgradeSpec struct {
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
-	Progress                int            `json:"progress"`
+	CompliancePercentage    int            `json:"compliancePercentage"`
 	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
 	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
 }
