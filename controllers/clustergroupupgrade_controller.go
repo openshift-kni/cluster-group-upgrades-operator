@@ -87,19 +87,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 				Type:    "Ready",
 				Status:  metav1.ConditionFalse,
-				Reason:  "UpgradeNotEnforced",
+				Reason:  "UpgradeNotStarted",
 				Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
 			})
 		} else {
 			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 				Type:    "Ready",
 				Status:  metav1.ConditionFalse,
-				Reason:  "UpgradeCompleted",
-				Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
+				Reason:  "UpgradeNotCompleted",
+				Message: "The ClusterGroupUpgrade CR has remediationAction set to inform or it has just been enforced",
 			})
 		}
 	} else if readyCondition.Status == metav1.ConditionFalse {
-		if readyCondition.Reason == "UpgradeNotEnforced" {
+		if readyCondition.Reason == "UpgradeNotStarted" {
 			// We build remediation plan and reconcile resources again since the upgrade has not started
 			// and user may want to change settings
 			r.buildRemediationPlan(ctx, clusterGroupUpgrade)
@@ -113,11 +113,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
-					Reason:  "UpgradeCompleted",
+					Reason:  "UpgradeNotCompleted",
 					Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant or it has just been enforced",
 				})
 			}
-		} else if readyCondition.Reason == "UpgradeCompleted" {
+		} else if readyCondition.Reason == "UpgradeNotCompleted" {
 			// Remediate policies depending on compliance state and upgrade plan.
 			isUpgradeComplete := false
 			for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
