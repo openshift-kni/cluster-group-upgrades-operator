@@ -151,7 +151,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						if err != nil {
 							return ctrl.Result{}, err
 						}
-						r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy.GetName())
+						r.Log.Info("Set remediationAction to enforce on Policy", "policy", policy.GetName())
 					}
 
 					statusObject := policy.Object["status"].(map[string]interface{})
@@ -193,7 +193,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						if err != nil {
 							return ctrl.Result{}, err
 						}
-						r.Log.Info("Set remediationAction to enforce on Policy object", "policy", policy.GetName())
+						r.Log.Info("Set remediationAction to enforce on Policy", "policy", policy.GetName())
 					}
 
 					statusObject := policy.Object["status"].(map[string]interface{})
@@ -227,17 +227,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	} else {
 		clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
-		err := r.deletePlacementRules(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		r.deletePlacementBindings(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		r.deletePolicies(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return ctrl.Result{}, err
+		if clusterGroupUpgrade.Spec.DeleteObjectsOnCompletion {
+			err := r.deletePlacementRules(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.deletePlacementBindings(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			err = r.deletePolicies(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 

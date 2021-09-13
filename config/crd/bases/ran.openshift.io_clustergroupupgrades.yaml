@@ -43,6 +43,8 @@ spec:
                 items:
                   type: string
                 type: array
+              deleteObjectsOnCompletion:
+                type: boolean
               operatorUpgrades:
                 items:
                   description: OperatorUpgradeSpec defines the configuration of an

@@ -56,11 +56,12 @@ type PlatformUpgradeSpec struct {
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Clusters            []string                 `json:"clusters,omitempty"`
-	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	RemediationAction   string                   `json:"remediationAction,omitempty"`
-	PlatformUpgrade     *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
-	OperatorUpgrades    []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
+	Clusters                  []string                 `json:"clusters,omitempty"`
+	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	RemediationAction         string                   `json:"remediationAction,omitempty"`
+	PlatformUpgrade           *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
+	OperatorUpgrades          []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
+	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
