@@ -41,7 +41,7 @@ func init() {
 	ClientsEnabled = true
 }
 
-// Returns a controller-runtime client.
+// New returns a controller-runtime client.
 func New() (client.Client, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
@@ -52,7 +52,7 @@ func New() (client.Client, error) {
 	return c, err
 }
 
-// Returns a kubernetes clientset.
+// NewK8s Returns a kubernetes clientset.
 func NewK8s() (*kubernetes.Clientset, error) {
 	cfg, err := config.GetConfig()
 	if err != nil {
