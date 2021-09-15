@@ -65,7 +65,7 @@ endif
 all: build
 
 # Testing configuration
-TEST_NAMESPACE ?= default
+TEST_NAMESPACE ?= openshift-cluster-group-upgrades
 
 ##@ General
 
@@ -91,14 +91,31 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
 
+.PHONY: fmt
 fmt: ## Run go fmt against code.
+	@echo "Running go fmt"
 	go fmt ./...
 
+.PHONY: vet
 vet: ## Run go vet against code.
+	@echo "Running go vet"
 	go vet ./...
 
+.PHONY: lint
+lint: ## Run golint against code.
+	@echo "Running golint"
+	hack/lint.sh
+
+.PHONY: ci-job
+ci-job: fmt vet lint
+
+.PHONY: deps-update
+deps-update:
+	go mod tidy
+	hack/install-integration-tests-deps.sh
+
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
-test: manifests generate fmt vet ## Run tests.
+test: manifests generate fmt vet ## Run tests. (needs make kind-complete-deployment)
 	mkdir -p ${ENVTEST_ASSETS_DIR}
 	test -f ${ENVTEST_ASSETS_DIR}/setup-envtest.sh || curl -sSLo ${ENVTEST_ASSETS_DIR}/setup-envtest.sh https://raw.githubusercontent.com/kubernetes-sigs/controller-runtime/v0.8.3/hack/setup-envtest.sh
 	source ${ENVTEST_ASSETS_DIR}/setup-envtest.sh; fetch_envtest_tools $(ENVTEST_ASSETS_DIR); setup_envtest_env $(ENVTEST_ASSETS_DIR); go test ./... -v -coverprofile cover.out
@@ -216,12 +233,14 @@ catalog-push: ## Push a catalog image.
 ############################################################
 # Cluster deployment test section
 ############################################################
+##@ Test
+
 .PHONY: kind-bootstrap-cluster
-kind-bootstrap-cluster: kind-create-cluster install-acm-crds kind-deploy-policy-propagator-controller
+kind-bootstrap-cluster: kind-create-cluster install-acm-crds deploy-policy-propagator-controller ## Deploy kind cluster and dependencies
 
 # In order to use the Upgrades operator we need the policy controller to run so that
 # all the needed upgrades policies and placements are created.
-kind-deploy-policy-propagator-controller:
+deploy-policy-propagator-controller:
 	@echo "Installing policy-propagator"
 	kubectl create ns $(KIND_ACM_NAMESPACE)
 	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
@@ -231,10 +250,10 @@ kind-create-cluster:
 	@echo "Creating kind cluster"
 	kind create cluster --name $(KIND_NAME) $(KIND_ARGS)
 
-kind-delete-cluster:
+kind-delete-cluster: ## Delete kind cluster
 	kind delete cluster --name $(KIND_NAME)
 
-kind-load-operator-image:
+kind-load-operator-image: ## Load Upgrades operator image to kind cluster
 	@echo "Load Upgrades operator image to kind cluster"
 	kind load docker-image ${IMG} --name ${KIND_NAME}
 
@@ -252,8 +271,12 @@ uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
 
-kuttl-test:
+kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"
 	kubectl-kuttl test
 
-complete-kuttl-test: kind-bootstrap-cluster docker-build kind-load-operator-image deploy kuttl-test
+kind-complete-deployment: deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
+kind-complete-kuttl-test: kind-complete-deployment kuttl-test ## Deploy cluster with the Upgrades operator and run KUTTL tests
+
+complete-deployment: deps-update install-acm-crds deploy-policy-propagator-controller docker-build deploy
+complete-kuttl-test: complete-deployment kuttl-test
