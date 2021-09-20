@@ -50,7 +50,9 @@ endif
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-SHELL = /usr/bin/env bash -o pipefail
+PATH  := $(PATH):$(PWD)/bin
+SHELL = /usr/bin/env PATH=$(PATH) bash -o pipefail
+
 .SHELLFLAGS = -ec
 
 # Kind configuration
@@ -109,10 +111,17 @@ lint: ## Run golint against code.
 .PHONY: ci-job
 ci-job: fmt vet lint
 
+.PHONY: kind-deps-update
+kind-deps-update:
+	go mod tidy
+	go mod vendor
+	hack/install-integration-tests-deps.sh kind
+
 .PHONY: deps-update
 deps-update:
 	go mod tidy
-	hack/install-integration-tests-deps.sh
+	go mod vendor
+	hack/install-integration-tests-deps.sh non-kind
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 test: manifests generate fmt vet ## Run tests. (needs make kind-complete-deployment)
@@ -242,7 +251,8 @@ kind-bootstrap-cluster: kind-create-cluster install-acm-crds deploy-policy-propa
 # all the needed upgrades policies and placements are created.
 deploy-policy-propagator-controller:
 	@echo "Installing policy-propagator"
-	kubectl create ns $(KIND_ACM_NAMESPACE)
+	kubectl create ns ${KIND_ACM_NAMESPACE}
+	kubectl create ns ${TEST_NAMESPACE}
 	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
 
 # Specify KIND_VERSION to indicate the version tag of the KinD image
@@ -275,7 +285,7 @@ kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"
 	kubectl-kuttl test
 
-kind-complete-deployment: deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
+kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
 kind-complete-kuttl-test: kind-complete-deployment kuttl-test ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
 complete-deployment: deps-update install-acm-crds deploy-policy-propagator-controller docker-build deploy
