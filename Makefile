@@ -108,19 +108,20 @@ lint: ## Run golint against code.
 	@echo "Running golint"
 	hack/lint.sh
 
+.PHONY: common-deps-update
+common-deps-update:
+	go mod tidy
+	go mod vendor
+
 .PHONY: ci-job
-ci-job: fmt vet lint
+ci-job: common-deps-update fmt vet lint
 
 .PHONY: kind-deps-update
-kind-deps-update:
-	go mod tidy
-	go mod vendor
+kind-deps-update: common-deps-update
 	hack/install-integration-tests-deps.sh kind
 
-.PHONY: deps-update
-deps-update:
-	go mod tidy
-	go mod vendor
+.PHONY: non-kind-deps-update
+non-kind-deps-update: common-deps-update
 	hack/install-integration-tests-deps.sh non-kind
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
@@ -286,7 +287,7 @@ kuttl-test: ## Run KUTTL tests
 	kubectl-kuttl test
 
 kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
-kind-complete-kuttl-test: kind-complete-deployment kuttl-test ## Deploy cluster with the Upgrades operator and run KUTTL tests
+kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
-complete-deployment: deps-update install-acm-crds deploy-policy-propagator-controller docker-build deploy
+complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller docker-build deploy
 complete-kuttl-test: complete-deployment kuttl-test
