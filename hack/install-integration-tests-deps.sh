@@ -18,7 +18,6 @@ fi
 
 env=$1
 
-echo "env: $env"
 # Install kubectl if needed.
 if ! [ -x "$(command -v kubectl)" ]; then
     echo "Installing kubectl..."
