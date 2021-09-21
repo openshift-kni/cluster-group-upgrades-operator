@@ -289,5 +289,5 @@ kuttl-test: ## Run KUTTL tests
 kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
 kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
-complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller docker-build deploy
+complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller deploy
 complete-kuttl-test: complete-deployment kuttl-test
