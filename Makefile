@@ -96,12 +96,12 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	@echo "Running go fmt"
-	go fmt ./...
+	go fmt -mod=mod ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	@echo "Running go vet"
-	go vet ./...
+	go vet -mod=mod ./...
 
 .PHONY: lint
 lint: ## Run golint against code.
@@ -109,12 +109,14 @@ lint: ## Run golint against code.
 	hack/lint.sh
 
 .PHONY: common-deps-update
-common-deps-update:
+common-deps-update:	controller-gen kustomize
 	go mod tidy
-	go mod vendor
 
 .PHONY: ci-job
 ci-job: common-deps-update fmt vet lint
+
+CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+KUSTOMIZE = $(shell pwd)/bin/kustomize
 
 .PHONY: kind-deps-update
 kind-deps-update: common-deps-update
@@ -123,6 +125,26 @@ kind-deps-update: common-deps-update
 .PHONY: non-kind-deps-update
 non-kind-deps-update: common-deps-update
 	hack/install-integration-tests-deps.sh non-kind
+
+controller-gen: ## Download controller-gen locally if necessary.
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+
+kustomize: ## Download kustomize locally if necessary.
+	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
+
+# go-get-tool will 'go get' any package $2 and install it to $1.
+PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+define go-get-tool
+@[ -f $(1) ] || { \
+set -e ;\
+TMP_DIR=$$(mktemp -d) ;\
+cd $$TMP_DIR ;\
+go mod init tmp ;\
+echo "Downloading $(2)" ;\
+GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+rm -rf $$TMP_DIR ;\
+}
+endef
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 test: manifests generate fmt vet ## Run tests. (needs make kind-complete-deployment)
@@ -158,29 +180,6 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
-
-
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
-
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
-
-# go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
 
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
@@ -289,5 +288,5 @@ kuttl-test: ## Run KUTTL tests
 kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
 kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
-complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller deploy
+complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller install
 complete-kuttl-test: complete-deployment kuttl-test
