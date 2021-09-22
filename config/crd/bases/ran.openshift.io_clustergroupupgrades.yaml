@@ -192,8 +192,11 @@ spec:
                   completedAt:
                     format: date-time
                     type: string
-                  compliancePercentage:
+                  currentBatch:
                     type: integer
+                  currentBatchStartedAt:
+                    format: date-time
+                    type: string
                   operatorUpgradePolicies:
                     items:
                       description: PolicyStatus defines the observed state of a Policy
@@ -217,8 +220,6 @@ spec:
                   startedAt:
                     format: date-time
                     type: string
-                required:
-                - compliancePercentage
                 type: object
             type: object
         type: object

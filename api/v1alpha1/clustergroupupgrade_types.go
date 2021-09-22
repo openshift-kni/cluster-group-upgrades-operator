@@ -37,18 +37,18 @@ type DesiredUpdateSpec struct {
 	Force   bool   `json:"force,omitempty"`
 }
 
-// OperatorUpgradeSpec defines the configuration of an operator upgrade
-type OperatorUpgradeSpec struct {
-	Channel   string `json:"channel,omitempty"`
-	Name      string `json:"name,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-}
-
 // PlatformUpgradeSpec defines the configuration of a platform upgrade
 type PlatformUpgradeSpec struct {
 	Channel       string            `json:"channel,omitempty"`
 	Upstream      string            `json:"upstream,omitempty"`
 	DesiredUpdate DesiredUpdateSpec `json:"desiredUpdate,omitempty"`
+}
+
+// OperatorUpgradeSpec defines the configuration of an operator upgrade
+type OperatorUpgradeSpec struct {
+	Channel   string `json:"channel,omitempty"`
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
@@ -66,11 +66,12 @@ type ClusterGroupUpgradeSpec struct {
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
-	CompliancePercentage    int            `json:"compliancePercentage"`
 	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
 	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
 	StartedAt               metav1.Time    `json:"startedAt,omitempty"`
 	CompletedAt             metav1.Time    `json:"completedAt,omitempty"`
+	CurrentBatch            int            `json:"currentBatch,omitempty"`
+	CurrentBatchStartedAt   metav1.Time    `json:"currentBatchStartedAt,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
