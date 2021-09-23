@@ -8,6 +8,14 @@ Cluster Group Upgrades operator uses the following CRDs:
 * ClusterGroupUpgrade
 
 A ClusterGroupUpgrade CR defines a desired upgrade to a group clusters.
+The spec allows you to define:
+* Clusters belonging to group
+* Number of concurrent upgrades
+* Canaries
+* Desired OpenShift version
+* Desires operators versions
+
+A set of example CRs can be found on the *samples* folder.
 
 ## How to deploy
 
