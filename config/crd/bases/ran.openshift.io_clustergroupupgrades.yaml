@@ -91,6 +91,9 @@ spec:
                     type: array
                   maxConcurrency:
                     type: integer
+                  timeout:
+                    default: 240
+                    type: integer
                 type: object
             type: object
           status:
