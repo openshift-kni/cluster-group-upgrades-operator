@@ -173,10 +173,21 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					clusterGroupUpgrade.Status.Status.CurrentBatch++
 				}
 			} else {
-				if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > 60*time.Minute {
-					r.Log.Info("Batch upgrade timed out")
-					if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.Policies) {
-						clusterGroupUpgrade.Status.Status.CurrentBatch++
+				batchTimeout := time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout/len(clusterGroupUpgrade.Status.RemediationPlan)) * time.Minute
+				if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > batchTimeout {
+					if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 && clusterGroupUpgrade.Status.Status.CurrentBatch == 1 {
+						r.Log.Info("Canaries batch timed out")
+						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+							Type:    "Ready",
+							Status:  metav1.ConditionFalse,
+							Reason:  "UpgradeTimedOut",
+							Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+						})
+					} else {
+						r.Log.Info("Batch upgrade timed out")
+						if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.Policies) {
+							clusterGroupUpgrade.Status.Status.CurrentBatch++
+						}
 					}
 				}
 			}
@@ -194,7 +205,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
 				})
 			} else {
-				if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > 240*time.Minute {
+				if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
 						Status:  metav1.ConditionFalse,

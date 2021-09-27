@@ -28,6 +28,8 @@ type RemediationStrategySpec struct {
 	// Canaries defines the list of managed clusters that should be remediated first when remediateAction is set to enforce
 	Canaries       []string `json:"canaries,omitempty"`
 	MaxConcurrency int      `json:"maxConcurrency,omitempty"`
+	//+kubebuilder:default=240
+	Timeout int `json:"timeout,omitempty"`
 }
 
 // DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
