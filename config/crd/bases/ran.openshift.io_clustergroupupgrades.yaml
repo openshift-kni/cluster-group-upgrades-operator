@@ -79,6 +79,10 @@ spec:
                     type: string
                 type: object
               remediationAction:
+                default: inform
+                enum:
+                - inform
+                - enforce
                 type: string
               remediationStrategy:
                 description: RemediationStrategySpec defines the remediation policy
