@@ -19,6 +19,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"strconv"
 	"text/template"
 	"time"
@@ -76,6 +77,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, nil
 		}
 		r.Log.Error(err, "Failed to get ClusterGroupUpgrade")
+		return ctrl.Result{}, err
+	}
+
+	err = r.validateCR(ctx, clusterGroupUpgrade)
+	if err != nil {
 		return ctrl.Result{}, err
 	}
 
@@ -1023,6 +1029,33 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		return err
 	}
 
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	// Validate clusters in spec are ManagedCluster objects
+	clusters := clusterGroupUpgrade.Spec.Clusters
+	for _, cluster := range clusters {
+		foundManagedCluster := &unstructured.Unstructured{}
+		foundManagedCluster.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "cluster.open-cluster-management.io",
+			Kind:    "ManagedCluster",
+			Version: "v1",
+		})
+		err := r.Client.Get(ctx, client.ObjectKey{
+			Name: cluster,
+		}, foundManagedCluster)
+
+		if err != nil {
+			return fmt.Errorf("Cluster %s is not a ManagedCluster", cluster)
+		}
+
+	}
+
+	// Check maxConcurrency is not greater than the number of clusters
+	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > len(clusterGroupUpgrade.Spec.Clusters) {
+		return fmt.Errorf("maxConcurrency value cannot be greater than the number of clusters")
+	}
 	return nil
 }
 

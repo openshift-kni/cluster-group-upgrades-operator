@@ -26,8 +26,9 @@ import (
 // RemediationStrategySpec defines the remediation policy
 type RemediationStrategySpec struct {
 	// Canaries defines the list of managed clusters that should be remediated first when remediateAction is set to enforce
-	Canaries       []string `json:"canaries,omitempty"`
-	MaxConcurrency int      `json:"maxConcurrency,omitempty"`
+	Canaries []string `json:"canaries,omitempty"`
+	//kubebuilder:validation:Minimum=1
+	MaxConcurrency int `json:"maxConcurrency,omitempty"`
 	//+kubebuilder:default=240
 	Timeout int `json:"timeout,omitempty"`
 }
@@ -58,12 +59,14 @@ type OperatorUpgradeSpec struct {
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Clusters                  []string                 `json:"clusters,omitempty"`
-	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	RemediationAction         string                   `json:"remediationAction,omitempty"`
-	PlatformUpgrade           *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
-	OperatorUpgrades          []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
-	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
+	Clusters            []string                 `json:"clusters,omitempty"`
+	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	//+kubebuilder:validation:Enum=inform;enforce
+	//+kubebuilder:default=inform
+	RemediationAction         string                `json:"remediationAction,omitempty"`
+	PlatformUpgrade           *PlatformUpgradeSpec  `json:"platformUpgrade,omitempty"`
+	OperatorUpgrades          []OperatorUpgradeSpec `json:"operatorUpgrades,omitempty"`
+	DeleteObjectsOnCompletion bool                  `json:"deleteObjectsOnCompletion,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
