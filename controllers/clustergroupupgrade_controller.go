@@ -993,7 +993,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 			policyStatus := ranv1alpha1.PolicyStatus{}
 			policyStatus.Name = policy.GetName()
 			statusObject := policy.Object["status"].(map[string]interface{})
-			if statusObject["compliant"] == nil {
+			if statusObject == nil || statusObject["compliant"] == nil {
 				policyStatus.ComplianceState = "NonCompliant"
 			} else {
 				policyStatus.ComplianceState = statusObject["compliant"].(string)
@@ -1011,7 +1011,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 			policyStatus := ranv1alpha1.PolicyStatus{}
 			policyStatus.Name = policy.GetName()
 			statusObject := policy.Object["status"].(map[string]interface{})
-			if statusObject["compliant"] == nil {
+			if statusObject == nil || statusObject["compliant"] == nil {
 				policyStatus.ComplianceState = "NonCompliant"
 			} else {
 				policyStatus.ComplianceState = statusObject["compliant"].(string)
