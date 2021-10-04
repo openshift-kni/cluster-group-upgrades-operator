@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke1
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke2
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke3
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke4
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke5
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: spoke6
