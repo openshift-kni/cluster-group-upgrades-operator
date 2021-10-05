@@ -13,7 +13,7 @@ The spec allows you to define:
 * Number of concurrent upgrades
 * Canaries
 * Desired OpenShift version
-* Desires operators versions
+* Desired operators versions
 
 A set of example CRs can be found on the *samples* folder.
 
