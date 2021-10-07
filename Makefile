@@ -66,9 +66,6 @@ else
 endif
 all: build
 
-# Testing configuration
-TEST_NAMESPACE ?= openshift-cluster-group-upgrades
-
 ##@ General
 
 # The help target prints out all targets with their descriptions organized
@@ -252,7 +249,6 @@ kind-bootstrap-cluster: kind-create-cluster install-acm-crds deploy-policy-propa
 deploy-policy-propagator-controller:
 	@echo "Installing policy-propagator"
 	kubectl create ns ${KIND_ACM_NAMESPACE}
-	kubectl create ns ${TEST_NAMESPACE}
 	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
 
 # Specify KIND_VERSION to indicate the version tag of the KinD image
