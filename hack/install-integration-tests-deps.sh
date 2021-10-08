@@ -42,9 +42,9 @@ fi
 if ! [ -x "$(command -v kubectl-kuttl)" ]; then
     echo "Installing kubectl-kuttl..."
     curl -LO https://github.com/kudobuilder/kuttl/releases/download/v0.11.0/kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH}
-    mv ./kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH} ./bin/kubect-kuttl
+    mv ./kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH} ./bin/kubectl-kuttl
     ls ./bin/
-    chmod +x ./bin/kubect-kuttl
+    chmod +x ./bin/kubectl-kuttl
 else
     echo "No need to install kubectl-kuttl, continue..."
 fi
