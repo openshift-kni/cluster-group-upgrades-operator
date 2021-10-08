@@ -51,7 +51,8 @@ endif
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 PATH  := $(PATH):$(PWD)/bin
-SHELL = /usr/bin/env PATH=$(PATH) bash -o pipefail
+GOFLAGS := -mod=mod
+SHELL = /usr/bin/env PATH=$(PATH) GOFLAGS=$(GOFLAGS) bash -o pipefail
 
 .SHELLFLAGS = -ec
 
@@ -93,12 +94,12 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	@echo "Running go fmt"
-	go fmt -mod=mod ./...
+	go fmt ./...
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	@echo "Running go vet"
-	go vet -mod=mod ./...
+	go vet ./...
 
 .PHONY: lint
 lint: ## Run golint against code.
@@ -139,6 +140,7 @@ cd $$TMP_DIR ;\
 go mod init tmp ;\
 echo "Downloading $(2)" ;\
 GOBIN=$(PROJECT_DIR)/bin go get $(2) ;\
+go mod tidy ;\
 rm -rf $$TMP_DIR ;\
 }
 endef
