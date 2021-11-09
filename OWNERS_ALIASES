@@ -2,13 +2,17 @@
 
 aliases:
   upgrades-operator-reviewers:
+    - browsell
     - rcarrillocruz
     - fedepaol
-    - yrobla
     - irinamihai
+    - imiller0
     - nishant-parekh
+    - serngawy
   upgrades-operator-approvers:
+    - browsell
     - rcarrillocruz
-    - yrobla
     - irinamihai
+    - imiller0
     - nishant-parekh
+    - serngawy
