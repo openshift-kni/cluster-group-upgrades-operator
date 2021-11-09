@@ -97,6 +97,11 @@ func (in *ClusterGroupUpgradeSpec) DeepCopyInto(out *ClusterGroupUpgradeSpec) {
 		*out = new(RemediationStrategySpec)
 		(*in).DeepCopyInto(*out)
 	}
+	if in.ManagedPolicy != nil {
+		in, out := &in.ManagedPolicy, &out.ManagedPolicy
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.PlatformUpgrade != nil {
 		in, out := &in.PlatformUpgrade, &out.PlatformUpgrade
 		*out = new(PlatformUpgradeSpec)

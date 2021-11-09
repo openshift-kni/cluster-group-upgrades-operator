@@ -45,6 +45,13 @@ spec:
                 type: array
               deleteObjectsOnCompletion:
                 type: boolean
+              enable:
+                default: false
+                type: boolean
+              managedPolicy:
+                items:
+                  type: string
+                type: array
               operatorUpgrades:
                 items:
                   description: OperatorUpgradeSpec defines the configuration of an

@@ -11,6 +11,10 @@ spec:
   - spoke4
   - spoke5
   - spoke6
+  managedPolicy:
+  - dummy-platform-policy
+  - dummy-ptp-sub-policy
+  enable: false
   remediationAction: inform
   remediationStrategy:
     maxConcurrency: 1
