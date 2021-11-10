@@ -61,7 +61,7 @@ type ClusterGroupUpgradeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	Clusters            []string                 `json:"clusters,omitempty"`
 	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	ManagedPolicy       []string                 `json:"managedPolicy,omitempty"`
+	ManagedPolicies     []string                 `json:"managedPolicies,omitempty"`
 	//+kubebuilder:default=false
 	Enable bool `json:"enable,omitempty"`
 	//+kubebuilder:validation:Enum=inform;enforce
