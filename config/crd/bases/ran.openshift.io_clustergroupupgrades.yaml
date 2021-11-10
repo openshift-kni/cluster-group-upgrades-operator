@@ -48,7 +48,7 @@ spec:
               enable:
                 default: false
                 type: boolean
-              managedPolicy:
+              managedPolicies:
                 items:
                   type: string
                 type: array

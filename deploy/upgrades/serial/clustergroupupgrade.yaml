@@ -11,7 +11,7 @@ spec:
   - spoke4
   - spoke5
   - spoke6
-  managedPolicy:
+  managedPolicies:
   - dummy-platform-policy
   - dummy-ptp-sub-policy
   enable: false
