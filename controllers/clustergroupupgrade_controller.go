@@ -96,21 +96,41 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
 		})
 	} else if readyCondition.Status == metav1.ConditionFalse {
-		if readyCondition.Reason == "UpgradeNotStarted" {
-			r.buildRemediationPlan(ctx, clusterGroupUpgrade)
-			err := r.reconcileResources(ctx, clusterGroupUpgrade)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
+			// Before starting the upgrade check that all the managed policies exist.
+			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
+			if allManagedPoliciesExist == true {
+				r.buildRemediationPlan(ctx, clusterGroupUpgrade)
+				err := r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
 
-			if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
-				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+				var statusReason, statusMessage string
+				statusReason = "UpgradeNotStarted"
+				statusMessage = "The ClusterGroupUpgrade CR has remediationAction set to inform"
+				if clusterGroupUpgrade.Spec.RemediationAction == "enforce" {
+					statusReason = "UpgradeNotCompleted"
+					statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
+					clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+				}
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
-					Reason:  "UpgradeNotCompleted",
-					Message: "The ClusterGroupUpgrade CR has upgrade policies non compliant or it has just been enforced",
+					Reason:  statusReason,
+					Message: statusMessage,
 				})
+
+			} else {
+				statusMessage := fmt.Sprintf("The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesMissing)
+				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+					Type:    "Ready",
+					Status:  metav1.ConditionFalse,
+					Reason:  "UpgradeCannotStart",
+					Message: statusMessage,
+				})
+				requeueAfter := 1 * time.Minute
+				nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 			}
 		} else if readyCondition.Reason == "UpgradeNotCompleted" {
 			if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
@@ -261,6 +281,124 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	return nextReconcile, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, []string, []*unstructured.Unstructured) {
+	var managedPoliciesMissing []string
+	var managedPoliciesPresent []*unstructured.Unstructured
+
+	// Go through the managedPolicies in the CR and make sure they exist.
+	for _, managedPolicy := range clusterGroupUpgrade.Spec.ManagedPolicies {
+		foundPolicy := &unstructured.Unstructured{}
+		foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+
+		// Look for policy.
+		err := r.Client.Get(ctx, client.ObjectKey{
+			Name:      managedPolicy,
+			Namespace: clusterGroupUpgrade.Namespace,
+		}, foundPolicy)
+
+		if err != nil {
+			if errors.IsNotFound(err) {
+				managedPoliciesMissing = append(managedPoliciesMissing, managedPolicy)
+			}
+		} else {
+			managedPoliciesPresent = append(managedPoliciesPresent, foundPolicy)
+		}
+	}
+
+	// If there are missing managed policies, return.
+	if len(managedPoliciesMissing) != 0 {
+		r.Log.Info("managedPoliciesMissing", "managedPoliciesMisisng", managedPoliciesMissing)
+		return false, managedPoliciesMissing, managedPoliciesPresent
+	}
+
+	return true, nil, managedPoliciesPresent
+}
+
+func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicyForBatch(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policies []*unstructured.Unstructured, batchIndex int) ([]string, error) {
+	var newPolicies []string
+
+	// Go through the managedPolicies in the CR and make sure they exist.
+	for managedPolicyIndex, managedPolicy := range policies {
+		// Create a new unstructured variable to keep all the information for the new policy.
+		newPolicy := &unstructured.Unstructured{}
+
+		// Set new policy name, namespace, group, kind and version.
+		newPolicy.SetName(clusterGroupUpgrade.Name + "-batch" + strconv.Itoa(batchIndex) + "-policy" + strconv.Itoa(managedPolicyIndex+1))
+		newPolicy.SetNamespace(clusterGroupUpgrade.GetNamespace())
+		newPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "policy.open-cluster-management.io",
+			Kind:    "Policy",
+			Version: "v1",
+		})
+
+		// Set new policy labels.
+		labels := managedPolicy.GetLabels()
+		if labels == nil {
+			labels = make(map[string]string)
+		}
+		labels["app"] = "openshift-cluster-group-upgrades"
+		labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
+		labels["openshift-cluster-group-upgrades/batch"] = strconv.Itoa(batchIndex)
+		labels["openshift-cluster-group-upgrades/parentPolicyName"] = managedPolicy.GetName()
+		newPolicy.SetLabels(labels)
+
+		// Set new policy annotations - copy them from the managed policy.
+		newPolicy.SetAnnotations(managedPolicy.GetAnnotations())
+
+		// Set new policy remediationAction.
+		newPolicy.Object["spec"] = managedPolicy.Object["spec"]
+		specObject := newPolicy.Object["spec"].(map[string]interface{})
+		specObject["remediationAction"] = "inform"
+
+		// Create the new policy in the desired namespace.
+		err := r.createNewPolicyFromStructure(ctx, clusterGroupUpgrade, newPolicy)
+		if err != nil {
+			r.Log.Info("Error creating policy", "err", err)
+			return nil, err
+		}
+
+		// Update the list of new policy names.
+		newPolicies = append(newPolicies, newPolicy.GetName())
+	}
+
+	return newPolicies, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured) error {
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      policy.GetName(),
+		Namespace: clusterGroupUpgrade.Namespace,
+	}, policy)
+
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+		return err
+	}
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			err = r.Client.Create(ctx, policy)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		err = r.Client.Update(ctx, policy)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var placementRules []string
 
@@ -308,7 +446,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      clusterGroupUpgrade.Name + "-" + strconv.Itoa(batchIndex),
+			"name":      clusterGroupUpgrade.Name + "-batch" + strconv.Itoa(batchIndex),
 			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
@@ -342,6 +480,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 	return u, nil
 }
 
+// TODO: this function is obsolete, delete as part of cleanup
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batch []string, batchIndex int) ([]string, error) {
 	var policies []string
 
@@ -461,6 +600,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchOperatorUpgradePolicyIsEnforc
 	return nil
 }
 
+// TODO: this function is obsolete, delete as part of cleanup
 func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var buf bytes.Buffer
 	tmpl := template.New("cluster-upgrade-policy")
@@ -491,6 +631,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlatformUpgradePolicy(ctx contex
 	return u, nil
 }
 
+// TODO: this function is obsolete, delete as part of cleanup
 func (r *ClusterGroupUpgradeReconciler) newBatchOperatorUpgradePolicy(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, batchIndex int) (*unstructured.Unstructured, error) {
 	var buf bytes.Buffer
 	tmpl := template.New("operator-upgrade-policy")
@@ -634,7 +775,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      clusterGroupUpgrade.Name + "-" + strconv.Itoa(batchIndex),
+			"name":      clusterGroupUpgrade.Name + "-batch" + strconv.Itoa(batchIndex),
 			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
@@ -810,17 +951,19 @@ func (r *ClusterGroupUpgradeReconciler) getBatchOperatorUpgradePolicy(ctx contex
 	return &policiesList.Items[0], nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesPresent []*unstructured.Unstructured) error {
 	// Reconcile resources
 	for i, remediateBatch := range clusterGroupUpgrade.Status.RemediationPlan {
 		batchPlacementRules, err := r.ensureBatchPlacementRules(ctx, clusterGroupUpgrade, remediateBatch, i+1)
 		if err != nil {
 			return err
 		}
-		batchPolicies, err := r.ensureBatchPolicies(ctx, clusterGroupUpgrade, remediateBatch, i+1)
+
+		batchPolicies, err := r.copyManagedInformPolicyForBatch(ctx, clusterGroupUpgrade, managedPoliciesPresent, i+1)
 		if err != nil {
 			return err
 		}
+
 		_, err = r.ensureBatchPlacementBindings(ctx, clusterGroupUpgrade, batchPlacementRules, batchPolicies, i+1)
 		if err != nil {
 			return err
