@@ -38,13 +38,18 @@ spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
               clusters:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
                 items:
                   type: string
                 type: array
               deleteObjectsOnCompletion:
                 type: boolean
+              enable:
+                default: false
+                type: boolean
+              managedPolicies:
+                items:
+                  type: string
+                type: array
               operatorUpgrades:
                 items:
                   description: OperatorUpgradeSpec defines the configuration of an
@@ -80,6 +85,8 @@ spec:
                 type: object
               remediationAction:
                 default: inform
+                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
+                  Important: Run "make" to regenerate code after modifying this file'
                 enum:
                 - inform
                 - enforce
