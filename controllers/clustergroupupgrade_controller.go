@@ -100,7 +100,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
 			if allManagedPoliciesExist == true {
-				r.buildRemediationPlan(ctx, clusterGroupUpgrade)
+				r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 				err := r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 				if err != nil {
 					return ctrl.Result{}, err
@@ -324,6 +324,9 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicyForBatch(
 
 	// Go through the managedPolicies in the CR and make sure they exist.
 	for managedPolicyIndex, managedPolicy := range policies {
+		// Check that at least one cluster in the batch is NonCompliant with the managedPolicy.
+		//clustersNonCompliantWithPolicy := getClustersNonCompliantWithPolicy(managedPolicy)
+
 		// Create a new unstructured variable to keep all the information for the new policy.
 		newPolicy := &unstructured.Unstructured{}
 
@@ -973,33 +976,131 @@ func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, 
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) isClusterNonCompliantWithPolicy(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, policy *unstructured.Unstructured) bool {
+	clusterNonCompliantWithManagedPolicies := r.getClustersNonCompliantWithPolicy(policy)
+
+	for _, nonCompliantClusterName := range clusterNonCompliantWithManagedPolicies {
+		if clusterName == nonCompliantClusterName {
+			return true
+		}
+	}
+	return false
+}
+
+/* A policy's status has the format below. In this function we are creating a list with the clusternames
+   which are NonCompliant.
+
+status: (map[string]interface{})
+  compliant: NonCompliant
+  placement:
+  - placementBinding: operator-placementbinding
+    placementRule: operator-placementrules
+  status: ([]interface{})
+  - clustername: spoke3
+    clusternamespace: spoke3
+    compliant: NonCompliant
+  - clustername: spoke4
+    clusternamespace: spoke4
+    compliant: NonCompliant
+*/
+func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(policy *unstructured.Unstructured) []string {
+	var clustersNonCompliant []string
+	// Get the status part of the policy.
+	statusObject := policy.Object["status"].(map[string]interface{})
+	// Get the part of the status that holds the clusters' compliance.
+	statusCompliance := statusObject["status"]
+
+	// If all the clusters are compliant, return nil.
+	if statusCompliance == nil {
+		return nil
+	}
+
+	subStatus := statusCompliance.([]interface{})
+
+	// Loop through all the NonCompliant clusters in the policy's status.status.
+	for _, crtSubStatusCrt := range subStatus {
+		crtSubStatusMap := crtSubStatusCrt.(map[string]interface{})
+		// If the cluster is NonCompliant, add it to the list of NonCompliant clusters.
+		if crtSubStatusMap["compliant"] == "NonCompliant" {
+			clustersNonCompliant = append(clustersNonCompliant, crtSubStatusMap["clustername"].(string))
+		}
+	}
+	r.Log.Info("Clusters nonCompliant with ", "policy", policy.GetName(), "clustersNonCompliant", clustersNonCompliant)
+	return clustersNonCompliant
+}
+
+func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) map[string]bool {
+	clustersNonCompliantMap := make(map[string]bool)
+
+	// clustersNonCompliant will be a map of the clusters present in the CR and within how many managedPolicies they
+	// appear as being NonCompliant.
+	clustersNonCompliant := make(map[string]int)
+	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+		clustersNonCompliant[clusterName] = 0
+	}
+
+	for _, managedPolicy := range managedPolicies {
+		clustersNonCompliantWithManagedPolicy := r.getClustersNonCompliantWithPolicy(managedPolicy)
+
+		if clustersNonCompliantWithManagedPolicy == nil {
+			continue
+		}
+
+		for _, nonCompliantClusterName := range clustersNonCompliantWithManagedPolicy {
+			// If the cluster is NonCompliant in this current policy and it's also present in the list of clusters from the CR
+			// increment the number of policies for which it's NonCompliant.
+			if _, ok := clustersNonCompliant[nonCompliantClusterName]; ok {
+				clustersNonCompliantMap[nonCompliantClusterName] = true
+			}
+		}
+	}
+
+	r.Log.Info("Cluster (non) compliant with all managedPolicies map  : ", "clustersNotCompliantMap", clustersNonCompliantMap)
+	return clustersNonCompliantMap
+}
+
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) {
+	clusterNonCompliantWithManagedPoliciesMap := r.getClustersNonCompliantWithManagedPolicies(clusterGroupUpgrade, managedPolicies)
+
+	/*  TODO: remove this at cleanup, keep it just for testing locally with kind.
+	clusterNonCompliantWithManagedPoliciesMap := make(map[string]bool)
+	clusterNonCompliantWithManagedPoliciesMap["spoke1"] = true
+	clusterNonCompliantWithManagedPoliciesMap["spoke2"] = true
+	clusterNonCompliantWithManagedPoliciesMap["spoke3"] = true
+	clusterNonCompliantWithManagedPoliciesMap["spoke4"] = true
+	clusterNonCompliantWithManagedPoliciesMap["spoke5"] = true
+	clusterNonCompliantWithManagedPoliciesMap["spoke6"] = true
+	*/
+
 	// Create remediation plan
 	var remediationPlan [][]string
 	isCanary := make(map[string]bool)
 	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
 		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
-			remediationPlan = append(remediationPlan, []string{canary})
-			isCanary[canary] = true
-		}
-
-	}
-	var clusters []string
-	for _, cluster := range clusterGroupUpgrade.Spec.Clusters {
-		if !isCanary[cluster] {
-			clusters = append(clusters, cluster)
-		}
-	}
-	for i := 0; i < len(clusters); i += clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
-		var batch []string
-		for j := i; j < i+clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency && j != len(clusters); j++ {
-			site := clusters[j]
-			if !isCanary[site] {
-				batch = append(batch, site)
+			// TODO: make sure the canary clusters are in the list of clusters.
+			if clusterNonCompliantWithManagedPoliciesMap[canary] == true {
+				remediationPlan = append(remediationPlan, []string{canary})
+				isCanary[canary] = true
 			}
 		}
-		if len(batch) > 0 {
-			remediationPlan = append(remediationPlan, batch)
+	}
+
+	var batch []string
+	batchCount := 0
+	for i := 0; i < len(clusterGroupUpgrade.Spec.Clusters); i++ {
+		site := clusterGroupUpgrade.Spec.Clusters[i]
+		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] == true {
+			batch = append(batch, site)
+			batchCount++
+		}
+
+		if batchCount == clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency || i == len(clusterGroupUpgrade.Spec.Clusters)-1 {
+			if len(batch) > 0 {
+				remediationPlan = append(remediationPlan, batch)
+				batchCount = 0
+				batch = nil
+			}
 		}
 	}
 	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
