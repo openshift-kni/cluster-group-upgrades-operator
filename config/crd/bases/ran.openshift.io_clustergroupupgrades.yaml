@@ -44,53 +44,17 @@ spec:
               deleteObjectsOnCompletion:
                 type: boolean
               enable:
-                default: false
+                default: true
+                description: This field determines when the upgrade starts. While
+                  false, the upgrade doesn't start. The policies, placement rules
+                  and placement bindings are created, but clusters are not added to
+                  the placement rule. Once set to true, the clusters start being upgrades,
+                  one batch at a time.
                 type: boolean
               managedPolicies:
                 items:
                   type: string
                 type: array
-              operatorUpgrades:
-                items:
-                  description: OperatorUpgradeSpec defines the configuration of an
-                    operator upgrade
-                  properties:
-                    channel:
-                      type: string
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  type: object
-                type: array
-              platformUpgrade:
-                description: PlatformUpgradeSpec defines the configuration of a platform
-                  upgrade
-                properties:
-                  channel:
-                    type: string
-                  desiredUpdate:
-                    description: DesiredUpdateSpec models the desiredUpdate field
-                      of ClusterVersion
-                    properties:
-                      force:
-                        type: boolean
-                      image:
-                        type: string
-                      version:
-                        type: string
-                    type: object
-                  upstream:
-                    type: string
-                type: object
-              remediationAction:
-                default: inform
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
-                enum:
-                - inform
-                - enforce
-                type: string
               remediationStrategy:
                 description: RemediationStrategySpec defines the remediation policy
                 properties:
@@ -211,26 +175,10 @@ spec:
                   currentBatchStartedAt:
                     format: date-time
                     type: string
-                  operatorUpgradePolicies:
-                    items:
-                      description: PolicyStatus defines the observed state of a Policy
-                      properties:
-                        complianceState:
-                          type: string
-                        name:
-                          type: string
-                      type: object
-                    type: array
-                  platformUpgradesPolicies:
-                    items:
-                      description: PolicyStatus defines the observed state of a Policy
-                      properties:
-                        complianceState:
-                          type: string
-                        name:
-                          type: string
-                      type: object
-                    type: array
+                  remediationPlanForBatch:
+                    additionalProperties:
+                      type: integer
+                    type: object
                   startedAt:
                     format: date-time
                     type: string
