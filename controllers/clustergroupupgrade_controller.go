@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -101,9 +102,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
 			if allManagedPoliciesExist == true {
 				// If all the managedPolicies exist, continue with building the upgrade batches.
-				r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+				err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
 				// Create the needed resources for starting the upgrade.
-				err := r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+				err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
@@ -935,13 +940,20 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(policy
 }
 
 func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) map[string]bool {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
+	managedPolicies []*unstructured.Unstructured) (map[string]bool, error) {
+
+	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return nil, err
+	}
+
 	clustersNonCompliantMap := make(map[string]bool)
 
 	// clustersNonCompliant will be a map of the clusters present in the CR and within how many managedPolicies they
 	// appear as being NonCompliant.
 	clustersNonCompliant := make(map[string]int)
-	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+	for _, clusterName := range allClustersForUpgrade {
 		clustersNonCompliant[clusterName] = 0
 	}
 
@@ -963,12 +975,15 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 	}
 
 	r.Log.Info("Cluster (non) compliant with managedPolicies map  : ", "clustersNotCompliantMap", clustersNonCompliantMap)
-	return clustersNonCompliantMap
+	return clustersNonCompliantMap, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) {
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) error {
 	// Get all clusters from the CR that are non compliant with at least one of the managedPolicies.
-	clusterNonCompliantWithManagedPoliciesMap := r.getClustersNonCompliantWithManagedPolicies(clusterGroupUpgrade, managedPolicies)
+	clusterNonCompliantWithManagedPoliciesMap, err := r.getClustersNonCompliantWithManagedPolicies(ctx, clusterGroupUpgrade, managedPolicies)
+	if err != nil {
+		return err
+	}
 
 	/*  TODO: remove this at cleanup, keep it just for testing locally with kind.
 	clusterNonCompliantWithManagedPoliciesMap := make(map[string]bool)
@@ -993,16 +1008,21 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 		}
 	}
 
+	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+
 	var batch []string
 	clusterCount := 0
-	for i := 0; i < len(clusterGroupUpgrade.Spec.Clusters); i++ {
-		site := clusterGroupUpgrade.Spec.Clusters[i]
+	for i := 0; i < len(allClustersForUpgrade); i++ {
+		site := allClustersForUpgrade[i]
 		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] == true {
 			batch = append(batch, site)
 			clusterCount++
 		}
 
-		if clusterCount == clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency || i == len(clusterGroupUpgrade.Spec.Clusters)-1 {
+		if clusterCount == clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency || i == len(allClustersForUpgrade)-1 {
 			if len(batch) > 0 {
 				remediationPlan = append(remediationPlan, batch)
 				clusterCount = 0
@@ -1012,12 +1032,73 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 	}
 	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
 	clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
+
+	return nil
 }
 
 func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string) string {
 	return clusterGroupUpgrade.Name + "-" + policyName
 }
 
+func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
+	var clusterNames []string
+	keys := make(map[string]bool)
+	// The cluster selector field holds a label common to multiple clusters that will be updated.
+	// All the clusters matching the labels specified in clusterSelector will be included in the update plan.
+	// The expected format for Spec.ClusterSelector is as follows:
+	// clusterSelector:
+	//   - label1Name=label1Value
+	//   - label2Name=label2Value
+	// If the value is empty, then the expected format is:
+	// clusterSelector:
+	//   - label1Name
+	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
+		selectorList := strings.Split(clusterSelector, "=")
+		r.Log.Info("selectorList", "selectorList", selectorList)
+		var clusterLabels = make(map[string]string)
+		if len(selectorList) == 2 {
+			clusterLabels = map[string]string{selectorList[0]: selectorList[1]}
+		} else if len(selectorList) == 1 {
+			clusterLabels = map[string]string{selectorList[0]: ""}
+		} else {
+			r.Log.Info("Cluster selector has wrong format: %s", clusterSelector)
+			continue
+		}
+
+		listOpts := []client.ListOption{
+			client.MatchingLabels(clusterLabels),
+		}
+		clusterList := &unstructured.UnstructuredList{}
+		clusterList.SetGroupVersionKind(schema.GroupVersionKind{
+			Group:   "cluster.open-cluster-management.io",
+			Kind:    "ManagedClusterList",
+			Version: "v1",
+		})
+		if err := r.List(ctx, clusterList, listOpts...); err != nil {
+			return nil, err
+		}
+
+		for _, cluster := range clusterList.Items {
+			// Make sure a cluster name doesn't appear twice.
+			if _, value := keys[cluster.GetName()]; !value {
+				keys[cluster.GetName()] = true
+				clusterNames = append(clusterNames, cluster.GetName())
+			}
+		}
+	}
+
+	r.Log.Info("[getClusterBySelectors]", "clusters", clusterNames)
+	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+		// Make sure a cluster name doesn't appear twice.
+		if _, value := keys[clusterName]; !value {
+			keys[clusterName] = true
+			clusterNames = append(clusterNames, clusterName)
+		}
+	}
+
+	r.Log.Info("[getClustersBySelectors]", "clusterNames", clusterNames)
+	return clusterNames, nil
+}
 func (r *ClusterGroupUpgradeReconciler) deletePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	listOpts := []client.ListOption{
@@ -1153,7 +1234,12 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 
 func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	// Validate clusters in spec are ManagedCluster objects
-	clusters := clusterGroupUpgrade.Spec.Clusters
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+	}
+
+	r.Log.Info("[validateCR] ", "clusters", clusters)
 	for _, cluster := range clusters {
 		foundManagedCluster := &unstructured.Unstructured{}
 		foundManagedCluster.SetGroupVersionKind(schema.GroupVersionKind{
@@ -1172,7 +1258,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	}
 
 	// Check maxConcurrency is not greater than the number of clusters
-	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > len(clusterGroupUpgrade.Spec.Clusters) {
+	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > len(clusters) {
 		return fmt.Errorf("maxConcurrency value cannot be greater than the number of clusters")
 	}
 	return nil
