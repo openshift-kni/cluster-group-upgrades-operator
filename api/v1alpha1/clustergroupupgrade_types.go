@@ -59,27 +59,25 @@ type OperatorUpgradeSpec struct {
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	//+kubebuilder:validation:Enum=inform;enforce
-	//+kubebuilder:default=inform
-	RemediationAction string `json:"remediationAction,omitempty"`
-	//+kubebuilder:default=false
+
+	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
+	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
+	// Once set to true, the clusters start being upgrades, one batch at a time.
+	//+kubebuilder:default=true
 	Enable                    bool                     `json:"enable,omitempty"`
 	Clusters                  []string                 `json:"clusters,omitempty"`
 	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	ManagedPolicies           []string                 `json:"managedPolicies,omitempty"`
-	PlatformUpgrade           *PlatformUpgradeSpec     `json:"platformUpgrade,omitempty"`
-	OperatorUpgrades          []OperatorUpgradeSpec    `json:"operatorUpgrades,omitempty"`
 	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
-	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
-	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
-	StartedAt               metav1.Time    `json:"startedAt,omitempty"`
-	CompletedAt             metav1.Time    `json:"completedAt,omitempty"`
-	CurrentBatch            int            `json:"currentBatch,omitempty"`
-	CurrentBatchStartedAt   metav1.Time    `json:"currentBatchStartedAt,omitempty"`
+	StartedAt                     metav1.Time    `json:"startedAt,omitempty"`
+	CompletedAt                   metav1.Time    `json:"completedAt,omitempty"`
+	CurrentBatch                  int            `json:"currentBatch,omitempty"`
+	CurrentBatchStartedAt         metav1.Time    `json:"currentBatchStartedAt,omitempty"`
+	CurrentRemediationPolicyIndex map[string]int `json:"remediationPlanForBatch,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
