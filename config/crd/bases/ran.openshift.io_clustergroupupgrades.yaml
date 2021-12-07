@@ -13,6 +13,8 @@ spec:
     kind: ClusterGroupUpgrade
     listKind: ClusterGroupUpgradeList
     plural: clustergroupupgrades
+    shortNames:
+    - cgu
     singular: clustergroupupgrade
   scope: Namespaced
   versions:
