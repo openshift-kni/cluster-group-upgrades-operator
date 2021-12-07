@@ -94,28 +94,28 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			Type:    "Ready",
 			Status:  metav1.ConditionFalse,
 			Reason:  "UpgradeNotStarted",
-			Message: "The ClusterGroupUpgrade CR has remediationAction set to inform",
+			Message: "The ClusterGroupUpgrade CR is not enabled",
 		})
 	} else if readyCondition.Status == metav1.ConditionFalse {
 		if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
 			if allManagedPoliciesExist == true {
-				// If all the managedPolicies exist, continue with building the upgrade batches.
-				err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
-
 				// Create the needed resources for starting the upgrade.
 				err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 				if err != nil {
 					return ctrl.Result{}, err
 				}
 
+				// Build the upgrade batches.
+				err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
 				var statusReason, statusMessage string
 				statusReason = "UpgradeNotStarted"
-				statusMessage = "The ClusterGroupUpgrade CR has remediationAction set to inform"
+				statusMessage = "The ClusterGroupUpgrade CR is not enabled"
 				if clusterGroupUpgrade.Spec.Enable == true {
 					statusReason = "UpgradeNotCompleted"
 					statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
@@ -170,18 +170,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 			r.Log.Info("\n\n Checking batch for new remediation policies ", "batch index", clusterGroupUpgrade.Status.Status.CurrentBatch)
 			// Check if current policies have become compliant and if new policies have to be applied.
-			err, isBatchComplete := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
-
-			// Add the needed cluster names to upgrade to the appropriate placement rule.
-			err = r.addClustersToPlacementRule(ctx, clusterGroupUpgrade)
+			isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
 
 			if isBatchComplete {
+				// If the upgrade is completed for the current batch, cleanup and move to the next.
 				r.Log.Info("Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
 				r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
 				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
@@ -191,6 +186,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					clusterGroupUpgrade.Status.Status.CurrentBatch++
 				}
 			} else {
+				// Add the needed cluster names to upgrade to the appropriate placement rule.
+				err = r.addClustersToPlacementRule(ctx, clusterGroupUpgrade)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+
+				// Check for batch timeout.
 				batchTimeout := time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout/len(clusterGroupUpgrade.Status.RemediationPlan)) * time.Minute
 				if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > batchTimeout {
 					if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
@@ -241,7 +243,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
 			nextReconcile = ctrl.Result{RequeueAfter: 60 * time.Minute}
 
-			isUpgradeComplete, err := r.areAllManagedPoliciesCompliant(ctx, clusterGroupUpgrade)
+			// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
+			isUpgradeComplete, err := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return ctrl.Result{}, err
 			}
@@ -284,88 +287,81 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 	clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex = make(map[string]int)
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 
-	// By default, assume all clusters start applying all policies from the first policy.
+	// By default, don't set any policy index for any of the clusters in the batch.
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName] = 0
+		clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName] = utils.NoPolicyIndex
 	}
 
 	r.Log.Info(">>>> InitializeRemediationPolicyForBatch ", "CurrentRemediationPolicyIndex", clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex)
-	r.Log.Info("NEW CurrentBatchStartedAt", "clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt", clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt)
-
 }
 
 /*
-  getNextRemediationPoliciesForBatch steps through all the clusters in the current batch and checks if each cluster is
-  compliant or not with the policy currently applied for it which has its index held in
+  getNextRemediationPoliciesForBatch: Each cluster is checked against each policy in order. If the cluster is not bound
+  to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
+  policy is found for the cluster or the end of the list is reached.
+
+  The policy currently applied for each cluster has its index held in
   clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[clusterName] (the index is used to range through the
   policies present in clusterGroupUpgrade.Spec.managedPolicies).
 
-  If the cluster is compliant with the policy described by the corresponding index and if we haven't yet reached the
-  last policy, we increment the policy index until we find the next policy for which the cluster is NonCompliant.
-
-  If we don't find a policy for which the cluster is NonCompliant then we decide the batch is completed.
-  If we find a policy for which the cluster is NonCompliant, we decide the batch is not completed.
-
-  returns: error/nil: in case any error happens
-           bool     : true if the batch is done upgrading or not; false if not
+  returns: bool     : true if the batch is done upgrading; false if not
+           error/nil: in case any error happens
 */
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (error, bool) {
-	r.Log.Info("\n===== In getCurrentRemediationPolicyIndex ===", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	r.Log.Info("CURRENT CurrentRemediationPolicyIndex", "plan", clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex)
 
-	var isBatchComplete bool = false
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
+	isBatchComplete := true
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		for {
-			// Get the index and name of the current policy being applied for the current cluster in the batch.
-			currentPolicyIndex := clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]
-			currentManagedPolicyName := clusterGroupUpgrade.Spec.ManagedPolicies[currentPolicyIndex]
-			r.Log.Info("Current policy name for cluster ", "cluster name", batchClusterName, "policyName", currentManagedPolicyName)
-
-			currentManagedPolicy, err := r.getPolicyByName(ctx, currentManagedPolicyName, clusterGroupUpgrade.Namespace)
-			if err != nil {
-				return err, false
-			}
-			// Check if current cluster is compliant or not for its current policy.
-			isBatchClusterCompliantForPolicy := r.isClusterCompliantWithPolicy(clusterGroupUpgrade, batchClusterName, currentManagedPolicy)
-			r.Log.Info("isBatchClusterCompliantForPolicy", "isBatchClusterCompliantForPolicy", isBatchClusterCompliantForPolicy)
-
-			// If the cluster is compliant for the policy, move to the next policy index.
-			if isBatchClusterCompliantForPolicy == true {
-				if currentPolicyIndex < len(clusterGroupUpgrade.Spec.ManagedPolicies) {
-					r.Log.Info("Increase policyIndex for cluster\n\n")
-					clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]++
-				} else {
-					break
-				}
-			} else {
-				isBatchComplete = false
-				break
-			}
+		currentPolicyIndex := clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]
+		if currentPolicyIndex == utils.AllPoliciesValidated {
+			continue
 		}
+
+		// If it's the first time calling the function for the batch, move to policy index 0.
+		if currentPolicyIndex == utils.NoPolicyIndex {
+			currentPolicyIndex = 0
+		}
+
+		// Get the index of the next policy for which the cluster is NonCompliant.
+		currentPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, currentPolicyIndex)
+		if err != nil {
+			return false, err
+		}
+
+		if currentPolicyIndex != utils.AllPoliciesValidated {
+			isBatchComplete = false
+		}
+
+		// Update the policy index for the cluster.
+		clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName] = currentPolicyIndex
 	}
 
 	r.Log.Info("isBatchComplete", "isBatchComplete", isBatchComplete)
 	r.Log.Info("NEW CurrentRemediationPolicyIndex", "plan", clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex)
-	return nil, isBatchComplete
+	return isBatchComplete, nil
 }
 
 /*
-  addClustersToPlacementRule steps through all the managedPolicies and adds those for which it's not compliant with
-  to the placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
+  addClustersToPlacementRule steps through the remediationPolicyIndex and add the clusterNames to the corresponding
+  placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
 
-  returns: error: if it exists
-           nil  : when no error is reported
+  returns: error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) addClustersToPlacementRule(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
+		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
+			continue
+		}
+
 		policyName := clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Spec.ManagedPolicies[managedPolicyIndex]
-		r.Log.Info("Add cluster to placementRule for policy ", "clusterName", clusterName, "policyName", policyName)
-		err := r.updatePlacementRuleWithCluster(ctx, clusterGroupUpgrade, clusterName, policyName)
+		var clusterNameArr []string
+		clusterNameArr = append(clusterNameArr, clusterName)
+		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNameArr, policyName)
 		if err != nil {
 			return err
 		}
@@ -373,9 +369,8 @@ func (r *ClusterGroupUpgradeReconciler) addClustersToPlacementRule(
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithCluster(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, prName string) error {
-	r.Log.Info("\n\n\n==== In function updatePlacementRuleWithCluster ====!!!")
+func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterNames []string, prName string) error {
 
 	placementRule := &unstructured.Unstructured{}
 	placementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -389,43 +384,41 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithCluster(
 	}, placementRule)
 
 	if err != nil {
-		r.Log.Info("Error", "error", err)
-		if errors.IsNotFound(err) {
-			return err
-		}
+		return err
 	} else {
-		r.Log.Info("Got placementRule", "placementRuleName", placementRule.GetName())
-
 		placementRuleSpecClusters := placementRule.Object["spec"].(map[string]interface{})
-		r.Log.Info("placementRuleSpecClusters", "placementRuleSpecClusters", placementRuleSpecClusters)
 
-		newClusterForPlacementRule := map[string]interface{}{"name": clusterName}
+		var prClusterNames []string
 		var updatedClusters []map[string]interface{}
 		currentClusters := placementRuleSpecClusters["clusters"]
-		isCurrentClusterAlreadyPresent := false
+
 		if currentClusters != nil {
-			r.Log.Info("currentClusters", "currentClusters", currentClusters)
 			// Check clusterName is not already present in currentClusters
 			for _, clusterEntry := range currentClusters.([]interface{}) {
 				clusterMap := clusterEntry.(map[string]interface{})
-				r.Log.Info("currentClusters", "clusterMap[name]", clusterMap["name"])
 				updatedClusters = append(updatedClusters, clusterMap)
-				if clusterName == clusterMap["name"] {
-					isCurrentClusterAlreadyPresent = true
-				}
+				prClusterNames = append(prClusterNames, clusterMap["name"].(string))
 			}
 		}
-		if isCurrentClusterAlreadyPresent == false {
-			updatedClusters = append(updatedClusters, newClusterForPlacementRule)
+
+		for _, clusterName := range clusterNames {
+			isCurrentClusterAlreadyPresent := false
+			for _, prClusterName := range prClusterNames {
+				if prClusterName == clusterName {
+					isCurrentClusterAlreadyPresent = true
+					break
+				}
+			}
+			if isCurrentClusterAlreadyPresent == false {
+				updatedClusters = append(updatedClusters, map[string]interface{}{"name": clusterName})
+			}
 		}
 
-		r.Log.Info("Updated clusters for placementRule", "updatedClusters", updatedClusters)
 		placementRuleSpecClusters["clusters"] = updatedClusters
 		placementRuleSpecClusters["clusterReplicas"] = nil
 
 		err = r.Client.Update(ctx, placementRule)
 		if err != nil {
-			r.Log.Info("Error updating placementRule with updatedClusters", "err", err)
 			return err
 		}
 	}
@@ -438,26 +431,23 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacementRules(ctx context.Contex
 	err, placementRules := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
 
 	if err != nil {
-		r.Log.Info("Error getting PLRs in cleanupPlacementRule: ", "err", err)
 		return err
 	}
 
 	errorMap := make(map[string]string)
 	for _, plr := range placementRules.Items {
-		r.Log.Info("Cleanup placementRule", "plrName", plr.GetName())
 		placementRuleSpecClusters := plr.Object["spec"].(map[string]interface{})
 		placementRuleSpecClusters["clusters"] = nil
 		placementRuleSpecClusters["clusterReplicas"] = 0
 
 		err = r.Client.Update(ctx, &plr)
 		if err != nil {
-			r.Log.Info("Error cleaning up placementRule", "err", err)
 			errorMap[plr.GetName()] = string(err.Error())
 			return err
 		}
 	}
 
-	if errorMap != nil {
+	if len(errorMap) != 0 {
 		return fmt.Errorf("Errors cleaning up placement rules: %s", errorMap)
 	}
 	return nil
@@ -480,6 +470,11 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	return foundPolicy, err
 }
 
+/* doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
+   returns: true/false                   if all the policies exist or not
+            []string                     with the missing managed policy names
+			[]*unstructured.Unstructured a list of the managedPolicies present on the system
+*/
 func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, []string, []*unstructured.Unstructured) {
 	var managedPoliciesMissing []string
 	var managedPoliciesPresent []*unstructured.Unstructured
@@ -499,7 +494,6 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(ctx context.Conte
 
 	// If there are missing managed policies, return.
 	if len(managedPoliciesMissing) != 0 {
-		r.Log.Info("managedPoliciesMissing", "managedPoliciesMisisng", managedPoliciesMissing)
 		return false, managedPoliciesMissing, managedPoliciesPresent
 	}
 
@@ -653,40 +647,81 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) isPolicyCompliant(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string) (bool, error) {
-	var result bool
-	policy, err := r.getPolicyByName(ctx, policyName, clusterGroupUpgrade.Namespace)
-	if err != nil {
-		return false, err
-	}
+/* getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
+   policy index for the requested cluster and returns the index of the first policy that has the cluster as NonCompliant.
 
-	if policy != nil {
-		statusObject := policy.Object["status"].(map[string]interface{})
-		if statusObject["compliant"] == nil || statusObject["compliant"] == utils.StatusNonCompliant {
-			result = false
-		} else {
-			result = true
+   returns: policyIndex the index of the next policy for which the cluster is NonCompliant or -1 if no policy found
+            error/nil
+*/
+func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, error) {
+	currentPolicyIndex := startIndex
+
+	for {
+		// Get the name of the managed policy matching the current index.
+		currentManagedPolicyName := clusterGroupUpgrade.Spec.ManagedPolicies[currentPolicyIndex]
+		currentManagedPolicy, err := r.getPolicyByName(ctx, currentManagedPolicyName, clusterGroupUpgrade.Namespace)
+		if err != nil {
+			return utils.NoPolicyIndex, err
+		}
+
+		// Check if current cluster is compliant or not for its current managed policy.
+		clusterStatus, err := r.getClusterComplianceWithPolicy(clusterName, currentManagedPolicy)
+		if err != nil {
+			return utils.NoPolicyIndex, err
+		}
+
+		// If the cluster is compliant for the policy or if the cluster is not matched with the policy,
+		// move to the next policy index.
+		if clusterStatus == utils.StatusCompliant || clusterStatus == utils.ClusterNotMatchedWithPolicy {
+			if currentPolicyIndex < len(clusterGroupUpgrade.Spec.ManagedPolicies)-1 {
+				currentPolicyIndex++
+				continue
+			} else {
+				currentPolicyIndex = utils.AllPoliciesValidated
+				break
+			}
+		} else if clusterStatus == utils.StatusNonCompliant {
+			break
 		}
 	}
 
-	return result, nil
+	return currentPolicyIndex, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) areAllManagedPoliciesCompliant(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
-	policies, err := r.getManagedPolicies(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return false, err
+/* isUpgradeComplete checks if there is at least one managed policy left for which at least one cluster in the
+   batch is NonCompliant.
+
+   returns: true/false if the upgrade is complete
+            error/nil
+*/
+func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+	// If we are not at the last batch, the upgrade clearly didn't complete.
+	if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.Policies) {
+		return false, nil
 	}
 
-	areAllPoliciesCompliant := true
-	for _, policy := range policies {
-		statusObject := policy.Object["status"].(map[string]interface{})
-		if statusObject["compliant"] != utils.StatusCompliant {
-			areAllPoliciesCompliant = false
+	// Go through all the clusters in the current last batch (which is also the last batch) and make sure
+	// they are either compliant with all the managedPolicies or they don't match them.
+	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[clusterGroupUpgrade.Status.Status.CurrentBatch-1] {
+		currentPolicyIndex := clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]
+		if currentPolicyIndex == utils.AllPoliciesValidated || currentPolicyIndex == utils.NoPolicyIndex {
+			continue
+		}
+
+		nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, currentPolicyIndex)
+		if err != nil {
+			return false, err
+		}
+
+		// If we can find a managed policy for which the cluster is NonCompliant, it means the upgrade has
+		// not finished.
+		if nextNonCompliantPolicyIndex != utils.NoPolicyIndex {
+			return false, nil
 		}
 	}
 
-	return areAllPoliciesCompliant, nil
+	return true, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
@@ -871,129 +906,104 @@ func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, 
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) isClusterCompliantWithPolicy(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, policy *unstructured.Unstructured) bool {
-	// Get the status part of the policy.
-	statusObject := policy.Object["status"].(map[string]interface{})
-	// Get the part of the status that holds the clusters' compliance.
-	statusCompliance := statusObject["status"]
+/*
+  getClusterComplianceWithPolicy returns the compliance of a certain cluster with a certain policy
+  based on a policy's status structure which is below. If a policy is bound to a placementRule, then
+  all the clusters bound to the policy will appear in status.status as either Compliant or NonCompliant.
 
-	// If the status doesn't contain anything, we don't have enough information to decide, so we assume the
-	// cluster is not compliant with the policy.
-	if statusCompliance == nil {
-		return false
-	}
-
-	subStatus := statusCompliance.([]interface{})
-
-	// Loop through all the NonCompliant clusters in the policy's status.
-	for _, crtSubStatusCrt := range subStatus {
-		crtSubStatusMap := crtSubStatusCrt.(map[string]interface{})
-		// If the cluster is NonCompliant, return false.
-		if crtSubStatusMap["compliant"] == utils.StatusNonCompliant && clusterName == crtSubStatusMap["clustername"].(string) {
-			return false
-		}
-	}
-
-	return true
-}
-
-/* A policy's status has the format below. In this function we are creating a list with the clusternames
-   which are NonCompliant.
-
-status: (map[string]interface{})
-  compliant: NonCompliant
-  placement:
-  - placementBinding: operator-placementbinding
-    placementRule: operator-placementrules
-  status: ([]interface{})
-  - clustername: spoke3
-    clusternamespace: spoke3
+  status:
     compliant: NonCompliant
-  - clustername: spoke4
-    clusternamespace: spoke4
-    compliant: NonCompliant
+    placement:
+    - placementBinding: binding-policy1-common-cluster-version-policy
+      placementRule: placement-policy1-common-cluster-version-policy
+    status:
+    - clustername: spoke1
+      clusternamespace: spoke1
+      compliant: NonCompliant
+    - clustername: spoke4
+      clusternamespace: spoke4
+      compliant: NonCompliant
+
+	returns: *string pointer to a string holding either Compliant/NonCompliant/NotMatchedWithPolicy
+	         error
 */
-func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(policy *unstructured.Unstructured) []string {
-	var clustersNonCompliant []string
-	// Get the status part of the policy.
-	statusObject := policy.Object["status"].(map[string]interface{})
-	// Get the part of the status that holds the clusters' compliance.
-	statusCompliance := statusObject["status"]
+func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
+	clusterName string, policy *unstructured.Unstructured) (string, error) {
 
-	// If all the clusters are compliant, return nil.
+	// Get the compliant status part of the policy.
+	if policy.Object["status"] == nil {
+		return utils.StatusUnknown, nil
+	}
+
+	statusObject := policy.Object["status"].(map[string]interface{})
+	if statusObject["compliant"] == nil {
+		return utils.StatusUnknown, fmt.Errorf("Policy %s has it's compliant status pending", policy.GetName())
+	}
+
+	// Get the policy's list of cluster compliance.
+	statusCompliance := statusObject["status"]
 	if statusCompliance == nil {
-		return nil
+		return utils.StatusUnknown, nil
 	}
 
 	subStatus := statusCompliance.([]interface{})
 
-	// Loop through all the NonCompliant clusters in the policy's status.status.
+	if subStatus == nil {
+		return utils.StatusUnknown, fmt.Errorf("Policy %s is missing it's compliance status", policy.GetName())
+	}
+
+	// Loop through all the clusters in the policy's compliance status.
+	//var clusterCompliance string
 	for _, crtSubStatusCrt := range subStatus {
 		crtSubStatusMap := crtSubStatusCrt.(map[string]interface{})
-		// If the cluster is NonCompliant, add it to the list of NonCompliant clusters.
-		if crtSubStatusMap["compliant"] == utils.StatusNonCompliant {
-			clustersNonCompliant = append(clustersNonCompliant, crtSubStatusMap["clustername"].(string))
-		}
-	}
-	r.Log.Info("Clusters nonCompliant with ", "policy", policy.GetName(), "clustersNonCompliant", clustersNonCompliant)
-	return clustersNonCompliant
-}
-
-func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	managedPolicies []*unstructured.Unstructured) (map[string]bool, error) {
-
-	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return nil, err
-	}
-
-	clustersNonCompliantMap := make(map[string]bool)
-
-	// clustersNonCompliant will be a map of the clusters present in the CR and within how many managedPolicies they
-	// appear as being NonCompliant.
-	clustersNonCompliant := make(map[string]int)
-	for _, clusterName := range allClustersForUpgrade {
-		clustersNonCompliant[clusterName] = 0
-	}
-
-	for _, managedPolicy := range managedPolicies {
-		clustersNonCompliantWithManagedPolicy := r.getClustersNonCompliantWithPolicy(managedPolicy)
-
-		if clustersNonCompliantWithManagedPolicy == nil {
-			continue
-		}
-
-		for _, nonCompliantClusterName := range clustersNonCompliantWithManagedPolicy {
-			// If the cluster is NonCompliant in this current policy and it's also present in the list of clusters from the CR
-			// increment the number of policies for which it's NonCompliant.
-			if _, ok := clustersNonCompliant[nonCompliantClusterName]; ok {
-				clustersNonCompliantMap[nonCompliantClusterName] = true
-				clustersNonCompliant[nonCompliantClusterName]++
+		// If the cluster is Compliant, return true.
+		if clusterName == crtSubStatusMap["clustername"].(string) {
+			if crtSubStatusMap["compliant"] == utils.StatusCompliant {
+				return utils.StatusCompliant, nil
+			} else if crtSubStatusMap["compliant"] == utils.StatusNonCompliant {
+				return utils.StatusNonCompliant, nil
 			}
 		}
 	}
 
-	r.Log.Info("Cluster (non) compliant with managedPolicies map  : ", "clustersNotCompliantMap", clustersNonCompliantMap)
+	return utils.ClusterNotMatchedWithPolicy, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(ctx context.Context,
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) (map[string]bool, error) {
+	clustersNonCompliantMap := make(map[string]bool)
+
+	// clustersNonCompliantMap will be a map of the clusters present in the CR and wether they are NonCompliant with at
+	// least one managed policy.
+	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return nil, err
+	}
+	for _, clusterName := range allClustersForUpgrade {
+		for _, managedPolicy := range managedPolicies {
+			clusterCompliance, err := r.getClusterComplianceWithPolicy(clusterName, managedPolicy)
+			if err != nil {
+				return nil, err
+			}
+
+			if clusterCompliance == utils.StatusNonCompliant {
+				// If the cluster is NonCompliant in this current policy mark it as such and move to the next cluster.
+				clustersNonCompliantMap[clusterName] = true
+				break
+			}
+		}
+	}
+
 	return clustersNonCompliantMap, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) error {
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) error {
 	// Get all clusters from the CR that are non compliant with at least one of the managedPolicies.
 	clusterNonCompliantWithManagedPoliciesMap, err := r.getClustersNonCompliantWithManagedPolicies(ctx, clusterGroupUpgrade, managedPolicies)
 	if err != nil {
 		return err
 	}
-
-	/*  TODO: remove this at cleanup, keep it just for testing locally with kind.
-	clusterNonCompliantWithManagedPoliciesMap := make(map[string]bool)
-	clusterNonCompliantWithManagedPoliciesMap["spoke1"] = true
-	clusterNonCompliantWithManagedPoliciesMap["spoke2"] = true
-	clusterNonCompliantWithManagedPoliciesMap["spoke3"] = true
-	clusterNonCompliantWithManagedPoliciesMap["spoke4"] = true
-	clusterNonCompliantWithManagedPoliciesMap["spoke5"] = true
-	clusterNonCompliantWithManagedPoliciesMap["spoke6"] = true
-	*/
 
 	// Create remediation plan
 	var remediationPlan [][]string
