@@ -155,6 +155,14 @@ spec:
                   - type
                   type: object
                 type: array
+              copiedPolicies:
+                items:
+                  type: string
+                type: array
+              managedPoliciesNs:
+                additionalProperties:
+                  type: string
+                type: object
               placementBindings:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying
@@ -163,10 +171,6 @@ spec:
                   type: string
                 type: array
               placementRules:
-                items:
-                  type: string
-                type: array
-              policies:
                 items:
                   type: string
                 type: array
