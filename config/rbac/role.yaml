@@ -23,12 +23,8 @@ rules:
   resources:
   - managedclusters
   verbs:
-  - create
-  - delete
   - get
   - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - policy.open-cluster-management.io
