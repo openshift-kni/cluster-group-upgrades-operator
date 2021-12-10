@@ -64,8 +64,19 @@ type ClusterGroupUpgradeSpec struct {
 	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
 	// Once set to true, the clusters start being upgrades, one batch at a time.
 	//+kubebuilder:default=true
-	Enable                    bool                     `json:"enable,omitempty"`
-	Clusters                  []string                 `json:"clusters,omitempty"`
+	Enable   bool     `json:"enable,omitempty"`
+	Clusters []string `json:"clusters,omitempty"`
+	// This field holds a label common to multiple clusters that will be updated.
+	// The expected format is as follows:
+	// clusterSelector:
+	//   - label1Name=label1Value
+	//   - label2Name=label2Value
+	// If the value is empty, then the expected format is:
+	// clusterSelector:
+	//   - label1Name
+	// All the clusters matching the labels specified in clusterSelector will be included
+	// in the update plan.
+	ClusterSelector           []string                 `json:"clusterSelector,omitempty"`
 	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	ManagedPolicies           []string                 `json:"managedPolicies,omitempty"`
 	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`

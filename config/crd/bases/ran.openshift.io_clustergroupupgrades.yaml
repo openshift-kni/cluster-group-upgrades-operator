@@ -37,6 +37,16 @@ spec:
           spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
+              clusterSelector:
+                description: 'This field holds a label common to multiple clusters
+                  that will be updated. The expected format is as follows: clusterSelector:   -
+                  label1Name=label1Value   - label2Name=label2Value If the value is
+                  empty, then the expected format is: clusterSelector:   - label1Name
+                  All the clusters matching the labels specified in clusterSelector
+                  will be included in the update plan.'
+                items:
+                  type: string
+                type: array
               clusters:
                 items:
                   type: string
