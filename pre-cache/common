@@ -1,0 +1,36 @@
+#!/bin/bash
+
+container_tool="${container_tool:-podman}"
+pull_secret_path="${pull_secret_path:-/var/lib/kubelet/config.json}"
+pull_spec_file="${pull_spec_file:-/tmp/images.txt}"
+config_volume_path="${config_volume_path:-/etc/config}"
+
+log_debug() {
+  echo "upgrades.pre-cache $(date -Iseconds) DEBUG $@"
+}
+
+pull_index(){
+    local index_pull_spec=$1
+    local pull_secret_path=$2
+    # Pull the image into the cache directory and attain the image ID
+    release_index_id=$($container_tool pull --quiet  $index_pull_spec --root="/cache" --authfile=$pull_secret_path)
+    [[ $? -eq 0 ]] || return 1
+    echo $release_index_id
+    return 0
+}
+
+mount_index(){
+    local image_id=$1
+    local image_mount=$($container_tool --root="/cache" image mount $image_id)
+    rv=$?
+    echo $image_mount
+    return $rv
+}
+
+unmount_index(){
+    local image_id=$1
+    local result=$($container_tool --root="/cache" image unmount $image_id)
+    rv=$?
+    echo $result
+    return $rv
+}
