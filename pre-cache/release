@@ -1,0 +1,28 @@
+#!/bin/bash
+
+cwd="${cwd:-/opt/precache}"
+. $cwd/common
+
+extract_pull_spec(){
+    local rel_img_mount=$1
+    cat ${rel_img_mount}/release-manifests/image-references |jq '.spec.tags[].from.name' >> $pull_spec_file
+    log_debug "Release index image processing done"
+}
+
+release_main(){
+    rel_img=$(cat $config_volume_path/platform.image)
+    release_index_id=$(pull_index $rel_img $pull_secret_path)
+    [[ $? -eq 0 ]] || return 1
+    rel_img_mount=$(mount_index $release_index_id)
+    [[ $? -eq 0 ]] || return 1
+    extract_pull_spec $rel_img_mount
+    [[ $? -eq 0 ]] || return 1
+    unmount_index $release_index_id
+    [[ $? -eq 0 ]] || return 1
+    return 0
+}
+
+if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
+  release_main
+  exit $?
+fi

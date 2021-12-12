@@ -1,0 +1,40 @@
+#!/bin/bash
+
+cwd="${cwd:-/opt/precache}"
+. $cwd/common
+pull_timeout="${pull_timeout:-6000}"
+
+mirror_images() {
+    for line in $(sort -u $pull_spec_file) ; do
+        # Strip double quotes
+        img="${line%\"}"
+        img="${img#\"}"
+
+        $container_tool image exists $img
+        if [[ $? == 0 ]]; then
+            log_debug "Skipping existing image $img"
+            continue
+        fi
+
+        success=0
+        iterations=10
+        until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]
+        do
+            timeout $pull_timeout $container_tool pull $img --authfile=$pull_secret_path
+            if [[ $? == 0 ]]; then
+                success=1
+            fi
+            iterations=$((iterations - 1))
+        done
+        if [[ $success == 0 ]]; then
+            log_debug "failed to pull ${img}"
+        fi
+    done
+    log_debug "Image pre-cache done"
+}
+
+
+if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
+  mirror_images
+  exit $?
+fi
