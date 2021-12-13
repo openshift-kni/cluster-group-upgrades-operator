@@ -37,6 +37,8 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
+PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -160,10 +162,16 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG} --target operator_image .
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+docker-build-precache: ## Build pre-cache workload docker image.
+	docker build -t ${PRECACHE_IMG} --target precache_image .
+
+docker-push-precache: ## push pre-cache workload docker image.
+	docker push ${PRECACHE_IMG}
 
 ##@ Deployment
 
@@ -290,3 +298,6 @@ kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluste
 
 complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller install
 complete-kuttl-test: complete-deployment kuttl-test
+
+pre-cache-unit-test: ## Run pre-cache scripts unit tests
+	cwd=pre-cache ./pre-cache/test.sh
