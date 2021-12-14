@@ -111,6 +111,7 @@ type ClusterGroupUpgradeStatus struct {
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:path=clustergroupupgrades,shortName=cgu
 
 // ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
 type ClusterGroupUpgrade struct {
