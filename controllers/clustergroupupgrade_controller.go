@@ -572,7 +572,7 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		}
 		// Update the metadata name
 		metadataContent := metadata.(map[string]interface{})
-		metadataContent["name"] = clusterGroupUpgrade.Name + "-" + metadataContent["name"].(string)
+		metadataContent["name"] = getResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
 	}
 
 	return nil
@@ -1079,8 +1079,8 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	return nil
 }
 
-func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string) string {
-	return clusterGroupUpgrade.Name + "-" + policyName
+func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+	return clusterGroupUpgrade.Name + "-" + initialString
 }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
