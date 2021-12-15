@@ -295,7 +295,7 @@ kuttl-test: ## Run KUTTL tests
 
 start-test-proxy:
 	@echo "Start kubectl proxy for testing"
-	./hack/start_stop_kubectl_proxy.sh
+	./hack/start_kubectl_proxy.sh
 
 stop-test-proxy:
 	@echo "Stop kubectl proxy for testing"
