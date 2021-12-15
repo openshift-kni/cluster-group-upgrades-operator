@@ -39,6 +39,17 @@ spec:
           spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
+              blockingCRs:
+                items:
+                  description: BlockingCR defines the Upgrade CRs that block the current
+                    CR from running if not completed
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
               clusterSelector:
                 description: 'This field holds a label common to multiple clusters
                   that will be updated. The expected format is as follows: clusterSelector:   -
