@@ -591,16 +591,50 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 
 	// Set new policy remediationAction.
 	newPolicy.Object["spec"] = managedPolicy.Object["spec"]
+	err := r.updateConfigurationPolicyNameForCopiedPolicy(clusterGroupUpgrade, newPolicy.Object["spec"], managedPolicy.GetName())
+	if err != nil {
+		return err
+	}
+
 	specObject := newPolicy.Object["spec"].(map[string]interface{})
 	specObject["remediationAction"] = utils.RemediationActionEnforce
 
 	// Create the new policy in the desired namespace.
-	err := r.createNewPolicyFromStructure(ctx, clusterGroupUpgrade, newPolicy)
+	err = r.createNewPolicyFromStructure(ctx, clusterGroupUpgrade, newPolicy)
 	if err != nil {
 		r.Log.Info("Error creating policy", "err", err)
 		return err
 	}
 	newPolicyName = newPolicy.GetName()
+
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPolicy(
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, spec interface{}, managedPolicyName string) error {
+
+	specObject := spec.(map[string]interface{})
+
+	// Get the policy templates.
+	policyTemplates := specObject["policy-templates"]
+	policyTemplatesArr := policyTemplates.([]interface{})
+
+	// Go through the template array.
+	for _, template := range policyTemplatesArr {
+		// Get to the metadata name of the ConfigurationPolicy.
+		objectDefinition := template.(map[string]interface{})["objectDefinition"]
+		if objectDefinition == nil {
+			return fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition", managedPolicyName)
+		}
+		objectDefinitionContent := objectDefinition.(map[string]interface{})
+		metadata := objectDefinitionContent["metadata"]
+		if metadata == nil {
+			return fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition.metadata", managedPolicyName)
+		}
+		// Update the metadata name
+		metadataContent := metadata.(map[string]interface{})
+		metadataContent["name"] = getResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
+	}
 
 	return nil
 }
@@ -612,12 +646,11 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 		Namespace: clusterGroupUpgrade.Namespace,
 	}, policy)
 
-	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
-		return err
-	}
-
 	if err != nil {
 		if errors.IsNotFound(err) {
+			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+				return err
+			}
 			err = r.Client.Create(ctx, policy)
 			if err != nil {
 				return err
@@ -1108,8 +1141,8 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	return nil
 }
 
-func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string) string {
-	return clusterGroupUpgrade.Name + "-" + policyName
+func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+	return clusterGroupUpgrade.Name + "-" + initialString
 }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
