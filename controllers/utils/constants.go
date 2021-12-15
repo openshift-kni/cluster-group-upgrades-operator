@@ -11,4 +11,6 @@ const (
 
 	NoPolicyIndex        = -1
 	AllPoliciesValidated = -2
+
+	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
 )
