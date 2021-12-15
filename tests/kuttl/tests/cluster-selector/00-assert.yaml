@@ -23,7 +23,7 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: The ClusterGroupUpgrade CR has remediationAction set to inform
+  - message: The ClusterGroupUpgrade CR is not enabled
     reason: UpgradeNotStarted
     status: "False"
     type: Ready
