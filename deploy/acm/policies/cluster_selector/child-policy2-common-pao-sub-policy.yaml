@@ -1,0 +1,57 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  labels:
+    policy.open-cluster-management.io/root-policy: policy2-common-pao-sub-policy
+  name: default.policy2-common-pao-sub-policy
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: common-pao-sub-policy-config
+      spec:
+        namespaceselector:
+          exclude:
+          - kube-*
+          include:
+          - '*'
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: operators.coreos.com/v1alpha1
+            kind: Subscription
+            metadata:
+              name: performance-addon-operator
+              namespace: openshift-performance-addon-operator
+            spec:
+              channel: "4.9"
+              name: performance-addon-operator
+              source: redhat-operators
+              sourceNamespace: openshift-marketplace
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              annotations:
+                workload.openshift.io/allowed: management
+              labels:
+                openshift.io/cluster-monitoring: "true"
+              name: openshift-performance-addon-operator
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: operators.coreos.com/v1
+            kind: OperatorGroup
+            metadata:
+              name: performance-addon-operator
+              namespace: openshift-performance-addon-operator
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
