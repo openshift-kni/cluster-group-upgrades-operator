@@ -33,6 +33,12 @@ type RemediationStrategySpec struct {
 	Timeout int `json:"timeout,omitempty"`
 }
 
+// BlockingCR defines the Upgrade CRs that block the current CR from running if not completed
+type BlockingCR struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
 // DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
 type DesiredUpdateSpec struct {
 	Version string `json:"version,omitempty"`
@@ -79,6 +85,7 @@ type ClusterGroupUpgradeSpec struct {
 	ClusterSelector           []string                 `json:"clusterSelector,omitempty"`
 	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
 	ManagedPolicies           []string                 `json:"managedPolicies,omitempty"`
+	BlockingCRs               []BlockingCR             `json:"blockingCRs,omitempty"`
 	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
 }
 
