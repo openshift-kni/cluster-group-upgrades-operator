@@ -389,42 +389,42 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
 
 	if err != nil {
 		return err
-	} else {
-		placementRuleSpecClusters := placementRule.Object["spec"].(map[string]interface{})
+	}
 
-		var prClusterNames []string
-		var updatedClusters []map[string]interface{}
-		currentClusters := placementRuleSpecClusters["clusters"]
+	placementRuleSpecClusters := placementRule.Object["spec"].(map[string]interface{})
 
-		if currentClusters != nil {
-			// Check clusterName is not already present in currentClusters
-			for _, clusterEntry := range currentClusters.([]interface{}) {
-				clusterMap := clusterEntry.(map[string]interface{})
-				updatedClusters = append(updatedClusters, clusterMap)
-				prClusterNames = append(prClusterNames, clusterMap["name"].(string))
+	var prClusterNames []string
+	var updatedClusters []map[string]interface{}
+	currentClusters := placementRuleSpecClusters["clusters"]
+
+	if currentClusters != nil {
+		// Check clusterName is not already present in currentClusters
+		for _, clusterEntry := range currentClusters.([]interface{}) {
+			clusterMap := clusterEntry.(map[string]interface{})
+			updatedClusters = append(updatedClusters, clusterMap)
+			prClusterNames = append(prClusterNames, clusterMap["name"].(string))
+		}
+	}
+
+	for _, clusterName := range clusterNames {
+		isCurrentClusterAlreadyPresent := false
+		for _, prClusterName := range prClusterNames {
+			if prClusterName == clusterName {
+				isCurrentClusterAlreadyPresent = true
+				break
 			}
 		}
-
-		for _, clusterName := range clusterNames {
-			isCurrentClusterAlreadyPresent := false
-			for _, prClusterName := range prClusterNames {
-				if prClusterName == clusterName {
-					isCurrentClusterAlreadyPresent = true
-					break
-				}
-			}
-			if isCurrentClusterAlreadyPresent == false {
-				updatedClusters = append(updatedClusters, map[string]interface{}{"name": clusterName})
-			}
+		if isCurrentClusterAlreadyPresent == false {
+			updatedClusters = append(updatedClusters, map[string]interface{}{"name": clusterName})
 		}
+	}
 
-		placementRuleSpecClusters["clusters"] = updatedClusters
-		placementRuleSpecClusters["clusterReplicas"] = nil
+	placementRuleSpecClusters["clusters"] = updatedClusters
+	placementRuleSpecClusters["clusterReplicas"] = nil
 
-		err = r.Client.Update(ctx, placementRule)
-		if err != nil {
-			return err
-		}
+	err = r.Client.Update(ctx, placementRule)
+	if err != nil {
+		return err
 	}
 
 	return nil
@@ -432,7 +432,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
 
 func (r *ClusterGroupUpgradeReconciler) cleanupPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	// Get all the placementRules associated to this upgrades CR.
-	err, placementRules := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
+	placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
 
 	if err != nil {
 		return err
@@ -899,7 +899,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	return u, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string) (error, *unstructured.UnstructuredList) {
+func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string) (*unstructured.UnstructuredList, error) {
 	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	if policyName != nil {
 		placementRuleLabels["openshift-cluster-group-upgrades/forPolicy"] = *policyName
@@ -916,10 +916,10 @@ func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, c
 		Version: "v1",
 	})
 	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
-		return err, nil
+		return nil, err
 	}
 
-	return nil, placementRulesList
+	return placementRulesList, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (*unstructured.UnstructuredList, error) {
@@ -1295,7 +1295,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(ctx context.Context, clu
 
 func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-		err, placementRules := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
+		placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
 		if err != nil {
 			return err
 		}
