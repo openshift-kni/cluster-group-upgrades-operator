@@ -302,10 +302,10 @@ stop-test-proxy:
 	cat ./bin/kubectl_proxy_pid | xargs kill -9
 
 kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
-kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
+kind-complete-kuttl-test: kind-complete-deployment kuttl-test stop-test-proxy kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
-complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller install
-complete-kuttl-test: complete-deployment kuttl-test
+complete-deployment: non-kind-deps-update start-test-proxy install-acm-crds deploy-policy-propagator-controller install
+complete-kuttl-test: complete-deployment kuttl-test stop-test-proxy
 
 pre-cache-unit-test: ## Run pre-cache scripts unit tests
 	cwd=pre-cache ./pre-cache/test.sh

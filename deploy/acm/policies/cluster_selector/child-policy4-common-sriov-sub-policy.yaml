@@ -1,0 +1,61 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  labels:
+    policy.open-cluster-management.io/root-policy: policy4-common-sriov-sub-policy
+  name: default.policy4-common-sriov-sub-policy
+# namespace: group-policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: common-sriov-sub-policy-config
+      spec:
+        namespaceselector:
+          exclude:
+          - kube-*
+          include:
+          - '*'
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: operators.coreos.com/v1alpha1
+            kind: Subscription
+            metadata:
+              name: sriov-network-operator-subscription
+              namespace: openshift-sriov-network-operator
+            spec:
+              channel: "4.9"
+              name: sriov-network-operator
+              source: redhat-operators
+              sourceNamespace: openshift-marketplace
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: v1
+            kind: Namespace
+            metadata:
+              annotations:
+                workload.openshift.io/allowed: management
+              labels:
+                openshift.io/run-level: "1"
+              name: openshift-sriov-network-operator
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: operators.coreos.com/v1
+            kind: OperatorGroup
+            metadata:
+              name: sriov-network-operators
+              namespace: openshift-sriov-network-operator
+            spec:
+              targetNamespaces:
+              - openshift-sriov-network-operator
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
