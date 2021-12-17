@@ -47,7 +47,7 @@ const (
 	ztpDeployWaveAnnotation      = "ran.openshift.io/ztp-deploy-wave"
 )
 
-// ManagedClusterReconciler reconciles a ManagedCluster object to auto create the ClusterGroupUpgrade
+// ManagedClusterForCguReconciler reconciles a ManagedCluster object to auto create the ClusterGroupUpgrade
 type ManagedClusterForCguReconciler struct {
 	client.Client
 	Log    logr.Logger
