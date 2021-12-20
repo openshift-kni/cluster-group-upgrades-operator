@@ -54,6 +54,11 @@ type ManagedClusterForCguReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters/finalizers,verbs=update
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
+
 // Reconcile the managed cluster auto create ClusterGroupUpgrade
 // - Controller watches for create event of managed cluster object. Reconcilation
 //   is triggered when a new managed cluster is created
