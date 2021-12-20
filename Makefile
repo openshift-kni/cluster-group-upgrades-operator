@@ -162,13 +162,13 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} --target operator_image .
+	docker build -t ${IMG} -f Dockerfile .
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
 
 docker-build-precache: ## Build pre-cache workload docker image.
-	docker build -t ${PRECACHE_IMG} --target precache_image .
+	docker build -t ${PRECACHE_IMG} -f Dockerfile.precache .
 
 docker-push-precache: ## push pre-cache workload docker image.
 	docker push ${PRECACHE_IMG}

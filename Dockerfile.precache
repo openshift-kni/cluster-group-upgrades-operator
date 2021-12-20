@@ -1,0 +1,10 @@
+FROM registry.access.redhat.com/ubi8-minimal:latest
+RUN mkdir /opt/precache
+COPY pre-cache/release \
+     pre-cache/common \
+     pre-cache/olm \
+     pre-cache/parse_index.py \
+     pre-cache/pull \
+     pre-cache/precache.sh \
+     /opt/precache
+ENV PATH="/opt/precache:${PATH}"
