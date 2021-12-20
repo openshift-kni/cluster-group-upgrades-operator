@@ -254,13 +254,6 @@ catalog-push: ## Push a catalog image.
 .PHONY: kind-bootstrap-cluster
 kind-bootstrap-cluster: kind-create-cluster start-test-proxy install-acm-crds ## Deploy kind cluster and dependencies
 
-# In order to use the Upgrades operator we need the policy controller to run so that
-# all the needed upgrades policies and placements are created.
-deploy-policy-propagator-controller:
-	@echo "Installing policy-propagator"
-	kubectl create ns ${KIND_ACM_NAMESPACE}
-	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
-
 # Specify KIND_VERSION to indicate the version tag of the KinD image
 kind-create-cluster:
 	@echo "Creating kind cluster"
@@ -304,7 +297,7 @@ stop-test-proxy:
 kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
 kind-complete-kuttl-test: kind-complete-deployment kuttl-test stop-test-proxy kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
 
-complete-deployment: non-kind-deps-update start-test-proxy install-acm-crds deploy-policy-propagator-controller install
+complete-deployment: non-kind-deps-update start-test-proxy install-acm-crds install
 complete-kuttl-test: complete-deployment kuttl-test stop-test-proxy
 
 pre-cache-unit-test: ## Run pre-cache scripts unit tests
