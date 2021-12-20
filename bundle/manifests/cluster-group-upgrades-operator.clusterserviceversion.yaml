@@ -39,6 +39,18 @@ spec:
       clusterPermissions:
       - rules:
         - apiGroups:
+          - ""
+          resources:
+          - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - apps.open-cluster-management.io
           resources:
           - placementrules
@@ -55,13 +67,15 @@ spec:
           resources:
           - managedclusters
           verbs:
-          - create
-          - delete
           - get
           - list
-          - patch
-          - update
           - watch
+        - apiGroups:
+          - cluster.open-cluster-management.io
+          resources:
+          - managedclusters/finalizers
+          verbs:
+          - update
         - apiGroups:
           - policy.open-cluster-management.io
           resources:
