@@ -86,6 +86,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
+	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
+	if err != nil {
+		r.Log.Error(err, "reconcilePrecaching")
+		return ctrl.Result{}, err
+	}
+
 	nextReconcile := ctrl.Result{}
 	readyCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready")
 
@@ -98,7 +104,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			Message: "The ClusterGroupUpgrade CR is not enabled",
 		})
 	} else if readyCondition.Status == metav1.ConditionFalse {
-		if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
+		if readyCondition.Reason == "PrecachingRequired" {
+			requeueAfter := 30 * time.Minute
+			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
 			if err != nil {

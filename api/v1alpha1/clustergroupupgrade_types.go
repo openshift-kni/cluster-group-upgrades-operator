@@ -70,8 +70,14 @@ type ClusterGroupUpgradeSpec struct {
 	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
 	// Once set to true, the clusters start being upgrades, one batch at a time.
 	//+kubebuilder:default=true
-	Enable   bool     `json:"enable,omitempty"`
-	Clusters []string `json:"clusters,omitempty"`
+	Enable bool `json:"enable,omitempty"`
+	// This field determines whether container image pre-caching will be done on all the clusters
+	// matching the selector.
+	// If required, the pre-caching process starts immediately on all clusters irrespectively of
+	// the value of the "enable" flag
+	//+kubebuilder:default=false
+	PreCaching bool     `json:"preCaching,omitempty"`
+	Clusters   []string `json:"clusters,omitempty"`
 	// This field holds a label common to multiple clusters that will be updated.
 	// The expected format is as follows:
 	// clusterSelector:
@@ -115,6 +121,7 @@ type ClusterGroupUpgradeStatus struct {
 	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
 	ManagedPoliciesNs map[string]string  `json:"managedPoliciesNs,omitempty"`
 	Status            UpgradeStatus      `json:"status,omitempty"`
+	PrecacheStatus    map[string]string  `json:"PrecacheStatus,omitempty"`
 }
 
 //+kubebuilder:object:root=true

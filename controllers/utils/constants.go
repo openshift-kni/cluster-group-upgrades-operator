@@ -24,3 +24,23 @@ const (
 const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
 )
+
+// Pre-cache
+const (
+	KubeconfigSecretSuffix     = "admin-kubeconfig"
+	OperatorConfigOverrides    = "cluster-group-upgrade-overrides"
+	PrecacheJobNamespace       = "pre-cache"
+	PrecacheJobName            = "pre-cache"
+	PrecacheServiceAccountName = "pre-cache-agent"
+	PrecacheSpecCmName         = "pre-cache-spec"
+	JobNotFoundString          = "jobs.batch \"pre-cache\" not found"
+
+	PrecacheNotStarted         = "NotStarted"
+	PrecacheStarting           = "Starting"
+	PrecacheFailedToStart      = "FailedToStart"
+	PrecacheActive             = "Active"
+	PrecacheSucceeded          = "Succeeded"
+	PrecachePartiallyDone      = "PartiallyDone"
+	PrecacheUnrecoverableError = "UnrecoverableError"
+	PrecacheUnforeseenStatus   = "UnforeseenStatus"
+)
