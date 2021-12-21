@@ -1,0 +1,57 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-cluster-selector
+  namespace: default
+spec:
+  clusterSelector:
+  - upgrade
+  - upgrade2=true
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke5
+  - spoke6
+  enable: false
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  conditions:
+  - message: The ClusterGroupUpgrade CR is not enabled
+    reason: UpgradeNotStarted
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-cluster-selector-policy1-common-cluster-version-policy
+  - cgu-cluster-selector-policy2-common-pao-sub-policy
+  - cgu-cluster-selector-policy3-common-ptp-sub-policy
+  - cgu-cluster-selector-policy4-common-sriov-sub-policy
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+    policy3-common-ptp-sub-policy: default
+    policy4-common-sriov-sub-policy: default
+  placementBindings:
+  - cgu-cluster-selector-policy1-common-cluster-version-policy
+  - cgu-cluster-selector-policy2-common-pao-sub-policy
+  - cgu-cluster-selector-policy3-common-ptp-sub-policy
+  - cgu-cluster-selector-policy4-common-sriov-sub-policy
+  placementRules:
+  - cgu-cluster-selector-policy1-common-cluster-version-policy
+  - cgu-cluster-selector-policy2-common-pao-sub-policy
+  - cgu-cluster-selector-policy3-common-ptp-sub-policy
+  - cgu-cluster-selector-policy4-common-sriov-sub-policy
+  remediationPlan:
+  - - spoke1
+    - spoke4
+  - - spoke2
+    - spoke5
+  - - spoke6
+  status: {}
+

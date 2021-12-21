@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: oc delete -f ../../../../deploy/acm/policies/cluster_selector/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/cluster_selector/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/cluster_selector/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/cluster_selector/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/upgrades/cgu-cluster-selector.yaml
+    namespaced: true

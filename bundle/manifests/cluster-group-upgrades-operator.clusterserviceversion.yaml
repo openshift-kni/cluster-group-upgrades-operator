@@ -156,7 +156,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:v0.0.3
                 livenessProbe:
                   httpGet:
                     path: /healthz

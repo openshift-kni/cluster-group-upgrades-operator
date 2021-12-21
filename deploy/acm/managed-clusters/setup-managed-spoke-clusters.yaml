@@ -5,6 +5,8 @@ metadata:
     cloud: auto-detect
     name: spoke1
     vendor: auto-detect
+    upgrade: ""
+    upgrade2: "true"
   name: spoke1
   namespace: spoke1
 spec: {}
@@ -27,6 +29,7 @@ metadata:
     cloud: auto-detect
     name: spoke3
     vendor: auto-detect
+    upgrade: ""
   name: spoke3
   namespace: spoke3
 spec: {}
@@ -38,6 +41,7 @@ metadata:
     cloud: auto-detect
     name: spoke4
     vendor: auto-detect
+    upgrade2: "true"
   name: spoke4
   namespace: spoke4
 spec: {}

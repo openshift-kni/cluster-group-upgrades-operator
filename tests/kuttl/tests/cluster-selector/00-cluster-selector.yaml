@@ -1,0 +1,48 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Create all the managed inform policies
+  - command: oc apply -f ../../../../deploy/acm/policies/cluster_selector/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/cluster_selector/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/cluster_selector/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/cluster_selector/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Patch the inform policies to reflect the compliance status.
+  - command: ../../../../deploy/acm/policies/patch-policies-status.sh default default default default
+    ignoreFailure: false
+
+  # Create all the child policies to map the inform policies above.
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/cluster_selector/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/cluster_selector/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/cluster_selector/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/cluster_selector/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/cluster_selector/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/cluster_selector/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/cluster_selector/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/cluster_selector/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/cluster_selector/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke5 -f ../../../../deploy/acm/policies/cluster_selector/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/cluster_selector/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Apply the UOCR.
+  - command: oc apply -f ../../../../deploy/upgrades/cgu-cluster-selector.yaml
+    namespaced: true

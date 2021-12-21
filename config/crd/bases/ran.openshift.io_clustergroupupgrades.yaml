@@ -13,6 +13,8 @@ spec:
     kind: ClusterGroupUpgrade
     listKind: ClusterGroupUpgradeList
     plural: clustergroupupgrades
+    shortNames:
+    - cgu
     singular: clustergroupupgrade
   scope: Namespaced
   versions:
@@ -37,53 +39,45 @@ spec:
           spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
-              clusters:
-                description: 'INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-                  Important: Run "make" to regenerate code after modifying this file'
+              blockingCRs:
                 items:
-                  type: string
-                type: array
-              deleteObjectsOnCompletion:
-                type: boolean
-              operatorUpgrades:
-                items:
-                  description: OperatorUpgradeSpec defines the configuration of an
-                    operator upgrade
+                  description: BlockingCR defines the Upgrade CRs that block the current
+                    CR from running if not completed
                   properties:
-                    channel:
-                      type: string
                     name:
                       type: string
                     namespace:
                       type: string
                   type: object
                 type: array
-              platformUpgrade:
-                description: PlatformUpgradeSpec defines the configuration of a platform
-                  upgrade
-                properties:
-                  channel:
-                    type: string
-                  desiredUpdate:
-                    description: DesiredUpdateSpec models the desiredUpdate field
-                      of ClusterVersion
-                    properties:
-                      force:
-                        type: boolean
-                      image:
-                        type: string
-                      version:
-                        type: string
-                    type: object
-                  upstream:
-                    type: string
-                type: object
-              remediationAction:
-                default: inform
-                enum:
-                - inform
-                - enforce
-                type: string
+              clusterSelector:
+                description: 'This field holds a label common to multiple clusters
+                  that will be updated. The expected format is as follows: clusterSelector:   -
+                  label1Name=label1Value   - label2Name=label2Value If the value is
+                  empty, then the expected format is: clusterSelector:   - label1Name
+                  All the clusters matching the labels specified in clusterSelector
+                  will be included in the update plan.'
+                items:
+                  type: string
+                type: array
+              clusters:
+                items:
+                  type: string
+                type: array
+              deleteObjectsOnCompletion:
+                type: boolean
+              enable:
+                default: true
+                description: This field determines when the upgrade starts. While
+                  false, the upgrade doesn't start. The policies, placement rules
+                  and placement bindings are created, but clusters are not added to
+                  the placement rule. Once set to true, the clusters start being upgrades,
+                  one batch at a time.
+                type: boolean
+              managedPolicies:
+                items:
+                  type: string
+                type: array
               remediationStrategy:
                 description: RemediationStrategySpec defines the remediation policy
                 properties:
@@ -172,6 +166,14 @@ spec:
                   - type
                   type: object
                 type: array
+              copiedPolicies:
+                items:
+                  type: string
+                type: array
+              managedPoliciesNs:
+                additionalProperties:
+                  type: string
+                type: object
               placementBindings:
                 description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
                   of cluster Important: Run "make" to regenerate code after modifying
@@ -180,10 +182,6 @@ spec:
                   type: string
                 type: array
               placementRules:
-                items:
-                  type: string
-                type: array
-              policies:
                 items:
                   type: string
                 type: array
@@ -204,26 +202,10 @@ spec:
                   currentBatchStartedAt:
                     format: date-time
                     type: string
-                  operatorUpgradePolicies:
-                    items:
-                      description: PolicyStatus defines the observed state of a Policy
-                      properties:
-                        complianceState:
-                          type: string
-                        name:
-                          type: string
-                      type: object
-                    type: array
-                  platformUpgradesPolicies:
-                    items:
-                      description: PolicyStatus defines the observed state of a Policy
-                      properties:
-                        complianceState:
-                          type: string
-                        name:
-                          type: string
-                      type: object
-                    type: array
+                  remediationPlanForBatch:
+                    additionalProperties:
+                      type: integer
+                    type: object
                   startedAt:
                     format: date-time
                     type: string

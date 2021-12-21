@@ -1,0 +1,24 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-cluster-selector
+  namespace: default
+spec:
+  managedPolicies:
+    - policy1-common-cluster-version-policy
+    - policy2-common-pao-sub-policy
+    - policy3-common-ptp-sub-policy
+    - policy4-common-sriov-sub-policy
+  enable: false
+  clusterSelector:
+  - upgrade
+  - upgrade2=true
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke5
+  - spoke6
+  remediationAction: inform
+  remediationStrategy:
+    maxConcurrency: 2
+

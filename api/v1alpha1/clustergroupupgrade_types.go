@@ -33,6 +33,12 @@ type RemediationStrategySpec struct {
 	Timeout int `json:"timeout,omitempty"`
 }
 
+// BlockingCR defines the Upgrade CRs that block the current CR from running if not completed
+type BlockingCR struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
+}
+
 // DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
 type DesiredUpdateSpec struct {
 	Version string `json:"version,omitempty"`
@@ -59,24 +65,37 @@ type OperatorUpgradeSpec struct {
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Clusters            []string                 `json:"clusters,omitempty"`
-	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	//+kubebuilder:validation:Enum=inform;enforce
-	//+kubebuilder:default=inform
-	RemediationAction         string                `json:"remediationAction,omitempty"`
-	PlatformUpgrade           *PlatformUpgradeSpec  `json:"platformUpgrade,omitempty"`
-	OperatorUpgrades          []OperatorUpgradeSpec `json:"operatorUpgrades,omitempty"`
-	DeleteObjectsOnCompletion bool                  `json:"deleteObjectsOnCompletion,omitempty"`
+
+	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
+	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
+	// Once set to true, the clusters start being upgrades, one batch at a time.
+	//+kubebuilder:default=true
+	Enable   bool     `json:"enable,omitempty"`
+	Clusters []string `json:"clusters,omitempty"`
+	// This field holds a label common to multiple clusters that will be updated.
+	// The expected format is as follows:
+	// clusterSelector:
+	//   - label1Name=label1Value
+	//   - label2Name=label2Value
+	// If the value is empty, then the expected format is:
+	// clusterSelector:
+	//   - label1Name
+	// All the clusters matching the labels specified in clusterSelector will be included
+	// in the update plan.
+	ClusterSelector           []string                 `json:"clusterSelector,omitempty"`
+	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	ManagedPolicies           []string                 `json:"managedPolicies,omitempty"`
+	BlockingCRs               []BlockingCR             `json:"blockingCRs,omitempty"`
+	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
-	PlatformUpgradePolicies []PolicyStatus `json:"platformUpgradesPolicies,omitempty"`
-	OperatorUpgradePolicies []PolicyStatus `json:"operatorUpgradePolicies,omitempty"`
-	StartedAt               metav1.Time    `json:"startedAt,omitempty"`
-	CompletedAt             metav1.Time    `json:"completedAt,omitempty"`
-	CurrentBatch            int            `json:"currentBatch,omitempty"`
-	CurrentBatchStartedAt   metav1.Time    `json:"currentBatchStartedAt,omitempty"`
+	StartedAt                     metav1.Time    `json:"startedAt,omitempty"`
+	CompletedAt                   metav1.Time    `json:"completedAt,omitempty"`
+	CurrentBatch                  int            `json:"currentBatch,omitempty"`
+	CurrentBatchStartedAt         metav1.Time    `json:"currentBatchStartedAt,omitempty"`
+	CurrentRemediationPolicyIndex map[string]int `json:"remediationPlanForBatch,omitempty"`
 }
 
 // PolicyStatus defines the observed state of a Policy
@@ -91,14 +110,16 @@ type ClusterGroupUpgradeStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	PlacementBindings []string           `json:"placementBindings,omitempty"`
 	PlacementRules    []string           `json:"placementRules,omitempty"`
-	Policies          []string           `json:"policies,omitempty"`
+	CopiedPolicies    []string           `json:"copiedPolicies,omitempty"`
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
+	ManagedPoliciesNs map[string]string  `json:"managedPoliciesNs,omitempty"`
 	Status            UpgradeStatus      `json:"status,omitempty"`
 }
 
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
+//+kubebuilder:resource:path=clustergroupupgrades,shortName=cgu
 
 // ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
 type ClusterGroupUpgrade struct {

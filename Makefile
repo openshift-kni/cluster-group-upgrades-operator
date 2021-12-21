@@ -37,6 +37,8 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
+PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
+
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
@@ -160,10 +162,16 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
 docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} .
+	docker build -t ${IMG} -f Dockerfile .
 
 docker-push: ## Push docker image with the manager.
 	docker push ${IMG}
+
+docker-build-precache: ## Build pre-cache workload docker image.
+	docker build -t ${PRECACHE_IMG} -f Dockerfile.precache .
+
+docker-push-precache: ## push pre-cache workload docker image.
+	docker push ${PRECACHE_IMG}
 
 ##@ Deployment
 
@@ -244,14 +252,7 @@ catalog-push: ## Push a catalog image.
 ##@ Test
 
 .PHONY: kind-bootstrap-cluster
-kind-bootstrap-cluster: kind-create-cluster install-acm-crds deploy-policy-propagator-controller ## Deploy kind cluster and dependencies
-
-# In order to use the Upgrades operator we need the policy controller to run so that
-# all the needed upgrades policies and placements are created.
-deploy-policy-propagator-controller:
-	@echo "Installing policy-propagator"
-	kubectl create ns ${KIND_ACM_NAMESPACE}
-	kubectl apply -f deploy/acm/ -n $(KIND_ACM_NAMESPACE)
+kind-bootstrap-cluster: kind-create-cluster start-test-proxy install-acm-crds ## Deploy kind cluster and dependencies
 
 # Specify KIND_VERSION to indicate the version tag of the KinD image
 kind-create-cluster:
@@ -285,8 +286,19 @@ kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"
 	kubectl-kuttl test
 
-kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
-kind-complete-kuttl-test: kind-complete-deployment kuttl-test kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
+start-test-proxy:
+	@echo "Start kubectl proxy for testing"
+	./hack/start_kubectl_proxy.sh
 
-complete-deployment: non-kind-deps-update install-acm-crds deploy-policy-propagator-controller install
-complete-kuttl-test: complete-deployment kuttl-test
+stop-test-proxy:
+	@echo "Stop kubectl proxy for testing"
+	cat ./bin/kubectl_proxy_pid | xargs kill -9
+
+kind-complete-deployment: kind-deps-update kind-bootstrap-cluster docker-build kind-load-operator-image deploy ## Deploy cluster with the Upgrades operator
+kind-complete-kuttl-test: kind-complete-deployment kuttl-test stop-test-proxy kind-delete-cluster ## Deploy cluster with the Upgrades operator and run KUTTL tests
+
+complete-deployment: non-kind-deps-update start-test-proxy install-acm-crds install
+complete-kuttl-test: complete-deployment kuttl-test stop-test-proxy
+
+pre-cache-unit-test: ## Run pre-cache scripts unit tests
+	cwd=pre-cache ./pre-cache/test.sh
