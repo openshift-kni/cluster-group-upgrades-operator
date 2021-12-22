@@ -18,7 +18,9 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -142,7 +144,7 @@ func (r *ManagedClusterForCguReconciler) getPolicies(ctx context.Context, cluste
 // Create a clusterGroupUpgrade
 func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Context, cluster *clusterv1.ManagedCluster, policies *policiesv1.PolicyList) (err error) {
 	var managedPolicies []string
-	var policyWaveMap = make(map[string]string)
+	var policyWaveMap = make(map[string]int)
 
 	// Generate a list of ordered managed policies based on the deploy wave.
 	// Deploywave is a way to order deployment of policies, it's defined
@@ -156,8 +158,13 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Cont
 	for _, policy := range policies.Items {
 		deployWave, found := policy.GetAnnotations()[ztpDeployWaveAnnotation]
 		if found {
+			deployWaveInt, err := strconv.Atoi(deployWave)
+			if err != nil {
+				// err convert from string to int
+				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, policy.GetName(), err)
+			}
 			policyName := strings.SplitAfter(policy.GetName(), ".")[1]
-			policyWaveMap[policyName] = deployWave
+			policyWaveMap[policyName] = deployWaveInt
 			managedPolicies = append(managedPolicies, policyName)
 		}
 	}
