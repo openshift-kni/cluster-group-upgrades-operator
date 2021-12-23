@@ -1,0 +1,39 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  conditions:
+  - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
+    reason: UpgradeNotCompleted
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+  placementBindings:
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  placementRules:
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  remediationPlan:
+  - - spoke1
+  status:
+    currentBatch: 1
+    remediationPlanForBatch:
+      spoke1: 0
