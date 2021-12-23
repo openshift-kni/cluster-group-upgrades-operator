@@ -1,7 +1,0 @@
-apiVersion: kuttl.dev/v1beta1
-kind: TestStep
-
-commands:
-  - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters-namespaces.yaml
-    namespaced: true
-  - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml
