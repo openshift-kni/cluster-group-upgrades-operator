@@ -36,9 +36,8 @@ func (r *ClusterGroupUpgradeReconciler) getOperatorConfigOverrides(
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return configData, nil
-		} else {
-			return configData, err
 		}
+		return configData, err
 	}
 	configData = found.Data
 	return configData, nil

@@ -25,7 +25,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-type PrecachingSpec struct {
+type precachingSpec struct {
 	PlatformImage                string
 	OperatorsIndexes             []string
 	OperatorsPackagesAndChannels []string
@@ -51,9 +51,9 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(ctx context.Context,
 
 func (r *ClusterGroupUpgradeReconciler) getPrecachingSpecFromPolicies(
 	ctx context.Context,
-	namespace string) (PrecachingSpec, error) {
+	namespace string) (precachingSpec, error) {
 
-	var spec PrecachingSpec
+	var spec precachingSpec
 	policiesList, err := r.getPoliciesForNamespace(ctx, namespace)
 	if err != nil {
 		return spec, err
