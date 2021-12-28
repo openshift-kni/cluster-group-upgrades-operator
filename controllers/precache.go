@@ -41,10 +41,9 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(ctx context.Context,
 		if doneCondition != nil && doneCondition.Status == metav1.ConditionTrue {
 			// Precaching is done
 			return nil
-		} else {
-			// Precaching is required and not done
-			return r.updatePrecachingStatus(ctx, clusterGroupUpgrade)
 		}
+		// Precaching is required and not done
+		return r.updatePrecachingStatus(ctx, clusterGroupUpgrade)
 	}
 	// No precaching required
 	return nil
@@ -238,13 +237,12 @@ func (r *ClusterGroupUpgradeReconciler) deployPrecachingWorkload(
 			Reason:  "PrecacheSpecIsIncomplete",
 			Message: msg})
 		return nil
-	} else {
-		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    "PrecacheSpecValid",
-			Status:  metav1.ConditionTrue,
-			Reason:  "PrecacheSpecIsWellFormed",
-			Message: msg})
 	}
+	meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+		Type:    "PrecacheSpecValid",
+		Status:  metav1.ConditionTrue,
+		Reason:  "PrecacheSpecIsWellFormed",
+		Message: msg})
 
 	err = r.syncPreCacheSpecConfigMap(ctx, clientset, spec)
 	if err != nil {
@@ -278,12 +276,12 @@ func (r *ClusterGroupUpgradeReconciler) getMyCsv(
 
 	config := ctrl.GetConfigOrDie()
 	dynamic := dynamic.NewForConfigOrDie(config)
-	resourceId := schema.GroupVersionResource{
+	resourceID := schema.GroupVersionResource{
 		Group:    "operators.coreos.com",
 		Version:  "v1alpha1",
 		Resource: "clusterserviceversions",
 	}
-	list, err := dynamic.Resource(resourceId).List(ctx, metav1.ListOptions{})
+	list, err := dynamic.Resource(resourceID).List(ctx, metav1.ListOptions{})
 
 	if err != nil {
 		return nil, err
