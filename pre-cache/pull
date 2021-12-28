@@ -5,6 +5,10 @@ cwd="${cwd:-/opt/precache}"
 pull_timeout="${pull_timeout:-6000}"
 
 mirror_images() {
+    if ! [[ -f $pull_spec_file ]]; then
+        log_debug "no pull spec provided - misconfiguration error"
+        return 1
+    fi
     for line in $(sort -u $pull_spec_file) ; do
         # Strip double quotes
         img="${line%\"}"
