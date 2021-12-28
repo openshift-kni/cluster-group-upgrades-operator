@@ -8,6 +8,10 @@ spec:
   - spoke1
   enable: true
   preCaching: true
+  managedPolicies:
+  - common-cluster-version-policy
+  - common-log-sub-policy
+  - common-catalog-source-policy
   remediationStrategy:
     canaries: []
     maxConcurrency: 1

@@ -136,8 +136,8 @@ func (r *ClusterGroupUpgradeReconciler) updatePrecachingStatus(ctx context.Conte
 	meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 		Type:    "PrecachingDone",
 		Status:  metav1.ConditionFalse,
-		Reason:  "PrecachingRequired",
-		Message: "Precaching is required"})
+		Reason:  "PrecachingNotDone",
+		Message: "Precaching is required and not done"})
 
 	clusterState := make(map[string]string)
 	for _, cluster := range clusters {
@@ -226,7 +226,7 @@ func (r *ClusterGroupUpgradeReconciler) deployPrecachingWorkload(
 	if err != nil {
 		return err
 	}
-	r.Log.Info("[deployPrecachingWorkload]", "getPrecacheSoftwareSpec for ",
+	r.Log.Info("[deployPrecachingWorkload]", "getPrecacheSoftwareSpec",
 		cluster, "status", "success")
 
 	ok, msg := r.checkPreCacheSpecConsistency(spec)
@@ -248,13 +248,13 @@ func (r *ClusterGroupUpgradeReconciler) deployPrecachingWorkload(
 	if err != nil {
 		return err
 	}
-	r.Log.Info("[deployPrecachingWorkload]", "syncPreCacheSpecConfigMap for ",
+	r.Log.Info("[deployPrecachingWorkload]", "syncPreCacheSpecConfigMap",
 		cluster, "status", "success")
 	image, err := r.getPrecacheimagePullSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return err
 	}
-	r.Log.Info("[deployPrecachingWorkload]", "getPrecacheimagePullSpec for ",
+	r.Log.Info("[deployPrecachingWorkload]", "getPrecacheimagePullSpec",
 		cluster, "status", "success")
 
 	deadlineInt := clusterGroupUpgrade.Spec.RemediationStrategy.Timeout
