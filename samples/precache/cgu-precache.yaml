@@ -1,0 +1,19 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: test
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  enable: true
+  preCaching: true
+  managedPolicies:
+  - common-cluster-version-policy
+  - common-log-sub-policy
+  - common-catalog-source-policy
+  remediationStrategy:
+    canaries: []
+    maxConcurrency: 1
+    timeout: 240

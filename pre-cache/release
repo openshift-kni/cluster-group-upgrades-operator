@@ -11,6 +11,10 @@ extract_pull_spec(){
 
 release_main(){
     rel_img=$(cat $config_volume_path/platform.image)
+    if ! [[ -n $rel_img ]]; then
+      log_debug "Release index is not specified. Release images will not be pre-cached"
+      return 0
+    fi
     release_index_id=$(pull_index $rel_img $pull_secret_path)
     [[ $? -eq 0 ]] || return 1
     rel_img_mount=$(mount_index $release_index_id)

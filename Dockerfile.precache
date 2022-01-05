@@ -6,5 +6,8 @@ COPY pre-cache/release \
      pre-cache/parse_index.py \
      pre-cache/pull \
      pre-cache/precache.sh \
+     pre-cache/copy-env.sh \
      /opt/precache
-ENV PATH="/opt/precache:${PATH}"
+COPY pre-cache/storage.conf /etc/containers/
+ENV PATH="/opt/precache:/host/usr/bin:/host/usr/libexec:${PATH}"
+ENV LD_LIBRARY_PATH="/host/usr/lib64"

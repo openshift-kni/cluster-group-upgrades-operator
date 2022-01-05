@@ -1,0 +1,7 @@
+resources:
+- cgu-crd.yaml
+- catsrc-policy.yaml
+- cgu-precache.yaml
+- cguo-csv-sample.yaml
+- cluster-version-policy.yaml
+- log-sub-policy.yaml
