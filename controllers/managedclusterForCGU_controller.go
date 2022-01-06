@@ -141,9 +141,25 @@ func (r *ManagedClusterForCguReconciler) getPolicies(ctx context.Context, cluste
 	return policies, nil
 }
 
+// sort map[string]int by value in ascending order, return sorted keys
+func sortMapByValue(sortMap map[string]int) []string {
+	var keys []string
+	for key := range sortMap {
+		keys = append(keys, key)
+	}
+
+	sort.Slice(keys, func(i, j int) bool {
+		// for equal elements, sort string alphabetically
+		if sortMap[keys[i]] == sortMap[keys[j]] {
+			return keys[i] < keys[j]
+		}
+		return sortMap[keys[i]] < sortMap[keys[j]]
+	})
+	return keys
+}
+
 // Create a clusterGroupUpgrade
 func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Context, cluster *clusterv1.ManagedCluster, policies *policiesv1.PolicyList) (err error) {
-	var managedPolicies []string
 	var policyWaveMap = make(map[string]int)
 
 	// Generate a list of ordered managed policies based on the deploy wave.
@@ -165,19 +181,15 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Cont
 			}
 			policyName := strings.SplitAfter(policy.GetName(), ".")[1]
 			policyWaveMap[policyName] = deployWaveInt
-			managedPolicies = append(managedPolicies, policyName)
 		}
 	}
 
-	if len(managedPolicies) == 0 {
+	if len(policyWaveMap) == 0 {
 		r.Log.Info("No policies need to be managed by ClusterGroupUpgrade operator")
 		return nil
 	}
 
-	sort.Slice(managedPolicies, func(i, j int) bool {
-		return policyWaveMap[managedPolicies[i]] < policyWaveMap[managedPolicies[j]]
-	})
-
+	sortedManagedPolicies := sortMapByValue(policyWaveMap)
 	cguMeta := metav1.ObjectMeta{
 		Name:      cluster.Name,
 		Namespace: ztpInstallNS,
@@ -185,7 +197,7 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Cont
 	cguSpec := ranv1alpha1.ClusterGroupUpgradeSpec{
 		Enable:          true, // default
 		Clusters:        []string{cluster.Name},
-		ManagedPolicies: managedPolicies,
+		ManagedPolicies: sortedManagedPolicies,
 		RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{
 			MaxConcurrency: 1,
 		},

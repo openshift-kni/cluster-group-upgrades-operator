@@ -108,12 +108,17 @@ lint: ## Run golint against code.
 	@echo "Running golint"
 	hack/lint.sh
 
+.PHONY: unittests
+unittests:
+	@echo "Running unittests"
+	go test -v ./controllers/...
+
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
 	go mod tidy
 
 .PHONY: ci-job
-ci-job: common-deps-update fmt vet lint
+ci-job: common-deps-update fmt vet lint unittests
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 KUSTOMIZE = $(shell pwd)/bin/kustomize
