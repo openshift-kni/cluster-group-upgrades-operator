@@ -34,6 +34,11 @@ import (
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers"
+
+	actionv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
+	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
+	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	//+kubebuilder:scaffold:imports
 )
@@ -49,6 +54,9 @@ func init() {
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(policiesv1.AddToScheme(scheme))
 	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
+	utilruntime.Must(actionv1beta1.AddToScheme(scheme))
+	utilruntime.Must(operatorsv1alpha1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
