@@ -78,6 +78,13 @@ spec:
                 items:
                   type: string
                 type: array
+              preCaching:
+                default: false
+                description: This field determines whether container image pre-caching
+                  will be done on all the clusters matching the selector. If required,
+                  the pre-caching process starts immediately on all clusters irrespectively
+                  of the value of the "enable" flag
+                type: boolean
               remediationStrategy:
                 description: RemediationStrategySpec defines the remediation policy
                 properties:
@@ -185,6 +192,33 @@ spec:
                 items:
                   type: string
                 type: array
+              precaching:
+                description: PrecachingStatus defines the observed pre-caching status
+                properties:
+                  clusters:
+                    items:
+                      type: string
+                    type: array
+                  spec:
+                    description: PrecachingSpec defines the pre-caching software spec
+                      derived from policies
+                    properties:
+                      operatorsIndexes:
+                        items:
+                          type: string
+                        type: array
+                      operatorsPackagesAndChannels:
+                        items:
+                          type: string
+                        type: array
+                      platformImage:
+                        type: string
+                    type: object
+                  status:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
               remediationPlan:
                 items:
                   items:

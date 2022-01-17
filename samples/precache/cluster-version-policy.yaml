@@ -1,0 +1,40 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: common-cluster-version-policy
+  namespace: default
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: common-cluster-version-policy-config
+      spec:
+        namespaceselector:
+          exclude:
+          - kube-*
+          include:
+          - '*'
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: config.openshift.io/v1
+            kind: ClusterVersion
+            metadata:
+              name: PlatformUpgrade
+            spec:
+              channel: "4.11"
+              upstream: upstream
+              desiredUpdate:
+                force: false
+                version: "4.11"
+                image: quay.io/openshift-release-dev/ocp-release:4.9.11-x86_64
+        remediationAction: inform
+        severity: low
+  remediationAction: inform

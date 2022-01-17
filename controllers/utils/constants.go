@@ -24,3 +24,19 @@ const (
 const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
 )
+
+// Pre-cache constants
+const (
+	CsvNamePrefix              = "cluster-group-upgrades-operator"
+	KubeconfigSecretSuffix     = "admin-kubeconfig"
+	OperatorConfigOverrides    = "cluster-group-upgrade-overrides"
+	PrecacheJobNamespace       = "pre-cache"
+	PrecacheJobName            = "pre-cache"
+	PrecacheServiceAccountName = "pre-cache-agent"
+	PrecacheSpecCmName         = "pre-cache-spec"
+)
+
+// ViewUpdateSec defines default ManagementClusterView update periodicity
+// When configuring managedclusterview for clusters in precache-starting state,
+// this value is multiplied by number of clusters
+const ViewUpdateSec = 20

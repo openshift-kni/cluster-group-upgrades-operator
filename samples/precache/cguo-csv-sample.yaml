@@ -19,7 +19,7 @@ metadata:
     operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v0.0.3
-  namespace: placeholder
+  namespace: default
 spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
@@ -250,6 +250,6 @@ spec:
   provider:
     name: Red Hat
   relatedImages:
-  - image: quay.io/test_images/pre-cache:latest
+  - image: quay.io/vgrinber/pre-cache:latest
     name: "pre-caching-workload"
   version: 0.0.3

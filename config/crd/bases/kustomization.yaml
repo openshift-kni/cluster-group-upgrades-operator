@@ -1,0 +1,2 @@
+resources: 
+- ran.openshift.io_clustergroupupgrades.yaml

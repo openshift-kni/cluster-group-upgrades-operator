@@ -1,10 +1,13 @@
 #!/bin/bash
 
-cwd="${cwd:-/opt/precache}"
+cwd="${cwd:-/tmp/precache}"
 . $cwd/common
-pull_timeout="${pull_timeout:-6000}"
 
 mirror_images() {
+    if ! [[ -f $pull_spec_file ]]; then
+        log_debug "no pull spec provided - misconfiguration error"
+        return 1
+    fi
     for line in $(sort -u $pull_spec_file) ; do
         # Strip double quotes
         img="${line%\"}"
@@ -15,12 +18,11 @@ mirror_images() {
             log_debug "Skipping existing image $img"
             continue
         fi
-
         success=0
         iterations=10
         until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]
         do
-            timeout $pull_timeout $container_tool pull $img --authfile=$pull_secret_path
+            $container_tool  pull $img --authfile=/var/lib/kubelet/config.json
             if [[ $? == 0 ]]; then
                 success=1
             fi

@@ -7,8 +7,9 @@ require (
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
 	github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2
+	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
+	golang.org/x/tools v0.1.8 // indirect
 	k8s.io/api v0.21.3
-	k8s.io/apiextensions-apiserver v0.21.3 // indirect
 	k8s.io/apimachinery v0.21.3
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
