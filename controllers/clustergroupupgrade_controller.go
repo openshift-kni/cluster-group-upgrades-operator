@@ -39,6 +39,7 @@ import (
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
 // ClusterGroupUpgradeReconciler reconciles a ClusterGroupUpgrade object
@@ -55,7 +56,7 @@ type ClusterGroupUpgradeReconciler struct {
 //+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;update;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -148,7 +149,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						requeueAfter := 1 * time.Minute
 						nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 					} else {
-						// If there are no blocking CRs or if all the blocking CRs have completed, start the upgrade.
+						// If there are no blocking CRs or if all the blocking CRs have completed, almost ready to start upgrade
+						// Take actions before starting upgrade
+						err := r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
+						if err != nil {
+							return ctrl.Result{}, err
+						}
+						// Start the upgrade
 						statusReason = "UpgradeNotCompleted"
 						statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
 						clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
@@ -295,11 +302,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
 		clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
 
-		if clusterGroupUpgrade.Spec.DeleteObjectsOnCompletion {
-			err := r.deleteResources(ctx, clusterGroupUpgrade)
-			if err != nil {
-				return ctrl.Result{}, err
-			}
+		// Take actions after upgrade is completed
+		if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -1194,12 +1199,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		listOpts := []client.ListOption{
 			client.MatchingLabels(clusterLabels),
 		}
-		clusterList := &unstructured.UnstructuredList{}
-		clusterList.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "cluster.open-cluster-management.io",
-			Kind:    "ManagedClusterList",
-			Version: "v1",
-		})
+		clusterList := &clusterv1.ManagedClusterList{}
 		if err := r.List(ctx, clusterList, listOpts...); err != nil {
 			return nil, err
 		}
@@ -1225,94 +1225,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 
 	r.Log.Info("[getClustersBySelectors]", "clusterNames", clusterNames)
 	return clusterNames, nil
-}
-func (r *ClusterGroupUpgradeReconciler) deletePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
-	listOpts := []client.ListOption{
-		client.InNamespace(clusterGroupUpgrade.Namespace),
-		client.MatchingLabels(placementRuleLabels),
-	}
-	placementRulesList := &unstructured.UnstructuredList{}
-	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "apps.open-cluster-management.io",
-		Kind:    "PlacementRuleList",
-		Version: "v1",
-	})
-	if err := r.List(ctx, placementRulesList, listOpts...); err != nil {
-		return err
-	}
-
-	for _, policy := range placementRulesList.Items {
-		if err := r.Delete(ctx, &policy); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) deletePlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var placementBindingLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
-	listOpts := []client.ListOption{
-		client.InNamespace(clusterGroupUpgrade.Namespace),
-		client.MatchingLabels(placementBindingLabels),
-	}
-	placementBindingsList := &unstructured.UnstructuredList{}
-	placementBindingsList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "PlacementBindingList",
-		Version: "v1",
-	})
-	if err := r.List(ctx, placementBindingsList, listOpts...); err != nil {
-		return err
-	}
-
-	for _, placementBinding := range placementBindingsList.Items {
-		if err := r.Delete(ctx, &placementBinding); err != nil {
-
-		}
-	}
-	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) deletePolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	var policyLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
-	listOpts := []client.ListOption{
-		client.InNamespace(clusterGroupUpgrade.Namespace),
-		client.MatchingLabels(policyLabels),
-	}
-	policiesList := &unstructured.UnstructuredList{}
-	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "policy.open-cluster-management.io",
-		Kind:    "PolicyList",
-		Version: "v1",
-	})
-	if err := r.List(ctx, policiesList, listOpts...); err != nil {
-		return err
-	}
-
-	for _, policy := range policiesList.Items {
-		if err := r.Delete(ctx, &policy); err != nil {
-
-		}
-	}
-	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) deleteResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	err := r.deletePlacementRules(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return err
-	}
-	err = r.deletePlacementBindings(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return err
-	}
-	err = r.deletePolicies(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
@@ -1398,16 +1310,8 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	}
 
 	for _, cluster := range clusters {
-		foundManagedCluster := &unstructured.Unstructured{}
-		foundManagedCluster.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "cluster.open-cluster-management.io",
-			Kind:    "ManagedCluster",
-			Version: "v1",
-		})
-		err := r.Client.Get(ctx, client.ObjectKey{
-			Name: cluster,
-		}, foundManagedCluster)
-
+		managedCluster := &clusterv1.ManagedCluster{}
+		err := r.Client.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
 		if err != nil {
 			return fmt.Errorf("Cluster %s is not a ManagedCluster", cluster)
 		}

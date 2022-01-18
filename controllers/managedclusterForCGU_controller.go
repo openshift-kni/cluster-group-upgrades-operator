@@ -47,6 +47,8 @@ const (
 	clusterStatusCheckRetryDelay = time.Minute * 5
 	ztpInstallNS                 = "ztp-install"
 	ztpDeployWaveAnnotation      = "ran.openshift.io/ztp-deploy-wave"
+	ztpRunningLabel              = "ztp-running"
+	ztpDoneLabel                 = "ztp-done"
 )
 
 // ManagedClusterForCguReconciler reconciles a ManagedCluster object to auto create the ClusterGroupUpgrade
@@ -83,6 +85,12 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		}
 		// Error reading managed cluster, requeue the request
 		return ctrl.Result{}, err
+	}
+
+	// Stop creating UOCR if ztp of this cluster is done already
+	if _, found := managedCluster.Labels[ztpDoneLabel]; found {
+		r.Log.Info("ZTP for the cluster has completed. "+ztpDoneLabel+" label found.", "Name", managedCluster.Name)
+		return ctrl.Result{}, nil
 	}
 
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
@@ -133,7 +141,9 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 	return ctrl.Result{}, nil
 }
 
-func (r *ManagedClusterForCguReconciler) getPolicies(ctx context.Context, clusterName string) (*policiesv1.PolicyList, error) {
+func (r *ManagedClusterForCguReconciler) getPolicies(
+	ctx context.Context, clusterName string) (*policiesv1.PolicyList, error) {
+
 	policies := &policiesv1.PolicyList{}
 	if err := r.List(ctx, policies, client.InNamespace(clusterName)); err != nil {
 		return nil, err
@@ -159,7 +169,9 @@ func sortMapByValue(sortMap map[string]int) []string {
 }
 
 // Create a clusterGroupUpgrade
-func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Context, cluster *clusterv1.ManagedCluster, policies *policiesv1.PolicyList) (err error) {
+func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
+	ctx context.Context, cluster *clusterv1.ManagedCluster, policies *policiesv1.PolicyList) (err error) {
+
 	var policyWaveMap = make(map[string]int)
 
 	// Generate a list of ordered managed policies based on the deploy wave.
@@ -201,6 +213,21 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Cont
 		RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{
 			MaxConcurrency: 1,
 		},
+		Actions: ranv1alpha1.Actions{
+			BeforeEnable: ranv1alpha1.BeforeEnable{
+				AddClusterLabels: map[string]string{
+					ztpRunningLabel: "",
+				},
+			},
+			AfterCompletion: ranv1alpha1.AfterCompletion{
+				AddClusterLabels: map[string]string{
+					ztpDoneLabel: "",
+				},
+				DeleteClusterLabels: map[string]string{
+					ztpRunningLabel: "",
+				},
+			},
+		},
 	}
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: cguMeta,
@@ -218,7 +245,8 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(ctx context.Cont
 		return err
 	}
 
-	r.Log.Info("Created clusterGroupUpgrade", "name", cluster.Name, "namespace", ztpInstallNS)
+	r.Log.Info("Found ManagedCluster "+cluster.Name+" without "+ztpDoneLabel+" label. Created clusterGroupUpgrade.",
+		"name", cluster.Name, "namespace", ztpInstallNS)
 	return nil
 }
 
@@ -239,11 +267,19 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 	return ctrl.NewControllerManagedBy(mgr).
 		Named("managedclusterForCGU").
 		For(&clusterv1.ManagedCluster{},
-			// watch for create and delete events for managedcluster
+			// watch for create event for managedcluster
 			builder.WithPredicates(predicate.Funcs{
 				GenericFunc: func(e event.GenericEvent) bool { return false },
 				CreateFunc:  func(e event.CreateEvent) bool { return true },
 				DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+				UpdateFunc:  func(e event.UpdateEvent) bool { return false },
+			})).
+		Owns(&ranv1alpha1.ClusterGroupUpgrade{},
+			// watch for delete event for owned ClusterGroupUpgrade
+			builder.WithPredicates(predicate.Funcs{
+				GenericFunc: func(e event.GenericEvent) bool { return false },
+				CreateFunc:  func(e event.CreateEvent) bool { return false },
+				DeleteFunc:  func(e event.DeleteEvent) bool { return true },
 				UpdateFunc:  func(e event.UpdateEvent) bool { return false },
 			})).
 		Complete(r)
