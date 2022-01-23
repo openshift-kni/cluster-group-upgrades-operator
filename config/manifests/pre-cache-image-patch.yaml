@@ -1,0 +1,10 @@
+# This patch injects the pre-cache image pull spec into the CSV
+apiVersion: operators.coreos.com/v1alpha1
+kind: ClusterServiceVersion
+metadata:
+  name: cluster-group-upgrades-operator.v0.0.0
+  namespace: placeholder
+spec:
+  relatedImages:
+  - image: quay.io/test_images/pre-cache:latest
+    name: "pre-caching-workload"

@@ -1,0 +1,5 @@
+resources:
+- catsrc-policy.yaml
+- cgu-precache.yaml
+- cluster-version-policy.yaml
+- operator.yaml
