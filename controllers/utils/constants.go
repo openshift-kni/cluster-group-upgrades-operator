@@ -67,3 +67,8 @@ const (
 	MultiCloudPendingStatus         = 3
 	MultiCloudWaitTimeSec           = 3
 )
+
+// Upgrade specific constants.
+const (
+	MaxNumberOfClustersForUpgrade = 100
+)

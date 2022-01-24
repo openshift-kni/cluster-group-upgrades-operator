@@ -1,0 +1,15 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-adjust-max-conc
+  namespace: default
+spec:
+  managedPolicies:
+    - policy1-common-cluster-version-policy
+    - policy2-common-pao-sub-policy
+  enable: false
+  clusters:
+  - spoke1
+  remediationStrategy:
+    # maxConcurrency should be adjusted to 1
+    maxConcurrency: 3

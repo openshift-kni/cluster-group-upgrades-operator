@@ -28,7 +28,7 @@ type RemediationStrategySpec struct {
 	// Canaries defines the list of managed clusters that should be remediated first when remediateAction is set to enforce
 	Canaries []string `json:"canaries,omitempty"`
 	//kubebuilder:validation:Minimum=1
-	MaxConcurrency int `json:"maxConcurrency,omitempty"`
+	MaxConcurrency int `json:"maxConcurrency"`
 	//+kubebuilder:default=240
 	Timeout int `json:"timeout,omitempty"`
 }
@@ -85,18 +85,18 @@ type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
-	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
-	// Once set to true, the clusters start being upgrades, one batch at a time.
-	//+kubebuilder:default=true
-	Enable bool `json:"enable,omitempty"`
 	// This field determines whether container image pre-caching will be done on all the clusters
 	// matching the selector.
 	// If required, the pre-caching process starts immediately on all clusters irrespectively of
 	// the value of the "enable" flag
 	//+kubebuilder:default=false
-	PreCaching bool     `json:"preCaching,omitempty"`
-	Clusters   []string `json:"clusters,omitempty"`
+	PreCaching bool `json:"preCaching,omitempty"`
+	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
+	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
+	// Once set to true, the clusters start being upgraded, one batch at a time.
+	//+kubebuilder:default=true
+	Enable   *bool    `json:"enable,omitempty"`
+	Clusters []string `json:"clusters"`
 	// This field holds a label common to multiple clusters that will be updated.
 	// The expected format is as follows:
 	// clusterSelector:
@@ -123,10 +123,10 @@ type UpgradeStatus struct {
 	CurrentRemediationPolicyIndex map[string]int `json:"remediationPlanForBatch,omitempty"`
 }
 
-// PolicyStatus defines the observed state of a Policy
-type PolicyStatus struct {
-	Name            string `json:"name,omitempty"`
-	ComplianceState string `json:"complianceState,omitempty"`
+// ManagedPolicyForUpgrade defines the observed state of a Policy
+type ManagedPolicyForUpgrade struct {
+	Name      string `json:"name,omitempty"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // PrecachingSpec defines the pre-caching software spec derived from policies
@@ -154,15 +154,19 @@ type PolicyContent struct {
 type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	PlacementBindings      []string           `json:"placementBindings,omitempty"`
-	PlacementRules         []string           `json:"placementRules,omitempty"`
-	CopiedPolicies         []string           `json:"copiedPolicies,omitempty"`
-	Conditions             []metav1.Condition `json:"conditions,omitempty"`
-	RemediationPlan        [][]string         `json:"remediationPlan,omitempty"`
-	ManagedPoliciesNs      map[string]string  `json:"managedPoliciesNs,omitempty"`
-	ManagedPoliciesContent map[string]string  `json:"managedPoliciesContent,omitempty"`
-	Status                 UpgradeStatus      `json:"status,omitempty"`
-	Precaching             PrecachingStatus   `json:"precaching,omitempty"`
+	PlacementBindings []string           `json:"placementBindings,omitempty"`
+	PlacementRules    []string           `json:"placementRules,omitempty"`
+	CopiedPolicies    []string           `json:"copiedPolicies,omitempty"`
+	Conditions        []metav1.Condition `json:"conditions,omitempty"`
+	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
+	ManagedPoliciesNs map[string]string  `json:"managedPoliciesNs,omitempty"`
+	// Contains the managed policies (and the namespaces) that have NonCompliant clusters
+	// that require updating.
+	ManagedPoliciesForUpgrade             []ManagedPolicyForUpgrade `json:"managedPoliciesForUpgrade,omitempty"`
+	ManagedPoliciesCompliantBeforeUpgrade []string                  `json:"managedPoliciesCompliantBeforeUpgrade,omitempty"`
+	ManagedPoliciesContent                map[string]string         `json:"managedPoliciesContent,omitempty"`
+	Status                                UpgradeStatus             `json:"status,omitempty"`
+	Precaching                            PrecachingStatus          `json:"precaching,omitempty"`
 }
 
 //+kubebuilder:object:root=true

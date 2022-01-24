@@ -206,8 +206,9 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 		Name:      cluster.Name,
 		Namespace: ztpInstallNS,
 	}
+	enable := true // default
 	cguSpec := ranv1alpha1.ClusterGroupUpgradeSpec{
-		Enable:          true, // default
+		Enable:          &enable,
 		Clusters:        []string{cluster.Name},
 		ManagedPolicies: sortedManagedPolicies,
 		RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{

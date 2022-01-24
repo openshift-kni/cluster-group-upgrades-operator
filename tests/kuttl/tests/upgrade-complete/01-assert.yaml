@@ -22,9 +22,11 @@ status:
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-version-policy
   - cgu-upgrade-complete-policy2-common-pao-sub-policy
-  managedPoliciesNs:
-    policy1-common-cluster-version-policy: default
-    policy2-common-pao-sub-policy: default
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
   placementBindings:
   - cgu-upgrade-complete-policy1-common-cluster-version-policy
   - cgu-upgrade-complete-policy2-common-pao-sub-policy

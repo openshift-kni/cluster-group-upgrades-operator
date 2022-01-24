@@ -1,7 +1,7 @@
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
-  name: cgu-upgrade-complete
+  name: cgu-adjust-max-conc
   namespace: default
 spec:
   clusters:
@@ -20,18 +20,19 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
   - name: policy2-common-pao-sub-policy
     namespace: default
   placementBindings:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
   placementRules:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
   remediationPlan:
   - - spoke1
+  status: {}

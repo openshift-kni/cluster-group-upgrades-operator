@@ -1,0 +1,26 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-starts-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  enable: false
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  conditions:
+  - message: The ClusterGroupUpgrade CR has all clusters already compliant with the
+      specified managed policies
+    reason: UpgradeCompleted
+    status: "False"
+    type: Ready
+  managedPoliciesCompliantBeforeUpgrade:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  status: {}

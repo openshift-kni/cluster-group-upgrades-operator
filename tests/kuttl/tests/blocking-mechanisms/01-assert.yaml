@@ -1,0 +1,157 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-a
+  namespace: default
+spec:
+  blockingCRs:
+  - name: cgu-c
+    namespace: default
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke3
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  remediationStrategy:
+    canaries:
+    - spoke1
+    maxConcurrency: 2
+    timeout: 240
+status:
+  conditions:
+  - message: 'The ClusterGroupUpgrade CR is blocked by other CRs that have not yet
+      completed: [cgu-c]'
+    reason: UpgradeCannotStart
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-a-policy1-common-cluster-version-policy
+  - cgu-a-policy2-common-pao-sub-policy
+  - cgu-a-policy3-common-ptp-sub-policy
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  placementBindings:
+  - cgu-a-policy1-common-cluster-version-policy
+  - cgu-a-policy2-common-pao-sub-policy
+  - cgu-a-policy3-common-ptp-sub-policy
+  placementRules:
+  - cgu-a-policy1-common-cluster-version-policy
+  - cgu-a-policy2-common-pao-sub-policy
+  - cgu-a-policy3-common-ptp-sub-policy
+  remediationPlan:
+  - - spoke1
+  - - spoke2
+  status: {}
+---
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-b
+  namespace: default
+spec:
+  blockingCRs:
+  - name: cgu-a
+    namespace: default
+  clusters:
+  - spoke4
+  - spoke5
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  conditions:
+  - message: 'The ClusterGroupUpgrade CR is blocked by other CRs that have not yet
+      completed: [cgu-a]'
+    reason: UpgradeCannotStart
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-b-policy1-common-cluster-version-policy
+  - cgu-b-policy2-common-pao-sub-policy
+  - cgu-b-policy3-common-ptp-sub-policy
+  - cgu-b-policy4-common-sriov-sub-policy
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
+  placementBindings:
+  - cgu-b-policy1-common-cluster-version-policy
+  - cgu-b-policy2-common-pao-sub-policy
+  - cgu-b-policy3-common-ptp-sub-policy
+  - cgu-b-policy4-common-sriov-sub-policy
+  placementRules:
+  - cgu-b-policy1-common-cluster-version-policy
+  - cgu-b-policy2-common-pao-sub-policy
+  - cgu-b-policy3-common-ptp-sub-policy
+  - cgu-b-policy4-common-sriov-sub-policy
+  remediationPlan:
+  - - spoke4
+  - - spoke5
+  status: {}
+---
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-c
+  namespace: default
+spec:
+  clusters:
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  conditions:
+  - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
+    reason: UpgradeNotCompleted
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-c-policy1-common-cluster-version-policy
+  - cgu-c-policy4-common-sriov-sub-policy
+  managedPoliciesCompliantBeforeUpgrade:
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
+  placementBindings:
+  - cgu-c-policy1-common-cluster-version-policy
+  - cgu-c-policy4-common-sriov-sub-policy
+  placementRules:
+  - cgu-c-policy1-common-cluster-version-policy
+  - cgu-c-policy4-common-sriov-sub-policy
+  remediationPlan:
+  - - spoke6
+  status:
+    currentBatch: 1
+    remediationPlanForBatch:
+      spoke6: 0

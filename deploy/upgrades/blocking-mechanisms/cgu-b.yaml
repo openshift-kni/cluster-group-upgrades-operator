@@ -1,0 +1,21 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-b
+  namespace: default
+spec:
+  managedPolicies:
+    - policy1-common-cluster-version-policy
+    - policy2-common-pao-sub-policy
+    - policy3-common-ptp-sub-policy
+    - policy4-common-sriov-sub-policy
+  blockingCRs:
+    - name: cgu-a
+      namespace: default
+  enable: false
+  clusters:
+  - spoke4
+  - spoke5
+  remediationStrategy:
+    maxConcurrency: 1
+
