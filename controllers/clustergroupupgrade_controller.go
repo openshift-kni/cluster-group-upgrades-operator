@@ -85,8 +85,24 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
 	nextReconcile := ctrl.Result{}
+	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
+	if err != nil {
+		r.Log.Error(err, "reconcilePrecaching error")
+		return ctrl.Result{}, err
+	}
+	for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
+		if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
+			requeueAfter := 30 * time.Second
+			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+			err = r.updateStatus(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return ctrl.Result{}, err
+			}
+			return nextReconcile, nil
+		}
+	}
+
 	readyCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready")
 
 	if readyCondition == nil {
@@ -98,7 +114,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			Message: "The ClusterGroupUpgrade CR is not enabled",
 		})
 	} else if readyCondition.Status == metav1.ConditionFalse {
-		if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
+		if readyCondition.Reason == "PrecachingRequired" {
+			requeueAfter := 5 * time.Minute
+			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(ctx, clusterGroupUpgrade)
 			if err != nil {
@@ -254,6 +273,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if isUpgradeComplete {
+				err = r.precachingCleanup(ctx, clusterGroupUpgrade)
+				if err != nil {
+					msg := fmt.Sprint("Precaching cleanup failed with error:", err)
+					r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "PrecachingCleanupFailed", msg)
+				}
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionTrue,
@@ -499,6 +523,29 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	return foundPolicy, err
 }
 
+/* getPoliciesForNamespace - util for getting a list of managedPolicies on the given namespace.
+   returns: *unstructured.UnstructuredList a list of the managedPolicies
+			error
+*/
+func (r *ClusterGroupUpgradeReconciler) getPoliciesForNamespace(
+	ctx context.Context,
+	namespace string) (*unstructured.UnstructuredList, error) {
+
+	listOpts := []client.ListOption{
+		client.InNamespace(namespace),
+	}
+	policiesList := &unstructured.UnstructuredList{}
+	policiesList.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PolicyList",
+		Version: "v1",
+	})
+	if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		return nil, err
+	}
+	return policiesList, nil
+}
+
 /* doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
    returns: true/false                   if all the policies exist or not
             []string                     with the missing managed policy names
@@ -514,16 +561,8 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(ctx context.Conte
 
 	// Make a list with all the child policies in the cluster's namespaces.
 	for _, clusterName := range allClustersForUpgrade {
-		listOpts := []client.ListOption{
-			client.InNamespace(clusterName),
-		}
-		policiesList := &unstructured.UnstructuredList{}
-		policiesList.SetGroupVersionKind(schema.GroupVersionKind{
-			Group:   "policy.open-cluster-management.io",
-			Kind:    "PolicyList",
-			Version: "v1",
-		})
-		if err := r.List(ctx, policiesList, listOpts...); err != nil {
+		policiesList, err := r.getPoliciesForNamespace(ctx, clusterName)
+		if err != nil {
 			return false, nil, nil, err
 		}
 

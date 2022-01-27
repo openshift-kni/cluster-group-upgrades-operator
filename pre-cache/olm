@@ -11,7 +11,7 @@ extract_pull_spec(){
     index_download_path=$1
     operators_spec_file=$2
     pull_spec_file=$3
-    /usr/libexec/platform-python /opt/precache/parse_index.py "${index_download_path}" "${operators_spec_file}" "${pull_spec_file}"
+    /host/usr/libexec/platform-python /opt/precache/parse_index.py "${index_download_path}" "${operators_spec_file}" "${pull_spec_file}"
     return $?
 }
 
@@ -26,9 +26,16 @@ export_index(){
     cp $pull_secret_path "$podman_pull_path/auth.json"
     capath="/etc/docker/certs.d/${index%/*}/ca.crt"
     # opm doesn't accept cacert as an arg
-    cp $capath /etc/pki/ca-trust/source/anchors/ 
-    update-ca-trust
-    $image_mount/bin/opm index export -i $index -p $packages -c podman -f $index_download_path
+    if [[ -f "$capath" ]]; then
+        cp $capath /etc/pki/ca-trust/source/anchors/ 
+        update-ca-trust
+    fi
+    if [[ -h "$image_mount/bin/opm" ]]; then
+        opm_bin=$image_mount$(readlink "$image_mount/bin/opm")
+    else
+        opm_bin=$image_mount/bin/opm
+    fi
+    $opm_bin index export -i $index -p $packages -c podman -f $index_download_path
 }
 
 extract_packages(){
@@ -44,6 +51,10 @@ extract_packages(){
 
 olm_main(){
     declare -i ret_val=0
+    if ! [[ -n $(sort -u $config_volume_path/operators.indexes) ]]; then
+      log_debug "Operators index is not specified. Operators won't be pre-cached"
+      return 0
+    fi
     # There could be several indexes, hence the loop
     for index in $(sort -u $config_volume_path/operators.indexes) ; do
 
@@ -57,6 +68,10 @@ olm_main(){
         log_debug "Image mount: $image_mount"
         
         packages=$(extract_packages)
+        if ! [[ -n $packages ]]; then
+          log_debug "Operators index is set, but no packages provided - inconsistent configuration"
+          return 1
+        fi
         export_index $index $pull_secret_path $packages $image_mount
         operators_spec_file="$config_volume_path/operators.packagesAndChannels"
         extract_pull_spec $index_download_path $operators_spec_file $pull_spec_file

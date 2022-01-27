@@ -32,20 +32,21 @@ def extract_bundle_names(args):
     with open(args.operators_spec_file.name, 'r') as p:
         records = [i.split(":") for i in p.read().splitlines() if len(i) > 0]
     for item in records:
-        path = os.path.join(args.index_download_path, item[0], 'package.yaml')
+        pkg_name = item[0].strip()
+        path = os.path.join(args.index_download_path, pkg_name, 'package.yaml')
         with open(path, 'r') as f:
             package = yaml.safe_load(f)
             csv_name = [p.get("currentCSV") for p in
                         package.get("channels")
                         if p.get("name") ==
-                        item[1].strip()][0].strip(f"{item[0]}.")
-        with os.scandir(os.path.join(args.index_download_path, item[0])) as it:
+                        item[1].strip()][0].strip(f"{pkg_name}.")
+        with os.scandir(os.path.join(args.index_download_path, pkg_name)) as it:
             bundle_dirs = [entry.name for entry in it if entry.is_dir()]
         bundle_dir = sorted(
             bundle_dirs, key=lambda dir_name: SequenceMatcher(
                 None, csv_name, dir_name).ratio())[-1]
         bundles.append(os.path.join(
-            args.index_download_path, item[0], bundle_dir))
+            args.index_download_path, pkg_name, bundle_dir))
     return bundles
 
 
@@ -76,6 +77,7 @@ if __name__ == "__main__":
         images = extract_images(bundles)
         with open(args.img_list_file.name, args.img_list_file.mode) as f:
             f.write('\n'.join(images))
+            f.write('\n')
         exit(0)
     except Exception as e:
         print(e)
