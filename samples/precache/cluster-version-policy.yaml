@@ -34,8 +34,8 @@ spec:
               upstream: upstream
               desiredUpdate:
                 force: false
-                version: "4.11"
-                image: quay.io/openshift-release-dev/ocp-release:4.9.11-x86_64
+                version: "4.9.11"
+                image: quay.io/openshift-release-dev/ocp-release@sha256:0f72e150329db15279a1aeda1286c9495258a4892bc5bf1bf5bb89942cd432de
         remediationAction: inform
         severity: low
   remediationAction: inform

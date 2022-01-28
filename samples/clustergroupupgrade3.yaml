@@ -20,7 +20,7 @@ spec:
     channel: stable-4.8
     desiredUpdate:
       version: 4.8.5
-      image: quay.io/openshift-release-dev/ocp-release:4.8.5-x86_64
+      image: quay.io/openshift-release-dev/ocp-release@sha256:7047acb946649cc1f54d98a1c28dd7b487fe91479aa52c13c971ea014a66c8a8
       force: true
     upstream: https://amd64.ocp.releases.ci.openshift.org/graph
   operatorUpgrades:
