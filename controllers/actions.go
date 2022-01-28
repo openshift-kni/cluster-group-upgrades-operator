@@ -59,7 +59,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 	}
 
 	// Cleanup resources
-	if *actionsAfterCompletion.DeleteObjects {
+	if actionsAfterCompletion.DeleteObjects == nil || *actionsAfterCompletion.DeleteObjects {
 		err := r.deleteResources(ctx, clusterGroupUpgrade)
 		if err != nil {
 			return err
@@ -146,15 +146,19 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	labels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	err := utils.DeletePlacementRules(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Fail to delete PlacementRules for cgu %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("Failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	err = utils.DeletePlacementBindings(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Fail to delete PlacementBindings for cgu %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("Failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	err = utils.DeletePolicies(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Fail to delete Policies for cgu %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("Failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
+	}
+	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("Failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 
 	return nil

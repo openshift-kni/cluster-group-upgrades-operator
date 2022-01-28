@@ -143,7 +143,7 @@ type PrecachingStatus struct {
 	Clusters []string          `json:"clusters,omitempty"`
 }
 
-// PolicyContent defines holds the details of an object configured through a Policy
+// PolicyContent defines the details of an object configured through a Policy
 type PolicyContent struct {
 	Kind      string  `json:"kind,omitempty"`
 	Name      string  `json:"name,omitempty"`

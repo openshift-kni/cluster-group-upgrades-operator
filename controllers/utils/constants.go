@@ -61,9 +61,9 @@ const (
 
 // Constants used for working with multicloud-operators-foundation
 const (
-	SubscriptionNotPendingUpgrade   = "Subscription State is not Pending Upgrade"
 	InstallPlanWasApproved          = 0
 	InstallPlanCannotBeApproved     = 1
-	ManagedClusterActionWaitTimeSec = 3
-	ManagedClusterActionReasonDone  = "ActionDone"
+	NoActionForApprovingInstallPlan = 2
+	MultiCloudPendingStatus         = 3
+	MultiCloudWaitTimeSec           = 3
 )

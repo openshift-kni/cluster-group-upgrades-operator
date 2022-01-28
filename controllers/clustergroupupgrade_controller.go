@@ -219,7 +219,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				if requeueAfter < 0 {
 					requeueAfter = 5 * time.Minute
 				}
-				r.Log.Info("Requeuing after", "requeueAfter", requeueAfter)
+				r.Log.Info("[Reconcile] Requeuing after", "requeueAfter", requeueAfter)
 				nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 			}
 
@@ -256,9 +256,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			} else {
 				// Add the needed cluster names to upgrade to the appropriate placement rule.
-				err := r.remediateCurrentBatch(ctx, clusterGroupUpgrade)
+				reconcileSooner, err := r.remediateCurrentBatch(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return ctrl.Result{}, err
+				}
+				if reconcileSooner == true {
+					requeueAfter := 30 * time.Second
+					r.Log.Info("[Reconcile] Requeuing after", "requeueAfter", requeueAfter)
+					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 				}
 
 				// Check for batch timeout.
@@ -415,8 +420,9 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
   returns: error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 
+	reconcileSooner := false
 	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
 		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
 			continue
@@ -427,33 +433,34 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 		clusterNameArr = append(clusterNameArr, clusterName)
 		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNameArr, policyName)
 		if err != nil {
-			return err
+			return reconcileSooner, err
 		}
 
 		// Approve needed InstallPlans.
-		err = r.approveInstallPlan(ctx, clusterGroupUpgrade, managedPolicyIndex, clusterName)
+		reconcileSooner, err = r.approveInstallPlan(ctx, clusterGroupUpgrade, managedPolicyIndex, clusterName)
 		if err != nil {
-			return err
+			return reconcileSooner, err
 		}
 	}
-	return nil
+	return reconcileSooner, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	managedPolicyIndex int, clusterName string) error {
+	managedPolicyIndex int, clusterName string) (bool, error) {
 	managedPolicyName := clusterGroupUpgrade.Spec.ManagedPolicies[managedPolicyIndex]
 
 	// If there is no content saved for the current managed policy, return.
 	_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
 	if ok == false {
-		return nil
+		return false, nil
 	}
 
 	// If there is content saved for the current managed policy, retrieve it.
 	policyContentArr := []ranv1alpha1.PolicyContent{}
 	json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &policyContentArr)
 
+	multiCloudPendingStatus := false
 	for _, policyContent := range policyContentArr {
 		if policyContent.Kind != utils.PolicyTypeSubscription {
 			continue
@@ -463,18 +470,20 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 			"name", policyContent.Name, "in namespace", policyContent.Namespace)
 		// Get the managedClusterView for the subscription contained in the current managedPolicy.
 		// If missing, then return error.
-		mcvName := utils.GetMultiCloudObjectName(
-			utils.ManagedClusterViewPrefix, clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
+		mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
 		mcv := &viewv1beta1.ManagedClusterView{}
 		if err := r.Get(ctx, types.NamespacedName{Name: mcvName, Namespace: clusterName}, mcv); err != nil {
 			if errors.IsNotFound(err) {
-				return err
+				r.Log.Info("ManagedClusterView should have been present, but it was not found", "error", err.Error())
+				continue
+			} else {
+				return false, err
 			}
 		}
 
 		// If the specific managedClusterView was found, check that it's condition Reason is "GetResourceProcessing"
 		installPlanStatus, err := utils.ProcessSubscriptionManagedClusterView(
-			ctx, r.Client, clusterGroupUpgrade, clusterName, mcv, r.Log)
+			ctx, r.Client, clusterGroupUpgrade, clusterName, mcv)
 		// If there is an error in trying to approve the install plan, just print the error and continue.
 		if err != nil {
 			r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
@@ -484,10 +493,14 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 			r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", policyContent.Name)
 		} else if installPlanStatus == utils.InstallPlanWasApproved {
 			r.Log.Info("InstallPlan for subscription was approved", "subscription name", policyContent.Name)
+		} else if installPlanStatus == utils.MultiCloudPendingStatus {
+			r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
+				"retry again later", "subscription name", policyContent.Name)
+			multiCloudPendingStatus = true
 		}
 	}
 
-	return nil
+	return multiCloudPendingStatus, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
@@ -583,8 +596,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	})
 
 	// Look for policy.
-	err := r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
-	return foundPolicy, err
+	return foundPolicy, r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
 }
 
 /* getPoliciesForNamespace - util for getting a list of managedPolicies on the given namespace.
@@ -679,7 +691,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(ctx context.Conte
 			managedPoliciesPresent = append(managedPoliciesPresent, foundPolicy)
 			clusterGroupUpgrade.Status.ManagedPoliciesNs[managedPolicyName] = managedPolicyNamespace
 
-			policyTypes, err := r.getPolicyTypes(clusterGroupUpgrade, foundPolicy)
+			policyTypes, err := r.getPolicyContent(clusterGroupUpgrade, foundPolicy)
 			if err != nil {
 				return false, nil, nil, err
 			}
@@ -721,14 +733,14 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 		if policyContent.Kind == utils.PolicyTypeSubscription {
 
 			// Compute the name of the managedClusterView
-			managedClusterViewName := utils.GetMultiCloudObjectName(utils.ManagedClusterViewPrefix, clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
+			managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
 			strings.ToLower("view-" + clusterGroupUpgrade.Name + "-" + policyContent.Kind + "-" + policyContent.Name)
 
 			// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
 			for _, nonCompliantCluster := range nonCompliantClusters {
 				utils.EnsureManagedClusterView(
 					ctx, r.Client, managedClusterViewName, nonCompliantCluster, "subscriptions.operators.coreos.com",
-					policyContent.Name, *policyContent.Namespace, clusterGroupUpgrade.Name, r.Log)
+					policyContent.Name, *policyContent.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 			}
 		}
 	}
@@ -841,7 +853,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) getPolicyTypes(
+func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) ([]ranv1alpha1.PolicyContent, error) {
 	managedPolicyName := managedPolicy.GetName()
 	specObject := managedPolicy.Object["spec"].(map[string]interface{})
