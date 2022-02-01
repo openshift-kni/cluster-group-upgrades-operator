@@ -39,6 +39,58 @@ spec:
           spec:
             description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
             properties:
+              actions:
+                description: Actions defines the actions to be done either before
+                  or after the managedPolicies are remediated
+                properties:
+                  afterCompletion:
+                    description: AfterCompletion defines the actions to be done after
+                      upgrade is completed
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be added to the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be deleted for the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteObjects:
+                        default: true
+                        description: This field defines whether clean up the resources
+                          created for upgrade
+                        type: boolean
+                    type: object
+                  beforeEnable:
+                    description: BeforeEnable defines the actions to be done before
+                      starting upgrade
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be added to the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be deleted for the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                    type: object
+                type: object
               blockingCRs:
                 items:
                   description: BlockingCR defines the Upgrade CRs that block the current
@@ -64,8 +116,6 @@ spec:
                 items:
                   type: string
                 type: array
-              deleteObjectsOnCompletion:
-                type: boolean
               enable:
                 default: true
                 description: This field determines when the upgrade starts. While

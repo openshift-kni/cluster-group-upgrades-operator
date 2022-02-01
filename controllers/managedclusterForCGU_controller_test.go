@@ -255,6 +255,9 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
 
 				if !result.IsZero() {
 					t.Errorf("expect to stop reconcile, but failed")
@@ -295,7 +298,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-group.group-du-config-policy",
 						Namespace:   "testSpoke",
-						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "10"},
+						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1000000000000000"},
 					},
 				},
 			},
@@ -319,6 +322,9 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy", "group-du-config-policy"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
 
 				if !result.IsZero() {
 					t.Errorf("expect to stop reconcile, but failed")

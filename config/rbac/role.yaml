@@ -37,6 +37,8 @@ rules:
   verbs:
   - get
   - list
+  - patch
+  - update
   - watch
 - apiGroups:
   - cluster.open-cluster-management.io

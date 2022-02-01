@@ -39,6 +39,39 @@ type BlockingCR struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// Actions defines the actions to be done either before or after the managedPolicies are remediated
+type Actions struct {
+	BeforeEnable    BeforeEnable    `json:"beforeEnable,omitempty"`
+	AfterCompletion AfterCompletion `json:"afterCompletion,omitempty"`
+}
+
+// BeforeEnable defines the actions to be done before starting upgrade
+type BeforeEnable struct {
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be added to the specified clusters. Labels applied to the clusters either
+	// defined in spec.clusters or selected by spec.clusterSelector.
+	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be deleted for the specified clusters. Labels applied to the clusters either
+	// defined in spec.clusters or selected by spec.clusterSelector.
+	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+}
+
+// AfterCompletion defines the actions to be done after upgrade is completed
+type AfterCompletion struct {
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be added to the specified clusters. Labels applied to the clusters either
+	// defined in spec.clusters or selected by spec.clusterSelector.
+	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be deleted for the specified clusters. Labels applied to the clusters either
+	// defined in spec.clusters or selected by spec.clusterSelector.
+	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	// This field defines whether clean up the resources created for upgrade
+	//+kubebuilder:default=true
+	DeleteObjects *bool `json:"deleteObjects,omitempty"`
+}
+
 // DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
 type DesiredUpdateSpec struct {
 	Version string `json:"version,omitempty"`
@@ -88,11 +121,11 @@ type ClusterGroupUpgradeSpec struct {
 	//   - label1Name
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
-	ClusterSelector           []string                 `json:"clusterSelector,omitempty"`
-	RemediationStrategy       *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
-	ManagedPolicies           []string                 `json:"managedPolicies,omitempty"`
-	BlockingCRs               []BlockingCR             `json:"blockingCRs,omitempty"`
-	DeleteObjectsOnCompletion bool                     `json:"deleteObjectsOnCompletion,omitempty"`
+	ClusterSelector     []string                 `json:"clusterSelector,omitempty"`
+	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	ManagedPolicies     []string                 `json:"managedPolicies,omitempty"`
+	BlockingCRs         []BlockingCR             `json:"blockingCRs,omitempty"`
+	Actions             Actions                  `json:"actions,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
