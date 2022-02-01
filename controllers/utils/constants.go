@@ -66,6 +66,9 @@ const (
 	NoActionForApprovingInstallPlan = 2
 	MultiCloudPendingStatus         = 3
 	MultiCloudWaitTimeSec           = 3
+
+	TestManagedClusterActionTimeoutMessage = `ManagedClusterAction hasn't completed in the required timeout`
+	TestManagedClusterActionFailedMessage  = "ManagedClusterAction failed"
 )
 
 // Upgrade specific constants.
