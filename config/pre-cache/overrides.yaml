@@ -5,7 +5,7 @@ metadata:
 data:
   ## Examples
   # precache.image: quay.io/test_images/pre-cache:latest
-  # platform.image: quay.io/openshift-release-dev/ocp-release:4.9.4-x86_64
+  # platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
   # operators.indexes: |
   #   registry.example.com:5000/custom-redhat-operators:1.0.0
   # operators.packagesAndChannels: |

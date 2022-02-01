@@ -565,7 +565,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 
 // getPrecacheSoftwareSpec: Get precaching payload spec for a cluster. It consists of
 //    	several parts that together compose the precaching workload API:
-//		1. platform.image (e.g. "quay.io/openshift-release-dev/ocp-release:<tag>").
+//      1. platform.image as a SHA-256 container image digest (e.g. "quay.io/openshift-release-dev/ocp-release:<sha256-digest>").
 //      2. operators.indexes - a list of pull specs for OLM index images
 //      3. operators.packagesAndChannels - Operator packages and channels
 // returns: templateData (softwareSpec)
