@@ -72,20 +72,6 @@ type AfterCompletion struct {
 	DeleteObjects *bool `json:"deleteObjects,omitempty"`
 }
 
-// DesiredUpdateSpec models the desiredUpdate field of ClusterVersion
-type DesiredUpdateSpec struct {
-	Version string `json:"version,omitempty"`
-	Image   string `json:"image,omitempty"`
-	Force   bool   `json:"force,omitempty"`
-}
-
-// PlatformUpgradeSpec defines the configuration of a platform upgrade
-type PlatformUpgradeSpec struct {
-	Channel       string            `json:"channel,omitempty"`
-	Upstream      string            `json:"upstream,omitempty"`
-	DesiredUpdate DesiredUpdateSpec `json:"desiredUpdate,omitempty"`
-}
-
 // OperatorUpgradeSpec defines the configuration of an operator upgrade
 type OperatorUpgradeSpec struct {
 	Channel   string `json:"channel,omitempty"`
