@@ -227,6 +227,10 @@ spec:
                 items:
                   type: string
                 type: array
+              managedPoliciesContent:
+                additionalProperties:
+                  type: string
+                type: object
               managedPoliciesNs:
                 additionalProperties:
                   type: string

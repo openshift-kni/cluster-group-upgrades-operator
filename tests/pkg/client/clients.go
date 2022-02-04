@@ -9,6 +9,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/config"
 
+	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 )
 
@@ -24,6 +25,9 @@ var (
 func init() {
 	// Setup Scheme for all resources.
 	if err := ranv1alpha1.AddToScheme(scheme.Scheme); err != nil {
+		klog.Exit(err.Error())
+	}
+	if err := viewv1beta1.AddToScheme(scheme.Scheme); err != nil {
 		klog.Exit(err.Error())
 	}
 

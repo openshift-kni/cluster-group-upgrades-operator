@@ -40,3 +40,30 @@ const (
 // When configuring managedclusterview for clusters in precache-starting state,
 // this value is multiplied by number of clusters
 const ViewUpdateSec = 20
+
+// Policy types used within the operator
+const (
+	PolicyTypeSubscription   = "Subscription"
+	PolicyTypeClusterVersion = "ClusterVersion"
+)
+
+// Subscription possible states
+const (
+	SubscriptionStateAtLatestKnown  = "AtLatestKnown"
+	SubscriptionStateUpgradePending = "UpgradePending"
+)
+
+// Multicloud object types
+const (
+	ManagedClusterViewPrefix   = "view"
+	ManagedClusterActionPrefix = "action"
+)
+
+// Constants used for working with multicloud-operators-foundation
+const (
+	InstallPlanWasApproved          = 0
+	InstallPlanCannotBeApproved     = 1
+	NoActionForApprovingInstallPlan = 2
+	MultiCloudPendingStatus         = 3
+	MultiCloudWaitTimeSec           = 3
+)
