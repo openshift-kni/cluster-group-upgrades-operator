@@ -283,6 +283,8 @@ install-acm-crds:
 	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
 	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
 	kubectl apply -f deploy/acm/crds/cluster.open-cluster-management.io_managedclusters.yaml
+	kubectl apply -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
+	kubectl apply -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
 
 uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
@@ -290,6 +292,8 @@ uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
 	kubectl delete -f deploy/acm/crds/cluster.open-cluster-management.io_managedclusters.yaml
+	kubectl delete -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
+	kubectl delete -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
 
 kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"

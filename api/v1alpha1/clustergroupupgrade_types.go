@@ -96,7 +96,7 @@ type ClusterGroupUpgradeSpec struct {
 	// Once set to true, the clusters start being upgraded, one batch at a time.
 	//+kubebuilder:default=true
 	Enable   *bool    `json:"enable,omitempty"`
-	Clusters []string `json:"clusters"`
+	Clusters []string `json:"clusters,omitempty"`
 	// This field holds a label common to multiple clusters that will be updated.
 	// The expected format is as follows:
 	// clusterSelector:
@@ -108,7 +108,7 @@ type ClusterGroupUpgradeSpec struct {
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
 	ClusterSelector     []string                 `json:"clusterSelector,omitempty"`
-	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy,omitempty"`
+	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy"`
 	ManagedPolicies     []string                 `json:"managedPolicies,omitempty"`
 	BlockingCRs         []BlockingCR             `json:"blockingCRs,omitempty"`
 	Actions             Actions                  `json:"actions,omitempty"`
@@ -167,6 +167,7 @@ type ClusterGroupUpgradeStatus struct {
 	ManagedPoliciesContent                map[string]string         `json:"managedPoliciesContent,omitempty"`
 	Status                                UpgradeStatus             `json:"status,omitempty"`
 	Precaching                            PrecachingStatus          `json:"precaching,omitempty"`
+	ComputedMaxConcurrency                int                       `json:"computedMaxConcurrency,omitempty"`
 }
 
 //+kubebuilder:object:root=true

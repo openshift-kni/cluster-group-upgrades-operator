@@ -456,11 +456,12 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	managedPolicyIndex int, clusterName string) (bool, error) {
-	managedPolicyName := clusterGroupUpgrade.Spec.ManagedPolicies[managedPolicyIndex]
+	managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
 
 	// If there is no content saved for the current managed policy, return.
 	_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
 	if ok == false {
+		r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
 		return false, nil
 	}
 
@@ -1487,7 +1488,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 			clusterCount++
 		}
 
-		if clusterCount == clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency || i == len(allClustersForUpgrade)-1 {
+		if clusterCount == clusterGroupUpgrade.Status.ComputedMaxConcurrency || i == len(allClustersForUpgrade)-1 {
 			if len(batch) > 0 {
 				remediationPlan = append(remediationPlan, batch)
 				clusterCount = 0
@@ -1675,15 +1676,24 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 		}
 	}
 
-	// Automatically adjust maxConcurrency to the min of maxConcurrency, number of clusters, 100.
-	newMaxConcurrency := utils.GetMinOf3(
-		clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency,
-		len(clusters),
-		utils.MaxNumberOfClustersForUpgrade)
+	var newMaxConcurrency int
+	// Automatically adjust maxConcurrency to the min of maxConcurrency, number of clusters, 100 or
+	// to the min of number of clusters, 100 if maxConcurrency is set to 0.
+	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > 0 {
+		newMaxConcurrency = utils.GetMinOf3(
+			clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency,
+			len(clusters),
+			utils.MaxNumberOfClustersForUpgrade)
+	} else {
+		newMaxConcurrency = len(clusters)
+		if utils.MaxNumberOfClustersForUpgrade < len(clusters) {
+			newMaxConcurrency = utils.MaxNumberOfClustersForUpgrade
+		}
+	}
 
-	if newMaxConcurrency != clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency {
-		clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency = newMaxConcurrency
-		err = r.Client.Update(ctx, clusterGroupUpgrade)
+	if newMaxConcurrency != clusterGroupUpgrade.Status.ComputedMaxConcurrency {
+		clusterGroupUpgrade.Status.ComputedMaxConcurrency = newMaxConcurrency
+		err = r.Status().Update(ctx, clusterGroupUpgrade)
 		if err != nil {
 			r.Log.Info("Error updating Cluster Group Upgrade")
 			return reconcile, err

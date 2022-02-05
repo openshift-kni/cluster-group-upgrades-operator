@@ -15,7 +15,6 @@ spec:
   - spoke2
   - spoke5
   - spoke6
-  remediationAction: inform
   remediationStrategy:
     maxConcurrency: 4
 

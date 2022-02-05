@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"testing"
 
-	//"github.com/go-logr/logr"
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
@@ -29,20 +28,14 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 
-	//"k8s.io/apimachinery/pkg/api/errors"
 	corev1 "k8s.io/api/core/v1"
-	//"k8s.io/apimachinery/pkg/api/errors"
 
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	//"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
-	//clusterv1 "open-cluster-management.io/api/cluster/v1"
-	//ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	//"sigs.k8s.io/controller-runtime/pkg/reconcile"
 	actionv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
 	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"

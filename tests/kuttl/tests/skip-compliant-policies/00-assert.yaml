@@ -19,6 +19,7 @@ spec:
     maxConcurrency: 4
     timeout: 240
 status:
+  computedMaxConcurrency: 4
   conditions:
   - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
     reason: UpgradeNotCompleted
@@ -30,6 +31,10 @@ status:
   - cgu-policy4-common-sriov-sub-policy
   managedPoliciesCompliantBeforeUpgrade:
   - policy2-common-pao-sub-policy
+  managedPoliciesContent:
+    policy1-common-cluster-version-policy: "null"
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
@@ -37,6 +42,10 @@ status:
     namespace: default
   - name: policy4-common-sriov-sub-policy
     namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy3-common-ptp-sub-policy: default
+    policy4-common-sriov-sub-policy: default
   placementBindings:
   - cgu-policy1-common-cluster-version-policy
   - cgu-policy3-common-ptp-sub-policy
