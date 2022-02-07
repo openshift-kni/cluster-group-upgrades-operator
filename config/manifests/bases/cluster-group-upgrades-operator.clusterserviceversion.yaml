@@ -10,12 +10,14 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
+    - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+        API
       displayName: Cluster Group Upgrade
       kind: ClusterGroupUpgrade
       name: clustergroupupgrades.ran.openshift.io
       version: v1alpha1
-  description: cluster-group-upgrades-operator is an operator that facilitates platform upgrades of group of clusters
+  description: cluster-group-upgrades-operator is an operator that facilitates platform
+    upgrades of group of clusters
   displayName: cluster-group-upgrades-operator
   icon:
   - base64data: ""

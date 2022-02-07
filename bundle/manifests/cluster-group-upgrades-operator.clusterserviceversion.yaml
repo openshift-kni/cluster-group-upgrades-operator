@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.7.1+git
+    operators.operatorframework.io/builder: operator-sdk-v1.10.1-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v0.0.3
   namespace: placeholder
@@ -24,12 +24,14 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
-    - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
+    - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+        API
       displayName: Cluster Group Upgrade
       kind: ClusterGroupUpgrade
       name: clustergroupupgrades.ran.openshift.io
       version: v1alpha1
-  description: cluster-group-upgrades-operator is an operator that facilitates platform upgrades of group of clusters
+  description: cluster-group-upgrades-operator is an operator that facilitates platform
+    upgrades of group of clusters
   displayName: cluster-group-upgrades-operator
   icon:
   - base64data: ""
@@ -42,6 +44,18 @@ spec:
           - ""
           resources:
           - namespaces
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - action.open-cluster-management.io
+          resources:
+          - managedclusteractions
           verbs:
           - create
           - delete
@@ -129,6 +143,18 @@ spec:
           - patch
           - update
         - apiGroups:
+          - view.open-cluster-management.io
+          resources:
+          - managedclusterviews
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
           - authentication.k8s.io
           resources:
           - tokenreviews
@@ -172,7 +198,7 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator:v0.0.3
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -249,6 +275,6 @@ spec:
   provider:
     name: Red Hat
   relatedImages:
-  - image: quay.io/test_images/pre-cache:latest
-    name: "pre-caching-workload"
+  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
+    name: pre-caching-workload
   version: 0.0.3
