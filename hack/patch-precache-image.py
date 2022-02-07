@@ -11,4 +11,4 @@ for item in obj.get('spec',{}).get('relatedImages',{}):
         item['image'] = pull
     break
 with open(file,'w') as f:
-    yaml.dump(obj, f)
+    yaml.dump(obj, f, default_flow_style=False)

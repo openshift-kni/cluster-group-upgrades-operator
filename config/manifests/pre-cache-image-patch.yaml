@@ -1,7 +1,9 @@
 apiVersion: operators.coreos.com/v1alpha1
 kind: ClusterServiceVersion
-metadata: {name: cluster-group-upgrades-operator.v0.0.0, namespace: placeholder}
+metadata:
+  name: cluster-group-upgrades-operator.v0.0.0
+  namespace: placeholder
 spec:
   relatedImages:
-  - {image: 'quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3',
-    name: pre-caching-workload}
+  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
+    name: pre-caching-workload
