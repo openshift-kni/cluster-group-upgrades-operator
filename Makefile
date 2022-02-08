@@ -5,6 +5,9 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 0.0.3
 
+# You can use podman or docker as a container engine. Notice that there are some options that might be only valid for one of them.
+ENGINE ?= docker
+
 # CHANNELS define the bundle channels used in the bundle.
 # Add a new line here if you would like to change its default config. (E.g CHANNELS = "preview,fast,stable")
 # To re-generate a bundle for other specific channels without changing the standard setup, you can:
@@ -166,17 +169,17 @@ build: generate fmt vet ## Build manager binary.
 run: manifests generate fmt vet ## Run a controller from your host.
 	go run ./main.go
 
-docker-build: ## Build docker image with the manager.
-	docker build -t ${IMG} -f Dockerfile .
+docker-build: ## Build container image with the manager.
+	${ENGINE} build -t ${IMG} -f Dockerfile .
 
-docker-push: ## Push docker image with the manager.
-	docker push ${IMG}
+docker-push: ## Push container image with the manager.
+	${ENGINE} push ${IMG}
 
-docker-build-precache: ## Build pre-cache workload docker image.
-	docker build -t ${PRECACHE_IMG} -f Dockerfile.precache .
+docker-build-precache: ## Build pre-cache workload container image.
+	${ENGINE} build -t ${PRECACHE_IMG} -f Dockerfile.precache .
 
-docker-push-precache: ## push pre-cache workload docker image.
-	docker push ${PRECACHE_IMG}
+docker-push-precache: ## push pre-cache workload container image.
+	${ENGINE} push ${PRECACHE_IMG}
 
 ##@ Deployment
 
@@ -203,7 +206,7 @@ bundle: manifests kustomize ## Generate bundle manifests and metadata, then vali
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
-	docker build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
+	${ENGINE} build -f bundle.Dockerfile -t $(BUNDLE_IMG) .
 
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
