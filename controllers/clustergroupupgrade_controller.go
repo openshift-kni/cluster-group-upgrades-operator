@@ -898,19 +898,61 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 
 			innerObjectDefinitionContent := innerObjectDefinition.(map[string]interface{})
 			// Get the object's metadata.
+			objectDefinitionMetadata := innerObjectDefinitionContent["metadata"]
+			if objectDefinitionMetadata == nil {
+				r.Log.Info(
+					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata",
+					"policyName", managedPolicyName)
+				continue
+			}
+
 			objectDefinitionMetadataContent := innerObjectDefinitionContent["metadata"].(map[string]interface{})
-			// Save the kind, name and namespace.
+			// Save the kind, name and namespace if they exist and if kind is of Subscription type.
+			// If kind is missing, log and skip.
+			_, ok := innerObjectDefinitionContent["kind"]
+			if ok == false {
+				r.Log.Info(
+					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.kind",
+					"policyName", managedPolicyName)
+				continue
+			}
+			// Filter only Subscription templates.
+			if innerObjectDefinitionContent["kind"] != utils.PolicyTypeSubscription {
+				r.Log.Info(
+					"[getPolicyContent] Policy spec.policy-templates.objectDefinition.spec.object-templates.kind is not of Subscription kind",
+					"policyName", managedPolicyName)
+				continue
+			}
+
+			// If name is missing, log and skip. We need Subscription name in order to have a valid content for
+			// Subscription InstallPlan approval.
+			_, ok = objectDefinitionMetadataContent["name"]
+			if ok == false {
+				r.Log.Info(
+					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.name",
+					"policyName", managedPolicyName)
+				continue
+			}
+
+			// If namespace is missing, log and skip. We need Subscription namespace in order to have a valid content for
+			// Subscription InstallPlan approval.
+			_, ok = objectDefinitionMetadataContent["namespace"]
+			if ok == false {
+				r.Log.Info(
+					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.namespace",
+					"policyName", managedPolicyName)
+				continue
+			}
+
+			// Save the info into the policy content status.
 			var policyContentCrt ranv1alpha1.PolicyContent
 			policyContentCrt.Kind = innerObjectDefinitionContent["kind"].(string)
 			policyContentCrt.Name = objectDefinitionMetadataContent["name"].(string)
-			if _, ok := objectDefinitionMetadataContent["namespace"]; ok {
-				namespace := objectDefinitionMetadataContent["namespace"].(string)
-				policyContentCrt.Namespace = &namespace
-			}
-			policyContent = append(policyContent, policyContentCrt)
 
-			// Kept below in case we decide to filter only subscriptions.
-			// if innerObjectDefinitionContent["kind"] == utils.PolicyTypeSubscription
+			namespace := objectDefinitionMetadataContent["namespace"].(string)
+			policyContentCrt.Namespace = &namespace
+
+			policyContent = append(policyContent, policyContentCrt)
 		}
 
 	}
