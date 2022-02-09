@@ -909,15 +909,16 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 			objectDefinitionMetadataContent := innerObjectDefinitionContent["metadata"].(map[string]interface{})
 			// Save the kind, name and namespace if they exist and if kind is of Subscription type.
 			// If kind is missing, log and skip.
-			_, ok := innerObjectDefinitionContent["kind"]
+			kind, ok := innerObjectDefinitionContent["kind"]
 			if ok == false {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.kind",
 					"policyName", managedPolicyName)
 				continue
 			}
+
 			// Filter only Subscription templates.
-			if innerObjectDefinitionContent["kind"] != utils.PolicyTypeSubscription {
+			if kind != utils.PolicyTypeSubscription {
 				r.Log.Info(
 					"[getPolicyContent] Policy spec.policy-templates.objectDefinition.spec.object-templates.kind is not of Subscription kind",
 					"policyName", managedPolicyName)
