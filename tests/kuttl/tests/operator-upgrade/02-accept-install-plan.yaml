@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the InstallPlan ManagedClusterViews.
+  - command: ../../../../deploy/upgrades/operator-upgrade/patch-install-plan-mcv-status.sh
+    ignoreFailure: false
