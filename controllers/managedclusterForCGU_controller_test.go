@@ -251,7 +251,7 @@ func TestControllerReconciler(t *testing.T) {
 
 				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
 				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
-				assert.Equal(t, clusterGroupUpgrade.Spec.Enable, true)
+				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
@@ -318,7 +318,7 @@ func TestControllerReconciler(t *testing.T) {
 
 				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
 				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
-				assert.Equal(t, clusterGroupUpgrade.Spec.Enable, true)
+				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy", "group-du-config-policy"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)

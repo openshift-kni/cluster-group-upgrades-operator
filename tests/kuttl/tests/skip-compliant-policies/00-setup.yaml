@@ -12,8 +12,8 @@ commands:
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
     namespaced: true
 
-  # Patch the inform policies to reflect the compliance status.
-  - command: ../../../../deploy/acm/policies/patch-policies-status.sh default default default default
+  # Patch the inform policies to reflect the compliance status. Make policy 3 compliant with all the clusters.
+  - command: ../../../../deploy/upgrades/skip-compliant-policies/patch-policies-status.sh default default default default
     ignoreFailure: false
 
   # Create all the child policies to map the inform policies above.
@@ -44,5 +44,5 @@ commands:
     namespaced: true
 
   # Apply the UOCR.
-  - command: oc apply -f ../../../../deploy/upgrades/cluster-selector/cgu-cluster-selector.yaml
+  - command: oc apply -f ../../../../deploy/upgrades/skip-compliant-policies/skip-compliant-policies.yaml
     namespaced: true

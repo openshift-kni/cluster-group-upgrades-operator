@@ -12,7 +12,7 @@ testDirs:
 crdDir: ./config/crd/bases/
 # The operator has a reconcile loop of 5 minutes, so we need to wait at least that amount of time
 # before deciding to error.
-timeout: 350
+timeout: 375
 parallel: 1
 namespace: default
 

@@ -121,7 +121,7 @@ spec:
                 description: This field determines when the upgrade starts. While
                   false, the upgrade doesn't start. The policies, placement rules
                   and placement bindings are created, but clusters are not added to
-                  the placement rule. Once set to true, the clusters start being upgrades,
+                  the placement rule. Once set to true, the clusters start being upgraded,
                   one batch at a time.
                 type: boolean
               managedPolicies:
@@ -149,11 +149,17 @@ spec:
                   timeout:
                     default: 240
                     type: integer
+                required:
+                - maxConcurrency
                 type: object
+            required:
+            - remediationStrategy
             type: object
           status:
             description: ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
             properties:
+              computedMaxConcurrency:
+                type: integer
               conditions:
                 items:
                   description: "Condition contains details for one aspect of the current
@@ -227,10 +233,27 @@ spec:
                 items:
                   type: string
                 type: array
+              managedPoliciesCompliantBeforeUpgrade:
+                items:
+                  type: string
+                type: array
               managedPoliciesContent:
                 additionalProperties:
                   type: string
                 type: object
+              managedPoliciesForUpgrade:
+                description: Contains the managed policies (and the namespaces) that
+                  have NonCompliant clusters that require updating.
+                items:
+                  description: ManagedPolicyForUpgrade defines the observed state
+                    of a Policy
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
               managedPoliciesNs:
                 additionalProperties:
                   type: string

@@ -32,11 +32,15 @@ status:
   - cgu-cluster-selector-policy2-common-pao-sub-policy
   - cgu-cluster-selector-policy3-common-ptp-sub-policy
   - cgu-cluster-selector-policy4-common-sriov-sub-policy
-  managedPoliciesNs:
-    policy1-common-cluster-version-policy: default
-    policy2-common-pao-sub-policy: default
-    policy3-common-ptp-sub-policy: default
-    policy4-common-sriov-sub-policy: default
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
   placementBindings:
   - cgu-cluster-selector-policy1-common-cluster-version-policy
   - cgu-cluster-selector-policy2-common-pao-sub-policy

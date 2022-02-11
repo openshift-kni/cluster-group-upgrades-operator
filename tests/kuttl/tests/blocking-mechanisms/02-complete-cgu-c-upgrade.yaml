@@ -1,0 +1,6 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/upgrades/patch-cgu-status.sh default cgu-c
+    ignoreFailure: false
