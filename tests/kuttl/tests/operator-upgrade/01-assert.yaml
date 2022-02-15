@@ -1,0 +1,181 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke5
+  enable: true
+  managedPolicies:
+  - policy5-subscriptions
+  preCaching: false
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  computedMaxConcurrency: 2
+  conditions:
+  - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
+    reason: UpgradeNotCompleted
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-policy5-subscriptions
+  managedPoliciesContent:
+    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","namespace":"openshift-local-storage"}]'
+  managedPoliciesForUpgrade:
+  - name: policy5-subscriptions
+    namespace: default
+  managedPoliciesNs:
+    policy5-subscriptions: default
+  placementBindings:
+  - cgu-policy5-subscriptions
+  placementRules:
+  - cgu-policy5-subscriptions
+  precaching:
+    spec: {}
+  remediationPlan:
+  - - spoke1
+    - spoke2
+  - - spoke5
+  status:
+    currentBatch: 1
+    remediationPlanForBatch:
+      spoke1: 0
+      spoke2: 0
+---
+# Check the ManagedClusterActions for approving the install plans have been created.
+# Check spoke1.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-aaaa1
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa1
+    namespace: openshift-logging
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-aaaa2
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa2
+    namespace: openshift-local-storage
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-aaaa3
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa3
+    namespace: openshift-performance-addon-operator
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-aaaa4
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa4
+    namespace: openshift-ptp
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-aaaa5
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa5
+    namespace: openshift-sriov-network-operator
+    resource: InstallPlan
+---
+# Check spoke2
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-bbbb1
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb1
+    namespace: openshift-logging
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-bbbb2
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb2
+    namespace: openshift-local-storage
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-bbbb3
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb3
+    namespace: openshift-performance-addon-operator
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-bbbb4
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb4
+    namespace: openshift-ptp
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: cgu-default-installplan-install-bbbb5
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb5
+    namespace: openshift-sriov-network-operator
+    resource: InstallPlan

@@ -1,0 +1,23 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Create all the managed inform policies
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy5-subscriptions.yaml
+    namespaced: true
+
+  # Patch the inform policies to reflect the compliance status.
+  - command: ../../../../deploy/upgrades/operator-upgrade/patch-policies-status.sh default default
+    ignoreFailure: false
+
+  # Create all the child policies to map the inform policies above.
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+
+  # Apply the UOCR.
+  - command: oc apply -f ../../../../deploy/upgrades/operator-upgrade/cgu-operator-upgrade.yaml
+    namespaced: true

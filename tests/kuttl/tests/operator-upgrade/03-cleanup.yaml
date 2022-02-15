@@ -1,0 +1,23 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Delete all the managed inform policies
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy5-subscriptions.yaml
+    namespaced: true
+
+  # Delete all the child policies to map the inform policies above.
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy5-subscriptions.yaml
+    namespaced: true
+
+  # Delete all the created ManagedClusterView and ManagedClusterAction objects.
+  - command: ../../../../deploy/upgrades/operator-upgrade/cleanup.sh
+    ignoreFailure: false
+
+  # Delete the UOCR.
+  - command: oc delete -f ../../../../deploy/upgrades/operator-upgrade/cgu-operator-upgrade.yaml
+    namespaced: true
