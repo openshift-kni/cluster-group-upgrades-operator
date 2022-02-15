@@ -1,5 +1,8 @@
 resources:
-- catsrc-policy.yaml
+- catsrc-child-policy.yaml
+- catsrc-parent-policy.yaml
 - cgu-precache.yaml
-- cluster-version-policy.yaml
-- operator-policy.yaml
+- cluster-version-child-policy.yaml
+- cluster-version-parent-policy.yaml
+- operator-child-policy.yaml
+- operator-parent-policy.yaml

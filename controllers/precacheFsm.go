@@ -60,6 +60,51 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	r.setPrecachingRequired(clusterGroupUpgrade)
+	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
+	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
+		allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(
+			ctx, clusterGroupUpgrade)
+		if err != nil {
+			return err
+		}
+		if !allManagedPoliciesExist {
+			statusMessage := fmt.Sprintf(
+				"The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesMissing)
+			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+				Type:    utils.PrecacheSpecValidCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  "NotAllManagedPoliciesExist",
+				Message: statusMessage})
+			return nil
+		}
+
+		spec, err := r.extractPrecachingSpecFromPolicies(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+		if err != nil {
+			return err
+		}
+		r.Log.Info("[precachingFsm]", "PrecacheSpecFromPolicies", spec)
+		spec, err = r.includeSoftwareSpecOverrides(ctx, clusterGroupUpgrade, &spec)
+		if err != nil {
+			return err
+		}
+		ok, msg := r.checkPreCacheSpecConsistency(spec)
+		if !ok {
+			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+				Type:    utils.PrecacheSpecValidCondition,
+				Status:  metav1.ConditionFalse,
+				Reason:  "PrecacheSpecIsIncomplete",
+				Message: msg})
+			return nil
+		}
+		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+			Type:    utils.PrecacheSpecValidCondition,
+			Status:  metav1.ConditionTrue,
+			Reason:  "PrecacheSpecIsWellFormed",
+			Message: "Pre-caching spec is valid and consistent"})
+
+		clusterGroupUpgrade.Status.Precaching.Spec = spec
+	}
+
 	var clusters []string
 	var err error
 	if len(clusterGroupUpgrade.Status.Precaching.Clusters) != 0 {
