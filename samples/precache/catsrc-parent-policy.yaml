@@ -5,7 +5,7 @@ metadata:
     policy.open-cluster-management.io/categories: CM Configuration Management
     policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
     policy.open-cluster-management.io/standards: NIST SP 800-53
-  name: common-cluster-version-policy
+  name: common-catalog-source-policy
   namespace: default
 spec:
   disabled: false
@@ -14,7 +14,7 @@ spec:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: common-cluster-version-policy-config
+        name: common-catsrc-policy-config
       spec:
         namespaceselector:
           exclude:
@@ -24,18 +24,23 @@ spec:
         object-templates:
         - complianceType: musthave
           objectDefinition:
-            apiVersion: config.openshift.io/v1
-            kind: ClusterVersion
+            apiVersion: operators.coreos.com/v1alpha1
+            kind: CatalogSource
             metadata:
-              name: PlatformUpgrade
+              name: redhat-operators
+              namespace: openshift-marketplace
             spec:
-              clusterID: 0ed655d1-393e-40bb-b103-4dc9a89f54d3
-              channel: "4.11"
-              upstream: upstream
-              desiredUpdate:
-                force: false
-                version: "4.9.11"
-                image: quay.io/openshift-release-dev/ocp-release@sha256:0f72e150329db15279a1aeda1286c9495258a4892bc5bf1bf5bb89942cd432de
+              displayName: Red Hat Operators
+              icon:
+                base64data: ""
+                mediatype: ""
+              image: registry.redhat.io/redhat/redhat-operator-index:v4.9
+              priority: -100
+              publisher: Red Hat
+              sourceType: grpc
+              updateStrategy:
+                registryPoll:
+                  interval: 10m0s
         remediationAction: inform
         severity: low
   remediationAction: inform

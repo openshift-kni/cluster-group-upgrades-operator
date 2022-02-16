@@ -34,6 +34,7 @@ const (
 	PrecacheJobName            = "pre-cache"
 	PrecacheServiceAccountName = "pre-cache-agent"
 	PrecacheSpecCmName         = "pre-cache-spec"
+	PrecacheSpecValidCondition = "PrecacheSpecValid"
 )
 
 // ViewUpdateSec defines default ManagementClusterView update periodicity
@@ -45,6 +46,7 @@ const ViewUpdateSec = 20
 const (
 	PolicyTypeSubscription   = "Subscription"
 	PolicyTypeClusterVersion = "ClusterVersion"
+	PolicyTypeCatalogSource  = "CatalogSource"
 )
 
 // Subscription possible states

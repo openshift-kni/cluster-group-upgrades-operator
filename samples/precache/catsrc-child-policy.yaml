@@ -5,8 +5,11 @@ metadata:
     policy.open-cluster-management.io/categories: CM Configuration Management
     policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
     policy.open-cluster-management.io/standards: NIST SP 800-53
-  name: common-catalog-source-policy
-  namespace: default
+  labels:
+    app.kubernetes.io/instance: policies
+    policy.open-cluster-management.io/root-policy: ""
+  name: default.common-catalog-source-policy
+  namespace: my-cluster
 spec:
   disabled: false
   policy-templates:
@@ -14,7 +17,7 @@ spec:
       apiVersion: policy.open-cluster-management.io/v1
       kind: ConfigurationPolicy
       metadata:
-        name: common-log-sub-policy-config
+        name: common-catsrc-policy-config
       spec:
         namespaceselector:
           exclude:
