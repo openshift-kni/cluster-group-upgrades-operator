@@ -40,6 +40,7 @@ import (
 
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
@@ -118,12 +119,12 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		// gets created and matches the parent policies to the managedcluster.
 		// It takes ~45 minutes for cluster to be installed and ready.
 		// At this stage, all child policies should be created.
-		policies, err := r.getPolicies(ctx, managedCluster.Name)
+		policies, err := utils.GetChildPolicies(ctx, r.Client, []string{managedCluster.Name})
 		if err != nil {
 			return ctrl.Result{}, err
 		}
-		if len(policies.Items) == 0 {
-			// likey that no policies created so child policies not found
+		if len(policies) == 0 {
+			// likely no policies were created, so no child policies found
 			r.Log.Info("WARN: No child policies found for cluster", "Name", managedCluster.Name)
 			return ctrl.Result{}, nil
 		}
@@ -139,16 +140,6 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 	}
 
 	return ctrl.Result{}, nil
-}
-
-func (r *ManagedClusterForCguReconciler) getPolicies(
-	ctx context.Context, clusterName string) (*policiesv1.PolicyList, error) {
-
-	policies := &policiesv1.PolicyList{}
-	if err := r.List(ctx, policies, client.InNamespace(clusterName)); err != nil {
-		return nil, err
-	}
-	return policies, nil
 }
 
 // sort map[string]int by value in ascending order, return sorted keys
@@ -170,7 +161,7 @@ func sortMapByValue(sortMap map[string]int) []string {
 
 // Create a clusterGroupUpgrade
 func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
-	ctx context.Context, cluster *clusterv1.ManagedCluster, policies *policiesv1.PolicyList) (err error) {
+	ctx context.Context, cluster *clusterv1.ManagedCluster, policies []policiesv1.Policy) (err error) {
 
 	var policyWaveMap = make(map[string]int)
 
@@ -183,7 +174,7 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	//       "ran.openshift.io/ztp-deploy-wave": "1"
 	// The list of policies is ordered from the lowest value to the highest.
 	// Policy without a wave is not managed.
-	for _, policy := range policies.Items {
+	for _, policy := range policies {
 		deployWave, found := policy.GetAnnotations()[ztpDeployWaveAnnotation]
 		if found {
 			deployWaveInt, err := strconv.Atoi(deployWave)

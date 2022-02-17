@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -172,18 +173,21 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "ztp-common.common-config-policy",
 						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 					},
 				},
 				&policiesv1.Policy{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "ztp-common.common-sub-policy",
 						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
 					},
 				},
 				&policiesv1.Policy{
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
 					},
 				},
 			},
@@ -218,6 +222,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-common.common-config-policy",
 						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 					},
 				},
@@ -225,6 +230,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-common.common-sub-policy",
 						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "20"},
 					},
 				},
@@ -232,6 +238,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
 					},
 				},
 			},
@@ -265,6 +272,77 @@ func TestControllerReconciler(t *testing.T) {
 			},
 		},
 		{
+			name: "managed cluster is ready and one found child policy is a copied policy",
+			objs: []client.Object{
+				&clusterv1.ManagedCluster{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "testSpoke",
+					},
+					Status: clusterv1.ManagedClusterStatus{
+						Conditions: []v1.Condition{
+							{
+								Type:   clusterv1.ManagedClusterConditionAvailable,
+								Status: v1.ConditionTrue,
+							},
+						},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: v1.ObjectMeta{
+						Name:        "ztp-common.common-config-policy",
+						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "ztp-common.common-sub-policy",
+						Namespace: "testSpoke",
+						Labels: map[string]string{
+							utils.ChildPolicyLabel: "ztp-common.common-sub-policy", "openshift-cluster-group-upgrades/clusterGroupUpgrade": "testSpoke"},
+						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "20"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: v1.ObjectMeta{
+						Name:        "ztp-group.group-du-config-policy",
+						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "30"},
+					},
+				},
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: "testSpoke",
+				},
+			},
+			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
+				clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
+				if err := runtimeClient.Get(context.TODO(), types.NamespacedName{Name: "testSpoke", Namespace: "ztp-install"}, clusterGroupUpgrade); err != nil {
+					if errors.IsNotFound(err) {
+						t.Errorf("excepted one CGU created, but failed")
+					}
+					t.Errorf("unexcepted error: %v", err.Error())
+				}
+
+				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
+				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
+				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
+				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
+				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "group-du-config-policy"})
+				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
+
+				if !result.IsZero() {
+					t.Errorf("expect to stop reconcile, but failed")
+				}
+			},
+		},
+		{
 			name: "managed cluster is ready and child policies are found",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
@@ -284,6 +362,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-common.common-config-policy",
 						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 					},
 				},
@@ -291,6 +370,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-common.common-sub-policy",
 						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "2"},
 					},
 				},
@@ -298,6 +378,7 @@ func TestControllerReconciler(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name:        "ztp-group.group-du-config-policy",
 						Namespace:   "testSpoke",
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1000000000000000"},
 					},
 				},
@@ -422,6 +503,7 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 			ObjectMeta: v1.ObjectMeta{
 				Name:        "ztp-common.common-config-policy",
 				Namespace:   name,
+				Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 				Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 			},
 		}
