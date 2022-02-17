@@ -2,8 +2,11 @@ package controllers
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	"strings"
 
@@ -274,6 +277,51 @@ func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 	return true, nil
 }
 
+// getImageForVersionFromUpdateGraph gets the image for the given version
+// by traversing the update graph.
+// Connecting to the upstream URL with the channel passed as a parameter
+// the update graph is returned as JSON. This function then traverses
+// the nodes list from that JSON to find the version and if found
+// then returns the image
+func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
+	upstream string, channel string, version string) (string, error) {
+	updateGraphURL := upstream + "?channel=" + channel
+
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	client := &http.Client{Transport: tr}
+	req, _ := http.NewRequest("GET", updateGraphURL, nil)
+	req.Header.Add("Accept", "application/json")
+	res, err := client.Do(req)
+
+	if err != nil {
+		return "", fmt.Errorf("unable to request update graph on url %s: %w", updateGraphURL, err)
+	}
+
+	defer res.Body.Close()
+	body, err := ioutil.ReadAll(res.Body)
+	if err != nil {
+		return "", fmt.Errorf("unable to read body from response: %w", err)
+	}
+
+	var graph map[string]interface{}
+	err = json.Unmarshal(body, &graph)
+	if err != nil {
+		return "", fmt.Errorf("unable to unmarshal body: %w", err)
+	}
+
+	nodes := graph["nodes"].([]interface{})
+	for _, n := range nodes {
+		node := n.(map[string]interface{})
+		if node["version"] == version {
+			return node["payload"].(string), nil
+		}
+	}
+
+	return "", fmt.Errorf("unable to find version %s on update graph on url %s", version, updateGraphURL)
+}
+
 // extractPrecachingSpecFromPolicies extracts the software spec to be pre-cached
 // 		from policies.
 //		There are three object types to look at in the policies:
@@ -298,18 +346,40 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 			case utils.PolicyTypeClusterVersion:
 				image := object["spec"].(map[string]interface {
 				})["desiredUpdate"].(map[string]interface{})["image"]
-				if len(spec.PlatformImage) > 0 && spec.PlatformImage != image {
-					msg := fmt.Sprintf("Platform image must be set once, but %s and %s were given",
-						spec.PlatformImage, image)
-					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-						Type:    utils.PrecacheSpecValidCondition,
-						Status:  metav1.ConditionFalse,
-						Reason:  "PlatformImageConflict",
-						Message: msg})
-					return *new(ranv1alpha1.PrecachingSpec), nil
+				if image != nil {
+					if len(spec.PlatformImage) > 0 && spec.PlatformImage != image {
+						msg := fmt.Sprintf("Platform image must be set once, but %s and %s were given",
+							spec.PlatformImage, image)
+						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+							Type:    utils.PrecacheSpecValidCondition,
+							Status:  metav1.ConditionFalse,
+							Reason:  "PlatformImageConflict",
+							Message: msg})
+						return *new(ranv1alpha1.PrecachingSpec), nil
+					}
+					spec.PlatformImage = fmt.Sprintf("%s", image)
+				} else {
+					upstream := object["spec"].(map[string]interface {
+					})["upstream"].(string)
+					channel := object["spec"].(map[string]interface {
+					})["channel"].(string)
+					version := object["spec"].(map[string]interface {
+					})["desiredUpdate"].(map[string]interface{})["version"].(string)
+
+					image, err = r.getImageForVersionFromUpdateGraph(upstream, channel, version)
+
+					if err != nil {
+						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+							Type:    utils.PrecacheSpecValidCondition,
+							Status:  metav1.ConditionFalse,
+							Reason:  "PlatformImageInvalid",
+							Message: err.Error()})
+						return *new(ranv1alpha1.PrecachingSpec), nil
+					}
+
+					spec.PlatformImage = image.(string)
 				}
-				spec.PlatformImage = fmt.Sprintf("%s", image)
-				r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", image)
+				r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", spec.PlatformImage)
 			case utils.PolicyTypeSubscription:
 				packChan := fmt.Sprintf("%s:%s", object["spec"].(map[string]interface{})["name"],
 					object["spec"].(map[string]interface{})["channel"])
