@@ -101,6 +101,14 @@ spec:
           verbs:
           - update
         - apiGroups:
+          - operators.coreos.com
+          resources:
+          - clusterserviceversions
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - policy.open-cluster-management.io
           resources:
           - placementbindings
