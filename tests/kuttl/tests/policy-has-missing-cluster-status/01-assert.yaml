@@ -1,0 +1,57 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke3
+  - spoke4
+  enable: true
+  managedPolicies:
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  preCaching: false
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  computedMaxConcurrency: 2
+  conditions:
+  - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
+    reason: UpgradeNotCompleted
+    status: "False"
+    type: Ready
+  copiedPolicies:
+  - cgu-policy2-common-pao-sub-policy
+  - cgu-policy3-common-ptp-sub-policy
+  managedPoliciesContent:
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
+  managedPoliciesForUpgrade:
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy2-common-pao-sub-policy: default
+    policy3-common-ptp-sub-policy: default
+  placementBindings:
+  - cgu-policy2-common-pao-sub-policy
+  - cgu-policy3-common-ptp-sub-policy
+  placementRules:
+  - cgu-policy2-common-pao-sub-policy
+  - cgu-policy3-common-ptp-sub-policy
+  precaching:
+    spec: {}
+  remediationPlan:
+  - - spoke1
+    - spoke2
+  - - spoke4
+  status:
+    currentBatch: 1
+    remediationPlanForBatch:
+      spoke1: 0
+      spoke2: 1
