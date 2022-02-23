@@ -131,7 +131,6 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
-				fmt.Println(">>>", mca.Spec.KubeWork.Namespace)
 				assert.Equal(t, mca.ObjectMeta.Name, mcaName)
 				assert.Equal(t, mca.ObjectMeta.Namespace, mcaNamespace)
 				assert.Equal(t, mca.Spec.ActionType, actionv1beta1.UpdateActionType)
