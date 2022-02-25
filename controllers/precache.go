@@ -344,9 +344,13 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 			kind := object["kind"]
 			switch kind {
 			case utils.PolicyTypeClusterVersion:
-				image := object["spec"].(map[string]interface {
-				})["desiredUpdate"].(map[string]interface{})["image"]
-				if image != nil {
+				cvSpec := object["spec"].(map[string]interface{})
+				desiredUpdate, found := cvSpec["desiredUpdate"]
+				if !found {
+					continue
+				}
+				image, found := desiredUpdate.(map[string]interface{})["image"]
+				if found && image != "" {
 					if len(spec.PlatformImage) > 0 && spec.PlatformImage != image {
 						msg := fmt.Sprintf("Platform image must be set once, but %s and %s were given",
 							spec.PlatformImage, image)
