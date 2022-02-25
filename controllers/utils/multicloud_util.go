@@ -288,27 +288,25 @@ func NewManagedClusterActionForInstallPlanSpec(installPlan operatorsv1alpha1.Ins
 
 // DeleteMultiCloudObjects cleans up views associated to an UOCR.
 func DeleteMultiCloudObjects(
-	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, allClustersForUpgrade []string) error {
 	// Only need to delete ManagedClusterView as ManagedClusterActions get deleted automatically.
-	for _, batch := range clusterGroupUpgrade.Status.RemediationPlan {
-		for _, clusterName := range batch {
-			var mcvLabels = map[string]string{
-				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
-			opts := []client.ListOption{
-				client.InNamespace(clusterName),
-				client.MatchingLabels(mcvLabels),
-			}
+	for _, clusterName := range allClustersForUpgrade {
+		var mcvLabels = map[string]string{
+			"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
+		opts := []client.ListOption{
+			client.InNamespace(clusterName),
+			client.MatchingLabels(mcvLabels),
+		}
 
-			mcvList := &viewv1beta1.ManagedClusterViewList{}
-			if err := c.List(ctx, mcvList, opts...); err != nil {
+		mcvList := &viewv1beta1.ManagedClusterViewList{}
+		if err := c.List(ctx, mcvList, opts...); err != nil {
+			return err
+		}
+
+		for _, mcv := range mcvList.Items {
+			multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "name", mcv.Name)
+			if err := c.Delete(ctx, &mcv); err != nil {
 				return err
-			}
-
-			for _, mcv := range mcvList.Items {
-				multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "name", mcv.Name)
-				if err := c.Delete(ctx, &mcv); err != nil {
-					return err
-				}
 			}
 		}
 	}
