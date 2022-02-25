@@ -86,6 +86,16 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
+	reconcileTime, err := r.handleCguFinalizer(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+	if reconcileTime == utils.ReconcileNow {
+		return ctrl.Result{Requeue: true}, nil
+	} else if reconcileTime == utils.StopReconciling {
+		return ctrl.Result{}, nil
+	}
+
 	reconcile, err := r.validateCR(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -1661,6 +1671,46 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	}
 
 	return reconcile, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (int, error) {
+
+	isCguMarkedToBeDeleted := clusterGroupUpgrade.GetDeletionTimestamp() != nil
+	if isCguMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
+			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
+			// that we can retry during the next reconciliation.
+			clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return utils.StopReconciling, fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+			}
+			err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+			if err != nil {
+				return utils.StopReconciling, err
+			}
+
+			// Remove cguFinalizer. Once all finalizers have been removed, the object will be deleted.
+			controllerutil.RemoveFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer)
+			err = r.Update(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return utils.StopReconciling, err
+			}
+		}
+		return utils.StopReconciling, nil
+	}
+
+	// Add finalizer for this CR.
+	if !controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
+		controllerutil.AddFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer)
+		err := r.Update(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return utils.StopReconciling, err
+		}
+		return utils.ReconcileNow, nil
+	}
+
+	return utils.DontReconcile, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
