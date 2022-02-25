@@ -8,10 +8,12 @@ const (
 
 // Possible status returned when checking the compliance of a cluster with a policy.
 const (
-	StatusNonCompliant          = "NonCompliant"
-	StatusCompliant             = "Compliant"
+	ClusterStatusNonCompliant   = "NonCompliant"
+	ClusterStatusCompliant      = "Compliant"
 	ClusterNotMatchedWithPolicy = "NotMatchedWithPolicy"
-	StatusUnknown               = "StatusUnknown"
+	ClusterStatusUnknown        = "ClusterStatusUnknown"
+	PolicyStatusUnknown         = "StatusUnknown"
+	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
 // Indexes for managed policies in the CurrentRemediationPolicyIndex.
