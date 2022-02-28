@@ -156,7 +156,12 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	if err != nil {
 		return fmt.Errorf("Failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
-	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade)
+
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+	}
+	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 	if err != nil {
 		return fmt.Errorf("Failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
