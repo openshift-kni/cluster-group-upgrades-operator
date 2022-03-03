@@ -24,7 +24,7 @@ export_index(){
     # copy pull secret to the default runtime dir - opm doesn't accept authfile as an arg
     [ ! -d "$podman_pull_path" ] && mkdir -p "$podman_pull_path"
     cp $pull_secret_path "$podman_pull_path/auth.json"
-    capath="/etc/docker/certs.d/${index%/*}/ca.crt"
+    capath="/host/etc/docker/certs.d/${index%/*}/ca.crt"
     # opm doesn't accept cacert as an arg
     if [[ -f "$capath" ]]; then
         cp $capath /etc/pki/ca-trust/source/anchors/ 
