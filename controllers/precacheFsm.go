@@ -63,7 +63,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
 		allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(
-			ctx, clusterGroupUpgrade)
+			ctx, clusterGroupUpgrade, false)
 		if err != nil {
 			return err
 		}
