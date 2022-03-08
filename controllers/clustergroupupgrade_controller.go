@@ -135,7 +135,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		if readyCondition.Reason == "PrecachingRequired" {
 			requeueAfter := 5 * time.Minute
 			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
-		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
+		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeBlockedOnCR" {
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err :=
 				r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
@@ -181,13 +181,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 						if len(blockingCRsMissing) > 0 {
 							// If there are blocking CRs missing, update the message to show which those are.
-							statusReason = "UpgradeCannotStart"
+							statusReason = "UpgradeBlockedOnCR"
 							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing)
 							requeueAfter := 1 * time.Minute
 							nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 						} else if len(blockingCRsNotCompleted) > 0 {
 							// If there are blocking CRs that are not completed, then the upgrade can't start.
-							statusReason = "UpgradeCannotStart"
+							statusReason = "UpgradeBlockedOnCR"
 							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
 							requeueAfter := 1 * time.Minute
 							nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
@@ -222,7 +222,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
-					Reason:  "UpgradeCannotStart",
+					Reason:  "UpgradeBlockedOnCR",
 					Message: statusMessage,
 				})
 				requeueAfter := 1 * time.Minute
