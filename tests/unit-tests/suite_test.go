@@ -11,8 +11,6 @@ import (
 	"github.com/onsi/ginkgo/reporters"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/client-go/dynamic"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -25,11 +23,6 @@ import (
 
 var junitPath *string
 var reportPath *string
-
-var (
-	clientHubDynamic      dynamic.Interface
-	defaultTimeoutSeconds int
-)
 
 func init() {
 	junitPath = flag.String("junit", "", "the path for the junit format report")
