@@ -100,7 +100,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-	if reconcile == true {
+	if reconcile {
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -143,7 +143,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return ctrl.Result{}, err
 			}
 
-			if allManagedPoliciesExist == true {
+			if allManagedPoliciesExist {
 				// Build the upgrade batches.
 				err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 				if err != nil {
@@ -172,7 +172,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						return ctrl.Result{}, err
 					}
 
-					if *clusterGroupUpgrade.Spec.Enable == true {
+					if *clusterGroupUpgrade.Spec.Enable {
 						// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
 						blockingCRsNotCompleted, blockingCRsMissing, err := r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
 						if err != nil {
@@ -284,7 +284,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				if err != nil {
 					return ctrl.Result{}, err
 				}
-				if reconcileSooner == true {
+				if reconcileSooner {
 					requeueAfter := 30 * time.Second
 					r.Log.Info("[Reconcile] Requeuing after", "requeueAfter", requeueAfter)
 					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
@@ -476,7 +476,7 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 
 	// If there is no content saved for the current managed policy, return.
 	_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
-	if ok == false {
+	if !ok {
 		r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
 		return false, nil
 	}
@@ -569,7 +569,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
 				break
 			}
 		}
-		if isCurrentClusterAlreadyPresent == false {
+		if !isCurrentClusterAlreadyPresent {
 			updatedClusters = append(updatedClusters, map[string]interface{}{"name": clusterName})
 		}
 	}
@@ -678,7 +678,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 				}
 			}
 
-			if filterNonCompliantPolicies == true {
+			if filterNonCompliantPolicies {
 				// Check the policy has at least one of the clusters from the CR in NonCompliant state.
 				clustersNonCompliantWithPolicy, err := r.getClustersNonCompliantWithPolicy(
 					ctx, clusterGroupUpgrade, foundPolicy, true)
@@ -930,7 +930,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 			// Save the kind, name and namespace if they exist and if kind is of Subscription type.
 			// If kind is missing, log and skip.
 			kind, ok := innerObjectDefinitionContent["kind"]
-			if ok == false {
+			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.kind",
 					"policyName", managedPolicyName)
@@ -948,7 +948,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 			// If name is missing, log and skip. We need Subscription name in order to have a valid content for
 			// Subscription InstallPlan approval.
 			_, ok = objectDefinitionMetadataContent["name"]
-			if ok == false {
+			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.name",
 					"policyName", managedPolicyName)
@@ -958,7 +958,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 			// If namespace is missing, log and skip. We need Subscription namespace in order to have a valid content for
 			// Subscription InstallPlan approval.
 			_, ok = objectDefinitionMetadataContent["namespace"]
-			if ok == false {
+			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.namespace",
 					"policyName", managedPolicyName)
@@ -1346,7 +1346,7 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 	}
 
 	// Filter only the clusters present in the current upgrade.
-	if filterClustersForUpgrade == true {
+	if filterClustersForUpgrade {
 		var nonCompliantClustersInUpgrade []string
 		allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 		if err != nil {
@@ -1459,7 +1459,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
 		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
 			// TODO: make sure the canary clusters are in the list of clusters.
-			if clusterNonCompliantWithManagedPoliciesMap[canary] == true {
+			if clusterNonCompliantWithManagedPoliciesMap[canary] {
 				remediationPlan = append(remediationPlan, []string{canary})
 				isCanary[canary] = true
 			}
@@ -1475,7 +1475,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	clusterCount := 0
 	for i := 0; i < len(allClustersForUpgrade); i++ {
 		site := allClustersForUpgrade[i]
-		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] == true {
+		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] {
 			batch = append(batch, site)
 			clusterCount++
 		}
@@ -1662,7 +1662,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 					break
 				}
 			}
-			if foundCanary == false {
+			if !foundCanary {
 				return reconcile, fmt.Errorf("Canary cluster %s is not in the list of clusters", canary)
 			}
 		}

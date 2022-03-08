@@ -133,7 +133,7 @@ var EnsureInstallPlanIsApproved = func(
 		}
 
 		// If the InstallPlan has already been approved, return.
-		if installPlan.Spec.Approved == true {
+		if installPlan.Spec.Approved {
 			multiCloudLog.Info("InstallPlan has already been approved",
 				"InstallPlan", installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
 			return InstallPlanCannotBeApproved, nil
