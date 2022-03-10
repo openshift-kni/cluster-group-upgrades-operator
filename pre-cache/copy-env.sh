@@ -19,4 +19,5 @@ done
 # Copy containers policy and cacert of disconnected registries if present
 cp /host/etc/containers/policy.json /etc/containers/policy.json
 cp -a /host/etc/docker /etc/ || true
-
+cp -a /host/etc/pki/ca-trust/source/anchors /etc/pki/ca-trust/source/ && update-ca-trust || true
+cp -a /host/etc/pki/ca-trust/extracted/pem /etc/pki/ca-trust/extracted/ || true
