@@ -116,6 +116,11 @@ fmt: ## Run go fmt against code.
 	@echo "Running go fmt"
 	go fmt ./...
 
+.PHONY: golangci-lint
+golangci-lint: ## Run golangci-lint against code.
+	@echo "Running golangci-lint"
+	hack/golangci-lint.sh
+
 .PHONY: vet
 vet: ## Run go vet against code.
 	@echo "Running go vet"
@@ -136,7 +141,7 @@ common-deps-update:	controller-gen kustomize
 	go mod tidy
 
 .PHONY: ci-job
-ci-job: common-deps-update fmt vet lint unittests
+ci-job: common-deps-update fmt vet lint golangci-lint unittests
 
 .PHONY: shellcheck
 shellcheck: ## Run shellcheck

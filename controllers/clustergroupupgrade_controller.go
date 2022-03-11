@@ -73,6 +73,7 @@ type ClusterGroupUpgradeReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+//nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	_ = r.Log.WithValues("ClusterGroupUpgrade", req.NamespacedName)
 
@@ -111,6 +112,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 	for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
+		//nolint
 		if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
 			requeueAfter := 30 * time.Second
 			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
@@ -135,7 +137,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		if readyCondition.Reason == "PrecachingRequired" {
 			requeueAfter := 5 * time.Minute
 			nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
-		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == "UpgradeCannotStart" {
+		} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == utils.CannotStart {
 			// Before starting the upgrade check that all the managed policies exist.
 			allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err :=
 				r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
@@ -181,13 +183,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 						if len(blockingCRsMissing) > 0 {
 							// If there are blocking CRs missing, update the message to show which those are.
-							statusReason = "UpgradeCannotStart"
+							statusReason = utils.CannotStart
 							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing)
 							requeueAfter := 1 * time.Minute
 							nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 						} else if len(blockingCRsNotCompleted) > 0 {
 							// If there are blocking CRs that are not completed, then the upgrade can't start.
-							statusReason = "UpgradeCannotStart"
+							statusReason = utils.CannotStart
 							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
 							requeueAfter := 1 * time.Minute
 							nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
@@ -222,7 +224,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionFalse,
-					Reason:  "UpgradeCannotStart",
+					Reason:  utils.CannotStart,
 					Message: statusMessage,
 				})
 				requeueAfter := 1 * time.Minute
@@ -239,6 +241,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 				nextReconcile = ctrl.Result{Requeue: true}
 			} else {
+				//nolint
 				requeueAfter := clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Add(5 * time.Minute).Sub(time.Now())
 				if requeueAfter < 0 {
 					requeueAfter = 5 * time.Minute
@@ -323,15 +326,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					Reason:  "UpgradeCompleted",
 					Message: "The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
 				})
-			} else {
-				if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
-					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-						Type:    "Ready",
-						Status:  metav1.ConditionFalse,
-						Reason:  "UpgradeTimedOut",
-						Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
-					})
-				}
+			} else if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
+				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+					Type:    "Ready",
+					Status:  metav1.ConditionFalse,
+					Reason:  "UpgradeTimedOut",
+					Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+				})
+
 			}
 		} else if readyCondition.Reason == "UpgradeTimedOut" {
 			r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
@@ -601,18 +603,18 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacementRules(ctx context.Contex
 
 		err = r.Client.Update(ctx, &plr)
 		if err != nil {
-			errorMap[plr.GetName()] = string(err.Error())
+			errorMap[plr.GetName()] = err.Error()
 			return err
 		}
 	}
 
 	if len(errorMap) != 0 {
-		return fmt.Errorf("Errors cleaning up placement rules: %s", errorMap)
+		return fmt.Errorf("errors cleaning up placement rules: %s", errorMap)
 	}
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, policyName string, namespace string) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, policyName, namespace string) (*unstructured.Unstructured, error) {
 	foundPolicy := &unstructured.Unstructured{}
 	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -738,6 +740,7 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
 	return nil
 }
 
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured, policyContent []ranv1alpha1.PolicyContent) error {
 
@@ -757,7 +760,6 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 
 			// Compute the name of the managedClusterView
 			managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-			strings.ToLower("view-" + clusterGroupUpgrade.Name + "-" + policyContent.Kind + "-" + policyContent.Name)
 
 			// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
 			for _, nonCompliantCluster := range nonCompliantClusters {
@@ -814,8 +816,6 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 		r.Log.Info("Error creating policy", "err", err)
 		return err
 	}
-	newPolicyName = newPolicy.GetName()
-
 	return nil
 }
 
@@ -832,12 +832,12 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		// Get to the metadata name of the ConfigurationPolicy.
 		objectDefinition := template.(map[string]interface{})["objectDefinition"]
 		if objectDefinition == nil {
-			return fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition", managedPolicyName)
+			return fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition", managedPolicyName)
 		}
 		objectDefinitionContent := objectDefinition.(map[string]interface{})
 		metadata := objectDefinitionContent["metadata"]
 		if metadata == nil {
-			return fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition.metadata", managedPolicyName)
+			return fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.metadata", managedPolicyName)
 		}
 		// Update the metadata name
 		metadataContent := metadata.(map[string]interface{})
@@ -876,6 +876,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	return nil
 }
 
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) ([]ranv1alpha1.PolicyContent, error) {
 	managedPolicyName := managedPolicy.GetName()
@@ -891,21 +892,21 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 		// Get to the metadata name of the ConfigurationPolicy.
 		objectDefinition := template.(map[string]interface{})["objectDefinition"]
 		if objectDefinition == nil {
-			return nil, fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition", managedPolicyName)
+			return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition", managedPolicyName)
 		}
 		objectDefinitionContent := objectDefinition.(map[string]interface{})
 
 		// Get the spec.
 		spec := objectDefinitionContent["spec"]
 		if spec == nil {
-			return nil, fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition.spec", managedPolicyName)
+			return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec", managedPolicyName)
 		}
 
 		// Get the object-templates from the spec.
 		specContent := spec.(map[string]interface{})
 		objectTemplates := specContent["object-templates"]
 		if objectTemplates == nil {
-			return nil, fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates", managedPolicyName)
+			return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates", managedPolicyName)
 		}
 
 		objectTemplatesContent := objectTemplates.([]interface{})
@@ -913,7 +914,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 			objectTemplateContent := objectTemplate.(map[string]interface{})
 			innerObjectDefinition := objectTemplateContent["objectDefinition"]
 			if innerObjectDefinition == nil {
-				return nil, fmt.Errorf("Policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition", managedPolicyName)
+				return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition", managedPolicyName)
 			}
 
 			innerObjectDefinitionContent := innerObjectDefinition.(map[string]interface{})
@@ -1022,6 +1023,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 	return nil
 }
 
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prName string) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
@@ -1148,12 +1150,9 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Ensure batch placement bindings.
-			pb, err := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, commonResourceName, commonResourceName)
-			if err != nil {
-				return err
-			}
+			pb := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, commonResourceName, commonResourceName)
 
-			if err = controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
+			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
 				return err
 			}
 
@@ -1174,8 +1173,9 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	return nil
 }
 
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	placementRuleName string, placementBindingName string) (*unstructured.Unstructured, error) {
+	placementRuleName string, placementBindingName string) *unstructured.Unstructured {
 
 	var subjects []map[string]interface{}
 
@@ -1208,7 +1208,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 		Version: "v1",
 	})
 
-	return u, nil
+	return u
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string) (*unstructured.UnstructuredList, error) {
@@ -1301,7 +1301,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 
 	// Get the compliant status part of the policy.
 	if policy.Object["status"] == nil {
-		return nil, fmt.Errorf("Policy %s is missing its status", policyName)
+		return nil, fmt.Errorf("policy %s is missing its status", policyName)
 	}
 
 	statusObject := policy.Object["status"].(map[string]interface{})
@@ -1314,12 +1314,12 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 	// Get the policy's list of cluster compliance.
 	statusCompliance := statusObject["status"]
 	if statusCompliance == nil {
-		return nil, fmt.Errorf("Policy %s has it's list of cluster statuses pending", policyName)
+		return nil, fmt.Errorf("policy %s has it's list of cluster statuses pending", policyName)
 	}
 
 	subStatus := statusCompliance.([]interface{})
 	if subStatus == nil {
-		return nil, fmt.Errorf("Policy %s is missing it's compliance status", policyName)
+		return nil, fmt.Errorf("policy %s is missing it's compliance status", policyName)
 	}
 
 	return subStatus, nil
@@ -1350,7 +1350,7 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 		var nonCompliantClustersInUpgrade []string
 		allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 		if err != nil {
-			return nil, fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+			return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 		}
 		for _, nonCompliantCluster := range nonCompliantClusters {
 			for _, cluster := range allClustersForUpgrade {
@@ -1512,6 +1512,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	//   - label1Name
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
+		//nolint:ineffassign
 		var clusterLabels = make(map[string]string)
 		if len(selectorList) == 2 {
 			clusterLabels = map[string]string{selectorList[0]: selectorList[1]}
@@ -1641,14 +1642,14 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	// Validate clusters in spec are ManagedCluster objects
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return reconcile, fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+		return reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
 
 	for _, cluster := range clusters {
 		managedCluster := &clusterv1.ManagedCluster{}
 		err := r.Client.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
 		if err != nil {
-			return reconcile, fmt.Errorf("Cluster %s is not a ManagedCluster", cluster)
+			return reconcile, fmt.Errorf("cluster %s is not a ManagedCluster", cluster)
 		}
 	}
 
@@ -1663,7 +1664,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 				}
 			}
 			if !foundCanary {
-				return reconcile, fmt.Errorf("Canary cluster %s is not in the list of clusters", canary)
+				return reconcile, fmt.Errorf("canary cluster %s is not in the list of clusters", canary)
 			}
 		}
 	}
@@ -1706,7 +1707,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			// that we can retry during the next reconciliation.
 			clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 			if err != nil {
-				return utils.StopReconciling, fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+				return utils.StopReconciling, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 			}
 			err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 			if err != nil {

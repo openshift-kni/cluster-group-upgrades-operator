@@ -82,10 +82,10 @@ func (r *ClusterGroupUpgradeReconciler) manageClusterLabels(
 			return err
 		}
 		if err := r.addClusterLabels(ctx, managedCluster, labels["add"]); err != nil {
-			return fmt.Errorf("Fail to add labels for cluster %s: %v", managedCluster.Name, err)
+			return fmt.Errorf("fail to add labels for cluster %s: %v", managedCluster.Name, err)
 		}
 		if err := r.deleteClusterLabels(ctx, managedCluster, labels["delete"]); err != nil {
-			return fmt.Errorf("Fail to delete labels for cluster %s: %v", managedCluster.Name, err)
+			return fmt.Errorf("fail to delete labels for cluster %s: %v", managedCluster.Name, err)
 		}
 	}
 	return nil
@@ -108,6 +108,7 @@ func (r *ClusterGroupUpgradeReconciler) addClusterLabels(
 	}
 	cluster.SetLabels(currentLabels)
 
+	//nolint:revive
 	if err := r.Update(ctx, cluster); err != nil {
 		return err
 	}
@@ -134,6 +135,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteClusterLabels(
 	}
 	cluster.SetLabels(currentLabels)
 
+	//nolint:revive
 	if err := r.Update(ctx, cluster); err != nil {
 		return err
 	}
@@ -146,24 +148,24 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	labels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
 	err := utils.DeletePlacementRules(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	err = utils.DeletePlacementBindings(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	err = utils.DeletePolicies(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
-		return fmt.Errorf("Failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+		return fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
 	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 	if err != nil {
-		return fmt.Errorf("Failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 
 	return nil

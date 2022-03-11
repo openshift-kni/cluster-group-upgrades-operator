@@ -63,7 +63,7 @@ func ProcessSubscriptionManagedClusterView(
 	if conditionMCVforSub.Status == "True" && conditionMCVforSub.Reason == viewv1beta1.ReasonGetResource {
 		// Get the subscription content from the ManagedClusterView.
 		subscription := operatorsv1alpha1.Subscription{}
-		json.Unmarshal([]byte(mcv.Status.Result.Raw), &subscription)
+		json.Unmarshal(mcv.Status.Result.Raw, &subscription)
 
 		// If the subscription's status is "UpgradePending" approve the installPlan. For any other value of the state, continue.
 		if subscription.Status.State != SubscriptionStateUpgradePending {
@@ -123,7 +123,7 @@ var EnsureInstallPlanIsApproved = func(
 	if conditionMCVforInstallPlan.Status == "True" && conditionMCVforInstallPlan.Reason == viewv1beta1.ReasonGetResource {
 		// Get the InstallPlan content from the ManagedClusterView.
 		installPlan := operatorsv1alpha1.InstallPlan{}
-		json.Unmarshal([]byte(mcvForInstallPlan.Status.Result.Raw), &installPlan)
+		json.Unmarshal(mcvForInstallPlan.Status.Result.Raw, &installPlan)
 
 		// If the InstallPlan's approval is not manual, return. No action is taken for Automatic install plans.
 		if installPlan.Spec.Approval != operatorsv1alpha1.ApprovalManual {
@@ -263,7 +263,7 @@ func EnsureManagedClusterActionForInstallPlan(
 func NewManagedClusterActionForInstallPlanSpec(installPlan operatorsv1alpha1.InstallPlan) (*actionv1beta1.ActionSpec, error) {
 	installPlanClusterServiceVersionNames, err := json.Marshal(installPlan.Spec.ClusterServiceVersionNames)
 	if err != nil {
-		return nil, fmt.Errorf("Error trying to Marshal InstallPlan ClusterServiceVersionNames: %s", err.Error())
+		return nil, fmt.Errorf("error trying to Marshal InstallPlan ClusterServiceVersionNames: %s", err.Error())
 	}
 
 	templateContent := fmt.Sprintf(
@@ -315,6 +315,6 @@ func DeleteMultiCloudObjects(
 }
 
 // GetMultiCloudObjectName computes the name of a view or action
-func GetMultiCloudObjectName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, kind string, objectName string) string {
+func GetMultiCloudObjectName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, kind, objectName string) string {
 	return strings.ToLower(clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Namespace + "-" + kind + "-" + objectName)
 }

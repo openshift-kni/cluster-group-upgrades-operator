@@ -2,7 +2,7 @@ package templates
 
 // Templates for backup job lifecycle
 
-//MngClusterActCreateBackupNS creates namespace
+// MngClusterActCreateBackupNS creates namespace
 const MngClusterActCreateBackupNS string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -17,7 +17,7 @@ spec:
         name: backup-agent
 `
 
-//MngClusterActCreateSA creates serviceaccount
+// MngClusterActCreateSA creates serviceaccount
 const MngClusterActCreateSA string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -33,7 +33,7 @@ spec:
         namespace: openshift-talo-backup
 `
 
-//MngClusterActCreateRB creates clusterrolebinding
+// MngClusterActCreateRB creates clusterrolebinding
 const MngClusterActCreateRB string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -56,7 +56,7 @@ spec:
           namespace: openshift-talo-backup
 `
 
-//MngClusterActCreateBackupJob creates k8s job
+// MngClusterActCreateBackupJob creates k8s job
 const MngClusterActCreateBackupJob string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -102,7 +102,7 @@ spec:
                 name: backup
 `
 
-//MngClusterActDeleteNS deletes namespace
+// MngClusterActDeleteNS deletes namespace
 const MngClusterActDeleteNS string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -113,7 +113,7 @@ spec:
     resource: namespace
 `
 
-//MngClusterViewBackupJob creates mcv to monitor k8s job
+// MngClusterViewBackupJob creates mcv to monitor k8s job
 const MngClusterViewBackupJob string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
