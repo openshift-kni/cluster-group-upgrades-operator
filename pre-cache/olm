@@ -36,6 +36,9 @@ export_index(){
         opm_bin=$image_mount/bin/opm
     fi
     $opm_bin index export -i $index -p $packages -c podman -f $index_download_path
+    if [[ $? -ne 0 ]]; then
+        return 1
+    fi
 }
 
 extract_packages(){
@@ -73,8 +76,17 @@ olm_main(){
           return 1
         fi
         export_index $index $pull_secret_path $packages $image_mount
+        if [[ $? -ne 0 ]]; then
+          log_debug "export_index failed: OLM index export failed for index $index, package(s) $packages"
+          return 1
+        fi
+
         operators_spec_file="$config_volume_path/operators.packagesAndChannels"
         extract_pull_spec $index_download_path $operators_spec_file $pull_spec_file
+        if [[ $? -ne 0 ]]; then
+          log_debug "extract_pull_spec failed"
+          return 1
+        fi
         unmount_index $image_id
     done
     if [[ $ret_val -ne 0 ]]; then
