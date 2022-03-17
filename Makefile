@@ -41,6 +41,7 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:v$(VERSION)
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
+RECOVERY_IMG ?= $(IMAGE_TAG_BASE)-recovery:$(VERSION)
 
 # Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
 CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
@@ -199,6 +200,12 @@ docker-build-precache: ## Build pre-cache workload container image.
 
 docker-push-precache: ## push pre-cache workload container image.
 	${ENGINE} push ${PRECACHE_IMG}
+
+docker-build-recovery: ## Build recovery container image
+	${ENGINE} build -t ${RECOVERY_IMG} -f Dockerfile.recovery .
+
+docker-push-recovery: ## Push recovery container image.
+	${ENGINE} push ${RECOVERY_IMG}
 
 ##@ Deployment
 
