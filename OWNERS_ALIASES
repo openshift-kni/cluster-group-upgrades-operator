@@ -3,7 +3,9 @@
 aliases:
   upgrades-operator-reviewers:
     - browsell
+    - donpenney
     - rcarrillocruz
+    - sabbir-47
     - fedepaol
     - irinamihai
     - imiller0
@@ -13,7 +15,9 @@ aliases:
     - danielmellado
   upgrades-operator-approvers:
     - browsell
+    - donpenney
     - rcarrillocruz
+    - sabbir-47
     - irinamihai
     - imiller0
     - nishant-parekh
