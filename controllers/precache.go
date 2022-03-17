@@ -584,13 +584,13 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	rv := new(templateData)
 
 	rv.Cluster = clusterName
-	rv.PrecachingJobTimeout = uint64(
+	rv.JobTimeout = uint64(
 		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) * 60
 	image, err := r.getPrecacheimagePullSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return rv, err
 	}
-	rv.PrecachingWorkloadImage = image
+	rv.WorkloadImage = image
 	return rv, nil
 }
 

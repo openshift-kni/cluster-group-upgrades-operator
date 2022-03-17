@@ -22,6 +22,8 @@ import (
 	"fmt"
 	"text/template"
 
+	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
+
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -37,13 +39,13 @@ import (
 
 // templateData provides template rendering data
 type templateData struct {
-	Cluster                 string
-	ResourceName            string
-	PlatformImage           string
-	Operators               operatorsData
-	PrecachingWorkloadImage string
-	PrecachingJobTimeout    uint64
-	ViewUpdateIntervalSec   int
+	Cluster               string
+	ResourceName          string
+	PlatformImage         string
+	Operators             operatorsData
+	WorkloadImage         string
+	JobTimeout            uint64
+	ViewUpdateIntervalSec int
 }
 
 // operatorsData provides operators data for template rendering
@@ -61,31 +63,31 @@ type resourceTemplate struct {
 }
 
 var precacheDependenciesCreateTemplates = []resourceTemplate{
-	{"precache-ns-create", mngClusterActCreatePrecachingNS},
-	{"precache-spec-cm-create", mngClusterActCreatePrecachingSpecCM},
-	{"precache-sa-create", mngClusterActCreateServiceAcct},
-	{"precache-crb-create", mngClusterActCreateClusterRoleBinding},
+	{"precache-ns-create", templates.MngClusterActCreatePrecachingNS},
+	{"precache-spec-cm-create", templates.MngClusterActCreatePrecachingSpecCM},
+	{"precache-sa-create", templates.MngClusterActCreateServiceAcct},
+	{"precache-crb-create", templates.MngClusterActCreateClusterRoleBinding},
 }
 
 var precacheDependenciesViewTemplates = []resourceTemplate{
-	{"view-precache-spec-configmap", mngClusterViewConfigMap},
-	{"view-precache-service-acct", mngClusterViewServiceAcct},
-	{"view-precache-cluster-role-binding", mngClusterViewClusterRoleBinding},
+	{"view-precache-spec-configmap", templates.MngClusterViewConfigMap},
+	{"view-precache-service-acct", templates.MngClusterViewServiceAcct},
+	{"view-precache-cluster-role-binding", templates.MngClusterViewClusterRoleBinding},
 }
 
 var precacheCreateTemplates = []resourceTemplate{
-	{"precache-job-create", mngClusterActCreateJob},
-	{"view-precache-job", mngClusterViewJob},
+	{"precache-job-create", templates.MngClusterActCreateJob},
+	{"view-precache-job", templates.MngClusterViewJob},
 }
 var precacheJobView = []resourceTemplate{
-	{"view-precache-job", mngClusterViewJob},
+	{"view-precache-job", templates.MngClusterViewJob},
 }
 var precacheDeleteTemplates = []resourceTemplate{
-	{"precache-ns-delete", mngClusterActDeletePrecachingNS},
+	{"precache-ns-delete", templates.MngClusterActDeletePrecachingNS},
 }
 
 var precacheNSViewTemplates = []resourceTemplate{
-	{"view-precache-namespace", mngClusterViewNamespace},
+	{"view-precache-namespace", templates.MngClusterViewNamespace},
 }
 
 var allViews = []resourceTemplate{ // only used for deleting, hence empty templates
@@ -237,7 +239,7 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	data templateData) (*bytes.Buffer, error) {
 
 	w := new(bytes.Buffer)
-	template, err := template.New(resourceName).Parse(commonTemplates + templateBody)
+	template, err := template.New(resourceName).Parse(templates.CommonTemplates + templateBody)
 	if err != nil {
 		return w, fmt.Errorf("failed to parse template %s: %v", resourceName, err)
 	}
@@ -248,225 +250,3 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	}
 	return w, nil
 }
-
-// Templates
-const commonTemplates string = `
-{{ define "actionGVK" }}
-apiVersion: action.open-cluster-management.io/v1beta1
-kind: ManagedClusterAction
-{{ end }}
-
-{{ define "viewGVK" }}
-apiVersion: view.open-cluster-management.io/v1beta1
-kind: ManagedClusterView
-{{ end }}
-
-{{ define "metadata"}}
-metadata:
-  name: {{ .ResourceName }}
-  namespace: {{ .Cluster }}
-{{ end }}
-`
-
-const mngClusterActCreatePrecachingNS string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: namespace
-    template:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: openshift-talo-pre-cache
-        annotations:
-          workload.openshift.io/allowed: management
-`
-
-const mngClusterActCreatePrecachingSpecCM string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: configmap
-    template:
-      apiVersion: v1
-      data:
-        operators.indexes: |{{ range .Operators.Indexes }}
-          {{ . }} {{ end }}
-        operators.packagesAndChannels: |{{ range .Operators.PackagesAndChannels }} 
-          {{ . }} {{ end }}
-        platform.image: {{ .PlatformImage }}
-      kind: ConfigMap
-      metadata:
-        name: pre-cache-spec
-        namespace: openshift-talo-pre-cache
-`
-
-const mngClusterActCreateServiceAcct string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: serviceaccount
-    template:
-      apiVersion: v1
-      kind: ServiceAccount
-      metadata:
-        name: pre-cache-agent
-        namespace: openshift-talo-pre-cache
-`
-
-const mngClusterActCreateClusterRoleBinding string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: clusterrolebinding
-    template:
-      apiVersion: rbac.authorization.k8s.io/v1
-      kind: ClusterRoleBinding
-      metadata:
-        name: pre-cache-crb
-      roleRef:
-        apiGroup: rbac.authorization.k8s.io
-        kind: ClusterRole
-        name: cluster-admin
-      subjects:
-        - kind: ServiceAccount
-          name: pre-cache-agent
-          namespace: openshift-talo-pre-cache
-`
-
-const mngClusterActCreateJob string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: job
-    namespace: openshift-talo-pre-cache
-    template:
-      apiVersion: batch/v1
-      kind: Job
-      metadata:
-        name: pre-cache
-        namespace: openshift-talo-pre-cache
-        annotations:
-          target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
-      spec:
-        activeDeadlineSeconds: {{ .PrecachingJobTimeout }}
-        backoffLimit: 0
-        template:
-          metadata:
-            name: pre-cache
-            annotations:
-              target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
-          spec:
-            containers:
-            - args:
-              - /opt/precache/precache.sh
-              command:
-              - /bin/bash
-              - -c
-              env:
-              - name: config_volume_path
-                value: /etc/config
-              image: {{ .PrecachingWorkloadImage }}
-              name: pre-cache-container
-              resources: {}
-              securityContext:
-                privileged: true
-                runAsUser: 0
-              terminationMessagePath: /dev/termination-log
-              terminationMessagePolicy: File
-              volumeMounts:
-              - mountPath: /host
-                name: host 
-              - mountPath: /etc/config
-                name: config-volume
-                readOnly: true
-            dnsPolicy: ClusterFirst
-            restartPolicy: Never
-            schedulerName: default-scheduler
-            securityContext: {}
-            serviceAccountName: pre-cache-agent
-            priorityClassName: system-cluster-critical
-            volumes:
-            - configMap:
-                defaultMode: 420
-                name: pre-cache-spec
-              name: config-volume
-            - hostPath:
-                path: /
-                type: Directory
-              name: host
-
-`
-
-const mngClusterViewJob string = `
-{{ template "viewGVK"}}
-{{ template "metadata" . }}
-spec:
-  scope:
-    resource: jobs
-    name: pre-cache
-    namespace: openshift-talo-pre-cache
-    updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
-`
-
-const mngClusterViewConfigMap string = `
-{{ template "viewGVK"}}
-{{ template "metadata" . }}
-spec:
-  scope:
-    resource: configmap
-    name: pre-cache-spec
-    namespace: openshift-talo-pre-cache
-    updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
-`
-
-const mngClusterViewServiceAcct string = `
-{{ template "viewGVK"}}
-{{ template "metadata" . }}
-spec:
-  scope:
-    resource: serviceaccounts
-    name: pre-cache-agent
-    namespace: openshift-talo-pre-cache
-    updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
-`
-
-const mngClusterViewClusterRoleBinding string = `
-{{ template "viewGVK"}}
-{{ template "metadata" . }}
-spec:
-  scope:
-    resource: clusterrolebinding
-    name: pre-cache-crb
-    updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
-`
-
-const mngClusterViewNamespace string = `
-{{ template "viewGVK"}}
-{{ template "metadata" . }}
-spec:
-  scope:
-    resource: namespaces
-    name: openshift-talo-pre-cache
-    updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
-`
-
-const mngClusterActDeletePrecachingNS string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Delete
-  kube:
-    resource: namespace
-    name: openshift-talo-pre-cache
-`
