@@ -92,6 +92,7 @@ spec:
                     type: object
                 type: object
               backup:
+                default: false
                 description: This field determines whether the cluster would be running
                   a backup prior to the upgrade.
                 type: boolean
