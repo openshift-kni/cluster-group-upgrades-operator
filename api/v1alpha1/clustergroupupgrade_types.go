@@ -86,7 +86,7 @@ type ClusterGroupUpgradeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// This field determines whether the cluster would be running a backup prior to the upgrade.
-	//+kubecuilder:default=true
+	//+kubebuilder:default=false
 	Backup bool `json:"backup,omitempty"`
 	// This field determines whether container image pre-caching will be done on all the clusters
 	// matching the selector.
