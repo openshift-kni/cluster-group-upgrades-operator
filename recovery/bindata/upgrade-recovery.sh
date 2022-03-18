@@ -37,6 +37,37 @@ ENDUSAGE
 }
 
 #
+# with_retries:
+# Helper function to run a command with retries on failure
+#
+function with_retries {
+    local max_attempts=$1
+    local delay=$2
+    local cmd=("${@:3}")
+    local attempt=0
+    local rc=0
+
+    while [[ ${attempt} -lt ${max_attempts} ]]; do
+        attempt=$((attempt+=1))
+        if [[ ${attempt} -gt 1 ]]; then
+            echo "Retrying after ${delay} seconds, attempt #${attempt}" >&2
+            sleep "${delay}"
+        fi
+
+        "${cmd[@]}"
+        rc=$?
+        if [ $rc -eq 0 ]; then
+            echo "Command succeeded:" "${cmd[@]}" >&2
+            break
+        fi
+
+        echo "Command failed:" "${cmd[@]}" >&2
+    done
+
+    return ${rc}
+}
+
+#
 # display_current_status:
 # For informational purposes only
 #
@@ -188,19 +219,19 @@ function take_backup {
     cat /etc/tmpfiles.d/* | sed 's/#.*//' | awk '{print $2}' | grep '^/etc/' | sed 's#^/etc/##' > ${BACKUP_DIR}/etc.exclude.list
     echo '.updated' >> ${BACKUP_DIR}/etc.exclude.list
     echo 'kubernetes/manifests' >> ${BACKUP_DIR}/etc.exclude.list
-    rsync -a /etc/ ${BACKUP_DIR}/etc/
+    with_retries 3 1 rsync -a /etc/ ${BACKUP_DIR}/etc/
     if [ $? -ne 0 ]; then
         echo "Failed to backup /etc" >&2
         exit 1
     fi
 
-    rsync -a /usr/local/ ${BACKUP_DIR}/usrlocal/
+    with_retries 3 1 rsync -a /usr/local/ ${BACKUP_DIR}/usrlocal/
     if [ $? -ne 0 ]; then
         echo "Failed to backup /usr/local" >&2
         exit 1
     fi
 
-    rsync -a /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
+    with_retries 3 1 rsync -a /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
     if [ $? -ne 0 ]; then
         echo "Failed to backup /var/lib/kubelet" >&2
         exit 1
@@ -265,7 +296,7 @@ function restore_files {
     # Restore /usr/local content
     #
     echo "##### $(date -u): Restoring /usr/local content"
-    time rsync -avc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
+    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
     if [ $? -ne 0 ]; then
         echo "$(date -u): Failed to restore /usr/local content" >&2
         exit 1
@@ -276,7 +307,7 @@ function restore_files {
     # Restore /var/lib/kubelet content
     #
     echo "##### $(date -u): Restoring /var/lib/kubelet content"
-    time rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
+    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
     if [ $? -ne 0 ]; then
         echo "$(date -u): Failed to restore /var/lib/kubelet content" >&2
         exit 1
@@ -287,7 +318,7 @@ function restore_files {
     # Restore /etc content
     #
     echo "##### $(date -u): Restoring /etc content"
-    time rsync -avc --delete --no-t --exclude-from ${BACKUP_DIR}/etc.exclude.list ${BACKUP_DIR}/etc/ /etc/
+    time with_retries 3 1 rsync -avc --delete --no-t --exclude-from ${BACKUP_DIR}/etc.exclude.list ${BACKUP_DIR}/etc/ /etc/
     if [ $? -ne 0 ]; then
         echo "$(date -u): Failed to restore /etc content" >&2
         exit 1
