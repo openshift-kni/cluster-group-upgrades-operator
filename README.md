@@ -42,7 +42,7 @@ following states:
   * In this state, the controller will periodically check if all the policies for the **ClusterGroupUpgrade** are compliant, and in that case it will transition to **UpgradeCompleted**. This is to give a chance for upgrades to catch up, as they could be taking long to complete due to network, CPU or other issues but they are not really stuck and they can indeed complete
 * **UpgradeCompleted**
   * In this state, the upgrades of the clusters are complete
-  * If the *deleteObjectsOnCompletion* field is set to **true**, the controller will delete the underlying RHACM policies. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful
+  * If the *deleteObjects* field is set to **true**, the controller will delete the underlying RHACM policies. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful
 
 
 ## How to deploy
