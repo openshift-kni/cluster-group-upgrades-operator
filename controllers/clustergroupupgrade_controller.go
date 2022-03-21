@@ -42,6 +42,7 @@ import (
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
 )
 
 // ClusterGroupUpgradeReconciler reconciles a ClusterGroupUpgrade object
@@ -767,6 +768,15 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 			}
 		}
 	}
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) createManifestWorkFromPolicy(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured, newPolicyName string) error {
+
+	var manifestWork *workv1.ManifestWork
+	r.Log.Info("DEBUG", "manifestWork", manifestWork)
+
 	return nil
 }
 

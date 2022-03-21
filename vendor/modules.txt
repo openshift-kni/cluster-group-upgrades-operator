@@ -145,7 +145,7 @@ github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/acti
 github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1
 # github.com/open-cluster-management/multicloud-operators-placementrule v1.2.4-0-20210816-699e5
 github.com/open-cluster-management/multicloud-operators-placementrule/pkg/apis/apps/v1
-# github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
+# github.com/openshift/build-machinery-go v0.0.0-20211213093930-7e33a7eb4ce3
 ## explicit
 github.com/openshift/build-machinery-go
 github.com/openshift/build-machinery-go/make
@@ -549,9 +549,10 @@ k8s.io/utils/trace
 ## explicit
 kubevirt.io/qe-tools/pkg/ginkgo-reporters
 kubevirt.io/qe-tools/pkg/polarion-xml
-# open-cluster-management.io/api v0.5.0
+# open-cluster-management.io/api v0.6.0
 ## explicit
 open-cluster-management.io/api/cluster/v1
+open-cluster-management.io/api/work/v1
 # sigs.k8s.io/controller-runtime v0.9.3-0.20210709165254-650ea59f19cc
 ## explicit
 sigs.k8s.io/controller-runtime

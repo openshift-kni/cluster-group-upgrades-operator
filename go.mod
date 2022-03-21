@@ -9,7 +9,7 @@ require (
 	github.com/onsi/gomega v1.17.0
 	github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-10-13-16-11-44
-	github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
+	github.com/openshift/build-machinery-go v0.0.0-20211213093930-7e33a7eb4ce3
 	github.com/operator-framework/api v0.1.1
 	github.com/stretchr/testify v1.7.0
 	k8s.io/api v0.21.3
@@ -17,7 +17,7 @@ require (
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	kubevirt.io/qe-tools v0.1.7
-	open-cluster-management.io/api v0.5.0
+	open-cluster-management.io/api v0.6.0
 	sigs.k8s.io/controller-runtime v0.9.3-0.20210709165254-650ea59f19cc
 )
 
