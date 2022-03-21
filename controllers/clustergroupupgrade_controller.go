@@ -773,7 +773,7 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 }
 
 func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured, newPolicyNamePrefix string) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured, newPolicyNamePrefix string) (string, error) {
 
 	// Create a new unstructured variable to keep all the information for the new policy.
 	newPolicy := &unstructured.Unstructured{}
@@ -804,7 +804,7 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	newPolicy.Object["spec"] = managedPolicy.Object["spec"]
 	err := r.updateConfigurationPolicyNameForCopiedPolicy(clusterGroupUpgrade, newPolicy.Object["spec"], managedPolicy.GetName())
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	specObject := newPolicy.Object["spec"].(map[string]interface{})
@@ -814,9 +814,9 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	err = r.createNewPolicyFromStructure(ctx, clusterGroupUpgrade, newPolicy)
 	if err != nil {
 		r.Log.Info("Error creating policy", "err", err)
-		return err
+		return "", err
 	}
-	return nil
+	return newPolicy.GetName(), nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPolicy(
@@ -842,6 +842,7 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		// Update the metadata name
 		metadataContent := metadata.(map[string]interface{})
 		metadataContent["generateName"] = getGeneratedResourceNamePrefix(clusterGroupUpgrade, metadataContent["name"].(string))
+		delete(metadataContent, "name")
 	}
 
 	return nil
@@ -967,7 +968,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	return policyContent, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prNamePrefix string) error {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prNamePrefix string) (string, error) {
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -978,19 +979,19 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 
 	pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, prNamePrefix)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
-		return err
+		return "", err
 	}
 
 	err = r.Client.Create(ctx, pr)
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	return nil
+	return pr.GetName(), nil
 }
 
 //nolint:unparam
@@ -1104,7 +1105,7 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, namePrefix string) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, placementRuleName, bindingNamePrefix string) error {
 
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
@@ -1113,14 +1114,14 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 		Version: "v1",
 	})
 	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      namePrefix,
+		Name:      bindingNamePrefix,
 		Namespace: clusterGroupUpgrade.Namespace,
 	}, foundPlacementBinding)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Ensure batch placement bindings.
-			pb := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, namePrefix, namePrefix)
+			pb := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, bindingNamePrefix)
 
 			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
 				return err
@@ -1145,12 +1146,12 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 
 //nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	placementRuleName string, placementBindingName string) *unstructured.Unstructured {
+	policyName, placementRuleName, placementBindingNamePrefix string) *unstructured.Unstructured {
 
 	var subjects []map[string]interface{}
 
 	subject := make(map[string]interface{})
-	subject["name"] = placementBindingName
+	subject["name"] = policyName
 	subject["kind"] = "Policy"
 	subject["apiGroup"] = "policy.open-cluster-management.io"
 	subjects = append(subjects, subject)
@@ -1158,8 +1159,8 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"name":      placementBindingName,
-			"namespace": clusterGroupUpgrade.Namespace,
+			"generateName": placementBindingNamePrefix,
+			"namespace":    clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
@@ -1247,17 +1248,17 @@ func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, 
 	for _, managedPolicy := range managedPoliciesPresent {
 		namePrefix := getGeneratedResourceNamePrefix(clusterGroupUpgrade, managedPolicy.GetName())
 
-		err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, namePrefix)
+		policyName, err := r.copyManagedInformPolicy(ctx, clusterGroupUpgrade, managedPolicy, namePrefix)
 		if err != nil {
 			return err
 		}
 
-		err = r.copyManagedInformPolicy(ctx, clusterGroupUpgrade, managedPolicy, namePrefix)
+		placementRuleName, err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, namePrefix)
 		if err != nil {
 			return err
 		}
 
-		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, namePrefix)
+		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, namePrefix)
 		if err != nil {
 			return err
 		}
