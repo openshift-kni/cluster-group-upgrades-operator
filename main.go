@@ -40,6 +40,7 @@ import (
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	workv1 "open-cluster-management.io/api/work/v1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -57,6 +58,7 @@ func init() {
 	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
 	utilruntime.Must(actionv1beta1.AddToScheme(scheme))
 	utilruntime.Must(operatorsv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(workv1.AddToScheme(scheme))
 	//+kubebuilder:scaffold:scheme
 }
 
