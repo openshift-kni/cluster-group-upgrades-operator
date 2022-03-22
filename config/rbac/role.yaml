@@ -39,18 +39,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps.open-cluster-management.io
-  resources:
-  - placementrules
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - cluster.open-cluster-management.io
   resources:
   - managedclusters
@@ -73,30 +61,6 @@ rules:
   verbs:
   - get
   - list
-  - watch
-- apiGroups:
-  - policy.open-cluster-management.io
-  resources:
-  - placementbindings
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - policy.open-cluster-management.io
-  resources:
-  - policies
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
   - watch
 - apiGroups:
   - ran.openshift.io
@@ -128,6 +92,18 @@ rules:
   - view.open-cluster-management.io
   resources:
   - managedclusterviews
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - work.open-cluster-management.io
+  resources:
+  - manifestworks
   verbs:
   - create
   - delete
