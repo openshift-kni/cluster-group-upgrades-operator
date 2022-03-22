@@ -18,10 +18,12 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -108,11 +110,21 @@ func (r *ClusterGroupUpgradeReconciler) ensureManifestWork(
 	r.Log.Info("DEBUG", "payload", payload)
 
 	// Create ManifestWork on namespace cluster with workload from previous step
-	manifestWork := &workv1.ManifestWork{}
-	manifestWork.Namespace = cluster
-	manifestWork.Name = clusterGroupUpgrade.Name + "-" + managedPolicy
-	manifestsTemplate := &workv1.ManifestsTemplate{}
-	manifestWork.Spec.Workload = *manifestsTemplate
+	manifestWork := &workv1.ManifestWork{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      clusterGroupUpgrade.Name + "-" + managedPolicy,
+			Namespace: cluster,
+		},
+		Spec: workv1.ManifestWorkSpec{
+			Workload: workv1.ManifestsTemplate{
+				Manifests: []workv1.Manifest{},
+			},
+		},
+	}
+
+	manifest := workv1.Manifest{}
+	manifest.Raw, _ = json.Marshal(payload)
+	manifestWork.Spec.Workload.Manifests = append(manifestWork.Spec.Workload.Manifests, manifest)
 
 	r.Log.Info("DEBUG", "manifestWork", manifestWork)
 	return nil
