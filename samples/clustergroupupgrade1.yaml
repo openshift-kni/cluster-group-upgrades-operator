@@ -5,7 +5,8 @@ metadata:
   namespace: default
 spec:
   clusters:
-  - sno
+  - spoke1
+  - spoke2
   managedPolicies:
   - upgrade
   remediationStrategy:
