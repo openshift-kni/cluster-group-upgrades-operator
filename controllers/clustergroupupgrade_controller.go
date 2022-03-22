@@ -18,10 +18,14 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -77,10 +81,28 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	return ctrl.Result{}, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, policyName string, namespace string) (*unstructured.Unstructured, error) {
+	foundPolicy := &unstructured.Unstructured{}
+	foundPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "Policy",
+		Version: "v1",
+	})
+
+	err := r.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
+
+	return foundPolicy, err
+}
+
 func (r *ClusterGroupUpgradeReconciler) ensureManifestWork(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, cluster, managedPolicy string) error {
 
 	// Get payload from managed policy
+	policy, err := r.getPolicyByName(ctx, managedPolicy, clusterGroupUpgrade.GetNamespace())
+	if err != nil {
+		return fmt.Errorf("policy was not found")
+	}
+	r.Log.Info("DEBUG", "policy", policy)
 	// Create ManifestWork on namespace cluster with workload from previous step
 
 	return nil
