@@ -1,0 +1,16 @@
+FROM mirror.gcr.io/library/golang:1.17 as builder
+
+WORKDIR /workspace
+
+# Bring in the go dependencies before anything else so we can take
+# advantage of caching these layers in future builds.
+COPY go.mod go.mod
+COPY go.sum go.sum
+COPY vendor/ vendor/
+COPY recovery/ recovery/
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go
+
+FROM gcr.io/distroless/static:nonroot
+COPY --from=builder /workspace/upgrade-recovery /usr/bin/
+ENTRYPOINT ["/usr/bin/upgrade-recovery"]
