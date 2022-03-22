@@ -100,9 +100,21 @@ func (r *ClusterGroupUpgradeReconciler) ensureManifestWork(
 	if err != nil {
 		return fmt.Errorf("policy was not found")
 	}
-	r.Log.Info("DEBUG", "policy", policy)
-	// Create ManifestWork on namespace cluster with workload from previous step
+	spec := policy.Object["spec"].(map[string]interface{})
+	policyTemplate := spec["policy-templates"].([]interface{})[0].(map[string]interface{})
+	configurationPolicySpec := policyTemplate["objectDefinition"].(map[string]interface{})["spec"].(map[string]interface{})
+	objectTemplate := configurationPolicySpec["object-templates"].([]interface{})[0].(map[string]interface{})
+	payload := objectTemplate["objectDefinition"].(map[string]interface{})
+	r.Log.Info("DEBUG", "payload", payload)
 
+	// Create ManifestWork on namespace cluster with workload from previous step
+	manifestWork := &workv1.ManifestWork{}
+	manifestWork.Namespace = cluster
+	manifestWork.Name = clusterGroupUpgrade.Name + "-" + managedPolicy
+	manifestsTemplate := &workv1.ManifestsTemplate{}
+	manifestWork.Spec.Workload = *manifestsTemplate
+
+	r.Log.Info("DEBUG", "manifestWork", manifestWork)
 	return nil
 }
 
