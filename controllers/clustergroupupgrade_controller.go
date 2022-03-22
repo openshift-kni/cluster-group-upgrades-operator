@@ -454,10 +454,9 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 			continue
 		}
 
-		policyName := clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
 		var clusterNameArr []string
 		clusterNameArr = append(clusterNameArr, clusterName)
-		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNameArr, policyName)
+		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNameArr, clusterGroupUpgrade.Status.PlacementRules[managedPolicyIndex])
 		if err != nil {
 			return reconcileSooner, err
 		}
@@ -773,13 +772,13 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 }
 
 func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured, newPolicyNamePrefix string) (string, error) {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) (string, error) {
 
 	// Create a new unstructured variable to keep all the information for the new policy.
 	newPolicy := &unstructured.Unstructured{}
 
 	// Set new policy name, namespace, group, kind and version.
-	newPolicy.SetGenerateName(newPolicyNamePrefix)
+	newPolicy.SetGenerateName(getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade, managedPolicy.GetName(), len(managedPolicy.GetNamespace())))
 	newPolicy.SetNamespace(clusterGroupUpgrade.GetNamespace())
 	newPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -968,7 +967,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	return policyContent, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prNamePrefix string) (string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, prNamePrefix string) (string, error) {
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -977,7 +976,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 		Version: "v1",
 	})
 
-	pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, prNamePrefix)
+	pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, prNamePrefix)
 	if err != nil {
 		return "", err
 	}
@@ -995,7 +994,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 }
 
 //nolint:unparam
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prNamePrefix string) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, prNamePrefix string) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -1004,7 +1003,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
-				"openshift-cluster-group-upgrades/forPolicy":           prNamePrefix,
+				"openshift-cluster-group-upgrades/forPolicy":           policyName,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -1246,19 +1245,19 @@ func (r *ClusterGroupUpgradeReconciler) getCopiedPolicies(ctx context.Context, c
 func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesPresent []*unstructured.Unstructured) error {
 	// Reconcile resources
 	for _, managedPolicy := range managedPoliciesPresent {
-		namePrefix := getGeneratedResourceNamePrefix(clusterGroupUpgrade, managedPolicy.GetName())
+		placementNamePrefix := getGeneratedResourceNamePrefix(clusterGroupUpgrade, managedPolicy.GetName())
 
-		policyName, err := r.copyManagedInformPolicy(ctx, clusterGroupUpgrade, managedPolicy, namePrefix)
+		policyName, err := r.copyManagedInformPolicy(ctx, clusterGroupUpgrade, managedPolicy)
 		if err != nil {
 			return err
 		}
 
-		placementRuleName, err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, namePrefix)
+		placementRuleName, err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, placementNamePrefix)
 		if err != nil {
 			return err
 		}
 
-		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, namePrefix)
+		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, placementNamePrefix)
 		if err != nil {
 			return err
 		}
@@ -1466,10 +1465,15 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 }
 
 func getGeneratedResourceNamePrefix(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+	return getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade, initialString, 0)
+}
+
+func getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string, spareLength int) string {
 	s := clusterGroupUpgrade.Name + "-" + initialString + "-"
-	// 63 minus 5 (the length of the generated part)
-	if len(s) > 58 {
-		s = s[:56] + "-"
+	// 5 is the length of the generated random part
+	limit := 63 - 5 - spareLength
+	if len(s) > limit {
+		s = s[:limit-2] + "-"
 	}
 	return s
 }
