@@ -1,0 +1,4 @@
+# SC2046: Quote this to prevent word splitting.
+# SC2086: Double quote to prevent globbing and word splitting.
+# SC2181: Check exit code directly with e.g. 'if mycmd;', not indirectly with $?.
+disable=SC2046,SC2086,SC2181

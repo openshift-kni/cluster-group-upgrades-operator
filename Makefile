@@ -61,6 +61,20 @@ SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
 .SHELLFLAGS = -ec
 
+# Include the bindata makefile
+include ./vendor/github.com/openshift/build-machinery-go/make/targets/openshift/bindata.mk
+
+# This will call a macro called "add-bindata" which will generate bindata specific targets based on the parameters:
+# $0 - macro name
+# $1 - target suffix
+# $2 - input dirs
+# $3 - prefix
+# $4 - pkg
+# $5 - output
+# It will generate targets {update,verify}-bindata-$(1) logically grouping them in unsuffixed versions of these targets
+# and also hooked into {update,verify}-generated for broader integration.
+$(call add-bindata,recovery,./recovery/bindata/...,recovery/bindata,generated,recovery/generated/zz_generated.bindata.go)
+
 # Kind configuration
 KIND_NAME ?= test-upgrades-operator
 KIND_ACM_NAMESPACE ?= open-cluster-management
@@ -123,6 +137,11 @@ common-deps-update:	controller-gen kustomize
 .PHONY: ci-job
 ci-job: common-deps-update fmt vet lint unittests
 
+.PHONY: shellcheck
+shellcheck: ## Run shellcheck
+	@echo "Running shellcheck"
+	hack/shellcheck.sh
+
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 
@@ -141,7 +160,7 @@ kustomize: ## Download kustomize locally if necessary.
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
 
 # go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(lastword $(MAKEFILE_LIST))))
+PROJECT_DIR := $(shell dirname $(abspath $(firstword $(MAKEFILE_LIST))))
 define go-get-tool
 @[ -f $(1) ] || { \
 set -e ;\
