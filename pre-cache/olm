@@ -4,18 +4,18 @@ cwd="${cwd:-/opt/precache}"
 . $cwd/common
 
 podman_pull_path="${podman_pull_path:-/run/containers/0}"
-index_download_path="${index_download_path:-/cache/downloaded}"
+rendered_index_path="${rendered_index_path:-/tmp/index.json}"
 
 
 extract_pull_spec(){
-    index_download_path=$1
+    rendered_index=$1
     operators_spec_file=$2
     pull_spec_file=$3
-    /host/usr/libexec/platform-python /opt/precache/parse_index.py "${index_download_path}" "${operators_spec_file}" "${pull_spec_file}"
+    /host/usr/libexec/platform-python /opt/precache/parse_index.py "${rendered_index}" "${operators_spec_file}" "${pull_spec_file}"
     return $?
 }
 
-export_index(){
+render_index(){
     index=$1
     pull_secret_path=$2
     packages=$3
@@ -35,10 +35,12 @@ export_index(){
     else
         opm_bin=$image_mount/bin/opm
     fi
-    $opm_bin index export -i $index -p $packages -c podman -f $index_download_path
+
+    $opm_bin render $index > $rendered_index_path
     if [[ $? -ne 0 ]]; then
         return 1
     fi
+
 }
 
 extract_packages(){
@@ -53,7 +55,6 @@ extract_packages(){
 }
 
 olm_main(){
-    declare -i ret_val=0
     if ! [[ -n $(sort -u $config_volume_path/operators.indexes) ]]; then
       log_debug "Operators index is not specified. Operators won't be pre-cached"
       return 0
@@ -62,37 +63,36 @@ olm_main(){
     for index in $(sort -u $config_volume_path/operators.indexes) ; do
 
         image_id=$(pull_index $index $pull_secret_path)
-        rv=$? && ret_val=ret_val+$rv
-        [[ $rv -eq 0 ]] || continue
+        if [[ $? -ne 0 ]]; then
+          log_debug "pull_index failed for index $index"
+          return 1
+        fi
         log_debug "$index image ID is $image_id"
         image_mount=$(mount_index $image_id)
-        rv=$? && ret_val=ret_val+$rv
-        [[ $rv -eq 0 ]] || continue
+        if [[ $? -ne 0 ]]; then
+          log_debug "mount_index failed for index $index"
+          return 1
+        fi
         log_debug "Image mount: $image_mount"
-        
         packages=$(extract_packages)
         if ! [[ -n $packages ]]; then
-          log_debug "Operators index is set, but no packages provided - inconsistent configuration"
+          log_debug "operators index is set, but no packages provided - inconsistent configuration"
           return 1
         fi
-        export_index $index $pull_secret_path $packages $image_mount
+        render_index $index $pull_secret_path $packages $image_mount
         if [[ $? -ne 0 ]]; then
-          log_debug "export_index failed: OLM index export failed for index $index, package(s) $packages"
+          log_debug "render_index failed: OLM index render failed for index $index, package(s) $packages"
           return 1
         fi
-
         operators_spec_file="$config_volume_path/operators.packagesAndChannels"
-        extract_pull_spec $index_download_path $operators_spec_file $pull_spec_file
+        extract_pull_spec $rendered_index_path $operators_spec_file $pull_spec_file
         if [[ $? -ne 0 ]]; then
           log_debug "extract_pull_spec failed"
           return 1
         fi
         unmount_index $image_id
     done
-    if [[ $ret_val -ne 0 ]]; then
-        log_debug "Some of the OLM index extractions failed."
-    fi
-    return $ret_val
+    return 0
 }
 
 if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
