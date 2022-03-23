@@ -330,6 +330,7 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 //      - CatalogSource: must be explicitly configured to be precached.
 //        All the clusters in the CGU must have same catalog source(s)
 // returns: precachingSpec, error
+// nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	policies []*unstructured.Unstructured) (ranv1alpha1.PrecachingSpec, error) {
@@ -597,6 +598,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
 // returns: templateData (softwareSpec)
 //          error
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) *templateData {

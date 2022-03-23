@@ -17,7 +17,7 @@ func GetManagedPolicyForUpgradeByIndex(
 }
 
 // GetMinOf3 return the minimum of 3 numbers.
-func GetMinOf3(number1 int, number2 int, number3 int) int {
+func GetMinOf3(number1, number2, number3 int) int {
 	if number1 <= number2 && number1 <= number3 {
 		return number1
 	} else if number2 <= number1 && number2 <= number3 {

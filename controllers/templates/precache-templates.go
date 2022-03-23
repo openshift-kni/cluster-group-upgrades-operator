@@ -2,7 +2,7 @@ package templates
 
 // Templates for pre-caching lifecycle
 
-//CommonTemplates provides common template metadata
+// CommonTemplates provides common template metadata
 const CommonTemplates string = `
 {{ define "actionGVK" }}
 apiVersion: action.open-cluster-management.io/v1beta1
@@ -21,7 +21,7 @@ metadata:
 {{ end }}
 `
 
-//MngClusterActCreatePrecachingNS creates namespace
+// MngClusterActCreatePrecachingNS creates namespace
 const MngClusterActCreatePrecachingNS string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -38,7 +38,7 @@ spec:
           workload.openshift.io/allowed: management
 `
 
-//MngClusterActCreatePrecachingSpecCM creates precachingSpec configmap
+// MngClusterActCreatePrecachingSpecCM creates precachingSpec configmap
 const MngClusterActCreatePrecachingSpecCM string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -60,7 +60,7 @@ spec:
         namespace: openshift-talo-pre-cache
 `
 
-//MngClusterActCreateServiceAcct creates serviceaccount
+// MngClusterActCreateServiceAcct creates serviceaccount
 const MngClusterActCreateServiceAcct string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -76,7 +76,7 @@ spec:
         namespace: openshift-talo-pre-cache
 `
 
-//MngClusterActCreateClusterRoleBinding creates clusterrolebinding
+// MngClusterActCreateClusterRoleBinding creates clusterrolebinding
 const MngClusterActCreateClusterRoleBinding string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -99,7 +99,7 @@ spec:
           namespace: openshift-talo-pre-cache
 `
 
-//MngClusterActCreateJob creates precaching k8s job
+// MngClusterActCreateJob creates precaching k8s job
 const MngClusterActCreateJob string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
@@ -166,7 +166,7 @@ spec:
 
 `
 
-//MngClusterViewJob creates mcv to monitor precaching k8s job
+// MngClusterViewJob creates mcv to monitor precaching k8s job
 const MngClusterViewJob string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
@@ -178,7 +178,7 @@ spec:
     updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
 `
 
-//MngClusterViewConfigMap creates mcv to monitor configmap
+// MngClusterViewConfigMap creates mcv to monitor configmap
 const MngClusterViewConfigMap string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
@@ -190,7 +190,7 @@ spec:
     updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
 `
 
-//MngClusterViewServiceAcct creates mcv to monitor serviceaccount
+// MngClusterViewServiceAcct creates mcv to monitor serviceaccount
 const MngClusterViewServiceAcct string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
@@ -202,7 +202,7 @@ spec:
     updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
 `
 
-//MngClusterViewClusterRoleBinding creates mcv to monitor clusterrolebinding
+// MngClusterViewClusterRoleBinding creates mcv to monitor clusterrolebinding
 const MngClusterViewClusterRoleBinding string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
@@ -213,7 +213,7 @@ spec:
     updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
 `
 
-//MngClusterViewNamespace creates mcv to monitor namespace
+// MngClusterViewNamespace creates mcv to monitor namespace
 const MngClusterViewNamespace string = `
 {{ template "viewGVK"}}
 {{ template "metadata" . }}
@@ -224,7 +224,7 @@ spec:
     updateIntervalSeconds: {{ .ViewUpdateIntervalSec }}
 `
 
-//MngClusterActDeletePrecachingNS deletes prechaching namespace
+// MngClusterActDeletePrecachingNS deletes prechaching namespace
 const MngClusterActDeletePrecachingNS string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}

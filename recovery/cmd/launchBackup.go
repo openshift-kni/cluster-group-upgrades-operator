@@ -38,6 +38,7 @@ const recoveryScript string = "upgrade-recovery.sh"
 
 //RecoveryInProgress checks if a restore is in progress
 // returns:			bool
+//nolint:gocritic
 func RecoveryInProgress(BackupPath string) bool {
 	progressfile := filepath.Join(BackupPath, "progress")
 
@@ -49,6 +50,7 @@ func RecoveryInProgress(BackupPath string) bool {
 
 //ParseBackupPath parses the BackupPath
 // returns:			string
+//nolint:gocritic
 func ParseBackupPath(BackupPath string) string {
 	if check := strings.Contains(BackupPath[len(BackupPath)-1:], "/"); check {
 		BackupPath = BackupPath[:len(BackupPath)-1]
@@ -58,6 +60,7 @@ func ParseBackupPath(BackupPath string) string {
 
 //LaunchBackup triggers the backup procedure
 // returns:			error
+//nolint:gocritic
 func LaunchBackup(BackupPath string) error {
 
 	// check for slash in the BackupPath
@@ -153,8 +156,8 @@ func Cleanup(path string) error {
 	return nil
 }
 
-//ExecuteCmd execute shell commands
-//returns: 			error
+// ExecuteCmd execute shell commands
+// returns: 			error
 func ExecuteCmd(cmd string) error {
 
 	logger := log.StandardLogger()

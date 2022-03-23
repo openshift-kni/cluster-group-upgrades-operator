@@ -91,3 +91,8 @@ const (
 const (
 	CleanupFinalizer = "ran.openshift.io/cleanup-finalizer"
 )
+
+// Upgrade status
+const (
+	CannotStart = "UpgradeCannotStart"
+)

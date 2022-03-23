@@ -172,6 +172,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 
 // handleNotStarted handles conditions in PrecacheStateNotStarted
 // returns: error
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster string) (string, error) {
@@ -200,11 +201,14 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 
 // handlePreparing handles conditions in PrecacheStatePreparingToStart
 // returns: error
+//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) handlePreparing(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster string) (string, error) {
 
+	//nolint:ineffassign
 	currentState, nextState := PrecacheStatePreparingToStart, PrecacheStatePreparingToStart
+	//nolint:ineffassign
 	var condition string
 	condition, err := r.getPreparingConditions(ctx, cluster)
 	if err != nil {
