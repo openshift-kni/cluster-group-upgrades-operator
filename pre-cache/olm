@@ -3,6 +3,10 @@
 cwd="${cwd:-/opt/precache}"
 . $cwd/common
 
+podman_pull_path="${podman_pull_path:-/run/containers/0}"
+rendered_index_path="${rendered_index_path:-/tmp/index.json}"
+
+
 extract_pull_spec(){
     rendered_index=$1
     operators_spec_file=$2
@@ -13,9 +17,13 @@ extract_pull_spec(){
 
 render_index(){
     index=$1
-    packages=$2
-    image_mount=$3
+    pull_secret_path=$2
+    packages=$3
+    image_mount=$4
     
+    # copy pull secret to the default runtime dir - opm doesn't accept authfile as an arg
+    [ ! -d "$podman_pull_path" ] && mkdir -p "$podman_pull_path"
+    cp $pull_secret_path "$podman_pull_path/auth.json"
     capath="/host/etc/docker/certs.d/${index%/*}/ca.crt"
     # opm doesn't accept cacert as an arg
     if [[ -f "$capath" ]]; then
@@ -71,7 +79,7 @@ olm_main(){
           log_debug "operators index is set, but no packages provided - inconsistent configuration"
           return 1
         fi
-        render_index $index $packages $image_mount
+        render_index $index $pull_secret_path $packages $image_mount
         if [[ $? -ne 0 ]]; then
           log_debug "render_index failed: OLM index render failed for index $index, package(s) $packages"
           return 1
