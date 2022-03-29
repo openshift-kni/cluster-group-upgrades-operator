@@ -293,4 +293,6 @@ spec:
   relatedImages:
   - image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
     name: pre-caching-workload
+  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:0.0.3
+    name: recovery
   version: 0.0.3
