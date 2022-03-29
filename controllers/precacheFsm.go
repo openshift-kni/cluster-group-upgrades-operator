@@ -39,19 +39,19 @@ const (
 
 // Pre-cache resources conditions
 const (
-	NoNsView                        = "NoNsView"
-	NoNsFoundOnSpoke                = "NoNsFoundOnSpoke"
-	NsFoundOnSpoke                  = "NsFoundOnSpoke"
-	NoJobView                       = "NoJobView"
-	NoJobFoundOnSpoke               = "NoJobFoundOnSpoke"
-	JobViewExists                   = "JobViewExists"
-	DependenciesViewNotPresent      = "DependenciesViewNotPresent"
-	DependenciesNotPresent          = "DependenciesNotPresent"
-	PrecacheJobDeadline             = "PrecacheJobDeadline"
-	PrecacheJobSucceeded            = "PrecacheJobSucceeded"
-	PrecacheJobActive               = "PrecacheJobActive"
-	PrecacheJobBackoffLimitExceeded = "PrecacheJobBackoffLimitExceeded"
-	PrecacheUnforeseenCondition     = "UnforeseenCondition"
+	NoNsView                   = "NoNsView"
+	NoNsFoundOnSpoke           = "NoNsFoundOnSpoke"
+	NsFoundOnSpoke             = "NsFoundOnSpoke"
+	NoJobView                  = "NoJobView"
+	NoJobFoundOnSpoke          = "NoJobFoundOnSpoke"
+	JobViewExists              = "JobViewExists"
+	DependenciesViewNotPresent = "DependenciesViewNotPresent"
+	DependenciesNotPresent     = "DependenciesNotPresent"
+	JobDeadline                = "JobDeadline"
+	JobSucceeded               = "JobSucceeded"
+	JobActive                  = "JobActive"
+	JobBackoffLimitExceeded    = "JobBackoffLimitExceeded"
+	UnforeseenCondition        = "UnforeseenCondition"
 )
 
 // precachingFsm implements the precaching state machine
@@ -210,7 +210,7 @@ func (r *ClusterGroupUpgradeReconciler) handlePreparing(ctx context.Context,
 	currentState, nextState := PrecacheStatePreparingToStart, PrecacheStatePreparingToStart
 	//nolint:ineffassign
 	var condition string
-	condition, err := r.getPreparingConditions(ctx, cluster)
+	condition, err := r.getPreparingConditions(ctx, cluster, precacheNSViewTemplates[0].resourceName)
 	if err != nil {
 		return currentState, err
 	}
@@ -240,7 +240,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	nextState, currentState := PrecacheStateStarting, PrecacheStateStarting
 	var condition string
 
-	condition, err := r.getStartingConditions(ctx, cluster)
+	condition, err := r.getStartingConditions(ctx, cluster, precacheJobView[0].resourceName)
 	if err != nil {
 		return currentState, err
 	}
@@ -262,11 +262,11 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	case NoJobFoundOnSpoke:
 		r.Log.Info("[precachingFsm]", "currentState", currentState, "condition", NoJobFoundOnSpoke,
 			"cluster", cluster, "nextState", PrecacheStateStarting)
-		err = r.deployPrecachingWorkload(ctx, clusterGroupUpgrade, cluster)
+		err = r.deployWorkload(ctx, clusterGroupUpgrade, cluster, precache, precacheJobView[0].resourceName, precacheCreateTemplates)
 		if err != nil {
 			return currentState, err
 		}
-	case PrecacheJobActive:
+	case JobActive:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return currentState, err
@@ -276,19 +276,19 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 			return currentState, err
 		}
 		nextState = PrecacheStateActive
-	case PrecacheJobSucceeded:
+	case JobSucceeded:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return nextState, err
 		}
 		nextState = PrecacheStateSucceeded
-	case PrecacheJobDeadline:
+	case JobDeadline:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return nextState, err
 		}
 		nextState = PrecacheStateTimeout
-	case PrecacheJobBackoffLimitExceeded:
+	case JobBackoffLimitExceeded:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return nextState, err
@@ -312,30 +312,30 @@ func (r *ClusterGroupUpgradeReconciler) handleActive(ctx context.Context,
 	cluster string) (string, error) {
 
 	nextState, currentState := PrecacheStateActive, PrecacheStateActive
-	condition, err := r.getActiveConditions(ctx, cluster)
+	condition, err := r.getActiveConditions(ctx, cluster, precacheJobView[0].resourceName)
 	if err != nil {
 		return nextState, err
 	}
 	switch condition {
-	case PrecacheJobDeadline:
+	case JobDeadline:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return nextState, err
 		}
 		nextState = PrecacheStateTimeout
-	case PrecacheJobSucceeded:
+	case JobSucceeded:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return currentState, err
 		}
 		nextState = PrecacheStateSucceeded
-	case PrecacheJobBackoffLimitExceeded:
+	case JobBackoffLimitExceeded:
 		err = r.deleteDependenciesViews(ctx, cluster)
 		if err != nil {
 			return nextState, err
 		}
 		nextState = PrecacheStateError
-	case PrecacheJobActive:
+	case JobActive:
 		nextState = PrecacheStateActive
 	default:
 		return currentState, fmt.Errorf("[precachingFsm] unknown condition %s in %s state",
