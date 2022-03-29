@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/rand"
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -51,6 +52,9 @@ type ClusterGroupUpgradeReconciler struct {
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
 }
+
+const maxPolicyNameLength = 63
+const maxObjectNameLength = 253
 
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/status,verbs=get;update;patch
@@ -778,7 +782,8 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	newPolicy := &unstructured.Unstructured{}
 
 	// Set new policy name, namespace, group, kind and version.
-	newPolicy.SetGenerateName(getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade, managedPolicy.GetName(), len(managedPolicy.GetNamespace())))
+	name := getResourceName(clusterGroupUpgrade, managedPolicy.GetName())
+	newPolicy.SetName(name)
 	newPolicy.SetNamespace(clusterGroupUpgrade.GetNamespace())
 	newPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -797,7 +802,9 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	newPolicy.SetLabels(labels)
 
 	// Set new policy annotations - copy them from the managed policy.
-	newPolicy.SetAnnotations(managedPolicy.GetAnnotations())
+	annotations := managedPolicy.GetAnnotations()
+	annotations[utils.ResourceNameAnnotation] = name
+	newPolicy.SetAnnotations(annotations)
 
 	// Set new policy remediationAction.
 	newPolicy.Object["spec"] = managedPolicy.Object["spec"]
@@ -840,24 +847,88 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		}
 		// Update the metadata name
 		metadataContent := metadata.(map[string]interface{})
-		metadataContent["generateName"] = getGeneratedResourceNamePrefix(clusterGroupUpgrade, metadataContent["name"].(string))
-		delete(metadataContent, "name")
+		metadataContent["name"] = getSafeResourceName(getResourceName(clusterGroupUpgrade, metadataContent["name"].(string)), maxPolicyNameLength, 0)
 	}
 
 	return nil
 }
 
+func getResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+	return clusterGroupUpgrade.Name + "-" + initialString
+}
+
+func getSafeResourceName(name string, maxLength, spareLength int) string {
+
+	// if len(name) <= maxLength-spareLength {
+	// 	return name
+	// }
+
+	// Borrowed from k8s.io/kubernetes/pkg/util/hash.DeepHashObject()
+	// // TODO import the module properly
+	// hasher := fnv.New32a()
+	// hasher.Reset()
+	// printer := spew.ConfigState{
+	// 	Indent:         " ",
+	// 	SortKeys:       true,
+	// 	DisableMethods: true,
+	// 	SpewKeys:       true,
+	// }
+	// printer.Fprintf(hasher, "%#v", object)
+	// hash := rand.SafeEncodeString(fmt.Sprint(hasher.Sum32()))
+	// var limit int
+	// if len(name) > maxLength-len(hash)-spareLength {
+	// 	limit = maxLength - len(hash) - spareLength
+	// } else {
+	// 	limit = len(name)
+	// }
+	// name := name[:limit-2] + "-" + hash
+
+	const randomLength = 5
+	maxGeneratedNameLength := maxLength - randomLength - 1
+	var base string
+	if len(name) > maxGeneratedNameLength {
+		base = name[:maxGeneratedNameLength]
+	} else {
+		base = name
+	}
+
+	safeName := fmt.Sprintf("%s-%s", base, rand.String(randomLength))
+	return safeName
+}
+
 func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured) error {
 
-	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
-		return err
-	}
-	err := r.Client.Create(ctx, policy)
-	if err != nil {
-		return err
-	}
+	name := policy.GetName()
+	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
+	if !ok {
+		safeName = getSafeResourceName(name, maxPolicyNameLength, len(policy.GetNamespace()))
 
+	}
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      safeName,
+		Namespace: clusterGroupUpgrade.Namespace,
+	}, policy)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+				return err
+			}
+			policy.SetName(safeName)
+			err := r.Client.Create(ctx, policy)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
+	} else {
+		err = r.Client.Update(ctx, policy)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -967,7 +1038,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	return policyContent, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, prNamePrefix string) (string, error) {
+func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string, managedPolicy *unstructured.Unstructured) (string, error) {
 
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
@@ -976,34 +1047,58 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 		Version: "v1",
 	})
 
-	pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, prNamePrefix)
+	name := getResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
+	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
+	if !ok {
+		safeName = getSafeResourceName(name, maxObjectNameLength, 0)
+	}
+
+	err := r.Client.Get(ctx, client.ObjectKey{
+		Name:      safeName,
+		Namespace: clusterGroupUpgrade.Namespace,
+	}, foundPlacementRule)
+
+	if err != nil {
+		if errors.IsNotFound(err) {
+			pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, safeName, name)
+			if err != nil {
+				return "", err
+			}
+
+			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
+				return "", err
+			}
+
+			err = r.Client.Create(ctx, pr)
+			if err != nil {
+				return "", err
+			}
+			return pr.GetName(), nil
+		} else {
+			return "", err
+		}
+	}
+	err = r.Client.Update(ctx, foundPlacementRule)
 	if err != nil {
 		return "", err
 	}
-
-	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
-		return "", err
-	}
-
-	err = r.Client.Create(ctx, pr)
-	if err != nil {
-		return "", err
-	}
-
-	return pr.GetName(), nil
+	return name, nil
 }
 
 //nolint:unparam
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, prNamePrefix string) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, name, desiredName string) (*unstructured.Unstructured, error) {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"generateName": prNamePrefix,
-			"namespace":    clusterGroupUpgrade.Namespace,
+			"name":      name,
+			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/forPolicy":           policyName,
+			},
+			"annotation": map[string]interface{}{
+				utils.ResourceNameAnnotation: desiredName,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -1104,7 +1199,13 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, placementRuleName, bindingNamePrefix string) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, placementRuleName string, managedPolicy *unstructured.Unstructured) error {
+
+	name := getResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
+	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
+	if !ok {
+		safeName = getSafeResourceName(name, maxObjectNameLength, 0)
+	}
 
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
@@ -1113,16 +1214,16 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 		Version: "v1",
 	})
 	err := r.Client.Get(ctx, client.ObjectKey{
-		Name:      bindingNamePrefix,
+		Name:      safeName,
 		Namespace: clusterGroupUpgrade.Namespace,
 	}, foundPlacementBinding)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Ensure batch placement bindings.
-			pb := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, bindingNamePrefix)
+			pb := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, safeName, name)
 
-			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
+			if err = controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
 				return err
 			}
 
@@ -1145,7 +1246,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 
 //nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	policyName, placementRuleName, placementBindingNamePrefix string) *unstructured.Unstructured {
+	policyName, placementRuleName, name, desiredName string) *unstructured.Unstructured {
 
 	var subjects []map[string]interface{}
 
@@ -1158,11 +1259,14 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
-			"generateName": placementBindingNamePrefix,
-			"namespace":    clusterGroupUpgrade.Namespace,
+			"name":      name,
+			"namespace": clusterGroupUpgrade.Namespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+			},
+			"annotations": map[string]interface{}{
+				utils.ResourceNameAnnotation: desiredName,
 			},
 		},
 		"placementRef": map[string]interface{}{
@@ -1245,19 +1349,18 @@ func (r *ClusterGroupUpgradeReconciler) getCopiedPolicies(ctx context.Context, c
 func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesPresent []*unstructured.Unstructured) error {
 	// Reconcile resources
 	for _, managedPolicy := range managedPoliciesPresent {
-		placementNamePrefix := getGeneratedResourceNamePrefix(clusterGroupUpgrade, managedPolicy.GetName())
 
 		policyName, err := r.copyManagedInformPolicy(ctx, clusterGroupUpgrade, managedPolicy)
 		if err != nil {
 			return err
 		}
 
-		placementRuleName, err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, placementNamePrefix)
+		placementRuleName, err := r.ensureBatchPlacementRule(ctx, clusterGroupUpgrade, policyName, managedPolicy)
 		if err != nil {
 			return err
 		}
 
-		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, placementNamePrefix)
+		err = r.ensureBatchPlacementBinding(ctx, clusterGroupUpgrade, policyName, placementRuleName, managedPolicy)
 		if err != nil {
 			return err
 		}
@@ -1464,19 +1567,19 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	return nil
 }
 
-func getGeneratedResourceNamePrefix(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
-	return getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade, initialString, 0)
-}
+// func getGeneratedResourceNamePrefix(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+// 	return getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade, initialString, 0)
+// }
 
-func getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string, spareLength int) string {
-	s := clusterGroupUpgrade.Name + "-" + initialString + "-"
-	// 5 is the length of the generated random part
-	limit := 63 - 5 - spareLength
-	if len(s) > limit {
-		s = s[:limit-2] + "-"
-	}
-	return s
-}
+// func getGeneratedResourceNamePrefixWithSpare(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string, spareLength int) string {
+// 	s := clusterGroupUpgrade.Name + "-" + initialString + "-"
+// 	// 5 is the length of the generated random part
+// 	limit := 63 - 5 - spareLength
+// 	if len(s) > limit {
+// 		s = s[:limit-2] + "-"
+// 	}
+// 	return s
+// }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
 	var clusterNames []string
@@ -1539,9 +1642,13 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		if err != nil {
 			return err
 		}
+		clusterGroupUpgrade.Status.SafeResourceNames = make(map[string]string)
 		placementRulesStatus := make([]string, 0)
 		for _, placementRule := range placementRules.Items {
 			placementRulesStatus = append(placementRulesStatus, placementRule.GetName())
+			if name, ok := placementRule.GetAnnotations()[utils.ResourceNameAnnotation]; ok && name != placementRule.GetName() {
+				clusterGroupUpgrade.Status.SafeResourceNames[name] = placementRule.GetName()
+			}
 		}
 		clusterGroupUpgrade.Status.PlacementRules = placementRulesStatus
 
@@ -1552,6 +1659,9 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		placementBindingsStatus := make([]string, 0)
 		for _, placementBinding := range placementBindings.Items {
 			placementBindingsStatus = append(placementBindingsStatus, placementBinding.GetName())
+			if name, ok := placementBinding.GetAnnotations()[utils.ResourceNameAnnotation]; ok && name != placementBinding.GetName() {
+				clusterGroupUpgrade.Status.SafeResourceNames[name] = placementBinding.GetName()
+			}
 		}
 		clusterGroupUpgrade.Status.PlacementBindings = placementBindingsStatus
 
@@ -1562,6 +1672,9 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		policiesStatus := make([]string, 0)
 		for _, policy := range copiedPolicies.Items {
 			policiesStatus = append(policiesStatus, policy.GetName())
+			if name, ok := policy.GetAnnotations()[utils.ResourceNameAnnotation]; ok && name != policy.GetName() {
+				clusterGroupUpgrade.Status.SafeResourceNames[name] = policy.GetName()
+			}
 		}
 		clusterGroupUpgrade.Status.CopiedPolicies = policiesStatus
 

@@ -163,6 +163,7 @@ type ClusterGroupUpgradeStatus struct {
 	Conditions        []metav1.Condition `json:"conditions,omitempty"`
 	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
 	ManagedPoliciesNs map[string]string  `json:"managedPoliciesNs,omitempty"`
+	SafeResourceNames map[string]string  `json:"safeResourceNames,omitempty"`
 	// Contains the managed policies (and the namespaces) that have NonCompliant clusters
 	// that require updating.
 	ManagedPoliciesForUpgrade             []ManagedPolicyForUpgrade `json:"managedPoliciesForUpgrade,omitempty"`
