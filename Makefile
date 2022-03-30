@@ -141,7 +141,7 @@ common-deps-update:	controller-gen kustomize
 	go mod tidy
 
 .PHONY: ci-job
-ci-job: common-deps-update fmt vet lint golangci-lint unittests
+ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck
 
 .PHONY: shellcheck
 shellcheck: ## Run shellcheck
