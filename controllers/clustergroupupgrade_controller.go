@@ -850,6 +850,9 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured) error {
 
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+		return err
+	}
 	existingPolicy := &unstructured.Unstructured{}
 	existingPolicy.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -863,9 +866,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
-				return err
-			}
+
 			err = r.Client.Create(ctx, policy)
 			if err != nil {
 				return err
