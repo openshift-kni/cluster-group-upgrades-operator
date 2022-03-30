@@ -16,7 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.10.1-ocp
+    operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v4.10.0
   namespace: placeholder
