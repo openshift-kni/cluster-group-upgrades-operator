@@ -28,5 +28,5 @@ cp -a /host/etc/pki/ca-trust/extracted/pem /etc/pki/ca-trust/extracted/ || true
 [ ! -d "$podman_pull_path" ] && mkdir -p "$podman_pull_path"
 cp $pull_secret_path "$podman_pull_path/auth.json"
 [ ! -d "$docker_pull_path" ] && mkdir -p "$docker_pull_path"
-cp $pull_secret_path "$podman_pull_path/config.json"
+cp $pull_secret_path "$docker_pull_path/config.json"
 
