@@ -9,6 +9,5 @@ if [ ! -f ${shellcheck} ]; then
 fi
 
 # Skip specific folders for now, until shellcheck warnings are addressed
-find . -name '*.sh' -not -path './vendor/*' -not -path './git/*' \
-    -not -path './pre-cache/*' -not -path './hack/*' -not -path './deploy/*' -print0 \
-    | xargs -0 --no-run-if-empty ${shellcheck}
+find . -name '*.sh' -not -path './vendor/*' -not -path './git/*' -print0 \
+    | xargs -0 --no-run-if-empty ${shellcheck} -x

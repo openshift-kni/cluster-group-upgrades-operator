@@ -7,7 +7,6 @@ _GOARCH=$(go env GOARCH)
 _ARCH=$(arch)
 
 KIND_ENV="kind"
-NON_KIND_ENV="non-kind"
 mkdir -p ./bin
 
 
@@ -30,7 +29,7 @@ fi
 
 # Install kind if needed.
 if [ "$env" == "$KIND_ENV" ] && ! [ -x "$(command -v kind)" ]; then
-    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$GOARCH"
+    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH"
     curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH
     mv ./kind ./bin/
     chmod 755 ./bin/kind
