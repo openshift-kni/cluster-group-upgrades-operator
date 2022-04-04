@@ -869,7 +869,14 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		}
 		// Update the metadata name
 		metadataContent := metadata.(map[string]interface{})
-		metadataContent["name"] = utils.GetSafeResourceName(utils.GetResourceName(clusterGroupUpgrade, metadataContent["name"].(string)), utils.MaxPolicyNameLength, 0)
+		name := utils.GetResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
+		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
+		if !ok {
+			safeName = utils.GetSafeResourceName(name, utils.MaxPolicyNameLength, 0)
+			clusterGroupUpgrade.Status.SafeResourceNames[name] = safeName
+
+		}
+		metadataContent["name"] = safeName
 	}
 
 	return nil
@@ -1057,16 +1064,17 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 				return "", err
 			}
 			clusterGroupUpgrade.Status.SafeResourceNames[name] = safeName
-			return pr.GetName(), nil
 		} else {
 			return "", err
 		}
+	} else {
+		pr.SetResourceVersion(foundPlacementRule.GetResourceVersion())
+		err = r.Client.Update(ctx, pr)
+		if err != nil {
+			return "", err
+		}
 	}
-	err = r.Client.Update(ctx, foundPlacementRule)
-	if err != nil {
-		return "", err
-	}
-	return name, nil
+	return safeName, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, name, desiredName string) *unstructured.Unstructured {
