@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cwd="${cwd:-/opt/precache}"
-. $cwd/common
+# shellcheck source=pre-cache/common
+source $cwd/common
 
 # Copy podman dependencies to the container. Podman itself runs off the host in the
 # container by adding /host/usr/bin to the path
@@ -23,10 +24,11 @@ done
 cp /host/etc/containers/policy.json /etc/containers/policy.json
 cp /host/etc/containers/registries.conf /etc/containers/registries.conf || true
 cp -a /host/etc/docker /etc/ || true
+# shellcheck disable=SC2015
 cp -a /host/etc/pki/ca-trust/source/anchors /etc/pki/ca-trust/source/ && update-ca-trust || true
 cp -a /host/etc/pki/ca-trust/extracted/pem /etc/pki/ca-trust/extracted/ || true
 [ ! -d "$podman_pull_path" ] && mkdir -p "$podman_pull_path"
 cp $pull_secret_path "$podman_pull_path/auth.json"
 [ ! -d "$docker_pull_path" ] && mkdir -p "$docker_pull_path"
-cp $pull_secret_path "$podman_pull_path/config.json"
+cp $pull_secret_path "$docker_pull_path/config.json"
 

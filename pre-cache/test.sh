@@ -3,13 +3,14 @@
 set -e
 
 fatal() {
-  echo "FATAL: $@"
+  echo "FATAL: $*"
   exit 1
 }
 
 for f in common olm release pull
 do
     echo "Testing import of $f"
+    # shellcheck disable=1090,2154
     . $cwd/$f
     rc=$?
     [[ $rc -eq 0 ]] || fatal "Could not import $f"
@@ -32,14 +33,18 @@ printf '{
       }]
   }
 }' > /tmp/release-manifests/image-references
+# shellcheck disable=SC2154
 (rm $pull_spec_file || true) &> /dev/null
 
+# shellcheck disable=SC2034
 container_tool=/usr/bin/echo
+# shellcheck disable=SC2034
 config_volume_path=/tmp
 
 # Test common
 echo "Testing common functions:"
 
+# shellcheck disable=SC2154
 result=$(pull_index "temp" $pull_secret_path)
 [[ $? -eq 0 ]] || fatal "pull_index unexpected exit code"
 [[ $result == "pull --quiet temp --root=/cache --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
