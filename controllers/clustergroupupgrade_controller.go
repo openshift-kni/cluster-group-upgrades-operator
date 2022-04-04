@@ -37,6 +37,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
@@ -136,6 +138,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			Reason:  "UpgradeNotStarted",
 			Message: "The ClusterGroupUpgrade CR is not enabled",
 		})
+		nextReconcile = ctrl.Result{Requeue: true}
 	} else if readyCondition.Status == metav1.ConditionFalse {
 		if readyCondition.Reason == "PrecachingRequired" {
 			requeueAfter := 5 * time.Minute
@@ -1858,8 +1861,17 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ranv1alpha1.ClusterGroupUpgrade{}).
-		Owns(placementRuleUnstructured).
+		For(&ranv1alpha1.ClusterGroupUpgrade{}).WithEventFilter(predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldGeneration := e.ObjectOld.GetGeneration()
+			newGeneration := e.ObjectNew.GetGeneration()
+			// Generation is only updated on spec changes (also on deletion),
+			// not metadata or status
+			// Filter out events where the generation hasn't changed to
+			// avoid being triggered by status updates
+			return oldGeneration != newGeneration
+		},
+	}).Owns(placementRuleUnstructured).
 		Owns(placementBindingUnstructured).
 		Owns(policyUnstructured).
 		Complete(r)

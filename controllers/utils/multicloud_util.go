@@ -140,7 +140,7 @@ var EnsureInstallPlanIsApproved = func(
 		if installPlan.Spec.Approved {
 			multiCloudLog.Info("InstallPlan has already been approved",
 				"InstallPlan", installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
-			return InstallPlanCannotBeApproved, nil
+			return InstallPlanWasApproved, nil
 		}
 
 		multiCloudLog.Info("Create ManagedClusterAction for InstallPlan", "InstallPlan",
