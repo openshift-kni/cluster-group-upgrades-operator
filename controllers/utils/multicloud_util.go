@@ -98,13 +98,17 @@ var EnsureInstallPlanIsApproved = func(
 		clusterGroupUpgrade, subscription.Status.InstallPlanRef.Kind, subscription.Status.InstallPlanRef.Name)
 	multiCloudLog.Info("[EnsureInstallPlanIsApproved] Create MCV for InstallPlan", "InstallPlan",
 		subscription.Status.InstallPlanRef.Name, "ns", clusterName)
+	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvForInstallPlanName]
+	if !ok {
+		safeName = GetSafeResourceName(mcvForInstallPlanName, MaxObjectNameLength, 0)
+	}
 	mcvForInstallPlan, err := EnsureManagedClusterView(
-		ctx, c, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.InstallPlanRef.Name,
+		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.InstallPlanRef.Name,
 		subscription.Status.InstallPlanRef.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
 	}
-
+	clusterGroupUpgrade.Status.SafeResourceNames[mcvForInstallPlanName] = safeName
 	conditionMCVforInstallPlan := meta.FindStatusCondition(
 		mcvForInstallPlan.Status.Conditions, viewv1beta1.ConditionViewProcessing)
 	if conditionMCVforInstallPlan == nil {
@@ -143,7 +147,11 @@ var EnsureInstallPlanIsApproved = func(
 			installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
 		// Create or update the managedClusterAction to approve the install plan.
 		mcaName := GetMultiCloudObjectName(clusterGroupUpgrade, "InstallPlan", installPlan.Name)
-		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, mcaName, clusterName, installPlan)
+		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcaName]
+		if !ok {
+			safeName = GetSafeResourceName(mcaName, MaxObjectNameLength, 0)
+		}
+		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, safeName, mcaName, clusterName, installPlan)
 		if err != nil {
 			return InstallPlanCannotBeApproved, err
 		}
@@ -156,21 +164,24 @@ var EnsureInstallPlanIsApproved = func(
 
 // EnsureManagedClusterView creates or updates a view.
 func EnsureManagedClusterView(
-	ctx context.Context, c client.Client, name string, namespace string, resourceType string,
-	resourceName string, resourceNamespace string, cguLabel string) (*viewv1beta1.ManagedClusterView, error) {
+	ctx context.Context, c client.Client, safeName, name, namespace, resourceType,
+	resourceName, resourceNamespace, cguLabel string) (*viewv1beta1.ManagedClusterView, error) {
 
 	mcv := &viewv1beta1.ManagedClusterView{}
-	err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, mcv)
+	err := c.Get(ctx, types.NamespacedName{Name: safeName, Namespace: namespace}, mcv)
 
 	if err != nil {
 		// If the specific managedClusterView was not found, create it.
 		if errors.IsNotFound(err) {
-			multiCloudLog.Info("[EnsureManagedClusterView] MCV doesn't exist, create it", "name", name, "namespace", namespace)
+			multiCloudLog.Info("[EnsureManagedClusterView] MCV doesn't exist, create it", "name", safeName, "namespace", namespace)
 			viewMeta := metav1.ObjectMeta{
-				Name:      name,
+				Name:      safeName,
 				Namespace: namespace,
 				Labels: map[string]string{
 					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
+				},
+				Annotations: map[string]string{
+					ResourceNameAnnotation: name,
 				},
 			}
 			viewSpec := viewv1beta1.ViewSpec{
@@ -193,7 +204,7 @@ func EnsureManagedClusterView(
 		}
 	} else {
 		// If the specific managedClusterView was found, update it.
-		multiCloudLog.Info("[EnsureManagedClusterView] MCV already exists, update it", "name", name, "namespace", namespace)
+		multiCloudLog.Info("[EnsureManagedClusterView] MCV already exists, update it", "name", safeName, "namespace", namespace)
 		// Make sure labels contain the referral to the CGU.
 		labels := mcv.GetLabels()
 		if labels == nil {
@@ -222,18 +233,21 @@ func EnsureManagedClusterView(
 
 // EnsureManagedClusterActionForInstallPlan creates or updates an action for an InstallPlan.
 func EnsureManagedClusterActionForInstallPlan(
-	ctx context.Context, c client.Client, name string, namespace string,
+	ctx context.Context, c client.Client, safeName, name, namespace string,
 	installPlan operatorsv1alpha1.InstallPlan) (*actionv1beta1.ManagedClusterAction, error) {
 
 	mcaForInstallPlan := &actionv1beta1.ManagedClusterAction{}
-	if err := c.Get(ctx, types.NamespacedName{Name: name, Namespace: namespace}, mcaForInstallPlan); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: safeName, Namespace: namespace}, mcaForInstallPlan); err != nil {
 		// If the specific managedClusterAction was not found, create it.
 		if errors.IsNotFound(err) {
 			multiCloudLog.Info("[EnsureManagedClusterActionForInstallPlan] MCA doesn't exist, create it",
 				"name", name, "namespace", namespace)
 			actionMeta := metav1.ObjectMeta{
-				Name:      name,
+				Name:      safeName,
 				Namespace: namespace,
+				Annotations: map[string]string{
+					ResourceNameAnnotation: name,
+				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
 			if err != nil {

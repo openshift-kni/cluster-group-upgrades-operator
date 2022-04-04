@@ -32,6 +32,11 @@ const (
 	ResourceNameAnnotation = CsvNamePrefix + "/rname"
 )
 
+const (
+	MaxPolicyNameLength = 63
+	MaxObjectNameLength = 253
+)
+
 // Pre-cache constants
 const (
 	CsvNamePrefix              = "cluster-group-upgrades-operator"

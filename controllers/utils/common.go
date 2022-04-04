@@ -1,10 +1,14 @@
 package utils
 
 import (
+	"context"
 	"fmt"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/util/rand"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // GetManagedPolicyForUpgradeByIndex return the policy from the list of managedPoliciesForUpgrade
@@ -67,4 +71,18 @@ func GetSafeResourceName(name string, maxLength, spareLength int) string {
 
 	safeName := fmt.Sprintf("%s-%s", base, rand.String(randomLength))
 	return safeName
+}
+
+func DeleteResourceByName(ctx context.Context, c client.Client, ns, name string, gvk schema.GroupVersionKind) error {
+
+	u := &unstructured.Unstructured{}
+	u.SetName(name)
+	u.SetNamespace(ns)
+	u.SetGroupVersionKind(gvk)
+
+	if err := c.Delete(ctx, u); err != nil {
+		return err
+	}
+
+	return nil
 }
