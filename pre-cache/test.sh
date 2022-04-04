@@ -3,12 +3,11 @@
 set -e
 
 fatal() {
-  echo "FATAL: $*"
-  exit 1
+    echo "FATAL: $*"
+    exit 1
 }
 
-for f in common olm release pull
-do
+for f in common olm release pull; do
     echo "Testing import of $f"
     # shellcheck disable=1090,2154
     . $cwd/$f
@@ -23,7 +22,8 @@ echo "test_index2" >> /tmp/operators.indexes
 echo "  package1:  channel1 " > /tmp/operators.packagesAndChannels
 echo "  package2:channel2" >> /tmp/operators.packagesAndChannels
 mkdir -p /tmp/release-manifests
-printf '{
+cat <<EOF > /tmp/release-manifests/image-references
+{
   "spec": {
     "tags": [
       {
@@ -32,7 +32,9 @@ printf '{
         }
       }]
   }
-}' > /tmp/release-manifests/image-references
+}
+EOF
+
 # shellcheck disable=SC2154
 (rm $pull_spec_file || true) &> /dev/null
 
