@@ -4,6 +4,10 @@ container_tool="${container_tool:-podman}"
 pull_secret_path="${pull_secret_path:-/host/var/lib/kubelet/config.json}"
 pull_spec_file="${pull_spec_file:-/tmp/images.txt}"
 config_volume_path="${config_volume_path:-/etc/config}"
+podman_pull_path="${podman_pull_path:-/run/containers/0}"
+docker_pull_path="${docker_pull_path:-/root/.docker}"
+rendered_index_path="${rendered_index_path:-/tmp/index.json}"
+
 
 log_debug() {
   echo "upgrades.pre-cache $(date -Iseconds) DEBUG $@"
