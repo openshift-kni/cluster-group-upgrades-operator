@@ -140,13 +140,18 @@ unittests:
 common-deps-update:	controller-gen kustomize
 	go mod tidy
 
-.PHONY: ci-job
-ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck
-
 .PHONY: shellcheck
 shellcheck: ## Run shellcheck
 	@echo "Running shellcheck"
 	hack/shellcheck.sh
+
+.PHONY: bashate
+bashate: ## Run bashate
+	@echo "Running bashate"
+	hack/bashate.sh
+
+.PHONY: ci-job
+ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 KUSTOMIZE = $(shell pwd)/bin/kustomize

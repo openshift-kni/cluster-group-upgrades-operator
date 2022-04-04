@@ -8,6 +8,5 @@ if [ ! -f ${shellcheck} ]; then
         | tar -xJ -C $(go env GOPATH)/bin --strip=1 shellcheck-${scversion}/shellcheck
 fi
 
-# Skip specific folders for now, until shellcheck warnings are addressed
 find . -name '*.sh' -not -path './vendor/*' -not -path './git/*' -print0 \
     | xargs -0 --no-run-if-empty ${shellcheck} -x
