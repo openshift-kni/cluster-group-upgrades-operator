@@ -908,7 +908,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err := r.Client.Create(ctx, policy)
+			err = r.Client.Create(ctx, policy)
 			if err != nil {
 				return err
 			}
