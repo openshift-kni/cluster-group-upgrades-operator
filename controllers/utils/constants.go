@@ -27,6 +27,16 @@ const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
 )
 
+// Annotation for TALO created object names
+const (
+	ResourceNameAnnotation = CsvNamePrefix + "/rname"
+)
+
+const (
+	MaxPolicyNameLength = 63
+	MaxObjectNameLength = 253
+)
+
 // Pre-cache constants
 const (
 	CsvNamePrefix              = "cluster-group-upgrades-operator"
