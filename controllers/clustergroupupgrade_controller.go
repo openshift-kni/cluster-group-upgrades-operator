@@ -91,7 +91,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return ctrl.Result{}, err
 	}
 
-	r.Log.Info("Start recociling CGU", "version", clusterGroupUpgrade.GetResourceVersion())
+	r.Log.Info("Start reconciling CGU", "version", clusterGroupUpgrade.GetResourceVersion())
 	reconcileTime, err := r.handleCguFinalizer(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -888,7 +888,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	name := policy.GetName()
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
-		safeName = utils.GetSafeResourceName(name, utils.MaxPolicyNameLength, len(policy.GetNamespace()))
+		safeName = utils.GetSafeResourceName(name, utils.MaxPolicyNameLength, len(policy.GetNamespace())+1)
 
 	}
 	policy.SetName(safeName)

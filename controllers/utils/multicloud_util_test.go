@@ -620,7 +620,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
-				assert.Equal(t, result, InstallPlanCannotBeApproved)
+				assert.Equal(t, result, InstallPlanWasApproved)
 			},
 		},
 		{

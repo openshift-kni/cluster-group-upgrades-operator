@@ -33,7 +33,7 @@ func GetMinOf3(number1, number2, number3 int) int {
 // GetSafeResourceName creates a safe name to use with random suffix and possible truncation based on limits passed in
 func GetSafeResourceName(name string, maxLength, spareLength int) string {
 	const randomLength = 5
-	maxGeneratedNameLength := maxLength - randomLength - 1
+	maxGeneratedNameLength := maxLength - randomLength - spareLength - 1
 	var base string
 	if len(name) > maxGeneratedNameLength {
 		base = name[:maxGeneratedNameLength]
