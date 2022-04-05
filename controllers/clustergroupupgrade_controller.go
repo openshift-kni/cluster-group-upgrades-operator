@@ -1876,7 +1876,7 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			// This is a hack so we can ignore CGU status update only
 			// The Kind field in the objects from the event is not populated for some reason
 			// Reference: https://github.com/kubernetes/client-go/issues/308
-			if len(e.ObjectNew.GetOwnerReferences()) == 0 {
+			if len(e.ObjectNew.GetOwnerReferences()) == 0 || e.ObjectNew.GetOwnerReferences()[0].Kind == "ManagedCluster" {
 				oldGeneration := e.ObjectOld.GetGeneration()
 				newGeneration := e.ObjectNew.GetGeneration()
 				// Generation is only updated on spec changes (also on deletion),
