@@ -32,6 +32,7 @@ const (
 	ResourceNameAnnotation = CsvNamePrefix + "/rname"
 )
 
+// CR name length limits
 const (
 	MaxPolicyNameLength = 63
 	MaxObjectNameLength = 253

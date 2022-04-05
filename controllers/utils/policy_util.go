@@ -102,6 +102,7 @@ func DeletePlacementRules(ctx context.Context, c client.Client, ns string, label
 	return nil
 }
 
+// GetResourceName constructs composite names for policy objects
 func GetResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
 	return strings.ToLower(clusterGroupUpgrade.Name + "-" + initialString)
 }
