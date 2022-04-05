@@ -1873,13 +1873,19 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}).WithEventFilter(predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			oldGeneration := e.ObjectOld.GetGeneration()
-			newGeneration := e.ObjectNew.GetGeneration()
-			// Generation is only updated on spec changes (also on deletion),
-			// not metadata or status
-			// Filter out events where the generation hasn't changed to
-			// avoid being triggered by status updates
-			return oldGeneration != newGeneration
+			// This is a hack so we can ignore CGU status update only
+			// The Kind field in the objects from the event is not populated for some reason
+			// Reference: https://github.com/kubernetes/client-go/issues/308
+			if len(e.ObjectNew.GetOwnerReferences()) == 0 {
+				oldGeneration := e.ObjectOld.GetGeneration()
+				newGeneration := e.ObjectNew.GetGeneration()
+				// Generation is only updated on spec changes (also on deletion),
+				// not metadata or status
+				// Filter out events where the generation hasn't changed to
+				// avoid being triggered by status updates
+				return oldGeneration != newGeneration
+			}
+			return true
 		},
 	}).Owns(placementRuleUnstructured).
 		Owns(placementBindingUnstructured).
