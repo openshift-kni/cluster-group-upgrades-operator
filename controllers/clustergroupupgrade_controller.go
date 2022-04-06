@@ -514,7 +514,7 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 		mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
 		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvName]
 		if !ok {
-			safeName = utils.GetSafeResourceName(mcvName, utils.MaxObjectNameLength, 0)
+			safeName = utils.GetSafeResourceName(mcvName, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxObjectNameLength, 0)
 		}
 		mcv := &viewv1beta1.ManagedClusterView{}
 		if err := r.Get(ctx, types.NamespacedName{Name: safeName, Namespace: clusterName}, mcv); err != nil {
@@ -780,7 +780,7 @@ func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 			managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
 			safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[managedClusterViewName]
 			if !ok {
-				safeName = utils.GetSafeResourceName(managedClusterViewName, utils.MaxObjectNameLength, 0)
+				safeName = utils.GetSafeResourceName(managedClusterViewName, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxObjectNameLength, 0)
 			}
 
 			// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
@@ -872,7 +872,7 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 		name := utils.GetResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
 		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 		if !ok {
-			safeName = utils.GetSafeResourceName(name, utils.MaxPolicyNameLength, 0)
+			safeName = utils.GetSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxPolicyNameLength, 0)
 			clusterGroupUpgrade.Status.SafeResourceNames[name] = safeName
 
 		}
@@ -888,7 +888,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	name := policy.GetName()
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
-		safeName = utils.GetSafeResourceName(name, utils.MaxPolicyNameLength, len(policy.GetNamespace())+1)
+		safeName = utils.GetSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxPolicyNameLength, len(policy.GetNamespace())+1)
 
 	}
 	policy.SetName(safeName)
@@ -1037,7 +1037,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
-		safeName = utils.GetSafeResourceName(name, utils.MaxObjectNameLength, 0)
+		safeName = utils.GetSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxObjectNameLength, 0)
 	}
 	pr := r.newBatchPlacementRule(clusterGroupUpgrade, policyName, safeName, name)
 
@@ -1195,7 +1195,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
-		safeName = utils.GetSafeResourceName(name, utils.MaxObjectNameLength, 0)
+		safeName = utils.GetSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[utils.NameSuffixAnnotation], utils.MaxObjectNameLength, 0)
 	}
 
 	// Ensure batch placement bindings.

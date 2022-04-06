@@ -32,10 +32,11 @@ const (
 	ResourceNameAnnotation = CsvNamePrefix + "/rname"
 )
 
-// CR name length limits
+// CR name length limits and suffix annotation
 const (
-	MaxPolicyNameLength = 63
-	MaxObjectNameLength = 253
+	MaxPolicyNameLength  = 63
+	MaxObjectNameLength  = 253
+	NameSuffixAnnotation = CsvNamePrefix + "/name-suffix"
 )
 
 // Pre-cache constants

@@ -100,7 +100,7 @@ var EnsureInstallPlanIsApproved = func(
 		subscription.Status.InstallPlanRef.Name, "ns", clusterName)
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvForInstallPlanName]
 	if !ok {
-		safeName = GetSafeResourceName(mcvForInstallPlanName, MaxObjectNameLength, 0)
+		safeName = GetSafeResourceName(mcvForInstallPlanName, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], MaxObjectNameLength, 0)
 	}
 	mcvForInstallPlan, err := EnsureManagedClusterView(
 		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.InstallPlanRef.Name,
@@ -149,7 +149,7 @@ var EnsureInstallPlanIsApproved = func(
 		mcaName := GetMultiCloudObjectName(clusterGroupUpgrade, "InstallPlan", installPlan.Name)
 		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcaName]
 		if !ok {
-			safeName = GetSafeResourceName(mcaName, MaxObjectNameLength, 0)
+			safeName = GetSafeResourceName(mcaName, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], MaxObjectNameLength, 0)
 		}
 		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, safeName, mcaName, clusterName, installPlan)
 		if err != nil {
