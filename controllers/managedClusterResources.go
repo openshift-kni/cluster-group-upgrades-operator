@@ -33,10 +33,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/client-go/discovery"
-	memory "k8s.io/client-go/discovery/cached"
 	"k8s.io/client-go/dynamic"
-	"k8s.io/client-go/restmapper"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -114,9 +111,6 @@ var (
 func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	ctx context.Context, data *templateData, templates []resourceTemplate) error {
 
-	config := ctrl.GetConfigOrDie()
-	dynamic := dynamic.NewForConfigOrDie(config)
-
 	for _, item := range templates {
 		r.Log.Info("[createResourcesFromTemplates]", "cluster", data.Cluster, "template", item.resourceName)
 		obj := &unstructured.Unstructured{}
@@ -127,27 +121,11 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 
 		// decode YAML into unstructured.Unstructured
 		dec := yaml.NewDecodingSerializer(unstructured.UnstructuredJSONScheme)
-		_, gvk, err := dec.Decode(w.Bytes(), nil, obj)
+		_, _, err = dec.Decode(w.Bytes(), nil, obj)
 		if err != nil {
 			return err
 		}
-		// Map GVK to GVR with discovery client
-		discoveryClient, err := discovery.NewDiscoveryClientForConfig(config)
-		if err != nil {
-			return err
-		}
-		mapper := restmapper.NewDeferredDiscoveryRESTMapper(memory.NewMemCacheClient(discoveryClient))
-		mapping, err := mapper.RESTMapping(gvk.GroupKind(), gvk.Version)
-		if err != nil {
-			return err
-		}
-		// Build resource
-		resource := schema.GroupVersionResource{
-			Group:    gvk.Group,
-			Version:  gvk.Version,
-			Resource: mapping.Resource.Resource,
-		}
-		_, err = dynamic.Resource(resource).Namespace(data.Cluster).Create(ctx, obj, metav1.CreateOptions{})
+		err = r.Create(ctx, obj)
 		if err != nil {
 			if errors.IsAlreadyExists(err) {
 				r.Log.Info("[createResourcesFromTemplates] Already exists",
@@ -513,7 +491,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	return rv, nil
 }
 
-// deployPrecachingWorkload deploys precaching workload on the spoke
+// deployworkload deploys precaching workload on the spoke
 //          using a set of templated manifests
 // returns: error
 func (r *ClusterGroupUpgradeReconciler) deployWorkload(
@@ -524,9 +502,10 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	// the idea is to reuse the deployworkload function for backup job, so using switch to differentiate between cases
 	// for example case backup:
 	var spec *templateData
+	var err error
 	switch workloadType {
 	case precache:
-		spec, err := r.getPrecacheJobTemplateData(ctx, clusterGroupUpgrade, cluster)
+		spec, err = r.getPrecacheJobTemplateData(ctx, clusterGroupUpgrade, cluster)
 		if err != nil {
 			return err
 		}
@@ -538,7 +517,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	}
 
 	// Delete the job view so it is refreshed
-	err := r.deleteManagedClusterViewResource(ctx, mcvTemplate, cluster)
+	err = r.deleteManagedClusterViewResource(ctx, mcvTemplate, cluster)
 	if err != nil {
 		return err
 	}
