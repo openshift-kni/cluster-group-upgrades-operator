@@ -98,10 +98,7 @@ var EnsureInstallPlanIsApproved = func(
 		clusterGroupUpgrade, subscription.Status.InstallPlanRef.Kind, subscription.Status.InstallPlanRef.Name)
 	multiCloudLog.Info("[EnsureInstallPlanIsApproved] Create MCV for InstallPlan", "InstallPlan",
 		subscription.Status.InstallPlanRef.Name, "ns", clusterName)
-	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvForInstallPlanName]
-	if !ok {
-		safeName = GetSafeResourceName(mcvForInstallPlanName, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], MaxObjectNameLength, 0)
-	}
+	safeName := GetSafeResourceName(mcvForInstallPlanName, clusterGroupUpgrade, MaxObjectNameLength, 0)
 	mcvForInstallPlan, err := EnsureManagedClusterView(
 		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.InstallPlanRef.Name,
 		subscription.Status.InstallPlanRef.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
@@ -140,17 +137,14 @@ var EnsureInstallPlanIsApproved = func(
 		if installPlan.Spec.Approved {
 			multiCloudLog.Info("InstallPlan has already been approved",
 				"InstallPlan", installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
-			return InstallPlanWasApproved, nil
+			return InstallPlanAlreadyApproved, nil
 		}
 
 		multiCloudLog.Info("Create ManagedClusterAction for InstallPlan", "InstallPlan",
 			installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
 		// Create or update the managedClusterAction to approve the install plan.
 		mcaName := GetMultiCloudObjectName(clusterGroupUpgrade, "InstallPlan", installPlan.Name)
-		safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcaName]
-		if !ok {
-			safeName = GetSafeResourceName(mcaName, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], MaxObjectNameLength, 0)
-		}
+		safeName := GetSafeResourceName(mcaName, clusterGroupUpgrade, MaxObjectNameLength, 0)
 		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, safeName, mcaName, clusterName, installPlan)
 		if err != nil {
 			return InstallPlanCannotBeApproved, err
@@ -181,7 +175,7 @@ func EnsureManagedClusterView(
 					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
 				},
 				Annotations: map[string]string{
-					ResourceNameAnnotation: name,
+					DesiredResourceNameAnnotation: name,
 				},
 			}
 			viewSpec := viewv1beta1.ViewSpec{
@@ -246,7 +240,7 @@ func EnsureManagedClusterActionForInstallPlan(
 				Name:      safeName,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					ResourceNameAnnotation: name,
+					DesiredResourceNameAnnotation: name,
 				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
