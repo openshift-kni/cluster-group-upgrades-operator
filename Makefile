@@ -55,9 +55,9 @@ endif
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-PATH  := $(PATH):$(PWD)/bin
+export PATH  := $(PATH):$(PWD)/bin
 GOFLAGS := -mod=mod
-SHELL = /usr/bin/env PATH=$(PATH) GOFLAGS=$(GOFLAGS) bash -o pipefail
+SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
 .SHELLFLAGS = -ec
 
