@@ -849,16 +849,24 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyNameForCopiedPo
 
 func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured) error {
+
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
+		return err
+	}
+	existingPolicy := &unstructured.Unstructured{}
+	existingPolicy.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "Policy",
+		Version: "v1",
+	})
 	err := r.Client.Get(ctx, client.ObjectKey{
 		Name:      policy.GetName(),
 		Namespace: clusterGroupUpgrade.Namespace,
-	}, policy)
+	}, existingPolicy)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
-				return err
-			}
+
 			err = r.Client.Create(ctx, policy)
 			if err != nil {
 				return err
@@ -867,6 +875,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 			return err
 		}
 	} else {
+		policy.SetResourceVersion(existingPolicy.GetResourceVersion())
 		err = r.Client.Update(ctx, policy)
 		if err != nil {
 			return err
@@ -983,12 +992,19 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prName string) error {
 
+	pr := r.newBatchPlacementRule(clusterGroupUpgrade, prName)
+
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
+		return err
+	}
+
 	foundPlacementRule := &unstructured.Unstructured{}
 	foundPlacementRule.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
 		Kind:    "PlacementRule",
 		Version: "v1",
 	})
+
 	err := r.Client.Get(ctx, client.ObjectKey{
 		Name:      prName,
 		Namespace: clusterGroupUpgrade.Namespace,
@@ -996,15 +1012,6 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			pr, err := r.newBatchPlacementRule(ctx, clusterGroupUpgrade, prName)
-			if err != nil {
-				return err
-			}
-
-			if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
-				return err
-			}
-
 			err = r.Client.Create(ctx, pr)
 			if err != nil {
 				return err
@@ -1013,7 +1020,8 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 			return err
 		}
 	} else {
-		err = r.Client.Update(ctx, foundPlacementRule)
+		pr.SetResourceVersion(foundPlacementRule.GetResourceVersion())
+		err = r.Client.Update(ctx, pr)
 		if err != nil {
 			return err
 		}
@@ -1022,7 +1030,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prName string) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, prName string) *unstructured.Unstructured {
 	u := &unstructured.Unstructured{}
 	u.Object = map[string]interface{}{
 		"metadata": map[string]interface{}{
@@ -1051,7 +1059,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(ctx context.Contex
 		Version: "v1",
 	})
 
-	return u, nil
+	return u
 }
 
 /* getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
@@ -1134,6 +1142,13 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, commonResourceName string) error {
 
+	// Ensure batch placement bindings.
+	pb := r.newBatchPlacementBinding(clusterGroupUpgrade, commonResourceName, commonResourceName)
+
+	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
+		return err
+	}
+
 	foundPlacementBinding := &unstructured.Unstructured{}
 	foundPlacementBinding.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "policy.open-cluster-management.io",
@@ -1147,16 +1162,6 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			// Ensure batch placement bindings.
-			pb, err := r.newBatchPlacementBinding(ctx, clusterGroupUpgrade, commonResourceName, commonResourceName)
-			if err != nil {
-				return err
-			}
-
-			if err = controllerutil.SetControllerReference(clusterGroupUpgrade, pb, r.Scheme); err != nil {
-				return err
-			}
-
 			err = r.Client.Create(ctx, pb)
 			if err != nil {
 				return err
@@ -1165,7 +1170,8 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 			return err
 		}
 	} else {
-		err = r.Client.Update(ctx, foundPlacementBinding)
+		pb.SetResourceVersion(foundPlacementBinding.GetResourceVersion())
+		err = r.Client.Update(ctx, pb)
 		if err != nil {
 			return err
 		}
@@ -1174,8 +1180,8 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	placementRuleName string, placementBindingName string) (*unstructured.Unstructured, error) {
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
+	placementRuleName string, placementBindingName string) *unstructured.Unstructured {
 
 	var subjects []map[string]interface{}
 
@@ -1208,7 +1214,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(ctx context.Con
 		Version: "v1",
 	})
 
-	return u, nil
+	return u
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string) (*unstructured.UnstructuredList, error) {
