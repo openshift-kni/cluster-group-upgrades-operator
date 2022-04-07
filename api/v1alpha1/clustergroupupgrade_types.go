@@ -146,6 +146,12 @@ type PrecachingStatus struct {
 	Clusters []string          `json:"clusters,omitempty"`
 }
 
+// BackupStatus defines the observed pre-caching status
+type BackupStatus struct {
+	Status   map[string]string `json:"status,omitempty"`
+	Clusters []string          `json:"clusters,omitempty"`
+}
+
 // PolicyContent defines the details of an object configured through a Policy
 type PolicyContent struct {
 	Kind      string  `json:"kind,omitempty"`
@@ -170,6 +176,7 @@ type ClusterGroupUpgradeStatus struct {
 	ManagedPoliciesContent                map[string]string         `json:"managedPoliciesContent,omitempty"`
 	Status                                UpgradeStatus             `json:"status,omitempty"`
 	Precaching                            PrecachingStatus          `json:"precaching,omitempty"`
+	Backup                                *BackupStatus             `json:"backup,omitempty"`
 	ComputedMaxConcurrency                int                       `json:"computedMaxConcurrency,omitempty"`
 }
 
