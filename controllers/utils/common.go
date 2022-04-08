@@ -32,6 +32,9 @@ func GetMinOf3(number1, number2, number3 int) int {
 
 // GetSafeResourceName returns the safename if already allocated in the map and creates a new one if not
 func GetSafeResourceName(name string, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, maxLength, spareLength int) string {
+	if clusterGroupUpgrade.Status.SafeResourceNames == nil {
+		clusterGroupUpgrade.Status.SafeResourceNames = make(map[string]string)
+	}
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
 		safeName = NewSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], maxLength, spareLength)

@@ -236,7 +236,8 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	operator-sdk generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	hack/patch-precache-image.py config/manifests/pre-cache-image-patch.yaml $(PRECACHE_IMG)
+	hack/patch-bundle-images.py config/manifests/pre-cache-image-patch.yaml $(PRECACHE_IMG)
+	hack/patch-bundle-images.py config/manifests/recovery-image-patch.yaml $(RECOVERY_IMG)
 	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
 	operator-sdk bundle validate ./bundle
 

@@ -175,6 +175,12 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	// The list of policies is ordered from the lowest value to the highest.
 	// Policy without a wave is not managed.
 	for _, policy := range policies {
+		// Ignore policies with remediationAction enforce
+		if strings.EqualFold(string(policy.Spec.RemediationAction), "enforce") {
+			r.Log.Info("Ignoring policy " + policy.Name + " with remediationAction enforce")
+			continue
+		}
+
 		deployWave, found := policy.GetAnnotations()[ztpDeployWaveAnnotation]
 		if found {
 			deployWaveInt, err := strconv.Atoi(deployWave)

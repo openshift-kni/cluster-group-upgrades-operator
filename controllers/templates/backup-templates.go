@@ -14,7 +14,10 @@ spec:
       apiVersion: v1
       kind: Namespace
       metadata: 
-        name: backup-agent
+        name: openshift-talo-backup
+        annotations:
+          workload.openshift.io/allowed: management
+
 `
 
 // MngClusterActCreateSA creates serviceaccount
@@ -56,6 +59,9 @@ spec:
           namespace: openshift-talo-backup
 `
 
+// TODO: image must use var {{ .WorkloadImage }} rather than hard coded image
+// during template initialization, this var must be recovered from csv
+
 // MngClusterActCreateBackupJob creates k8s job
 const MngClusterActCreateBackupJob string = `
 {{ template "actionGVK"}}
@@ -70,10 +76,17 @@ spec:
       kind: Job
       metadata:
         name: backup-agent
+        namespace: openshift-talo-backup
+        annotations:
+          target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
       spec:
-	    activeDeadlineSeconds: {{ .JobTimeout }}
+        activeDeadlineSeconds: {{ .JobTimeout }}
         backoffLimit: 0
         template:
+          metadata:
+            name: backup-agent
+            annotations:
+              target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
           spec:
             containers:
               -
@@ -81,7 +94,7 @@ spec:
                   - launchBackup
                   - "--BackupPath"
                   - /var/recovery
-                image: {{ .WorkloadImage }}
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:latest 
                 name: container-image
                 securityContext:
                   privileged: true
@@ -93,7 +106,7 @@ spec:
                     name: backup
             restartPolicy: Never
             hostNetwork: true
-            serviceAccountname: backup-agent
+            serviceAccountName: backup-agent
             volumes:
               -
                 hostPath:
@@ -102,14 +115,14 @@ spec:
                 name: backup
 `
 
-// MngClusterActDeleteNS deletes namespace
-const MngClusterActDeleteNS string = `
+// MngClusterActDeleteBackupNS deletes namespace
+const MngClusterActDeleteBackupNS string = `
 {{ template "actionGVK"}}
 {{ template "metadata" . }}
 spec: 
   actionType: Delete
   kube: 
-    name: backup-agent
+    name: openshift-talo-backup
     resource: namespace
 `
 
@@ -122,4 +135,14 @@ spec:
     resource: jobs
     name: backup-agent
     namespace: openshift-talo-backup
+`
+
+// MngClusterViewBackupNS creates mcv to monitor spoke cluster's namespace
+const MngClusterViewBackupNS string = `
+{{ template "viewGVK"}}
+{{ template "metadata" . }}
+spec:
+  scope:
+    resource: namespaces
+    name: openshift-talo-backup
 `

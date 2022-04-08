@@ -37,7 +37,7 @@ const (
 	PrecacheStateError            = "UnrecoverableError"
 )
 
-// Pre-cache resources conditions
+// Jobresources conditions
 const (
 	NoNsView                   = "NoNsView"
 	NoNsFoundOnSpoke           = "NoNsFoundOnSpoke"
@@ -135,7 +135,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 				return err
 			}
 		case PrecacheStatePreparingToStart:
-			nextState, err = r.handlePreparing(ctx, clusterGroupUpgrade, cluster)
+			nextState, err = r.handlePreparing(ctx, cluster)
 			if err != nil {
 				return err
 			}
@@ -181,7 +181,7 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 	r.Log.Info("[precachingFsm]", "currentState", currentState, "condition", "entry",
 		"cluster", cluster, "nextState", nextState)
 
-	err := r.deleteAllViews(ctx, cluster)
+	err := r.deleteAllViews(ctx, cluster, precacheAllViews)
 	if err != nil {
 		return currentState, err
 	}
@@ -203,7 +203,6 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 // returns: error
 //nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) handlePreparing(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster string) (string, error) {
 
 	//nolint:ineffassign
@@ -240,7 +239,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	nextState, currentState := PrecacheStateStarting, PrecacheStateStarting
 	var condition string
 
-	condition, err := r.getStartingConditions(ctx, cluster, precacheJobView[0].resourceName)
+	condition, err := r.getStartingConditions(ctx, cluster, precacheJobView[0].resourceName, precache)
 	if err != nil {
 		return currentState, err
 	}
