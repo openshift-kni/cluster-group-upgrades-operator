@@ -297,7 +297,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 }
 
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
-// returns: templateData (softwareSpec)
+// returns: precacheTemplateData (softwareSpec)
 //          error
 //nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(

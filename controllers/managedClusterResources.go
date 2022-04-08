@@ -91,7 +91,7 @@ var precacheNSViewTemplates = []resourceTemplate{
 	{"view-precache-namespace", templates.MngClusterViewNamespace},
 }
 
-var allViews = []resourceTemplate{ // only used for deleting, hence empty templates
+var precacheAllViews = []resourceTemplate{ // only used for deleting, hence empty templates
 	{"view-precache-namespace", ""},
 	{"view-precache-job", ""},
 	{"view-precache-spec-configmap", ""},
@@ -99,10 +99,40 @@ var allViews = []resourceTemplate{ // only used for deleting, hence empty templa
 	{"view-precache-cluster-role-binding", ""},
 }
 
+var backupDependenciesCreateTemplates = []resourceTemplate{
+	{"backup-ns-create", templates.MngClusterActCreateBackupNS},
+	{"backup-sa-create", templates.MngClusterActCreateSA},
+	{"backup-crb-create", templates.MngClusterActCreateRB},
+	{"view-backup-namespace", templates.MngClusterViewBackupNS},
+}
+
+var backupCreateTemplates = []resourceTemplate{
+	{"backup-job-create", templates.MngClusterActCreateBackupJob},
+	{"view-backup-job", templates.MngClusterViewBackupJob},
+}
+
+var backupJobView = []resourceTemplate{
+	{"view-backup-job", templates.MngClusterViewBackupJob},
+}
+
+var backupNSView = []resourceTemplate{
+	{"view-backup-namespace", templates.MngClusterViewBackupNS},
+}
+
+var backupDeleteTemplates = []resourceTemplate{
+	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
+}
+
+var backupView = []resourceTemplate{ // only used for deleting, hence empty templates
+	{"view-backup-job", ""},
+	{"view-backup-namespace", ""},
+}
+
 var (
 	jobsInitialStatus = []string{"status", "conditions"}
 	jobsFinalStatus   = []string{"status", "result", "status"}
 	precache          = "precache"
+	backup            = "backup"
 )
 
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
@@ -187,10 +217,10 @@ func (r *ClusterGroupUpgradeReconciler) getView(
 
 // deleteAllViews deletes all managed cluster view resources
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) deleteAllViews(ctx context.Context, cluster string) error {
+func (r *ClusterGroupUpgradeReconciler) deleteAllViews(ctx context.Context, cluster string, deleteViews []resourceTemplate) error {
 	// Cleanup all existing view objects that might have been left behind
 	// in case of a crash etc.
-	for _, item := range allViews {
+	for _, item := range deleteViews {
 		err := r.deleteManagedClusterViewResource(ctx, item.resourceName, cluster)
 		if err != nil {
 			if !errors.IsNotFound(err) {
@@ -252,7 +282,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingCleanup(
 		}
 
 		for _, cluster := range clusters {
-			err := r.deleteAllViews(ctx, cluster)
+			err := r.deleteAllViews(ctx, cluster, precacheAllViews)
 
 			if err != nil {
 				return err
@@ -338,6 +368,8 @@ func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 					"Partially done")
 				return JobDeadline, nil
 			} else if condition.Reason == "BackoffLimitExceeded" {
+				r.Log.Info("[getJobStatus]", "BackoffLimitExceeded",
+					"Job failed")
 				return JobBackoffLimitExceeded, nil
 			}
 			break
@@ -350,17 +382,20 @@ func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 // returns: condition (string)
 //			error
 func (r *ClusterGroupUpgradeReconciler) getStartingConditions(
-	ctx context.Context, cluster, resourceName string) (
+	ctx context.Context, cluster, resourceName string, jobType string) (
 	string, error) {
 
-	depsViewPresent, err := r.checkDependenciesViews(ctx, cluster)
-	if err != nil {
-		return UnforeseenCondition, err
+	if jobType == precache {
+		depsViewPresent, err := r.checkDependenciesViews(ctx, cluster)
+		if err != nil {
+			return UnforeseenCondition, err
+		}
+		if !depsViewPresent {
+			return DependenciesViewNotPresent, nil
+		}
 	}
-	if !depsViewPresent {
-		return DependenciesViewNotPresent, nil
-	}
-	depsPresent, err := r.checkDependencies(ctx, cluster)
+
+	depsPresent, err := r.checkDependencies(ctx, cluster, jobType)
 	if err != nil {
 		return UnforeseenCondition, err
 	}
@@ -442,9 +477,18 @@ func (r *ClusterGroupUpgradeReconciler) checkDependenciesViews(
 // returns: 	available (bool)
 //				error
 func (r *ClusterGroupUpgradeReconciler) checkDependencies(
-	ctx context.Context, cluster string) (bool, error) {
+	ctx context.Context, cluster, jobType string) (bool, error) {
 
-	for _, item := range precacheDependenciesViewTemplates {
+	//nolint:ineffassign
+	var templates []resourceTemplate
+	if jobType == precache {
+		//nolint:ineffassign
+		templates = precacheDependenciesViewTemplates
+	} else {
+		templates = backupNSView
+	}
+
+	for _, item := range templates {
 		view, available, err := r.getView(
 			ctx, item.resourceName, cluster)
 		if err != nil {
@@ -491,7 +535,26 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	return rv, nil
 }
 
-// deployworkload deploys precaching workload on the spoke
+func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) *templateData {
+
+	rv := new(templateData)
+
+	rv.Cluster = clusterName
+	rv.JobTimeout = uint64(
+		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)
+
+	// TODO: currently using hard-coded recovery image, we must get
+	// image from csv.
+	//	image, err := r.getPrecacheimagePullSpec(ctx, clusterGroupUpgrade)
+	//	if err != nil {
+	//		return rv, err
+	//	}
+	//	rv.WorkloadImage = image
+
+	return rv
+}
+
+// deployPrecachingWorkload deploys precaching workload on the spoke
 //          using a set of templated manifests
 // returns: error
 func (r *ClusterGroupUpgradeReconciler) deployWorkload(
@@ -512,14 +575,24 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 		spec.ViewUpdateIntervalSec = utils.ViewUpdateSec * len(clusterGroupUpgrade.Status.Precaching.Clusters)
 		r.Log.Info("[deployPrecachingWorkload]", "getPrecacheJobTemplateData",
 			cluster, "status", "success")
+	case backup:
+		spec = r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+		if err != nil {
+			return err
+		}
+		r.Log.Info("[deployBackupWorkload]", "getBackupJobTemplateData",
+			cluster, "spec", spec, "status", "success")
 	default:
 		return fmt.Errorf("[deployWorkload] no workload found to deploy")
 	}
 
 	// Delete the job view so it is refreshed
 	err = r.deleteManagedClusterViewResource(ctx, mcvTemplate, cluster)
+	// if the job view is not present, we should continue
 	if err != nil {
-		return err
+		if !errors.IsNotFound(err) {
+			return err
+		}
 	}
 
 	err = r.createResourcesFromTemplates(ctx, spec, template)
