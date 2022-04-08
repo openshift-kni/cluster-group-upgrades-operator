@@ -54,7 +54,7 @@ type ClusterGroupUpgradeReconciler struct {
 	Recorder record.EventRecorder
 }
 
-const statusUpdateWaitInSeconds = 3
+const statusUpdateWaitInMilliSeconds = 100
 
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/status,verbs=get;update;patch
@@ -1666,7 +1666,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 		return err
 	}
 	// Wait a bit so that API server/etcd syncs up and the next reconsile call will get the updated CGU
-	time.Sleep(statusUpdateWaitInSeconds * time.Second)
+	time.Sleep(statusUpdateWaitInMilliSeconds * time.Millisecond)
 	return nil
 }
 
