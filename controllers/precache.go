@@ -27,6 +27,18 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 
 	if clusterGroupUpgrade.Spec.PreCaching {
 		// Pre-caching is required
+		if clusterGroupUpgrade.Status.Precaching == nil {
+			clusterGroupUpgrade.Status.Precaching = &ranv1alpha1.PrecachingStatus{
+				Spec: &ranv1alpha1.PrecachingSpec{
+					PlatformImage:                "",
+					OperatorsIndexes:             []string{},
+					OperatorsPackagesAndChannels: []string{},
+				},
+				Status:   make(map[string]string),
+				Clusters: []string{},
+			}
+		}
+
 		doneCondition := meta.FindStatusCondition(
 			clusterGroupUpgrade.Status.Conditions, "PrecachingDone")
 		r.Log.Info("[reconcilePrecaching]",

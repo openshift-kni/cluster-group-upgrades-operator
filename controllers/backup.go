@@ -27,15 +27,10 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 
 	if clusterGroupUpgrade.Spec.Backup {
 		// Backup is required
-
-		clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
-		}
 		if clusterGroupUpgrade.Status.Backup == nil {
 			clusterGroupUpgrade.Status.Backup = &ranv1alpha1.BackupStatus{
 				Status:   make(map[string]string),
-				Clusters: clusters,
+				Clusters: []string{},
 			}
 		}
 
@@ -46,18 +41,31 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 			return nil
 		}
 		// Backup is required and not marked as done
-		return r.triggerBackup(ctx, clusterGroupUpgrade.Status.Backup.Clusters, clusterGroupUpgrade)
+		return r.triggerBackup(ctx, clusterGroupUpgrade)
 	}
 	// No backup required
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context, clusters []string, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	r.setBackupRequired(clusterGroupUpgrade)
-	r.Log.Info("[triggerBackup]", "triggerbackup function", clusters)
 
 	clusterStates := make(map[string]string)
+	var (
+		clusters []string
+		err      error
+	)
+	if len(clusterGroupUpgrade.Status.Backup.Clusters) != 0 {
+		clusters = clusterGroupUpgrade.Status.Backup.Clusters
+	} else {
+		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
+		}
+		clusterGroupUpgrade.Status.Backup.Clusters = clusters
+	}
+
 	for _, cluster := range clusters {
 		var (
 			currentState, nextState string

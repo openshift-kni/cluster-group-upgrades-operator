@@ -44,8 +44,6 @@ status:
   placementRules:
   - cgu-policy2-common-pao-sub-policy
   - cgu-policy3-common-ptp-sub-policy
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke1
     - spoke2
