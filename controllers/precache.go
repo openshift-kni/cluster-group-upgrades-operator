@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"strings"
 
@@ -18,9 +19,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime/schema"
-	"k8s.io/client-go/dynamic"
-	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 // reconcilePrecaching provides the main precaching entry point
@@ -508,36 +506,6 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	return true, nil
 }
 
-// getMyCsv gets CGU clusterserviceversion.
-// returns: map[string]interface{} - the unstructured CSV
-//			error
-func (r *ClusterGroupUpgradeReconciler) getMyCsv(
-	ctx context.Context) (map[string]interface{}, error) {
-
-	config := ctrl.GetConfigOrDie()
-	dynamic := dynamic.NewForConfigOrDie(config)
-	resourceID := schema.GroupVersionResource{
-		Group:    "operators.coreos.com",
-		Version:  "v1alpha1",
-		Resource: "clusterserviceversions",
-	}
-	list, err := dynamic.Resource(resourceID).List(ctx, metav1.ListOptions{})
-
-	if err != nil {
-		return nil, err
-	}
-
-	for _, item := range list.Items {
-		name := fmt.Sprintf("%s", item.Object["metadata"].(map[string]interface{})["name"])
-		if strings.Contains(name, utils.CsvNamePrefix) {
-			r.Log.Info("[getMyCsv]", "item", name)
-			return item.Object, nil
-		}
-	}
-
-	return nil, fmt.Errorf("CSV %s not found", utils.CsvNamePrefix)
-}
-
 // getPrecacheimagePullSpec gets the precaching workload image pull spec.
 // returns: image - pull spec string
 //          error
@@ -553,22 +521,12 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 	}
 	image := overrides["precache.image"]
 	if image == "" {
-		csv, err := r.getMyCsv(ctx)
-		if err != nil {
-			return "", err
+		image = os.Getenv("PRECACHE_IMG")
+		r.Log.Info("[getPrecacheimagePullSpec]", "workload image", image)
+		if image == "" {
+			return "", fmt.Errorf(
+				"can't find pre-caching image pull spec in environment or overrides")
 		}
-		spec := csv["spec"]
-
-		imagesList := spec.(map[string]interface{})["relatedImages"]
-		for _, item := range imagesList.([]interface{}) {
-			if item.(map[string]interface{})["name"] == "pre-caching-workload" {
-				r.Log.Info("[getPrecacheimagePullSpec]", "workload image",
-					item.(map[string]interface{})["image"].(string))
-				return item.(map[string]interface{})["image"].(string), nil
-			}
-		}
-		return "", fmt.Errorf(
-			"can't find pre-caching image pull spec in TALO CSV or overrides")
 	}
 	return image, nil
 }

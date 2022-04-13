@@ -124,6 +124,7 @@ common-deps-update:	controller-gen kustomize
 ci-job: common-deps-update fmt vet lint unittests
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
+OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
 KUSTOMIZE = $(shell pwd)/bin/kustomize
 
 .PHONY: kind-deps-update
@@ -136,6 +137,11 @@ non-kind-deps-update: common-deps-update
 
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
+
+operator-sdk: ## Download operator-sdk locally if necessary.
+ifeq (,$(wildcard $(OPERATOR_SDK)))
+	curl https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.9.0/operator-sdk-v1.10.1-ocp-linux-x86_64.tar.gz | tar -xz -C bin/ && sudo chmod +x $(OPERATOR_SDK)
+endif
 
 kustomize: ## Download kustomize locally if necessary.
 	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v3@v3.8.7)
@@ -167,7 +173,7 @@ build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	go run ./main.go
+	PRECACHE_IMG=$(PRECACHE_IMG) go run ./main.go
 
 docker-build: ## Build container image with the manager.
 	${ENGINE} build -t ${IMG} -f Dockerfile .
@@ -198,11 +204,10 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 .PHONY: bundle
 bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
-	operator-sdk generate kustomize manifests -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG)
-	hack/patch-precache-image.py config/manifests/pre-cache-image-patch.yaml $(PRECACHE_IMG)
-	$(KUSTOMIZE) build config/manifests | operator-sdk generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
-	operator-sdk bundle validate ./bundle
+	$(OPERATOR_SDK) generate kustomize manifests -q
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
+	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle -q --overwrite --version $(VERSION) $(BUNDLE_METADATA_OPTS)
+	$(OPERATOR_SDK) bundle validate ./bundle
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
