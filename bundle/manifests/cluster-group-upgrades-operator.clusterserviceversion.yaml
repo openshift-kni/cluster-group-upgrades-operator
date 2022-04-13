@@ -214,6 +214,9 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
+                env:
+                - name: PRECACHE_IMG
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
                 livenessProbe:
                   httpGet:
@@ -290,7 +293,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  relatedImages:
-  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
-    name: pre-caching-workload
   version: 0.0.3
