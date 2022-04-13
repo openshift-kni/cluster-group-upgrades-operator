@@ -37,6 +37,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
@@ -74,8 +76,6 @@ type ClusterGroupUpgradeReconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 //nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("ClusterGroupUpgrade", req.NamespacedName)
-
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
 	err := r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
 	if err != nil {
@@ -83,9 +83,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, nil
 		}
 		r.Log.Error(err, "Failed to get ClusterGroupUpgrade")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
-
+	r.Log.Info("Start reconciling CGU", "name", clusterGroupUpgrade.Name, "version", clusterGroupUpgrade.GetResourceVersion())
 	reconcileTime, err := r.handleCguFinalizer(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return ctrl.Result{}, err
@@ -155,6 +155,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				Reason:  "UpgradeNotStarted",
 				Message: "The ClusterGroupUpgrade CR is not enabled",
 			})
+			nextReconcile = ctrl.Result{Requeue: true}
 		} else if readyCondition.Status == metav1.ConditionFalse {
 			if readyCondition.Reason == "PrecachingRequired" {
 				requeueAfter := 5 * time.Minute
@@ -1638,7 +1639,6 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -1807,9 +1807,32 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ranv1alpha1.ClusterGroupUpgrade{}).
-		Owns(placementRuleUnstructured).
-		Owns(placementBindingUnstructured).
-		Owns(policyUnstructured).
+		For(&ranv1alpha1.ClusterGroupUpgrade{}).WithEventFilter(predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			reconcile := false
+			// Generation is only updated on spec changes (also on deletion),
+			// not metadata or status
+			oldGeneration := e.ObjectOld.GetGeneration()
+			newGeneration := e.ObjectNew.GetGeneration()
+			// This is a hack so we can ignore update event based on object kind
+			// The Kind field in the objects from the event is not populated for some reason
+			// Reference: https://github.com/kubernetes/client-go/issues/308
+			if e.ObjectNew.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+				// status update only for parent policies
+				reconcile = oldGeneration == newGeneration
+			} else {
+				// spec update only for CGU
+				reconcile = oldGeneration != newGeneration
+			}
+			return reconcile
+		},
+		CreateFunc: func(ce event.CreateEvent) bool {
+			// only interested in CGU create event
+			if ce.Object.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+				return false
+			}
+			return true
+		},
+	}).Owns(policyUnstructured).
 		Complete(r)
 }
