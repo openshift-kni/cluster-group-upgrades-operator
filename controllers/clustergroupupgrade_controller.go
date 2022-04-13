@@ -66,7 +66,6 @@ const statusUpdateWaitInMilliSeconds = 100
 //+kubebuilder:rbac:groups=action.open-cluster-management.io,resources=managedclusteractions,verbs=create;update;delete;get;list;watch;patch
 //+kubebuilder:rbac:groups=view.open-cluster-management.io,resources=managedclusterviews,verbs=create;update;delete;get;list;watch;patch
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch
-//+kubebuilder:rbac:groups=operators.coreos.com,resources=clusterserviceversions,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -79,8 +78,6 @@ const statusUpdateWaitInMilliSeconds = 100
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 //nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	_ = r.Log.WithValues("ClusterGroupUpgrade", req.NamespacedName)
-
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
 	err := r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
 	if err != nil {
@@ -88,7 +85,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return ctrl.Result{}, nil
 		}
 		r.Log.Error(err, "Failed to get ClusterGroupUpgrade")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 
 	r.Log.Info("Start reconciling CGU", "name", clusterGroupUpgrade.Name, "version", clusterGroupUpgrade.GetResourceVersion())
@@ -1872,22 +1869,30 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}).WithEventFilter(predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
-			// This is a hack so we can ignore CGU status update only
+			reconcile := false
+			// Generation is only updated on spec changes (also on deletion),
+			// not metadata or status
+			oldGeneration := e.ObjectOld.GetGeneration()
+			newGeneration := e.ObjectNew.GetGeneration()
+			// This is a hack so we can ignore update event based on object kind
 			// The Kind field in the objects from the event is not populated for some reason
 			// Reference: https://github.com/kubernetes/client-go/issues/308
-			if len(e.ObjectNew.GetOwnerReferences()) == 0 || e.ObjectNew.GetOwnerReferences()[0].Kind == "ManagedCluster" {
-				oldGeneration := e.ObjectOld.GetGeneration()
-				newGeneration := e.ObjectNew.GetGeneration()
-				// Generation is only updated on spec changes (also on deletion),
-				// not metadata or status
-				// Filter out events where the generation hasn't changed to
-				// avoid being triggered by status updates
-				return oldGeneration != newGeneration
+			if e.ObjectNew.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+				// status update only for parent policies
+				reconcile = oldGeneration == newGeneration
+			} else {
+				// spec update only for CGU
+				reconcile = oldGeneration != newGeneration
+			}
+			return reconcile
+		},
+		CreateFunc: func(ce event.CreateEvent) bool {
+			// only interested in CGU create event
+			if ce.Object.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+				return false
 			}
 			return true
 		},
-	}).Owns(placementRuleUnstructured).
-		Owns(placementBindingUnstructured).
-		Owns(policyUnstructured).
+	}).Owns(policyUnstructured).
 		Complete(r)
 }

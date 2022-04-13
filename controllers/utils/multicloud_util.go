@@ -21,7 +21,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -220,8 +219,6 @@ func EnsureManagedClusterView(
 			return nil, err
 		}
 	}
-	// Give some time for the ManagedClusterView to retrieve the info.
-	time.Sleep(MultiCloudWaitTimeSec * time.Second)
 	return mcv, nil
 }
 
