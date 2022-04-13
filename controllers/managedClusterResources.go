@@ -271,33 +271,53 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 
 // precachingCleanup deletes all precaching objects. Called when upgrade is done
 // returns: 			error
-func (r *ClusterGroupUpgradeReconciler) precachingCleanup(
+func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	if clusterGroupUpgrade.Spec.PreCaching {
-		clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return fmt.Errorf("[precachingCleanup]cannot obtain the CGU cluster list: %s", err)
+	var viewTemplate, deleteTemplate []resourceTemplate
+
+	switch {
+	case clusterGroupUpgrade.Spec.Backup && clusterGroupUpgrade.Spec.PreCaching:
+		for _, v := range append(backupView, precacheAllViews...) {
+			viewTemplate = append(viewTemplate, v)
+		}
+		for _, v := range append(backupDeleteTemplates, precacheDeleteTemplates...) {
+			deleteTemplate = append(deleteTemplate, v)
 		}
 
-		for _, cluster := range clusters {
-			err := r.deleteAllViews(ctx, cluster, precacheAllViews)
+	case clusterGroupUpgrade.Spec.Backup:
+		viewTemplate = backupView
+		deleteTemplate = backupDeleteTemplates
 
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
-			if err != nil {
-				return err
-			}
+	case clusterGroupUpgrade.Spec.PreCaching:
+		viewTemplate = precacheAllViews
+		deleteTemplate = precacheDeleteTemplates
 
+	default:
+		return nil
+	}
+
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("[jobandViewCleanup]cannot obtain the CGU cluster list: %s", err)
+	}
+
+	for _, cluster := range clusters {
+		err := r.deleteAllViews(ctx, cluster, viewTemplate)
+
+		if err != nil {
+			return err
+		}
+		data := templateData{
+			Cluster: cluster,
+		}
+		err = r.createResourcesFromTemplates(ctx, &data, deleteTemplate)
+		if err != nil {
+			return err
 		}
 	}
-	// No precaching required
+
 	return nil
 }
 
