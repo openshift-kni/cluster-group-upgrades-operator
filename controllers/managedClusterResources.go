@@ -29,12 +29,9 @@ import (
 
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/client-go/dynamic"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -136,7 +133,7 @@ var (
 )
 
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
-//      resources from templates using dynamic client
+//      resources from templates
 // returns:   error
 func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	ctx context.Context, data *templateData, templates []resourceTemplate) error {
@@ -145,7 +142,7 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 		r.Log.Info("[createResourcesFromTemplates]", "cluster", data.Cluster, "template", item.resourceName)
 		obj := &unstructured.Unstructured{}
 		w, err := r.renderYamlTemplate(item.resourceName, item.template, *data)
-		if err != nil && !errors.IsAlreadyExists(err) {
+		if err != nil {
 			return err
 		}
 
@@ -173,15 +170,15 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
 	ctx context.Context, name string, namespace string) error {
 
-	config := ctrl.GetConfigOrDie()
-	dynamic := dynamic.NewForConfigOrDie(config)
-	resourceID := schema.GroupVersionResource{
-		Group:    "view.open-cluster-management.io",
-		Version:  "v1beta1",
-		Resource: "managedclusterviews",
-	}
-	err := dynamic.Resource(resourceID).Namespace(namespace).Delete(
-		ctx, name, metav1.DeleteOptions{})
+	var obj = &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "view.open-cluster-management.io",
+		Kind:    "ManagedClusterView",
+		Version: "v1beta1",
+	})
+	obj.SetName(name)
+	obj.SetNamespace(namespace)
+	err := r.Delete(ctx, obj)
 	if err != nil {
 		return err
 	}

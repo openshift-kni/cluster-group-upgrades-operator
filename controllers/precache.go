@@ -95,9 +95,8 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 //      - CatalogSource: must be explicitly configured to be precached.
 //        All the clusters in the CGU must have same catalog source(s)
 // returns: precachingSpec, error
-// nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	policies []*unstructured.Unstructured) (ranv1alpha1.PrecachingSpec, error) {
 
 	var spec ranv1alpha1.PrecachingSpec
@@ -211,7 +210,7 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster string) (bool, error) {
 
-	spec := r.getPrecacheSpecTemplateData(ctx, clusterGroupUpgrade)
+	spec := r.getPrecacheSpecTemplateData(clusterGroupUpgrade)
 	spec.Cluster = cluster
 	msg := fmt.Sprintf("%v", spec)
 	r.Log.Info("[deployDependencies]", "getPrecacheSpecTemplateData",
@@ -257,9 +256,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
 // returns: precacheTemplateData (softwareSpec)
 //          error
-//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
-	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) *templateData {
 
 	rv := new(templateData)
