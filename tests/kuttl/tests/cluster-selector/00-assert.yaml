@@ -61,8 +61,6 @@ status:
   - cgu-cluster-selector-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-cluster-selector-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke1
     - spoke4

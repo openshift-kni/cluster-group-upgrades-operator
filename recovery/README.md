@@ -167,6 +167,53 @@ spec:
                 name: backup
 ```
 
+## Create Recovery Partition
+
+The recovery partition can be created at install time by defining an extra-manifest MachineConfig, as described here:<br>
+<https://github.com/openshift-kni/cnf-features-deploy/blob/master/ztp/gitops-subscriptions/argocd/README.md#deploying-a-site>
+
+The following extra-manifest MachineConfig will create a 50G partition on the specified disk:
+
+```
+apiVersion: machineconfiguration.openshift.io/v1
+kind: MachineConfig
+metadata:
+  labels:
+    machineconfiguration.openshift.io/role: master
+  name: 98-var-recovery-partition
+spec:
+  config:
+    ignition:
+      version: 3.2.0
+    storage:
+      disks:
+        # Use persistent disk path for device, as /dev/sd* names can change
+        - device: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0
+          wipeTable: true # Wipe the disk
+          partitions:
+          - label: recovery
+            startMiB: 1 # Optional
+            sizeMiB: 51200
+      filesystems:
+        - device: /dev/disk/by-partlabel/recovery
+          path: /var/recovery
+          format: xfs
+          wipe_filesystem: true
+    systemd:
+      units:
+        - name: var-recovery.mount
+          enabled: true
+          contents: |
+            [Unit]
+            Before=local-fs.target
+            [Mount]
+            What=/dev/disk/by-partlabel/recovery
+            Where=/var/recovery
+            Options=defaults
+            [Install]
+            WantedBy=local-fs.target
+```
+
 ## Recovery from Upgrade Failure
 
 ### Platform Rollback

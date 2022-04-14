@@ -34,8 +34,6 @@ status:
   - cgu-policy5-subscriptions-placement-kuttl
   placementRules:
   - cgu-policy5-subscriptions-placement-kuttl
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke1
     - spoke2

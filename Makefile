@@ -132,7 +132,7 @@ lint: ## Run golint against code.
 	hack/lint.sh
 
 .PHONY: unittests
-unittests:
+unittests: pre-cache-unit-test
 	@echo "Running unittests"
 	go test -v ./controllers/...
 

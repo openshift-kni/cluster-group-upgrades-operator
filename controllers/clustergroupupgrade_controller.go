@@ -136,17 +136,20 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			r.Log.Error(err, "reconcilePrecaching error")
 			return ctrl.Result{}, err
 		}
-		for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
-			//nolint
-			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
-				requeueAfter := 30 * time.Second
-				nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
-				err = r.updateStatus(ctx, clusterGroupUpgrade)
-				if err != nil {
-					return ctrl.Result{}, err
+		if clusterGroupUpgrade.Status.Precaching != nil {
+			for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
+				//nolint
+				if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
+					requeueAfter := 30 * time.Second
+					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+					err = r.updateStatus(ctx, clusterGroupUpgrade)
+					if err != nil {
+						return ctrl.Result{}, err
+					}
+					return nextReconcile, nil
 				}
-				return nextReconcile, nil
 			}
+
 		}
 
 		readyCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, "Ready")
@@ -341,10 +344,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				if isUpgradeComplete {
-					err = r.precachingCleanup(ctx, clusterGroupUpgrade)
+					err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
 					if err != nil {
-						msg := fmt.Sprint("Precaching cleanup failed with error:", err)
-						r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "PrecachingCleanupFailed", msg)
+						msg := fmt.Sprint("Job and managedclusterview cleanup failed with error:", err)
+						r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "JobAndViewCleanupFailed", msg)
 					}
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",

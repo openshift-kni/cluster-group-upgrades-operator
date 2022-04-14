@@ -199,8 +199,6 @@ status:
   placementRules:
   - cgu-c-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-c-policy4-common-sriov-sub-policy-placement-kuttl
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke6
   safeResourceNames:

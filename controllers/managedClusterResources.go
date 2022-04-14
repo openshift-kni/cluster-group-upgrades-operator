@@ -29,12 +29,9 @@ import (
 
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
-	"k8s.io/client-go/dynamic"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -136,7 +133,7 @@ var (
 )
 
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
-//      resources from templates using dynamic client
+//      resources from templates
 // returns:   error
 func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	ctx context.Context, data *templateData, templates []resourceTemplate) error {
@@ -145,7 +142,7 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 		r.Log.Info("[createResourcesFromTemplates]", "cluster", data.Cluster, "template", item.resourceName)
 		obj := &unstructured.Unstructured{}
 		w, err := r.renderYamlTemplate(item.resourceName, item.template, *data)
-		if err != nil && !errors.IsAlreadyExists(err) {
+		if err != nil {
 			return err
 		}
 
@@ -173,15 +170,15 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
 	ctx context.Context, name string, namespace string) error {
 
-	config := ctrl.GetConfigOrDie()
-	dynamic := dynamic.NewForConfigOrDie(config)
-	resourceID := schema.GroupVersionResource{
-		Group:    "view.open-cluster-management.io",
-		Version:  "v1beta1",
-		Resource: "managedclusterviews",
-	}
-	err := dynamic.Resource(resourceID).Namespace(namespace).Delete(
-		ctx, name, metav1.DeleteOptions{})
+	var obj = &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "view.open-cluster-management.io",
+		Kind:    "ManagedClusterView",
+		Version: "v1beta1",
+	})
+	obj.SetName(name)
+	obj.SetNamespace(namespace)
+	err := r.Delete(ctx, obj)
 	if err != nil {
 		return err
 	}
@@ -271,33 +268,53 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 
 // precachingCleanup deletes all precaching objects. Called when upgrade is done
 // returns: 			error
-func (r *ClusterGroupUpgradeReconciler) precachingCleanup(
+func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	if clusterGroupUpgrade.Spec.PreCaching {
-		clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return fmt.Errorf("[precachingCleanup]cannot obtain the CGU cluster list: %s", err)
+	var viewTemplate, deleteTemplate []resourceTemplate
+
+	switch {
+	case clusterGroupUpgrade.Spec.Backup && clusterGroupUpgrade.Spec.PreCaching:
+		for _, v := range append(backupView, precacheAllViews...) {
+			viewTemplate = append(viewTemplate, v)
+		}
+		for _, v := range append(backupDeleteTemplates, precacheDeleteTemplates...) {
+			deleteTemplate = append(deleteTemplate, v)
 		}
 
-		for _, cluster := range clusters {
-			err := r.deleteAllViews(ctx, cluster, precacheAllViews)
+	case clusterGroupUpgrade.Spec.Backup:
+		viewTemplate = backupView
+		deleteTemplate = backupDeleteTemplates
 
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
-			if err != nil {
-				return err
-			}
+	case clusterGroupUpgrade.Spec.PreCaching:
+		viewTemplate = precacheAllViews
+		deleteTemplate = precacheDeleteTemplates
 
+	default:
+		return nil
+	}
+
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("[jobandViewCleanup]cannot obtain the CGU cluster list: %s", err)
+	}
+
+	for _, cluster := range clusters {
+		err := r.deleteAllViews(ctx, cluster, viewTemplate)
+
+		if err != nil {
+			return err
+		}
+		data := templateData{
+			Cluster: cluster,
+		}
+		err = r.createResourcesFromTemplates(ctx, &data, deleteTemplate)
+		if err != nil {
+			return err
 		}
 	}
-	// No precaching required
+
 	return nil
 }
 

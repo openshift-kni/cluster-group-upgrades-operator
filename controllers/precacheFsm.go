@@ -78,7 +78,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			return nil
 		}
 
-		spec, err := r.extractPrecachingSpecFromPolicies(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+		spec, err := r.extractPrecachingSpecFromPolicies(clusterGroupUpgrade, managedPoliciesPresent)
 		if err != nil {
 			return err
 		}
@@ -102,11 +102,14 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			Reason:  "PrecacheSpecIsWellFormed",
 			Message: "Pre-caching spec is valid and consistent"})
 
-		clusterGroupUpgrade.Status.Precaching.Spec = spec
+		clusterGroupUpgrade.Status.Precaching.Spec = &spec
 	}
 
-	var clusters []string
-	var err error
+	var (
+		clusters []string
+		err      error
+	)
+
 	if len(clusterGroupUpgrade.Status.Precaching.Clusters) != 0 {
 		clusters = clusterGroupUpgrade.Status.Precaching.Clusters
 	} else {
@@ -125,12 +128,15 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		} else {
 			currentState = clusterGroupUpgrade.Status.Precaching.Status[cluster]
 		}
-		var nextState string
+		var (
+			nextState string
+			err       error
+		)
 		r.Log.Info("[precachingFsm]", "currentState", currentState, "cluster", cluster)
 		switch currentState {
 		// Initial State
 		case PrecacheStateNotStarted:
-			nextState, err = r.handleNotStarted(ctx, clusterGroupUpgrade, cluster)
+			nextState, err = r.handleNotStarted(ctx, cluster)
 			if err != nil {
 				return err
 			}
@@ -164,7 +170,6 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 
 	}
-	clusterGroupUpgrade.Status.Precaching.Status = make(map[string]string)
 	clusterGroupUpgrade.Status.Precaching.Status = clusterStates
 	r.checkAllPrecachingDone(clusterGroupUpgrade)
 	return nil
@@ -172,9 +177,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 
 // handleNotStarted handles conditions in PrecacheStateNotStarted
 // returns: error
-//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster string) (string, error) {
 
 	currentState, nextState := PrecacheStateNotStarted, PrecacheStatePreparingToStart
@@ -201,13 +204,11 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 
 // handlePreparing handles conditions in PrecacheStatePreparingToStart
 // returns: error
-//nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) handlePreparing(ctx context.Context,
 	cluster string) (string, error) {
 
-	//nolint:ineffassign
-	currentState, nextState := PrecacheStatePreparingToStart, PrecacheStatePreparingToStart
-	//nolint:ineffassign
+	currentState := PrecacheStatePreparingToStart
+	var nextState string
 	var condition string
 	condition, err := r.getPreparingConditions(ctx, cluster, precacheNSViewTemplates[0].resourceName)
 	if err != nil {

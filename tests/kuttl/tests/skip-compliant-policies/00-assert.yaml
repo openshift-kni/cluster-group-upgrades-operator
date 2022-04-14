@@ -54,8 +54,6 @@ status:
   - cgu-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke1
     - spoke2

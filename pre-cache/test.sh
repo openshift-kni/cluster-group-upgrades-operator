@@ -49,24 +49,24 @@ echo "Testing common functions:"
 # shellcheck disable=SC2154
 result=$(pull_index "temp" $pull_secret_path)
 [[ $? -eq 0 ]] || fatal "pull_index unexpected exit code"
-[[ $result == "pull --quiet temp --root=/cache --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
+[[ $result == "pull --quiet temp --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
 echo " Index pull pass"
 
 result=$(mount_index test)
 [[ $? -eq 0 ]] || fatal "mount_index unexpected exit code"
-[[ $result == "--root=/cache image mount test" ]]  || fatal "Index image mount failure"
+[[ $result == "image mount test" ]]  || fatal "Index image mount failure"
 echo " Index image mount pass"
 
 result=$(unmount_index test)
 [[ $? -eq 0 ]] || fatal "mount_index_image unexpected exit code"
-[[ $result == "--root=/cache image unmount test" ]]  || fatal "Index image unmount failure"
+[[ $result == "image unmount test" ]]  || fatal "Index image unmount failure"
 echo " Index image unmount pass"
 
 # Test olm
 echo "Testing olm unit:"
 result=$(extract_packages)
 [[ $result == "package1,package2" ]]  || fatal "Package name extraction failure"
-echo " extract_packages - OK"
+echo " extract_packages - pass"
 
 # Test release
 echo "Testing release unit:"

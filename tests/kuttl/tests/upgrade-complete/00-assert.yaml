@@ -39,8 +39,6 @@ status:
   placementRules:
   - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
-  precaching:
-    spec: {}
   remediationPlan:
   - - spoke1
   safeResourceNames:
