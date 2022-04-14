@@ -1623,7 +1623,11 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-// checkDuplicateChildResources goes through the list of resources against the current names map. Duplicate (with same desired name annotation value) ones are removed.
+/* checkDuplicateChildResources goes through the list of resources against the current names map. Duplicate (with same desired name annotation value) ones are removed.
+   If no colision, u gets added to the childResourceNameList and safeNameMap gets updated
+
+   returns: the updated childResourceNameList
+*/
 func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNameList []string, u *unstructured.Unstructured) ([]string, error) {
 	if desiredName, ok := u.GetAnnotations()[utils.DesiredResourceNameAnnotation]; ok {
 		if safeName, ok := safeNameMap[desiredName]; ok {
