@@ -141,12 +141,12 @@ type PrecachingSpec struct {
 
 // PrecachingStatus defines the observed pre-caching status
 type PrecachingStatus struct {
-	Spec     PrecachingSpec    `json:"spec,omitempty"`
+	Spec     *PrecachingSpec   `json:"spec,omitempty"`
 	Status   map[string]string `json:"status,omitempty"`
 	Clusters []string          `json:"clusters,omitempty"`
 }
 
-// BackupStatus defines the observed pre-caching status
+// BackupStatus defines the observed backup status
 type BackupStatus struct {
 	Status   map[string]string `json:"status,omitempty"`
 	Clusters []string          `json:"clusters,omitempty"`
@@ -175,7 +175,7 @@ type ClusterGroupUpgradeStatus struct {
 	ManagedPoliciesCompliantBeforeUpgrade []string                  `json:"managedPoliciesCompliantBeforeUpgrade,omitempty"`
 	ManagedPoliciesContent                map[string]string         `json:"managedPoliciesContent,omitempty"`
 	Status                                UpgradeStatus             `json:"status,omitempty"`
-	Precaching                            PrecachingStatus          `json:"precaching,omitempty"`
+	Precaching                            *PrecachingStatus         `json:"precaching,omitempty"`
 	Backup                                *BackupStatus             `json:"backup,omitempty"`
 	ComputedMaxConcurrency                int                       `json:"computedMaxConcurrency,omitempty"`
 }
