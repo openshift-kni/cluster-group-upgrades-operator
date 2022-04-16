@@ -60,3 +60,4 @@ following states:
 
 1. Export **KUBECONFIG** environment variable to point to your cluster running RHACM
 2. Run **make install run**
+
