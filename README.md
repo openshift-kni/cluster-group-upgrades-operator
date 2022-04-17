@@ -50,6 +50,17 @@ following states:
 1. Run **make docker-build docker-push IMG=*your_repo_image***
 2. Run **make deploy IMG=*your_repo_image***
 
+Depending on how the ClusterGroupUpgrade CR is defined, the operator may create pre-caching and/or recovery workloads on the spoke clusters. To specify custom workload images, follow the examples below.
+### How to deploy with pre-caching
+1. Run **make docker-build docker-push IMG=*your_repo_image***
+1. Run **PRECACHE_IMG=*your_precache_repo_image* make docker-build-precache docker-push-precache**
+1. Run **make deploy IMG=*your_repo_image* PRECACHE_IMG=*your_precache_repo_image***
+
+### How to deploy with failed upgrade recovery
+1. Run **make docker-build docker-push IMG=*your_repo_image***
+1. Run **RECOVERY_IMG=*your_recovery_repo_image* make docker-build-recovery docker-push-recovery**
+1. Run **make deploy IMG=*your_repo_image* RECOVERY_IMG=*your_recovery_repo_image***
+
 ## How to test
 
 1. Export **KUBECONFIG** environment variable to point to your cluster running RHACM
