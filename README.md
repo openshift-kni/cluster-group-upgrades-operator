@@ -50,6 +50,11 @@ following states:
 1. Run **make docker-build docker-push IMG=*your_repo_image***
 2. Run **make deploy IMG=*your_repo_image***
 
+### How to deploy with pre-caching
+1. Run **make docker-build docker-push IMG=*your_repo_image***
+1. Run **PRECACHE_IMG=*your_precache_repo_image* make docker-build-precache docker-push-precache**
+1. Run **make deploy IMG=*your_repo_image* PRECACHE_IMG=*your_precache_repo_image***
+
 ## How to test
 
 1. Export **KUBECONFIG** environment variable to point to your cluster running RHACM
