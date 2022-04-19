@@ -1,31 +1,47 @@
 # Testing the Upgrades Operator
+## Integration tests using a cluster running RHACM and the deployed ClusterGroupUpgrades operator
 
-## Using kuttl
-
-Prerequisites:
-- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
-- [kubectl-kuttl](https://kuttl.dev/docs/#install-kuttl-cli)
+Export **KUBECONFIG** environment variable to point to your cluster running RHACM
 
 ```bash
- make kind-bootstrap-cluster
- make docker-build
- make deploy
+ make complete-deployment
  make kuttl-test
+ make stop-test-proxy
 ```
 
 or simply
 
 ```
-make complete-kuttl-test
+make complete-deployment
+```
+
+## Integration tests using kuttl and kind
+Prerequisites:
+- [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
+- [kubectl-kuttl](https://kuttl.dev/docs/#install-kuttl-cli)
+
+```bash
+ make kind-deps-update
+ make kind-bootstrap-cluster
+ make docker-build
+ make kind-load-operator-image
+ make deploy
+```
+
+or simply
+
+```
+ make kind-complete-kuttl-test
 ```
 
 For un-deploying the Upgrades operator:
 ```bash
-make undeploy
+ make undeploy
 ```
 
 For development, a more suited approach is:
 ```bash
+ make kind-deps-update
  make kind-bootstrap-cluster
  make install run
  make kuttl-test
@@ -33,9 +49,14 @@ For development, a more suited approach is:
 
 For deleting the cluster:
 ```bash
-make kind-delete-cluster
+ make kind-delete-cluster
+```
+
+# Unit tests
+
+```bash
+ make ci-job
 ```
 <!---
-Date: August/10/2021
+Date: April/19/2022
 -->
-
