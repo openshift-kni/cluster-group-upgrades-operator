@@ -857,7 +857,7 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 
 	// Set new policy annotations - copy them from the managed policy.
 	annotations := managedPolicy.GetAnnotations()
-	annotations[utils.DesiredResourceNameAnnotation] = name
+	annotations[utils.DesiredResourceName] = name
 	newPolicy.SetAnnotations(annotations)
 
 	// Set new policy remediationAction.
@@ -1106,7 +1106,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 				"openshift-cluster-group-upgrades/forPolicy":           policyName,
 			},
 			"annotations": map[string]interface{}{
-				utils.DesiredResourceNameAnnotation: desiredName,
+				utils.DesiredResourceName: desiredName,
 			},
 		},
 		"spec": map[string]interface{}{
@@ -1270,7 +1270,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
 			},
 			"annotations": map[string]interface{}{
-				utils.DesiredResourceNameAnnotation: desiredName,
+				utils.DesiredResourceName: desiredName,
 			},
 		},
 		"placementRef": map[string]interface{}{
@@ -1632,7 +1632,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
    returns: the updated childResourceNameList
 */
 func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNameList []string, u *unstructured.Unstructured) ([]string, error) {
-	if desiredName, ok := u.GetAnnotations()[utils.DesiredResourceNameAnnotation]; ok {
+	if desiredName, ok := u.GetAnnotations()[utils.DesiredResourceName]; ok {
 		if safeName, ok := safeNameMap[desiredName]; ok {
 			if u.GetName() != safeName {
 				// Found an object with the same object name in annotation but different from our records in the names map
@@ -1874,32 +1874,32 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ranv1alpha1.ClusterGroupUpgrade{}).WithEventFilter(predicate.Funcs{
-		UpdateFunc: func(e event.UpdateEvent) bool {
-			reconcile := false
-			// Generation is only updated on spec changes (also on deletion),
-			// not metadata or status
-			oldGeneration := e.ObjectOld.GetGeneration()
-			newGeneration := e.ObjectNew.GetGeneration()
-			// This is a hack so we can ignore update event based on object kind
-			// The Kind field in the objects from the event is not populated for some reason
-			// Reference: https://github.com/kubernetes/client-go/issues/308
-			if e.ObjectNew.GetLabels()["app.kubernetes.io/instance"] == "policies" {
-				// status update only for parent policies
-				reconcile = oldGeneration == newGeneration
-			} else {
-				// spec update only for CGU
-				reconcile = oldGeneration != newGeneration
-			}
-			return reconcile
-		},
-		CreateFunc: func(ce event.CreateEvent) bool {
-			// only interested in CGU create event
-			if ce.Object.GetLabels()["app.kubernetes.io/instance"] == "policies" {
-				return false
-			}
-			return true
-		},
-	}).Owns(policyUnstructured).
-		Complete(r)
+		For(&ranv1alpha1.ClusterGroupUpgrade{}).Owns(policyUnstructured).
+		WithEventFilter(predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				reconcile := false
+				// Generation is only updated on spec changes (also on deletion),
+				// not metadata or status
+				oldGeneration := e.ObjectOld.GetGeneration()
+				newGeneration := e.ObjectNew.GetGeneration()
+				// This is a hack so we can ignore update event based on object kind
+				// The Kind field in the objects from the event is not populated for some reason
+				// Reference: https://github.com/kubernetes/client-go/issues/308
+				if e.ObjectNew.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+					// status update only for parent policies
+					reconcile = oldGeneration == newGeneration
+				} else {
+					// spec update only for CGU
+					reconcile = oldGeneration != newGeneration
+				}
+				return reconcile
+			},
+			CreateFunc: func(ce event.CreateEvent) bool {
+				// only interested in CGU create event
+				if ce.Object.GetLabels()["app.kubernetes.io/instance"] == "policies" {
+					return false
+				}
+				return true
+			},
+		}).Complete(r)
 }

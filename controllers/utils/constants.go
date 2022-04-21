@@ -29,7 +29,7 @@ const (
 
 // Annotation for TALO created object names
 const (
-	DesiredResourceNameAnnotation = CsvNamePrefix + "/rname"
+	DesiredResourceName = CsvNamePrefix + "/rname"
 )
 
 // CR name length limits and suffix annotation

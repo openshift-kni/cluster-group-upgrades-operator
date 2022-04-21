@@ -174,7 +174,7 @@ func EnsureManagedClusterView(
 					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
 				},
 				Annotations: map[string]string{
-					DesiredResourceNameAnnotation: name,
+					DesiredResourceName: name,
 				},
 			}
 			viewSpec := viewv1beta1.ViewSpec{
@@ -237,7 +237,7 @@ func EnsureManagedClusterActionForInstallPlan(
 				Name:      safeName,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					DesiredResourceNameAnnotation: name,
+					DesiredResourceName: name,
 				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
