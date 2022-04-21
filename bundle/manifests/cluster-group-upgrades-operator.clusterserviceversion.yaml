@@ -11,12 +11,12 @@ metadata:
             "name": "ClusterGroupUpgrade-sample"
           },
           "spec": {
-            "foo": "bar"
+            "preCaching": true
           }
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+    operators.operatorframework.io/builder: operator-sdk-v1.19.1
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v0.0.3
   namespace: placeholder
@@ -29,6 +29,96 @@ spec:
       displayName: Cluster Group Upgrade
       kind: ClusterGroupUpgrade
       name: clustergroupupgrades.ran.openshift.io
+      resources:
+      - kind: Deployment
+        name: ""
+        version: apps/v1
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - displayName: Actions
+        path: actions
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: This field determines whether the cluster would be running a
+          backup prior to the upgrade.
+        displayName: Backup
+        path: backup
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:bool
+      - displayName: Blocking CRs
+        path: blockingCRs
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: 'This field holds a label common to multiple clusters that will
+          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
+          - label2Name=label2Value If the value is empty, then the expected format
+          is: clusterSelector: - label1Name All the clusters matching the labels specified
+          in clusterSelector will be included in the update plan.'
+        displayName: Cluster Selector
+        path: clusterSelector
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Clusters
+        path: clusters
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: This field determines when the upgrade starts. While false, the
+          upgrade doesn't start. The policies, placement rules and placement bindings
+          are created, but clusters are not added to the placement rule. Once set
+          to true, the clusters start being upgraded, one batch at a time.
+        displayName: Enable
+        path: enable
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:bool
+      - displayName: Managed Policies
+        path: managedPolicies
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - description: This field determines whether container image pre-caching will
+          be done on all the clusters matching the selector. If required, the pre-caching
+          process starts immediately on all clusters irrespectively of the value of
+          the "enable" flag
+        displayName: PreCaching
+        path: preCaching
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:bool
+      - displayName: Remediation Strategy
+        path: remediationStrategy
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - displayName: Backup
+        path: backup
+      - displayName: Computed Maximum Concurrency
+        path: computedMaxConcurrency
+      - displayName: Conditions
+        path: conditions
+      - displayName: Copied Policies
+        path: copiedPolicies
+      - displayName: Managed Policies Compliant Before Upgrade
+        path: managedPoliciesCompliantBeforeUpgrade
+      - displayName: Managed Policies Content
+        path: managedPoliciesContent
+      - description: Contains the managed policies (and the namespaces) that have
+          NonCompliant clusters that require updating.
+        displayName: Managed Policies For Upgrade
+        path: managedPoliciesForUpgrade
+      - displayName: Managed Policies Namespace
+        path: managedPoliciesNs
+      - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+          Important: Run "make" to regenerate code after modifying this file'
+        displayName: Placement Bindings
+        path: placementBindings
+      - displayName: Placement Rules
+        path: placementRules
+      - displayName: Precaching
+        path: precaching
+      - displayName: Remediation Plan
+        path: remediationPlan
+      - displayName: Status
+        path: status
       version: v1alpha1
   description: cluster-group-upgrades-operator is an operator that facilitates platform
     upgrades of group of clusters
@@ -100,14 +190,6 @@ spec:
           - managedclusters/finalizers
           verbs:
           - update
-        - apiGroups:
-          - operators.coreos.com
-          resources:
-          - clusterserviceversions
-          verbs:
-          - get
-          - list
-          - watch
         - apiGroups:
           - policy.open-cluster-management.io
           resources:
@@ -184,7 +266,9 @@ spec:
           - create
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - name: cluster-group-upgrades-controller-manager
+      - label:
+          control-plane: controller-manager
+        name: cluster-group-upgrades-controller-manager
         spec:
           replicas: 1
           selector:
@@ -214,6 +298,11 @@ spec:
                 - --leader-elect
                 command:
                 - /manager
+                env:
+                - name: PRECACHE_IMG
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
+                - name: RECOVERY_IMG
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:0.0.3
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
                 livenessProbe:
                   httpGet:
@@ -290,9 +379,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  relatedImages:
-  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
-    name: pre-caching-workload
-  - image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:0.0.3
-    name: recovery
   version: 0.0.3
