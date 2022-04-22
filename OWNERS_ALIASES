@@ -13,6 +13,7 @@ aliases:
     - serngawy
     - vitus133
     - danielmellado
+    - jc-rh
   upgrades-operator-approvers:
     - browsell
     - donpenney
@@ -24,3 +25,4 @@ aliases:
     - serngawy
     - vitus133
     - danielmellado
+    - jc-rh
