@@ -101,7 +101,7 @@ type ClusterGroupUpgradeSpec struct {
 	// Once set to true, the clusters start being upgraded, one batch at a time.
 	//+kubebuilder:default=true
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Enable",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
-	Enable   *bool    `json:"enable,omitempty"`
+	Enable *bool `json:"enable,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Clusters",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Clusters []string `json:"clusters,omitempty"`
 	// This field holds a label common to multiple clusters that will be updated.
@@ -115,23 +115,23 @@ type ClusterGroupUpgradeSpec struct {
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	ClusterSelector     []string                 `json:"clusterSelector,omitempty"`
+	ClusterSelector []string `json:"clusterSelector,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Remediation Strategy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Managed Policies",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	ManagedPolicies     []string                 `json:"managedPolicies,omitempty"`
+	ManagedPolicies []string `json:"managedPolicies,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Blocking CRs",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	BlockingCRs         []BlockingCR             `json:"blockingCRs,omitempty"`
+	BlockingCRs []BlockingCR `json:"blockingCRs,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Actions",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	Actions             Actions                  `json:"actions,omitempty"`
+	Actions Actions `json:"actions,omitempty"`
 }
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
-	StartedAt                     metav1.Time    `json:"startedAt,omitempty"`
-	CompletedAt                   metav1.Time    `json:"completedAt,omitempty"`
-	CurrentBatch                  int            `json:"currentBatch,omitempty"`
-	CurrentBatchStartedAt         metav1.Time    `json:"currentBatchStartedAt,omitempty"`
+	StartedAt             metav1.Time `json:"startedAt,omitempty"`
+	CompletedAt           metav1.Time `json:"completedAt,omitempty"`
+	CurrentBatch          int         `json:"currentBatch,omitempty"`
+	CurrentBatchStartedAt metav1.Time `json:"currentBatchStartedAt,omitempty"`
 
 	CurrentRemediationPolicyIndex map[string]int `json:"remediationPlanForBatch,omitempty"`
 }
@@ -174,33 +174,33 @@ type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placement Bindings"
-	PlacementBindings []string           `json:"placementBindings,omitempty"`
+	PlacementBindings []string `json:"placementBindings,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placement Rules"
-	PlacementRules    []string           `json:"placementRules,omitempty"`
+	PlacementRules []string `json:"placementRules,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Copied Policies"
-	CopiedPolicies    []string           `json:"copiedPolicies,omitempty"`
+	CopiedPolicies []string `json:"copiedPolicies,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Conditions"
-	Conditions        []metav1.Condition `json:"conditions,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Remediation Plan"
-	RemediationPlan   [][]string         `json:"remediationPlan,omitempty"`
+	RemediationPlan [][]string `json:"remediationPlan,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies Namespace"
-	ManagedPoliciesNs map[string]string  `json:"managedPoliciesNs,omitempty"`
+	ManagedPoliciesNs map[string]string `json:"managedPoliciesNs,omitempty"`
 	// Contains the managed policies (and the namespaces) that have NonCompliant clusters
 	// that require updating.
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies For Upgrade"
-	ManagedPoliciesForUpgrade             []ManagedPolicyForUpgrade `json:"managedPoliciesForUpgrade,omitempty"`
+	ManagedPoliciesForUpgrade []ManagedPolicyForUpgrade `json:"managedPoliciesForUpgrade,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies Compliant Before Upgrade"
-	ManagedPoliciesCompliantBeforeUpgrade []string                  `json:"managedPoliciesCompliantBeforeUpgrade,omitempty"`
+	ManagedPoliciesCompliantBeforeUpgrade []string `json:"managedPoliciesCompliantBeforeUpgrade,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies Content"
-	ManagedPoliciesContent                map[string]string         `json:"managedPoliciesContent,omitempty"`
+	ManagedPoliciesContent map[string]string `json:"managedPoliciesContent,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Status"
-	Status                                UpgradeStatus             `json:"status,omitempty"`
+	Status UpgradeStatus `json:"status,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Precaching"
-	Precaching                            *PrecachingStatus         `json:"precaching,omitempty"`
+	Precaching *PrecachingStatus `json:"precaching,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Backup"
-	Backup                                *BackupStatus             `json:"backup,omitempty"`
+	Backup *BackupStatus `json:"backup,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Computed Maximum Concurrency"
-	ComputedMaxConcurrency                int                       `json:"computedMaxConcurrency,omitempty"`
+	ComputedMaxConcurrency int `json:"computedMaxConcurrency,omitempty"`
 }
 
 //+kubebuilder:object:root=true

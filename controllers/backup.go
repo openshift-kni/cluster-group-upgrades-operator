@@ -127,7 +127,7 @@ func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clu
 		return currentState, err
 	}
 
-	spec := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
 	if err != nil {
 		return currentState, err
 	}
@@ -155,7 +155,7 @@ func (r *ClusterGroupUpgradeReconciler) backupStarting(ctx context.Context, clus
 		return currentState, err
 	}
 	r.Log.Info("[starting]", "starting started condition: ", condition)
-	spec := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
 	if err != nil {
 		return currentState, err
 	}

@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"text/template"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
@@ -552,23 +553,24 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	return rv, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) *templateData {
+// getBackupJobTemplateData initializes template data for the backup job creation
+// returns: 	*templateData
+//				error
+func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) (*templateData, error) {
 
 	rv := new(templateData)
-
 	rv.Cluster = clusterName
 	rv.JobTimeout = uint64(
 		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)
 
-	// TODO: currently using hard-coded recovery image, we must get
-	// image from csv.
-	//	image, err := r.getPrecacheimagePullSpec(ctx, clusterGroupUpgrade)
-	//	if err != nil {
-	//		return rv, err
-	//	}
-	//	rv.WorkloadImage = image
-
-	return rv
+	rv.WorkloadImage = os.Getenv("RECOVERY_IMG")
+	r.Log.Info("[getBackupJobTemplateData]", "workload image", rv.WorkloadImage)
+	// if RECOVERY_IMG is not set or empty
+	if rv.WorkloadImage == "" {
+		return rv, fmt.Errorf(
+			"can't find recovery image pull spec in environment")
+	}
+	return rv, nil
 }
 
 // deployPrecachingWorkload deploys precaching workload on the spoke
@@ -579,8 +581,6 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	cluster, workloadType, mcvTemplate string, template []resourceTemplate) error {
 
-	// the idea is to reuse the deployworkload function for backup job, so using switch to differentiate between cases
-	// for example case backup:
 	var spec *templateData
 	var err error
 	switch workloadType {
@@ -592,13 +592,15 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 		spec.ViewUpdateIntervalSec = utils.ViewUpdateSec * len(clusterGroupUpgrade.Status.Precaching.Clusters)
 		r.Log.Info("[deployPrecachingWorkload]", "getPrecacheJobTemplateData",
 			cluster, "status", "success")
+
 	case backup:
-		spec = r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+		spec, err = r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
 		if err != nil {
 			return err
 		}
 		r.Log.Info("[deployBackupWorkload]", "getBackupJobTemplateData",
 			cluster, "spec", spec, "status", "success")
+
 	default:
 		return fmt.Errorf("[deployWorkload] no workload found to deploy")
 	}
