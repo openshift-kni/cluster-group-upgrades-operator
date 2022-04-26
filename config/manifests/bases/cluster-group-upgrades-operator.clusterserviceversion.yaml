@@ -38,9 +38,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a label common to multiple clusters that will
-          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
-          - label2Name=label2Value If the value is empty, then the expected format
-          is: clusterSelector: - label1Name All the clusters matching the labels specified
+          be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   -
+          label2Name=label2Value If the value is empty, then the expected format is:
+          clusterSelector:   - label1Name All the clusters matching the labels specified
           in clusterSelector will be included in the update plan.'
         displayName: Cluster Selector
         path: clusterSelector
