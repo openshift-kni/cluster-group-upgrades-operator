@@ -94,7 +94,7 @@ spec:
                   - launchBackup
                   - "--BackupPath"
                   - /var/recovery
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:latest 
+                image: {{ .WorkloadImage }} 
                 name: container-image
                 securityContext:
                   privileged: true
