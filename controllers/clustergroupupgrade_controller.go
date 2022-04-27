@@ -647,8 +647,16 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	// A child policy name has the name format parent_policy_namespace.parent_policy_name
 	// The policy map we are creating will be of format {"policy_name": "policy_namespace"}
 	policyMap := make(map[string]string)
+	policyEnforce := make(map[string]bool)
 	for _, childPolicy := range childPoliciesList {
 		policyNameArr := strings.SplitN(childPolicy.Name, ".", 2)
+
+		// Identify policies with remediationAction enforce to ignore
+		if strings.EqualFold(string(childPolicy.Spec.RemediationAction), "enforce") {
+			policyEnforce[policyNameArr[1]] = true
+			continue
+		}
+
 		policyMap[policyNameArr[1]] = policyNameArr[0]
 	}
 	r.Log.Info("[doManagedPoliciesExist]", "policyMap", policyMap)
@@ -663,6 +671,11 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	clusterGroupUpgrade.Status.ManagedPoliciesContent = make(map[string]string)
 
 	for _, managedPolicyName := range clusterGroupUpgrade.Spec.ManagedPolicies {
+		if policyEnforce[managedPolicyName] {
+			r.Log.Info("[doManagedPoliciesExist] Ignoring policy " + managedPolicyName + " with remediationAction enforce")
+			continue
+		}
+
 		if managedPolicyNamespace, ok := policyMap[managedPolicyName]; ok {
 			// Make sure the parent policy exists and nothing happened between querying the child policies above and now.
 			foundPolicy, err := r.getPolicyByName(ctx, managedPolicyName, managedPolicyNamespace)
