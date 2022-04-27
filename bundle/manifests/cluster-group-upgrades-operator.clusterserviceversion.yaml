@@ -16,9 +16,9 @@ metadata:
         }
       ]
     capabilities: Basic Install
-    operators.operatorframework.io/builder: operator-sdk-v1.19.1
+    operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: cluster-group-upgrades-operator.v0.0.3
+  name: cluster-group-upgrades-operator.v4.11.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -52,9 +52,9 @@ spec:
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a label common to multiple clusters that will
-          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
-          - label2Name=label2Value If the value is empty, then the expected format
-          is: clusterSelector: - label1Name All the clusters matching the labels specified
+          be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   -
+          label2Name=label2Value If the value is empty, then the expected format is:
+          clusterSelector:   - label1Name All the clusters matching the labels specified
           in clusterSelector will be included in the update plan.'
         displayName: Cluster Selector
         path: clusterSelector
@@ -266,9 +266,7 @@ spec:
           - create
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - label:
-          control-plane: controller-manager
-        name: cluster-group-upgrades-controller-manager
+      - name: cluster-group-upgrades-controller-manager
         spec:
           replicas: 1
           selector:
@@ -300,10 +298,10 @@ spec:
                 - /manager
                 env:
                 - name: PRECACHE_IMG
-                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.11.0
                 - name: RECOVERY_IMG
-                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:0.0.3
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.11.0
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.11.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -379,4 +377,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  version: 0.0.3
+  version: 4.11.0
