@@ -185,8 +185,8 @@ type ClusterGroupUpgradeStatus struct {
 	RemediationPlan [][]string `json:"remediationPlan,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies Namespace"
 	ManagedPoliciesNs map[string]string `json:"managedPoliciesNs,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Safe Resource Names"  
-	SafeResourceNames map[string]string  `json:"safeResourceNames,omitempty"`  
+	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Safe Resource Names"
+	SafeResourceNames map[string]string `json:"safeResourceNames,omitempty"`
 	// Contains the managed policies (and the namespaces) that have NonCompliant clusters
 	// that require updating.
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Managed Policies For Upgrade"

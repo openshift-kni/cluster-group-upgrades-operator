@@ -78,6 +78,9 @@ const statusUpdateWaitInMilliSeconds = 100
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 //nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+
+	// Wait a bit so that API server/etcd syncs up and this reconsile has a better chance of getting the updated CGU and policies
+	time.Sleep(statusUpdateWaitInMilliSeconds * time.Millisecond)
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
 	err := r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
 	if err != nil {
@@ -1704,8 +1707,7 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	if err != nil {
 		return err
 	}
-	// Wait a bit so that API server/etcd syncs up and the next reconsile call will get the updated CGU
-	time.Sleep(statusUpdateWaitInMilliSeconds * time.Millisecond)
+
 	return nil
 }
 
