@@ -672,7 +672,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 
 	for _, managedPolicyName := range clusterGroupUpgrade.Spec.ManagedPolicies {
 		if policyEnforce[managedPolicyName] {
-			r.Log.Info("Ignoring policy " + managedPolicyName + " with remediationAction enforce")
+			r.Log.Info("[doManagedPoliciesExist] Ignoring policy " + managedPolicyName + " with remediationAction enforce")
 			continue
 		}
 
