@@ -18,7 +18,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.10.1-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: cluster-group-upgrades-operator.v0.0.3
+  name: cluster-group-upgrades-operator.v4.10.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -290,8 +290,8 @@ spec:
                 - /manager
                 env:
                 - name: PRECACHE_IMG
-                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:0.0.3
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator:0.0.3
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.0
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.0
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -367,4 +367,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  version: 0.0.3
+  version: 4.10.0
