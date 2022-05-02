@@ -92,6 +92,31 @@ ENDUSAGE
     exit 1
 }
 
+function log {
+    local level=$1
+    shift
+
+    logger -t ${PROG} --id=$$ "${level}: $*"
+}
+
+function log_info {
+    log "INFO" "$*"
+    echo "##### $(date -u): $*"
+}
+
+function log_error {
+    log "ERROR" "$*"
+    echo "##### $(date -u): $*" >&2
+}
+
+function log_debug {
+    echo "$*"
+}
+function fatal {
+    log_error "$*"
+    exit 1
+}
+
 #
 # with_retries:
 # Helper function to run a command with retries on failure
@@ -106,18 +131,18 @@ function with_retries {
     while [[ ${attempt} -lt ${max_attempts} ]]; do
         attempt=$((attempt+=1))
         if [[ ${attempt} -gt 1 ]]; then
-            echo "Retrying after ${delay} seconds, attempt #${attempt}" >&2
+            log_debug "Retrying after ${delay} seconds, attempt #${attempt}"
             sleep "${delay}"
         fi
 
         "${cmd[@]}"
         rc=$?
         if [ $rc -eq 0 ]; then
-            echo "Command succeeded:" "${cmd[@]}" >&2
+            log_debug "Command succeeded:" "${cmd[@]}"
             break
         fi
 
-        echo "Command failed:" "${cmd[@]}" >&2
+        log_error "Command failed:" "${cmd[@]}"
     done
 
     return ${rc}
@@ -169,7 +194,7 @@ function wait_for_container_restart {
     local cur_id=
     local cur_state=
 
-    echo "##### $(date -u): Waiting for ${name} container to restart"
+    log_info "Waiting for ${name} container to restart"
 
     while [ ${SECONDS} -lt ${timeout} ]; do
         cur_id=$(get_container_id "${name}")
@@ -181,14 +206,13 @@ function wait_for_container_restart {
         fi
         echo -n "." && sleep 10
     done
+    echo
 
     if [ "$(get_container_state ${name})" != "Running" ]; then
-        echo -e "\n$(date -u): ${name} container is not Running. Please investigate" >&2
-        exit 1
+        fatal "${name} container is not Running. Please investigate"
     fi
 
-    echo -e "\n${name} is running"
-    echo "##### $(date -u): ${name} container restarted"
+    log_info "${name} container restarted"
 }
 
 #
@@ -206,22 +230,20 @@ function trigger_redeployment {
     local cur_rev=
     local expected_rev=
 
-    echo "##### $(date -u): Triggering ${name} redeployment"
+    log_info "Triggering ${name} redeployment"
 
     starting_rev=$(get_current_revision "${name}")
     starting_latest_rev=$(get_latest_available_revision "${name}")
     if [ -z "${starting_rev}" ] || [ -z "${starting_latest_rev}" ]; then
-        echo "Failed to get info for ${name}"
-        exit 1
+        fatal "Failed to get info for ${name}"
     fi
 
     expected_rev=$((starting_latest_rev+1))
 
-    echo "Patching ${name}. Starting rev is ${starting_rev}. Expected new rev is ${expected_rev}."
+    log_debug "Patching ${name}. Starting rev is ${starting_rev}. Expected new rev is ${expected_rev}."
     oc patch "${name}" cluster -p='{"spec": {"forceRedeploymentReason": "recovery-'"$( date --rfc-3339=ns )"'"}}' --type=merge
     if [ $? -ne 0 ]; then
-        echo "Failed to patch ${name}. Please investigate" >&2
-        exit 1
+        fatal "Failed to patch ${name}. Please investigate"
     fi
 
     while [ $SECONDS -lt $timeout ]; do
@@ -232,7 +254,8 @@ function trigger_redeployment {
         fi
 
         if [[ ${cur_rev} -ge ${expected_rev} ]]; then
-            echo -e "\n${name} redeployed successfully: revision ${cur_rev}"
+            echo
+            log_debug "${name} redeployed successfully: revision ${cur_rev}"
             break
         fi
         echo -n "."; sleep 10
@@ -240,11 +263,10 @@ function trigger_redeployment {
 
     cur_rev=$(get_current_revision "${name}")
     if [[ ${cur_rev} -lt ${expected_rev} ]]; then
-        echo "Failed to redeploy ${name}. Please investigate" >&2
-        exit 1
+        fatal "Failed to redeploy ${name}. Please investigate"
     fi
 
-    echo "##### $(date -u): Completed ${name} redeployment"
+    log_info "Completed ${name} redeployment"
 }
 
 #
@@ -252,24 +274,22 @@ function trigger_redeployment {
 # Procedure for backing up data prior to upgrade
 #
 function take_backup {
-    echo "##### $(date -u): Taking backup"
+    log_info "Taking backup"
 
-    echo "##### $(date -u): Wiping previous deployments and pinning active"
+    log_info "Wiping previous deployments and pinning active"
     while :; do
         ostree admin undeploy 1 || break
     done
     ostree admin pin 0
     if [ $? -ne 0 ]; then
-        echo "Failed to pin active deployment" >&2
-        exit 1
+        fatal "Failed to pin active deployment"
     fi
 
-    echo "##### $(date -u): Backing up container cluster and required files"
+    log_info "Backing up container cluster and required files"
 
     /usr/local/bin/cluster-backup.sh ${BACKUP_DIR}/cluster
     if [ $? -ne 0 ]; then
-        echo "Cluster backup failed" >&2
-        exit 1
+        fatal "Cluster backup failed"
     fi
 
     cat /etc/tmpfiles.d/* | sed 's/#.*//' | awk '{print $2}' | grep '^/etc/' | sed 's#^/etc/##' > ${BACKUP_DIR}/etc.exclude.list
@@ -277,31 +297,27 @@ function take_backup {
     echo 'kubernetes/manifests' >> ${BACKUP_DIR}/etc.exclude.list
     with_retries 3 1 rsync -a /etc/ ${BACKUP_DIR}/etc/
     if [ $? -ne 0 ]; then
-        echo "Failed to backup /etc" >&2
-        exit 1
+        fatal "Failed to backup /etc"
     fi
 
     with_retries 3 1 rsync -a /usr/local/ ${BACKUP_DIR}/usrlocal/
     if [ $? -ne 0 ]; then
-        echo "Failed to backup /usr/local" >&2
-        exit 1
+        fatal "Failed to backup /usr/local"
     fi
 
     with_retries 3 1 rsync -a /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
     if [ $? -ne 0 ]; then
-        echo "Failed to backup /var/lib/kubelet" >&2
-        exit 1
+        fatal "Failed to backup /var/lib/kubelet"
     fi
 
     oc get mc -o=jsonpath='{range .items[*]}{range .spec.config.storage.files[*]}{.path}{"\n"}' | sort -u \
         | grep -v -e '^/etc/' -e '^/usr/local/' -e '/var/lib/kubelet/' -e '^$' \
         | xargs --no-run-if-empty tar czf ${BACKUP_DIR}/extras.tgz
     if [ $? -ne 0 ]; then
-        echo "Failed to backup additional managed files" >&2
-        exit 1
+        fatal "Failed to backup additional managed files"
     fi
 
-    echo "##### $(date -u): Backup complete"
+    log_info "Backup complete"
 }
 
 function is_restore_in_progress {
@@ -341,57 +357,53 @@ function restore_files {
     # Wipe current containers by shutting down kubelet, deleting containers and pods,
     # then stopping and wiping crio
     #
-    echo "##### $(date -u): Wiping existing containers"
+    log_info "Wiping existing containers"
     systemctl stop kubelet.service
     crictl rmp -fa
     systemctl stop crio.service
     crio wipe -f
-    echo "##### $(date -u): Completed wipe"
+    log_info "Completed wipe"
 
     #
     # Restore /usr/local content
     #
-    echo "##### $(date -u): Restoring /usr/local content"
+    log_info "Restoring /usr/local content"
     time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
     if [ $? -ne 0 ]; then
-        echo "$(date -u): Failed to restore /usr/local content" >&2
-        exit 1
+        fatal "Failed to restore /usr/local content"
     fi
-    echo "##### $(date -u): Completed restoring /usr/local content"
+    log_info "Completed restoring /usr/local content"
 
     #
     # Restore /var/lib/kubelet content
     #
-    echo "##### $(date -u): Restoring /var/lib/kubelet content"
+    log_info "Restoring /var/lib/kubelet content"
     time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
     if [ $? -ne 0 ]; then
-        echo "$(date -u): Failed to restore /var/lib/kubelet content" >&2
-        exit 1
+        fatal "Failed to restore /var/lib/kubelet content"
     fi
-    echo "##### $(date -u): Completed restoring /var/lib/kubelet content"
+    log_info "Completed restoring /var/lib/kubelet content"
 
     #
     # Restore /etc content
     #
-    echo "##### $(date -u): Restoring /etc content"
+    log_info "Restoring /etc content"
     time with_retries 3 1 rsync -avc --delete --no-t --exclude-from ${BACKUP_DIR}/etc.exclude.list ${BACKUP_DIR}/etc/ /etc/
     if [ $? -ne 0 ]; then
-        echo "$(date -u): Failed to restore /etc content" >&2
-        exit 1
+        fatal "Failed to restore /etc content"
     fi
-    echo "##### $(date -u): Completed restoring /etc content"
+    log_info "Completed restoring /etc content"
 
     #
     # Restore additional machine-config managed files
     #
     if [ -f ${BACKUP_DIR}/extras.tgz ]; then
-        echo "##### $(date -u): Restoring extra content"
+        log_info "Restoring extra content"
         tar xzf ${BACKUP_DIR}/extras.tgz -C /
         if [ $? -ne 0 ]; then
-            echo "$(date -u): Failed to restore extra content" >&2
-            exit 1
+            fatal "Failed to restore extra content"
         fi
-        echo "##### $(date -u): Completed restoring extra content"
+        log_info "Completed restoring extra content"
     fi
 
     #
@@ -412,7 +424,7 @@ function restore_cluster {
     # Start crio, if needed
     #
     if ! systemctl -q is-active crio.service; then
-        echo "##### $(date -u): Starting crio.service"
+        log_info "Starting crio.service"
         systemctl start crio.service
     fi
 
@@ -428,24 +440,23 @@ function restore_cluster {
     #
     # Restore cluster
     #
-    echo "##### $(date -u): Restoring cluster"
+    log_info "Restoring cluster"
     time /usr/local/bin/cluster-restore.sh ${BACKUP_DIR}/cluster
     if [ $? -ne 0 ]; then
-        echo "$(date -u): Failed to restore cluster" >&2
-        exit 1
+        fatal "Failed to restore cluster"
     fi
 
-    echo "##### $(date -u): Restarting kubelet.service"
+    log_info "Restarting kubelet.service"
     time systemctl restart kubelet.service
     systemctl enable kubelet.service
 
-    echo "##### $(date -u): Restarting crio.service"
+    log_info "Restarting crio.service"
     time systemctl restart crio.service
 
     #
     # Wait for containers to launch or restart after cluster restore
     #
-    echo "##### $(date -u): Waiting for required container restarts"
+    log_info "Waiting for required container restarts"
 
     time wait_for_container_restart etcd "${ORIG_ETCD_CONTAINER_ID}" ${RESTART_TIMEOUT}
     time wait_for_container_restart etcd-operator "${ORIG_ETCD_OPERATOR_CONTAINER_ID}" ${RESTART_TIMEOUT}
@@ -453,7 +464,7 @@ function restore_cluster {
     time wait_for_container_restart kube-controller-manager-operator "${ORIG_KUBE_CONTROLLER_MANAGER_OPERATOR_CONTAINER_ID}" ${RESTART_TIMEOUT}
     time wait_for_container_restart kube-scheduler-operator-container "${ORIG_KUBE_SCHEDULER_OPERATOR_CONTAINER_ID}" ${RESTART_TIMEOUT}
 
-    echo "##### $(date -u): Required containers have restarted"
+    log_info "Required containers have restarted"
 
     record_progress "restore_cluster"
 }
@@ -462,16 +473,14 @@ function post_restore_steps {
     #
     # Trigger required resource redeployments
     #
-    echo "##### $(date -u): Triggering redeployments"
+    log_info "Triggering redeployments"
 
     time trigger_redeployment etcd ${REDEPLOYMENT_TIMEOUT}
     time trigger_redeployment kubeapiserver ${REDEPLOYMENT_TIMEOUT}
     time trigger_redeployment kubecontrollermanager ${REDEPLOYMENT_TIMEOUT}
     time trigger_redeployment kubescheduler ${REDEPLOYMENT_TIMEOUT}
 
-    echo "##### $(date -u): Redeployments complete"
-
-    echo "##### $(date -u): Recovery complete"
+    log_info "Redeployments complete"
 
     display_current_status
 }
@@ -607,10 +616,11 @@ fi
 
 post_restore_steps
 
-echo "##### $(date -u): Recovery complete"
+log_info "Recovery complete"
 
 clear_progress
 
+exit 0
 `)
 
 func upgradeRecoveryShBytes() ([]byte, error) {
