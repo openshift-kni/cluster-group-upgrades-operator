@@ -52,7 +52,11 @@ In order to model the various phases of an upgrade, the ClusterGroupUpgrade CR c
   * In this state, the upgrades of the clusters are complete
   * If the *action.afterCompletion.deleteObjects* field is set to **true** (which is the default value), the controller will delete the underlying RHACM objects (policies, placement bindings, placement rules, managed cluster views) once the upgrade completes. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful.
 
+## Backup-recovery
+
+Found [here](/docs/backup-recovery)
 ## Precaching
+
 Found [here](/docs/pre-cache)
 
 ## How to deploy
