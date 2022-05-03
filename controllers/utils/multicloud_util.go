@@ -232,7 +232,7 @@ func EnsureManagedClusterActionForInstallPlan(
 		// If the specific managedClusterAction was not found, create it.
 		if errors.IsNotFound(err) {
 			multiCloudLog.Info("[EnsureManagedClusterActionForInstallPlan] MCA doesn't exist, create it",
-				"name", name, "namespace", namespace)
+				"name", safeName, "namespace", namespace)
 			actionMeta := metav1.ObjectMeta{
 				Name:      safeName,
 				Namespace: namespace,
@@ -258,7 +258,7 @@ func EnsureManagedClusterActionForInstallPlan(
 	} else {
 		// If the specific managedClusterAction was found, don't do anything.
 		multiCloudLog.Info("[EnsureManagedClusterActionForInstallPlan] MCA already exists, continue",
-			"name", name, "namespace", namespace)
+			"name", safeName, "namespace", namespace)
 	}
 
 	return mcaForInstallPlan, nil

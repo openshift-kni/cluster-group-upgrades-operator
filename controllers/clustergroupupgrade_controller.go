@@ -487,8 +487,8 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
 			continue
 		}
-		prName := utils.GetResourceName(clusterGroupUpgrade, clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name+"-placement")
-		if safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[prName]; ok {
+		placementRuleName := utils.GetResourceName(clusterGroupUpgrade, clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name+"-placement")
+		if safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[placementRuleName]; ok {
 
 			var clusterNameArr []string
 			clusterNameArr = append(clusterNameArr, clusterName)
@@ -503,7 +503,7 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 				return reconcileSooner, err
 			}
 		} else {
-			return reconcileSooner, fmt.Errorf("placement object name %s not found in CGU %s status", prName, clusterGroupUpgrade.Name)
+			return reconcileSooner, fmt.Errorf("placement object name %s not found in CGU %s status", placementRuleName, clusterGroupUpgrade.Name)
 		}
 	}
 	return reconcileSooner, nil
