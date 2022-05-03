@@ -375,16 +375,6 @@ function restore_files {
     log_info "Completed restoring /usr/local content"
 
     #
-    # Restore /var/lib/kubelet content
-    #
-    log_info "Restoring /var/lib/kubelet content"
-    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
-    if [ $? -ne 0 ]; then
-        fatal "Failed to restore /var/lib/kubelet content"
-    fi
-    log_info "Completed restoring /var/lib/kubelet content"
-
-    #
     # Restore /etc content
     #
     log_info "Restoring /etc content"
@@ -420,6 +410,16 @@ function restore_files {
 }
 
 function restore_cluster {
+    #
+    # Restore /var/lib/kubelet content
+    #
+    log_info "Restoring /var/lib/kubelet content"
+    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
+    if [ $? -ne 0 ]; then
+        fatal "Failed to restore /var/lib/kubelet content"
+    fi
+    log_info "Completed restoring /var/lib/kubelet content"
+
     #
     # Start crio, if needed
     #
