@@ -476,85 +476,99 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 
-	reconcileSooner := false
-	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
-		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
-			continue
-		}
-
-		policyName := clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
-		var clusterNameArr []string
-		clusterNameArr = append(clusterNameArr, clusterName)
-		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNameArr, policyName)
-		if err != nil {
-			return reconcileSooner, err
-		}
-
-		// Approve needed InstallPlans.
-		reconcileSooner, err = r.approveInstallPlan(ctx, clusterGroupUpgrade, managedPolicyIndex, clusterName)
-		if err != nil {
-			return reconcileSooner, err
-		}
+	err := r.updatePlacementRules(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return false, err
+	}
+	// Approve needed InstallPlans.
+	reconcileSooner, err := r.approveInstallPlan(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return reconcileSooner, err
 	}
 	return reconcileSooner, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	managedPolicyIndex int, clusterName string) (bool, error) {
-	managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
+func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	// If there is no content saved for the current managed policy, return.
-	_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
-	if !ok {
-		r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
-		return false, nil
-	}
-
-	// If there is content saved for the current managed policy, retrieve it.
-	policyContentArr := []ranv1alpha1.PolicyContent{}
-	json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &policyContentArr)
-
-	multiCloudPendingStatus := false
-	for _, policyContent := range policyContentArr {
-		if policyContent.Kind != utils.PolicyTypeSubscription {
+	policiesToUpdate := make(map[int][]string)
+	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
+		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
 			continue
 		}
+		clusterNames := policiesToUpdate[managedPolicyIndex]
+		clusterNames = append(clusterNames, clusterName)
+		policiesToUpdate[managedPolicyIndex] = clusterNames
+	}
 
-		r.Log.Info("[approveInstallPlan] Attempt to approve install plan for subscription",
-			"name", policyContent.Name, "in namespace", policyContent.Namespace)
-		// Get the managedClusterView for the subscription contained in the current managedPolicy.
-		// If missing, then return error.
-		mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-		mcv := &viewv1beta1.ManagedClusterView{}
-		if err := r.Get(ctx, types.NamespacedName{Name: mcvName, Namespace: clusterName}, mcv); err != nil {
-			if errors.IsNotFound(err) {
-				r.Log.Info("ManagedClusterView should have been present, but it was not found", "error", err.Error())
+	for index, clusterNames := range policiesToUpdate {
+		policyName := clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[index].Name
+		err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNames, policyName)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+	multiCloudPendingStatus := false
+	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
+		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
+			continue
+		}
+		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
+
+		// If there is no content saved for the current managed policy, return.
+		_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
+		if !ok {
+			r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
+			return false, nil
+		}
+
+		// If there is content saved for the current managed policy, retrieve it.
+		policyContentArr := []ranv1alpha1.PolicyContent{}
+		json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &policyContentArr)
+
+		for _, policyContent := range policyContentArr {
+			if policyContent.Kind != utils.PolicyTypeSubscription {
 				continue
-			} else {
-				return false, err
+			}
+
+			r.Log.Info("[approveInstallPlan] Attempt to approve install plan for subscription",
+				"name", policyContent.Name, "in namespace", policyContent.Namespace)
+			// Get the managedClusterView for the subscription contained in the current managedPolicy.
+			// If missing, then return error.
+			mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
+			mcv := &viewv1beta1.ManagedClusterView{}
+			if err := r.Get(ctx, types.NamespacedName{Name: mcvName, Namespace: clusterName}, mcv); err != nil {
+				if errors.IsNotFound(err) {
+					r.Log.Info("ManagedClusterView should have been present, but it was not found", "error", err.Error())
+					continue
+				} else {
+					return false, err
+				}
+			}
+
+			// If the specific managedClusterView was found, check that it's condition Reason is "GetResourceProcessing"
+			installPlanStatus, err := utils.ProcessSubscriptionManagedClusterView(
+				ctx, r.Client, clusterGroupUpgrade, clusterName, mcv)
+			// If there is an error in trying to approve the install plan, just print the error and continue.
+			if err != nil {
+				r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
+				continue
+			}
+			if installPlanStatus == utils.InstallPlanCannotBeApproved {
+				r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", policyContent.Name)
+			} else if installPlanStatus == utils.InstallPlanWasApproved {
+				r.Log.Info("InstallPlan for subscription was approved", "subscription name", policyContent.Name)
+			} else if installPlanStatus == utils.MultiCloudPendingStatus {
+				r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
+					"retry again later", "subscription name", policyContent.Name)
+				multiCloudPendingStatus = true
 			}
 		}
-
-		// If the specific managedClusterView was found, check that it's condition Reason is "GetResourceProcessing"
-		installPlanStatus, err := utils.ProcessSubscriptionManagedClusterView(
-			ctx, r.Client, clusterGroupUpgrade, clusterName, mcv)
-		// If there is an error in trying to approve the install plan, just print the error and continue.
-		if err != nil {
-			r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
-			continue
-		}
-		if installPlanStatus == utils.InstallPlanCannotBeApproved {
-			r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", policyContent.Name)
-		} else if installPlanStatus == utils.InstallPlanWasApproved {
-			r.Log.Info("InstallPlan for subscription was approved", "subscription name", policyContent.Name)
-		} else if installPlanStatus == utils.MultiCloudPendingStatus {
-			r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
-				"retry again later", "subscription name", policyContent.Name)
-			multiCloudPendingStatus = true
-		}
 	}
-
 	return multiCloudPendingStatus, nil
 }
 
