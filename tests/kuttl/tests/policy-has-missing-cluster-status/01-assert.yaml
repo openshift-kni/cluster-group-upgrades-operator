@@ -25,8 +25,8 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-policy2-common-pao-sub-policy
-  - cgu-policy3-common-ptp-sub-policy
+  - cgu-policy2-common-pao-sub-policy-kuttl
+  - cgu-policy3-common-ptp-sub-policy-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
@@ -39,15 +39,24 @@ status:
     policy2-common-pao-sub-policy: default
     policy3-common-ptp-sub-policy: default
   placementBindings:
-  - cgu-policy2-common-pao-sub-policy
-  - cgu-policy3-common-ptp-sub-policy
+  - cgu-policy2-common-pao-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   placementRules:
-  - cgu-policy2-common-pao-sub-policy
-  - cgu-policy3-common-ptp-sub-policy
+  - cgu-policy2-common-pao-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
     - spoke2
   - - spoke4
+  safeResourceNames:
+    cgu-common-pao-sub-policy-config: cgu-common-pao-sub-policy-config-kuttl
+    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-policy2-common-pao-sub-policy: cgu-policy2-common-pao-sub-policy-kuttl
+    cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
+    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
   status:
     currentBatch: 1
     remediationPlanForBatch:

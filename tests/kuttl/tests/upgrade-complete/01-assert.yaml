@@ -20,21 +20,35 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+  - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
+  managedPoliciesContent:
+    policy1-common-cluster-version-policy: "null"
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
   - name: policy2-common-pao-sub-policy
     namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
   placementBindings:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   placementRules:
-  - cgu-upgrade-complete-policy1-common-cluster-version-policy
-  - cgu-upgrade-complete-policy2-common-pao-sub-policy
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
+  safeResourceNames:
+    cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
+    cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
+    cgu-upgrade-complete-default-subscription-performance-addon-operator: cgu-upgrade-complete-default-subscription-performance-addon-operator-kuttl
+    cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+    cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+    cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
+    cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status:
     currentBatch: 1
     remediationPlanForBatch:

@@ -27,6 +27,19 @@ const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
 )
 
+// Annotation for TALO created object names
+const (
+	DesiredResourceName = CsvNamePrefix + "/rname"
+)
+
+// CR name length limits and suffix annotation
+const (
+	MaxPolicyNameLength    = 63
+	MaxObjectNameLength    = 253
+	NameSuffixAnnotation   = CsvNamePrefix + "/name-suffix"
+	RandomNameSuffixLength = 5
+)
+
 // Pre-cache constants
 const (
 	CsvNamePrefix              = "cluster-group-upgrades-operator"
@@ -69,7 +82,9 @@ const (
 	InstallPlanCannotBeApproved     = 1
 	NoActionForApprovingInstallPlan = 2
 	MultiCloudPendingStatus         = 3
-	MultiCloudWaitTimeSec           = 3
+	InstallPlanAlreadyApproved      = 4
+
+	MultiCloudWaitTimeSec = 3
 
 	TestManagedClusterActionTimeoutMessage = `ManagedClusterAction hasn't completed in the required timeout`
 	TestManagedClusterActionFailedMessage  = "ManagedClusterAction failed"

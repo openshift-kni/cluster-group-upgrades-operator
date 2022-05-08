@@ -21,19 +21,33 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
-  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-versio-kuttl
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy-kuttl
+  managedPoliciesContent:
+    policy1-common-cluster-version-policy: "null"
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
   - name: policy2-common-pao-sub-policy
     namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
   placementBindings:
-  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
-  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
   placementRules:
-  - cgu-adjust-max-conc-policy1-common-cluster-version-policy
-  - cgu-adjust-max-conc-policy2-common-pao-sub-policy
+  - cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
+  safeResourceNames:
+    cgu-adjust-max-conc-common-cluster-version-policy-config: cgu-adjust-max-conc-common-cluster-version-policy-config-kuttl
+    cgu-adjust-max-conc-common-pao-sub-policy-config: cgu-adjust-max-conc-common-pao-sub-policy-config-kuttl
+    cgu-adjust-max-conc-default-subscription-performance-addon-operator: cgu-adjust-max-conc-default-subscription-performance-addon-operator-kuttl
+    cgu-adjust-max-conc-policy1-common-cluster-version-policy: cgu-adjust-max-conc-policy1-common-cluster-versio-kuttl
+    cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement: cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
+    cgu-adjust-max-conc-policy2-common-pao-sub-policy: cgu-adjust-max-conc-policy2-common-pao-sub-policy-kuttl
+    cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement: cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
   status: {}
