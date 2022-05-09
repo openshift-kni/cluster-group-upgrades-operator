@@ -388,13 +388,15 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		} else {
 			r.Log.Info("Upgrade is completed")
-			clusterGroupUpgrade.Status.Status.CurrentBatch = 0
-			clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
-
-			// Take actions after upgrade is completed
-			if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
-				return ctrl.Result{}, err
+			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+				// Take actions after upgrade is completed
+				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
+				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+				if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+					return ctrl.Result{}, err
+				}
+				// Set completion time only after post actions are executed with no errors
+				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
 			}
 		}
 
