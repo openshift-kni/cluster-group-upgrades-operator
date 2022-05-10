@@ -12,9 +12,11 @@ There are two methods related to partition creation is described here:
 
 ### Preferred method with Siteconfig ###
 
-The recovery partition can be created at install time by defining a node level property called `diskPartition` in the SiteConfig. The configuration for the partition must be defined by `start` parameter which must indicate the end of the root device. Additionally, a spare disk can be used for recovery partition as well. A recovery partition of 50GB can be created by following the below example:
+The recovery partition can be created at install time by defining a node level property called `diskPartition` in the SiteConfig CR. The configuration for the partition must be defined by `start` parameter which must indicate, in mebibytes, the end of the `/sysroot` RHCOS partition and the start for the newly requested recovery partition.
 
-```
+Additionally, a spare disk can be used for recovery partition as well and can be configured at provisioning time or at day 2 operation. A recovery partition of 50GB with mountpoint at `/var/recovery` can be created by following the below example. Notice that the deviceName can be referenced by its path, label or id as well, e.g. `/dev/disk/by-id/scsi-355cd2e404b7c23f3`
+
+```yaml
 nodes:
       - hostName: "snonode.sno-worker-0.e2e.bos.redhat.com"
         role: "master"
@@ -35,12 +37,12 @@ nodes:
 
 ### Alternative method with Extra-manifest
 
-The alternative way a recovery partition can be created at install time by defining an extra-manifest MachineConfig, as described here:<br>
+As an alternative way, a recovery partition can also be created at install time by defining an extra-manifest MachineConfig, as described here:<br>
 <https://github.com/openshift-kni/cnf-features-deploy/blob/master/ztp/gitops-subscriptions/argocd/README.md#deploying-a-site>
 
 The following extra-manifest MachineConfig will create a 50G partition on the specified disk:
 
-```
+```yaml
 apiVersion: machineconfiguration.openshift.io/v1
 kind: MachineConfig
 metadata:
@@ -101,6 +103,8 @@ Backup workload is a one-shot task created on each of the spoke cluster nodes to
 - BackupStateSucceeded - a final state reached when the backup job has succeeded
 - BackupStateTimeout - a final state meaning that artifact backup has been partially done
 - BackupStateError - a final state reached when the job ends with a non-zero exit code
+
+> **WARNING**: Should the backup job fails and enters to `BackupStateTimeout` or `BackupStateError` state, it will block the cluster upgrade.
 
 ### On the spoke ###
 
