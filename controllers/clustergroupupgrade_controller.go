@@ -304,6 +304,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						})
 					} else {
 						r.Log.Info("Batch upgrade timed out")
+						clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
 						if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 							clusterGroupUpgrade.Status.Status.CurrentBatch++
 						}
