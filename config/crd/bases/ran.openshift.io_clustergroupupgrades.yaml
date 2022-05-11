@@ -18,7 +18,14 @@ spec:
     singular: clustergroupupgrade
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[-1:].reason
+      name: Upgrade State
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades

@@ -80,7 +80,6 @@ type OperatorUpgradeSpec struct {
 }
 
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
-//+kubebuilder:printcolumn:name="Compliance Percentage",type="integer",JSONPath=".status.status.compliancePercentage"
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
@@ -208,6 +207,8 @@ type ClusterGroupUpgradeStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:path=clustergroupupgrades,shortName=cgu
+//+kubebuilder:printcolumn:name="Upgrade State",type="string",JSONPath=".status.conditions[-1:].reason"
+//+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
 
 // ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
 //+operator-sdk:csv:customresourcedefinitions:displayName="Cluster Group Upgrade",resources={{Namespace, v1},{Deployment,apps/v1}}
