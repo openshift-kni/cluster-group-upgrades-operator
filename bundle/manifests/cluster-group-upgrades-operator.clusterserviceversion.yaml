@@ -16,6 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v4.11.0
@@ -117,6 +118,8 @@ spec:
         path: precaching
       - displayName: Remediation Plan
         path: remediationPlan
+      - displayName: Safe Resource Names
+        path: safeResourceNames
       - displayName: Status
         path: status
       version: v1alpha1
