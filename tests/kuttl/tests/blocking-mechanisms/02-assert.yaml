@@ -72,8 +72,10 @@ status:
     cgu-a-policy3-common-ptp-sub-policy-placement: cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
   status:
     currentBatch: 1
-    remediationPlanForBatch:
-      spoke1: 0
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
 ---
 # Check that cgu-b is still blocked
 apiVersion: ran.openshift.io/v1alpha1

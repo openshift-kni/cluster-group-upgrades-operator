@@ -213,5 +213,7 @@ status:
     cgu-c-policy4-common-sriov-sub-policy-placement: cgu-c-policy4-common-sriov-sub-policy-placement-kuttl
   status:
     currentBatch: 1
-    remediationPlanForBatch:
-      spoke6: 0
+    currentBatchRemediationProgress:
+      spoke6:
+        policyIndex: 0
+        state: InProgress

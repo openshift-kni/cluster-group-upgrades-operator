@@ -51,5 +51,7 @@ status:
     cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status:
     currentBatch: 1
-    remediationPlanForBatch:
-      spoke1: 0
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress

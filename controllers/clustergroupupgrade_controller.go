@@ -373,10 +373,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				nextReconcile = ctrl.Result{RequeueAfter: 60 * time.Minute}
 
 				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
-				isUpgradeComplete, err := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
-				if err != nil {
-					return ctrl.Result{}, err
-				}
+				isUpgradeComplete := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
 
 				if isUpgradeComplete {
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
@@ -415,16 +412,18 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
-	clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex = make(map[string]int)
+	clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress = make(map[string]*ranv1alpha1.ClusterRemediationProgress)
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 
 	// By default, don't set any policy index for any of the clusters in the batch.
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName] = utils.NoPolicyIndex
+		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] = new(ranv1alpha1.ClusterRemediationProgress)
+		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationNotStarted
+
 	}
 
 	r.Log.Info("[initializeRemediationPolicyForBatch]",
-		"CurrentRemediationPolicyIndex", clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex)
+		"CurrentBatchRemediationProgress", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
 }
 
 /*
@@ -433,7 +432,7 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
   policy is found for the cluster or the end of the list is reached.
 
   The policy currently applied for each cluster has its index held in
-  clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[clusterName] (the index is used to range through the
+  clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
   policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
 
   returns: bool     : true if the batch is done upgrading; false if not
@@ -442,18 +441,19 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
+	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	isBatchComplete := true
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		currentPolicyIndex := clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]
-		if currentPolicyIndex == utils.AllPoliciesValidated {
+		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State
+		if clusterProgressState == utils.ClusterRemediationNotStarted {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = new(int)
+			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = 0
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationInProgress
+		} else if clusterProgressState == utils.ClusterRemediationCompleted {
 			continue
 		}
-
-		// If it's the first time calling the function for the batch, move to policy index 0.
-		if currentPolicyIndex == utils.NoPolicyIndex {
-			currentPolicyIndex = 0
-		}
+		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
 
 		// Get the index of the next policy for which the cluster is NonCompliant.
 		currentPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, currentPolicyIndex)
@@ -461,16 +461,17 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 			return false, err
 		}
 
-		if currentPolicyIndex != utils.AllPoliciesValidated {
+		if currentPolicyIndex >= numberOfPolicies {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = nil
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationCompleted
+		} else {
 			isBatchComplete = false
+			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = currentPolicyIndex
 		}
-
-		// Update the policy index for the cluster.
-		clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName] = currentPolicyIndex
 	}
 
 	r.Log.Info("[getNextRemediationPoliciesForBatch]", "isBatchComplete", isBatchComplete)
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex)
+	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
 	return isBatchComplete, nil
 }
 
@@ -500,13 +501,13 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	policiesToUpdate := make(map[int][]string)
-	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
-		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
+	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
+		if clusterProgress.State != utils.ClusterRemediationInProgress {
 			continue
 		}
-		clusterNames := policiesToUpdate[managedPolicyIndex]
+		clusterNames := policiesToUpdate[*clusterProgress.PolicyIndex]
 		clusterNames = append(clusterNames, clusterName)
-		policiesToUpdate[managedPolicyIndex] = clusterNames
+		policiesToUpdate[*clusterProgress.PolicyIndex] = clusterNames
 	}
 
 	for index, clusterNames := range policiesToUpdate {
@@ -526,11 +527,11 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	multiCloudPendingStatus := false
-	for clusterName, managedPolicyIndex := range clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex {
-		if managedPolicyIndex == utils.AllPoliciesValidated || managedPolicyIndex == utils.NoPolicyIndex {
+	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
+		if clusterProgress.State != utils.ClusterRemediationInProgress {
 			continue
 		}
-		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[managedPolicyIndex].Name
+		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[*clusterProgress.PolicyIndex].Name
 
 		// If there is no content saved for the current managed policy, return.
 		_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
@@ -877,6 +878,9 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 
 	// Set new policy annotations - copy them from the managed policy.
 	annotations := managedPolicy.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
 	annotations[utils.DesiredResourceName] = name
 	newPolicy.SetAnnotations(annotations)
 
@@ -1157,33 +1161,29 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 */
 func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, error) {
+	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	currentPolicyIndex := startIndex
-
-	for {
+	for ; currentPolicyIndex < numberOfPolicies; currentPolicyIndex++ {
 		// Get the name of the managed policy matching the current index.
 		currentManagedPolicyInfo := utils.GetManagedPolicyForUpgradeByIndex(currentPolicyIndex, clusterGroupUpgrade)
 		currentManagedPolicy, err := r.getPolicyByName(ctx, currentManagedPolicyInfo.Name, currentManagedPolicyInfo.Namespace)
 		if err != nil {
-			return utils.NoPolicyIndex, err
+			return currentPolicyIndex, err
 		}
 
 		// Check if current cluster is compliant or not for its current managed policy.
 		clusterStatus, err := r.getClusterComplianceWithPolicy(clusterName, currentManagedPolicy)
 		if err != nil {
-			return utils.NoPolicyIndex, err
+			return currentPolicyIndex, err
 		}
 
 		// If the cluster is compliant for the policy or if the cluster is not matched with the policy,
 		// move to the next policy index.
 		if clusterStatus == utils.ClusterStatusCompliant || clusterStatus == utils.ClusterNotMatchedWithPolicy {
-			if currentPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)-1 {
-				currentPolicyIndex++
-				continue
-			} else {
-				currentPolicyIndex = utils.AllPoliciesValidated
-				break
-			}
-		} else if clusterStatus == utils.ClusterStatusNonCompliant {
+			continue
+		}
+
+		if clusterStatus == utils.ClusterStatusNonCompliant {
 			break
 		}
 	}
@@ -1197,33 +1197,29 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
    returns: true/false if the upgrade is complete
             error/nil
 */
-func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) bool {
 	// If we are not at the last batch, the upgrade clearly didn't complete.
-	if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.CopiedPolicies) {
-		return false, nil
+	if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+		return false
 	}
 
-	// Go through all the clusters in the current last batch (which is also the last batch) and make sure
+	// Go through all the clusters in the current batch (which is also the last batch) and make sure
 	// they are either compliant with all the managedPolicies or they don't match them.
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[clusterGroupUpgrade.Status.Status.CurrentBatch-1] {
-		currentPolicyIndex := clusterGroupUpgrade.Status.Status.CurrentRemediationPolicyIndex[batchClusterName]
-		if currentPolicyIndex == utils.AllPoliciesValidated || currentPolicyIndex == utils.NoPolicyIndex {
+		clusterProgress := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
+		if clusterProgress.State == utils.ClusterRemediationCompleted {
 			continue
 		}
-
-		nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, currentPolicyIndex)
+		nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, *clusterProgress.PolicyIndex)
 		if err != nil {
-			return false, err
+			return false
 		}
-
-		// If we can find a managed policy for which the cluster is NonCompliant, it means the upgrade has
-		// not finished.
-		if nextNonCompliantPolicyIndex != utils.NoPolicyIndex {
-			return false, nil
+		if nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
+			return false
 		}
 	}
 
-	return true, nil
+	return true
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
