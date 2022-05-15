@@ -3,7 +3,7 @@
 which golangci-lint
 if [ $? -ne 0 ]; then
     echo "Downloading golangci-lint tool"
-    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.44.2
+    curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.46.1
 fi
 
 export GOCACHE=/tmp/
