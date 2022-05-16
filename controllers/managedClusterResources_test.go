@@ -39,6 +39,8 @@ kind: ManagedClusterAction
 metadata:
   name: test-ns
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   actionType: Create
   kube:
@@ -66,6 +68,8 @@ kind: ManagedClusterAction
 metadata:
     name: test-sa-create
     namespace: test
+    labels:
+      velero.io/exclude-from-backup: true
 spec:
     actionType: Create
     kube:
@@ -92,6 +96,8 @@ kind: ManagedClusterAction
 metadata:
   name: test-crb-create
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   actionType: Create
   kube:
@@ -126,6 +132,8 @@ spec:
       metadata:
         name: test-job-create
         namespace: test
+        labels:
+          velero.io/exclude-from-backup: true
       spec:
         actionType: Create
         kube:
@@ -203,6 +211,8 @@ kind: ManagedClusterView
 metadata:
   name: test-job-view
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   scope:
     resource: jobs
@@ -226,6 +236,8 @@ kind: ManagedClusterView
 metadata:
   name: test-cm-view
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   scope:
     resource: configmap
@@ -248,6 +260,8 @@ kind: ManagedClusterView
 metadata:
   name: test-sa-view
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   scope:
     resource: serviceaccounts
@@ -270,6 +284,8 @@ kind: ManagedClusterView
 metadata:
   name: test-crb-view
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   scope:
     resource: clusterrolebinding
@@ -292,6 +308,8 @@ kind: ManagedClusterView
 metadata:
   name: test-ns-view
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   scope:
     resource: namespaces
@@ -312,6 +330,8 @@ kind: ManagedClusterAction
 metadata:
   name: delete-ns-action
   namespace: test
+  labels:
+    velero.io/exclude-from-backup: true
 spec:
   actionType: Delete
   kube:
