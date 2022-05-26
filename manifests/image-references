@@ -1,0 +1,16 @@
+kind: ImageStream
+apiVersion: image.openshift.io/v1
+spec:
+  tags:
+  - name: cluster-group-upgrades-operator-precache
+    from:
+      kind: DockerImage
+      name: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.0
+  - name: manager
+    from:
+      kind: DockerImage
+      name: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.0
+  - name: kube-rbac-proxy
+    from:
+      kind: DockerImage
+      name: quay.io/openshift/origin-kube-rbac-proxy:4.10
