@@ -36,11 +36,10 @@ import (
 const host string = "/host"
 const recoveryScript string = "upgrade-recovery.sh"
 
-//RecoveryInProgress checks if a restore is in progress
+// RecoveryInProgress checks if a restore is in progress
 // returns:			bool
-//nolint:gocritic
-func RecoveryInProgress(BackupPath string) bool {
-	progressfile := filepath.Join(BackupPath, "progress")
+func RecoveryInProgress(backupPath string) bool {
+	progressfile := filepath.Join(backupPath, "progress")
 
 	if _, err := os.Stat(progressfile); os.IsNotExist(err) {
 		return false
@@ -48,25 +47,24 @@ func RecoveryInProgress(BackupPath string) bool {
 	return true
 }
 
-//ParseBackupPath parses the BackupPath
+// ParseBackupPath parses the backupPath
 // returns:			string
-//nolint:gocritic
-func ParseBackupPath(BackupPath string) string {
-	if check := strings.Contains(BackupPath[len(BackupPath)-1:], "/"); check {
-		BackupPath = BackupPath[:len(BackupPath)-1]
+func ParseBackupPath(backupPath string) string {
+	if check := strings.Contains(backupPath[len(backupPath)-1:], "/"); check {
+		backupPath = backupPath[:len(backupPath)-1]
 	}
-	return BackupPath
+	return backupPath
 }
 
-//LaunchBackup triggers the backup procedure
+// LaunchBackup triggers the backup procedure
 // returns:			error
 //nolint:gocritic
-func LaunchBackup(BackupPath string) error {
+func LaunchBackup(backupPath string) error {
 
-	// check for slash in the BackupPath
-	BackupPath = ParseBackupPath(BackupPath)
+	// check for slash in the backupPath
+	backupPath = ParseBackupPath(backupPath)
 
-	//change root directory to /host
+	// change root directory to /host
 	if err := syscall.Chroot(host); err != nil {
 		log.Errorf("Couldn't do chroot to %s, err: %s", host, err)
 		return err
@@ -75,7 +73,7 @@ func LaunchBackup(BackupPath string) error {
 	// During recovery, this container may get relaunched, as it will be in "Running"
 	// state when the backup is taken. We'll check to see if a recovery is already
 	// in progress then, and just exit cleanly if so.
-	if RecoveryInProgress(BackupPath) {
+	if RecoveryInProgress(backupPath) {
 		log.Info("Cannot take backup. Recovery is currently in progress")
 		return nil
 	}
@@ -86,23 +84,37 @@ func LaunchBackup(BackupPath string) error {
 	}
 
 	// validate path
-	if _, err := os.Stat(BackupPath); os.IsNotExist(err) {
+	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
 		// create path
-		err := os.Mkdir(BackupPath, 0700)
+		err := os.Mkdir(backupPath, 0700)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
-	err := Cleanup(BackupPath)
+	err := Cleanup(backupPath)
 	if err != nil {
 		log.Errorf("Old directories couldn't be deleted, err: %s\n", err)
 	}
 
 	log.Info("Old contents have been cleaned up")
 
-	scriptname := filepath.Join(BackupPath, recoveryScript)
+	// Verify disk space
+	ok, err := compareBackupToDisk()
+	if err != nil {
+		log.Error(err)
+		return err
+	}
+
+	if !ok {
+		log.Error("Insufficient disk space to trigger backup, exiting triggering backup ...")
+		os.Exit(1)
+	}
+
+	log.Info("Sufficient disk space found to trigger backup")
+
+	scriptname := filepath.Join(backupPath, recoveryScript)
 	scriptcontent, _ := generated.Asset(recoveryScript)
 	err = os.WriteFile(scriptname, scriptcontent, 0700)
 	if err != nil {
@@ -112,7 +124,7 @@ func LaunchBackup(BackupPath string) error {
 	log.Info("Upgrade recovery script written")
 
 	// Take backup
-	backupCmd := fmt.Sprintf("%s --take-backup --dir %s", scriptname, BackupPath)
+	backupCmd := fmt.Sprintf("%s --take-backup --dir %s", scriptname, backupPath)
 	err = ExecuteCmd(backupCmd)
 	if err != nil {
 		return err
@@ -187,10 +199,10 @@ var launchBackupCmd = &cobra.Command{
 	Short: "It will trigger backup of resources in the specified path",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		BackupPath, _ := cmd.Flags().GetString("BackupPath")
+		backupPath, _ := cmd.Flags().GetString("backupPath")
 
 		// start launching the backup of the resource
-		return LaunchBackup(BackupPath)
+		return LaunchBackup(backupPath)
 	},
 }
 
@@ -198,9 +210,9 @@ func init() {
 
 	rootCmd.AddCommand(launchBackupCmd)
 
-	launchBackupCmd.Flags().StringP("BackupPath", "p", "", "Path where to store the backup")
-	_ = launchBackupCmd.MarkFlagRequired("BackupPath")
+	launchBackupCmd.Flags().StringP("backupPath", "p", "", "Path where to store the backup")
+	_ = launchBackupCmd.MarkFlagRequired("backupPath")
 
 	// bind to viper
-	_ = viper.BindPFlag("BackupPath", launchBackupCmd.Flags().Lookup("BackupPath"))
+	_ = viper.BindPFlag("backupPath", launchBackupCmd.Flags().Lookup("backupPath"))
 }
