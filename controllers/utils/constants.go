@@ -111,7 +111,3 @@ const (
 const (
 	CannotStart = "UpgradeCannotStart"
 )
-
-// ExcludeFromClusterBackup is a label to exclude object from cluster-backup-operator
-// https://github.com/stolostron/cluster-backup-operator#steps-to-identify-backup-data
-const ExcludeFromClusterBackup = "velero.io/exclude-from-backup"
