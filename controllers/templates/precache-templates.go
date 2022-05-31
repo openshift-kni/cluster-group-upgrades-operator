@@ -18,8 +18,6 @@ kind: ManagedClusterView
 metadata:
   name: {{ .ResourceName }}
   namespace: {{ .Cluster }}
-  labels:
-    velero.io/exclude-from-backup: true
 {{ end }}
 `
 
