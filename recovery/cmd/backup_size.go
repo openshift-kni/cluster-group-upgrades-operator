@@ -30,13 +30,13 @@ type resourceList struct {
 	resources *[]resource
 }
 
-// compareBackupToDisk verifies disk space required against available
-// disk space and returns boolean value
+// compareBackupToDisk verifies disk space required against available disk space
+// returns: boolean, error
 func compareBackupToDisk() (bool, error) {
 
-	estimated, err := estimateDiskSize()
+	estimated, err := estimateFsSpaceRequirements()
 	if err != nil {
-		log.Errorf("Couldn't calculate estimated disk space")
+		log.Errorf("Couldn't calculate estimated disk space required for backup")
 		return false, err
 	}
 
@@ -74,9 +74,9 @@ func compareBackupToDisk() (bool, error) {
 	return false, nil
 }
 
-// estimateDiskSize calculate the required backup size
-// returns: disk size(int), error
-func estimateDiskSize() (float64, error) {
+// estimateFsSpaceRequirements calculate the required backup size
+// returns: disk size(float64), error
+func estimateFsSpaceRequirements() (float64, error) {
 
 	DirList := resourceList{
 		&[]resource{{staticPodsPath},
@@ -115,7 +115,7 @@ func estimateDiskSize() (float64, error) {
 }
 
 // diskPartitionSize calculate current disk space
-// returns:     disk size(int), error
+// returns:     disk size(float64), error
 func diskPartitionSize() (float64, error) {
 
 	var (
@@ -129,13 +129,6 @@ func diskPartitionSize() (float64, error) {
 	}
 
 	freeDiskSpace = float64(stat.Bavail * uint64(stat.Bsize))
-
-	err = unix.Statfs("/", &stat)
-	if err != nil {
-		return freeDiskSpace, err
-	}
-	total, tbytes := sizeConversion(float64(stat.Blocks * uint64(stat.Bsize)))
-	log.Infof("Total disk size is: %.2f %s", total, tbytes)
 
 	return freeDiskSpace, nil
 }
@@ -174,7 +167,7 @@ func dirSize(path string) float64 {
 }
 
 // sizeConversion coverts the bytes into its multiple
-// returns:  converted size(int), corresponding metric(string)
+// returns:  converted size(float64), corresponding metric(string)
 func sizeConversion(size float64) (float64, string) {
 	i := 0
 	if size >= 1024 {
