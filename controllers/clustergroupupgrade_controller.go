@@ -174,6 +174,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err :=
 					r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
 				if err != nil {
+					if _, ok := err.(utils.PolicyStatusUnknownError); ok {
+						r.Log.Info("[Reconcile] Policy status is unknown reconcile in 30 seconds")
+						return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+					}
 					return ctrl.Result{}, err
 				}
 
@@ -181,6 +185,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					// Build the upgrade batches.
 					err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 					if err != nil {
+						if _, ok := err.(utils.PolicyStatusUnknownError); ok {
+							r.Log.Info("[Reconcile] Policy status is unknown reconcile in 30 seconds")
+							return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+						}
 						return ctrl.Result{}, err
 					}
 
@@ -203,6 +211,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						}
 						err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 						if err != nil {
+							if _, ok := err.(utils.PolicyStatusUnknownError); ok {
+								r.Log.Info("[Reconcile] Policy status is unknown reconcile in 30 seconds")
+								return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+							}
 							return ctrl.Result{}, err
 						}
 
@@ -295,6 +307,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// Check if current policies have become compliant and if new policies have to be applied.
 				isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
 				if err != nil {
+					if _, ok := err.(utils.PolicyStatusUnknownError); ok {
+						r.Log.Info("[Reconcile] Policy status is unknown reconcile in 30 seconds")
+						return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+					}
 					return ctrl.Result{}, err
 				}
 
@@ -375,6 +391,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
 				isUpgradeComplete, err := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
 				if err != nil {
+					if _, ok := err.(utils.PolicyStatusUnknownError); ok {
+						r.Log.Info("[Reconcile] Policy status is unknown reconcile in 30 seconds")
+						return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+					}
 					return ctrl.Result{}, err
 				}
 
@@ -807,7 +827,10 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
 			return err
 		}
 		clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicy.GetName()] = string(p)
-		r.createSubscriptionManagedClusterView(ctx, clusterGroupUpgrade, managedPolicy, policyTypes)
+		err = r.createSubscriptionManagedClusterView(ctx, clusterGroupUpgrade, managedPolicy, policyTypes)
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -1398,7 +1421,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 
 	// Get the compliant status part of the policy.
 	if policy.Object["status"] == nil {
-		return nil, fmt.Errorf("policy %s is missing its status", policyName)
+		return nil, utils.PolicyStatusUnknownError(fmt.Sprintf("policy %s is missing its status", policyName))
 	}
 
 	statusObject := policy.Object["status"].(map[string]interface{})
@@ -1411,12 +1434,12 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 	// Get the policy's list of cluster compliance.
 	statusCompliance := statusObject["status"]
 	if statusCompliance == nil {
-		return nil, fmt.Errorf("policy %s has it's list of cluster statuses pending", policyName)
+		return nil, utils.PolicyStatusUnknownError(fmt.Sprintf("policy %s has it's list of cluster statuses pending", policyName))
 	}
 
 	subStatus := statusCompliance.([]interface{})
 	if subStatus == nil {
-		return nil, fmt.Errorf("policy %s is missing it's compliance status", policyName)
+		return nil, utils.PolicyStatusUnknownError(fmt.Sprintf("policy %s is missing it's compliance status", policyName))
 	}
 
 	return subStatus, nil

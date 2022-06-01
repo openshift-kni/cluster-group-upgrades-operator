@@ -58,3 +58,10 @@ func NewSafeResourceName(name, suffix string, maxLength, spareLength int) string
 	}
 	return fmt.Sprintf("%s-%s", base, suffix)
 }
+
+// PolicyStatusUnknownError defines an error when policy status is missing or unknown
+type PolicyStatusUnknownError string
+
+func (msg PolicyStatusUnknownError) Error() string {
+	return string(msg)
+}
