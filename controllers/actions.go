@@ -150,14 +150,19 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	if err != nil {
 		return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
+	clusterGroupUpgrade.Status.PlacementRules = nil
+
 	err = utils.DeletePlacementBindings(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
 		return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
+	clusterGroupUpgrade.Status.PlacementBindings = nil
+
 	err = utils.DeletePolicies(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
 	if err != nil {
 		return fmt.Errorf("failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
+	clusterGroupUpgrade.Status.CopiedPolicies = nil
 
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
