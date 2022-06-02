@@ -877,6 +877,9 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 
 	// Set new policy annotations - copy them from the managed policy.
 	annotations := managedPolicy.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
 	annotations[utils.DesiredResourceName] = name
 	newPolicy.SetAnnotations(annotations)
 
