@@ -1615,31 +1615,31 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-/* checkDuplicateChildResources looks up the name and desired name of the new resource u in the list of resource names and the safe name map, before
+/* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
    adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
 
    returns: the updated childResourceNameList
 */
-func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, u *unstructured.Unstructured) ([]string, error) {
-	if desiredName, ok := u.GetAnnotations()[utils.DesiredResourceName]; ok {
+func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource *unstructured.Unstructured) ([]string, error) {
+	if desiredName, ok := newResource.GetAnnotations()[utils.DesiredResourceName]; ok {
 		if safeName, ok := safeNameMap[desiredName]; ok {
-			if u.GetName() != safeName {
+			if newResource.GetName() != safeName {
 				// Found an object with the same object name in annotation but different from our records in the names map
 				// This could happen when reconcile calls work on a stale version of CGU right after a status update from a previous reconcile
 				// Or the controller pod fails to update the status after creating objects, e.g. node failure
 				// Remove it as we have created a new one and updated the map
-				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", u.GetName(), "kind", u.GetKind())
-				err := r.Client.Delete(ctx, u)
+				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetKind())
+				err := r.Client.Delete(ctx, newResource)
 				if err != nil {
 					return childResourceNames, err
 				}
 				return childResourceNames, nil
 			}
 		} else {
-			safeNameMap[desiredName] = u.GetName()
+			safeNameMap[desiredName] = newResource.GetName()
 		}
 	}
-	childResourceNames = append(childResourceNames, u.GetName())
+	childResourceNames = append(childResourceNames, newResource.GetName())
 	return childResourceNames, nil
 }
 
