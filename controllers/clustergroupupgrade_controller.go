@@ -1705,18 +1705,12 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	}
 
 	var newMaxConcurrency int
-	// Automatically adjust maxConcurrency to the min of maxConcurrency, number of clusters, 100 or
-	// to the min of number of clusters, 100 if maxConcurrency is set to 0.
-	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > 0 {
-		newMaxConcurrency = utils.GetMinOf3(
-			clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency,
-			len(clusters),
-			utils.MaxNumberOfClustersForUpgrade)
+	// Automatically adjust maxConcurrency to the min of maxConcurrency and the number of clusters.
+	if clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency > 0 &&
+		clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency < len(clusters) {
+		newMaxConcurrency = clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency
 	} else {
 		newMaxConcurrency = len(clusters)
-		if utils.MaxNumberOfClustersForUpgrade < len(clusters) {
-			newMaxConcurrency = utils.MaxNumberOfClustersForUpgrade
-		}
 	}
 
 	if newMaxConcurrency != clusterGroupUpgrade.Status.ComputedMaxConcurrency {
