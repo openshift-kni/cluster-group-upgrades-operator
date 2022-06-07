@@ -10,22 +10,6 @@ import (
 )
 
 var _ = Describe("LaunchBackup", func() {
-	Describe("ParseBackupPath", func() {
-		Context("When BackupPath contains a slash", func() {
-			It("tests strip slash", func() {
-				BackupPath := cmd.ParseBackupPath("foo/")
-				Expect(BackupPath).To(Equal("foo"))
-			})
-		})
-
-		Context("When BackupPath contains no slash", func() {
-			It("tests return normal value", func() {
-				BackupPath := cmd.ParseBackupPath("foo")
-				Expect(BackupPath).To(Equal("foo"))
-			})
-		})
-	})
-
 	Describe("RecoveryInProgress", func() {
 		Context("progressfile exists", func() {
 			It("returns false", func() {

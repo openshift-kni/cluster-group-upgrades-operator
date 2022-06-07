@@ -22,7 +22,6 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"os"
 	"path/filepath"
@@ -35,6 +34,7 @@ import (
 
 const host string = "/host"
 const recoveryScript string = "upgrade-recovery.sh"
+const backupPath string = "/var/recovery"
 
 // RecoveryInProgress checks if a restore is in progress
 // returns:			bool
@@ -47,22 +47,10 @@ func RecoveryInProgress(backupPath string) bool {
 	return true
 }
 
-// ParseBackupPath parses the backupPath
-// returns:			string
-func ParseBackupPath(backupPath string) string {
-	if check := strings.Contains(backupPath[len(backupPath)-1:], "/"); check {
-		backupPath = backupPath[:len(backupPath)-1]
-	}
-	return backupPath
-}
-
 // LaunchBackup triggers the backup procedure
 // returns:			error
 //nolint:gocritic
-func LaunchBackup(backupPath string) error {
-
-	// check for slash in the backupPath
-	backupPath = ParseBackupPath(backupPath)
+func LaunchBackup() error {
 
 	// change root directory to /host
 	if err := syscall.Chroot(host); err != nil {
@@ -199,10 +187,8 @@ var launchBackupCmd = &cobra.Command{
 	Short: "It will trigger backup of resources in the specified path",
 
 	RunE: func(cmd *cobra.Command, args []string) error {
-		backupPath, _ := cmd.Flags().GetString("backupPath")
-
 		// start launching the backup of the resource
-		return LaunchBackup(backupPath)
+		return LaunchBackup()
 	},
 }
 
@@ -210,9 +196,4 @@ func init() {
 
 	rootCmd.AddCommand(launchBackupCmd)
 
-	launchBackupCmd.Flags().StringP("backupPath", "p", "", "Path where to store the backup")
-	_ = launchBackupCmd.MarkFlagRequired("backupPath")
-
-	// bind to viper
-	_ = viper.BindPFlag("backupPath", launchBackupCmd.Flags().Lookup("backupPath"))
 }
