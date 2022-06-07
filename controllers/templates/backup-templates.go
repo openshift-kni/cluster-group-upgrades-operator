@@ -92,8 +92,6 @@ spec:
               -
                 args:
                   - launchBackup
-                  - "--BackupPath"
-                  - /var/recovery
                 image: {{ .WorkloadImage }} 
                 name: container-image
                 securityContext:
