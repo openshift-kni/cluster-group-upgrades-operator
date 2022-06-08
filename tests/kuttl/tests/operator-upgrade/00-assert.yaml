@@ -22,7 +22,7 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-kuttl
   managedPoliciesContent:
     policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","namespace":"openshift-local-storage"}]'
   managedPoliciesForUpgrade:
@@ -31,15 +31,24 @@ status:
   managedPoliciesNs:
     policy5-subscriptions: default
   placementBindings:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-placement-kuttl
   placementRules:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-placement-kuttl
   precaching:
     spec: {}
   remediationPlan:
   - - spoke1
     - spoke2
   - - spoke5
+  safeResourceNames:
+    cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
+    cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
+    cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
+    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
+    cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
   status: {}
 ---
 # Check that all the ManagedClusterViews exist in all the spoke namespaces.
@@ -47,7 +56,7 @@ status:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-cluster-logging
+  name: cgu-default-subscription-cluster-logging-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -58,7 +67,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-cluster-logging
+  name: cgu-default-subscription-cluster-logging-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -69,7 +78,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-cluster-logging
+  name: cgu-default-subscription-cluster-logging-kuttl
   namespace: spoke5
 spec:
   scope:
@@ -81,7 +90,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-local-storage-operator
+  name: cgu-default-subscription-local-storage-operator-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -92,7 +101,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-local-storage-operator
+  name: cgu-default-subscription-local-storage-operator-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -103,7 +112,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-local-storage-operator
+  name: cgu-default-subscription-local-storage-operator-kuttl
   namespace: spoke5
 spec:
   scope:
@@ -115,7 +124,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-performance-addon-operator
+  name: cgu-default-subscription-performance-addon-operator-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -126,7 +135,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-performance-addon-operator
+  name: cgu-default-subscription-performance-addon-operator-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -137,7 +146,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-performance-addon-operator
+  name: cgu-default-subscription-performance-addon-operator-kuttl
   namespace: spoke5
 spec:
   scope:
@@ -149,7 +158,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-ptp-operator-subscription
+  name: cgu-default-subscription-ptp-operator-subscription-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -160,7 +169,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-ptp-operator-subscription
+  name: cgu-default-subscription-ptp-operator-subscription-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -171,7 +180,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-ptp-operator-subscription
+  name: cgu-default-subscription-ptp-operator-subscription-kuttl
   namespace: spoke5
 spec:
   scope:
@@ -183,7 +192,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-sriov-network-operator-subscription
+  name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -194,7 +203,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-sriov-network-operator-subscription
+  name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -205,7 +214,7 @@ spec:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: cgu-default-subscription-sriov-network-operator-subscription
+  name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
   namespace: spoke5
 spec:
   scope:

@@ -302,6 +302,10 @@ spec:
                     type: string
                   type: array
                 type: array
+              safeResourceNames:
+                additionalProperties:
+                  type: string
+                type: object
               status:
                 description: UpgradeStatus defines the observed state of the upgrade
                 properties:

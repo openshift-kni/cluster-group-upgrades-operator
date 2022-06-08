@@ -3,6 +3,8 @@ kind: ClusterGroupUpgrade
 metadata:
   name: cgu
   namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl    
 spec:
   managedPolicies:
     - policy2-common-pao-sub-policy

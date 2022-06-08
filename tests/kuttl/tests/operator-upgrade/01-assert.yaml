@@ -23,7 +23,7 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-kuttl
   managedPoliciesContent:
     policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","namespace":"openshift-local-storage"}]'
   managedPoliciesForUpgrade:
@@ -32,15 +32,34 @@ status:
   managedPoliciesNs:
     policy5-subscriptions: default
   placementBindings:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-placement-kuttl
   placementRules:
-  - cgu-policy5-subscriptions
+  - cgu-policy5-subscriptions-placement-kuttl
   precaching:
     spec: {}
   remediationPlan:
   - - spoke1
     - spoke2
   - - spoke5
+  safeResourceNames:
+    cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
+    cgu-default-installplan-install-aaaa1: cgu-default-installplan-install-aaaa1-kuttl
+    cgu-default-installplan-install-aaaa2: cgu-default-installplan-install-aaaa2-kuttl
+    cgu-default-installplan-install-aaaa3: cgu-default-installplan-install-aaaa3-kuttl
+    cgu-default-installplan-install-aaaa4: cgu-default-installplan-install-aaaa4-kuttl
+    cgu-default-installplan-install-aaaa5: cgu-default-installplan-install-aaaa5-kuttl
+    cgu-default-installplan-install-bbbb1: cgu-default-installplan-install-bbbb1-kuttl
+    cgu-default-installplan-install-bbbb2: cgu-default-installplan-install-bbbb2-kuttl
+    cgu-default-installplan-install-bbbb3: cgu-default-installplan-install-bbbb3-kuttl
+    cgu-default-installplan-install-bbbb4: cgu-default-installplan-install-bbbb4-kuttl
+    cgu-default-installplan-install-bbbb5: cgu-default-installplan-install-bbbb5-kuttl
+    cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
+    cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
+    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
+    cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
   status:
     currentBatch: 1
     remediationPlanForBatch:
@@ -54,7 +73,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa1
+  name: cgu-default-installplan-install-aaaa1-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -67,7 +86,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa2
+  name: cgu-default-installplan-install-aaaa2-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -80,7 +99,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa3
+  name: cgu-default-installplan-install-aaaa3-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -93,7 +112,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa4
+  name: cgu-default-installplan-install-aaaa4-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -106,7 +125,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa5
+  name: cgu-default-installplan-install-aaaa5-kuttl
   namespace: spoke1
 spec:
   scope:
@@ -120,7 +139,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb1
+  name: cgu-default-installplan-install-bbbb1-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -133,7 +152,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb2
+  name: cgu-default-installplan-install-bbbb2-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -146,7 +165,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb3
+  name: cgu-default-installplan-install-bbbb3-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -159,7 +178,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb4
+  name: cgu-default-installplan-install-bbbb4-kuttl
   namespace: spoke2
 spec:
   scope:
@@ -172,7 +191,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb5
+  name: cgu-default-installplan-install-bbbb5-kuttl
   namespace: spoke2
 spec:
   scope:

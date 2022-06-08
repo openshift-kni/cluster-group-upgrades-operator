@@ -268,6 +268,13 @@ func (in *ClusterGroupUpgradeStatus) DeepCopyInto(out *ClusterGroupUpgradeStatus
 			(*out)[key] = val
 		}
 	}
+	if in.SafeResourceNames != nil {
+		in, out := &in.SafeResourceNames, &out.SafeResourceNames
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
 	if in.ManagedPoliciesForUpgrade != nil {
 		in, out := &in.ManagedPoliciesForUpgrade, &out.ManagedPoliciesForUpgrade
 		*out = make([]ManagedPolicyForUpgrade, len(*in))

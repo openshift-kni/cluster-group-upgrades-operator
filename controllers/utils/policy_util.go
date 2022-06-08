@@ -2,8 +2,10 @@ package utils
 
 import (
 	"context"
+	"strings"
 
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -98,4 +100,9 @@ func DeletePlacementRules(ctx context.Context, c client.Client, ns string, label
 		}
 	}
 	return nil
+}
+
+// GetResourceName constructs composite names for policy objects
+func GetResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
+	return strings.ToLower(clusterGroupUpgrade.Name + "-" + initialString)
 }
