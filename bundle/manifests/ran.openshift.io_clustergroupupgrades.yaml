@@ -311,9 +311,15 @@ spec:
                   currentBatchStartedAt:
                     format: date-time
                     type: string
-                  remediationPlanForBatch:
+                  currentBatchRemediationProgress:
                     additionalProperties:
-                      type: integer
+                      description: ClusterRemediationProgress
+                      properties:
+                        policyIndex:
+                          type: integer
+                        state:
+                          type: string
+                      type: object
                     type: object
                   startedAt:
                     format: date-time

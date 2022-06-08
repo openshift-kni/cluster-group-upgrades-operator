@@ -16,10 +16,11 @@ const (
 	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
-// Indexes for managed policies in the CurrentRemediationPolicyIndex.
+// ClusterRemediationProgress possible states
 const (
-	NoPolicyIndex        = -1
-	AllPoliciesValidated = -2
+	ClusterRemediationNotStarted = "NotStarted"
+	ClusterRemediationInProgress = "InProgress"
+	ClusterRemediationCompleted  = "Completed"
 )
 
 // Label specific to ACM child policies.
