@@ -340,11 +340,14 @@ spec:
                     type: integer
                   currentBatchRemediationProgress:
                     additionalProperties:
-                      description: ClusterRemediationProgress
+                      description: ClusterRemediationProgress stores the remediation
+                        progress of a cluster
                       properties:
                         policyIndex:
                           type: integer
                         state:
+                          description: 'State should be one of the following: NotStarted,
+                            InProgress, Completed'
                           type: string
                       type: object
                     type: object
