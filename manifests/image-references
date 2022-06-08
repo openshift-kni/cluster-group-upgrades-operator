@@ -2,11 +2,11 @@ kind: ImageStream
 apiVersion: image.openshift.io/v1
 spec:
   tags:
-  - name: cluster-group-upgrades-operator-precache
+  - name: topology-aware-lifecycle-operator-precache-rhel8
     from:
       kind: DockerImage
       name: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.0
-  - name: manager
+  - name: topology-aware-lifecycle-manager-rhel8-operator
     from:
       kind: DockerImage
       name: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.0
