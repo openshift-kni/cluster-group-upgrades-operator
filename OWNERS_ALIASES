@@ -14,6 +14,7 @@ aliases:
     - vitus133
     - danielmellado
     - jc-rh
+    - Missxiaoguo
   upgrades-operator-approvers:
     - browsell
     - donpenney
@@ -26,3 +27,4 @@ aliases:
     - vitus133
     - danielmellado
     - jc-rh
+    - Missxiaoguo
