@@ -127,10 +127,17 @@ type ClusterGroupUpgradeSpec struct {
 
 // ClusterRemediationProgress stores the remediation progress of a cluster
 type ClusterRemediationProgress struct {
-	// State should be one of the following: ClusterRemediationNotStarted, ClusterRemediationInProgress, ClusterRemediationCompleted
+	// State should be one of the following: NotStarted, InProgress, Completed
 	State       string `json:"state,omitempty"`
 	PolicyIndex *int   `json:"policyIndex,omitempty"`
 }
+
+// ClusterRemediationProgress possible states
+const (
+	NotStarted = "NotStarted"
+	InProgress = "InProgress"
+	Completed  = "Completed"
+)
 
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
