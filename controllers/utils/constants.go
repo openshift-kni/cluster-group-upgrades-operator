@@ -90,11 +90,6 @@ const (
 	TestManagedClusterActionFailedMessage  = "ManagedClusterAction failed"
 )
 
-// Upgrade specific constants.
-const (
-	MaxNumberOfClustersForUpgrade = 100
-)
-
 // Reconciling instructions.
 const (
 	ReconcileNow    = 0
