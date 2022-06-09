@@ -26,9 +26,9 @@ status:
     status: "False"
     type: Ready
   copiedPolicies:
-  - cgu-policy1-common-cluster-version-policy
-  - cgu-policy3-common-ptp-sub-policy
-  - cgu-policy4-common-sriov-sub-policy
+  - cgu-policy1-common-cluster-version-policy-kuttl
+  - cgu-policy3-common-ptp-sub-policy-kuttl
+  - cgu-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
   - policy2-common-pao-sub-policy
   managedPoliciesContent:
@@ -47,18 +47,30 @@ status:
     policy3-common-ptp-sub-policy: default
     policy4-common-sriov-sub-policy: default
   placementBindings:
-  - cgu-policy1-common-cluster-version-policy
-  - cgu-policy3-common-ptp-sub-policy
-  - cgu-policy4-common-sriov-sub-policy
+  - cgu-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   placementRules:
-  - cgu-policy1-common-cluster-version-policy
-  - cgu-policy3-common-ptp-sub-policy
-  - cgu-policy4-common-sriov-sub-policy
+  - cgu-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
     - spoke2
     - spoke5
     - spoke6
+  safeResourceNames:
+    cgu-common-cluster-version-policy-config: cgu-common-cluster-version-policy-config-kuttl
+    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    cgu-policy1-common-cluster-version-policy: cgu-policy1-common-cluster-version-policy-kuttl
+    cgu-policy1-common-cluster-version-policy-placement: cgu-policy1-common-cluster-version-policy-placement-kuttl
+    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+    cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
   status:
     currentBatch: 1
     remediationPlanForBatch:

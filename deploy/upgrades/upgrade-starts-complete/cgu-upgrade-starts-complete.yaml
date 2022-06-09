@@ -3,6 +3,8 @@ kind: ClusterGroupUpgrade
 metadata:
   name: cgu-upgrade-starts-complete
   namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl      
 spec:
   managedPolicies:
     - policy1-common-cluster-version-policy
