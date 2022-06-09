@@ -16,13 +16,6 @@ const (
 	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
-// ClusterRemediationProgress possible states
-const (
-	ClusterRemediationNotStarted = "NotStarted"
-	ClusterRemediationInProgress = "InProgress"
-	ClusterRemediationCompleted  = "Completed"
-)
-
 // Label specific to ACM child policies.
 const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"

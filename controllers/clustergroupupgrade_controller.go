@@ -35,6 +35,7 @@ import (
 	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -388,7 +389,7 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 	// By default, don't set any policy index for any of the clusters in the batch.
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] = new(ranv1alpha1.ClusterRemediationProgress)
-		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationNotStarted
+		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.NotStarted
 
 	}
 
@@ -416,11 +417,11 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State
-		if clusterProgressState == utils.ClusterRemediationNotStarted {
+		if clusterProgressState == ranv1alpha1.NotStarted {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = new(int)
 			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = 0
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationInProgress
-		} else if clusterProgressState == utils.ClusterRemediationCompleted {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.InProgress
+		} else if clusterProgressState == ranv1alpha1.Completed {
 			continue
 		}
 		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
@@ -433,7 +434,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 
 		if currentPolicyIndex >= numberOfPolicies {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = nil
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = utils.ClusterRemediationCompleted
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.Completed
 		} else {
 			isBatchComplete = false
 			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = currentPolicyIndex
@@ -472,7 +473,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 
 	policiesToUpdate := make(map[int][]string)
 	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
-		if clusterProgress.State != utils.ClusterRemediationInProgress {
+		if clusterProgress.State != ranv1alpha1.InProgress {
 			continue
 		}
 		clusterNames := policiesToUpdate[*clusterProgress.PolicyIndex]
@@ -499,7 +500,7 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 
 	multiCloudPendingStatus := false
 	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
-		if clusterProgress.State != utils.ClusterRemediationInProgress {
+		if clusterProgress.State != ranv1alpha1.InProgress {
 			continue
 		}
 		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[*clusterProgress.PolicyIndex].Name
@@ -1173,7 +1174,7 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 	// they are either compliant with all the managedPolicies or they don't match them.
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[clusterGroupUpgrade.Status.Status.CurrentBatch-1] {
 		clusterProgress := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
-		if clusterProgress.State == utils.ClusterRemediationCompleted {
+		if clusterProgress.State == ranv1alpha1.Completed {
 			continue
 		}
 		nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, *clusterProgress.PolicyIndex)
@@ -1851,32 +1852,30 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 	})
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&ranv1alpha1.ClusterGroupUpgrade{}).Owns(policyUnstructured).
-		WithEventFilter(predicate.Funcs{
+		For(&ranv1alpha1.ClusterGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
-				reconcile := false
 				// Generation is only updated on spec changes (also on deletion),
 				// not metadata or status
 				oldGeneration := e.ObjectOld.GetGeneration()
 				newGeneration := e.ObjectNew.GetGeneration()
-				// This is a hack so we can ignore update event based on object kind
-				// The Kind field in the objects from the event is not populated for some reason
-				// Reference: https://github.com/kubernetes/client-go/issues/308
-				if e.ObjectNew.GetLabels()["app.kubernetes.io/instance"] == "policies" {
-					// status update only for parent policies
-					reconcile = oldGeneration == newGeneration
-				} else {
-					// spec update only for CGU
-					reconcile = oldGeneration != newGeneration
-				}
-				return reconcile
+				// spec update only for CGU
+				return oldGeneration != newGeneration
 			},
-			CreateFunc: func(ce event.CreateEvent) bool {
-				// only interested in CGU create event
-				if ce.Object.GetLabels()["app.kubernetes.io/instance"] == "policies" {
-					return false
-				}
-				return true
+			CreateFunc:  func(ce event.CreateEvent) bool { return true },
+			GenericFunc: func(ge event.GenericEvent) bool { return false },
+			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
+		})).
+		Owns(policyUnstructured, builder.WithPredicates(predicate.Funcs{
+			UpdateFunc: func(e event.UpdateEvent) bool {
+				// Generation is only updated on spec changes (also on deletion),
+				// not metadata or status
+				oldGeneration := e.ObjectOld.GetGeneration()
+				newGeneration := e.ObjectNew.GetGeneration()
+				// status update only for parent policies
+				return oldGeneration == newGeneration
 			},
-		}).Complete(r)
+			CreateFunc:  func(ce event.CreateEvent) bool { return false },
+			GenericFunc: func(ge event.GenericEvent) bool { return false },
+			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
+		})).Complete(r)
 }

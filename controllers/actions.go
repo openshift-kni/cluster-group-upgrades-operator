@@ -170,6 +170,6 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	if err != nil {
 		return fmt.Errorf("Failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
-
+	clusterGroupUpgrade.Status.SafeResourceNames = nil
 	return nil
 }
