@@ -1897,7 +1897,7 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			},
 			CreateFunc:  func(ce event.CreateEvent) bool { return true },
 			GenericFunc: func(ge event.GenericEvent) bool { return false },
-			DeleteFunc:  func(de event.DeleteEvent) bool { return true },
+			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
 		})).
 		Owns(policyUnstructured, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
