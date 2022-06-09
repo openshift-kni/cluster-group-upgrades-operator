@@ -6,7 +6,7 @@ spec:
     from:
       kind: DockerImage
       name: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.0
-  - name: topology-aware-lifecycle-manager-rhel8-operator
+  - name: topology-aware-lifecycle-rhel8-operator
     from:
       kind: DockerImage
       name: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.0
