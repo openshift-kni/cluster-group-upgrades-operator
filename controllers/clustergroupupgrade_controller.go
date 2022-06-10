@@ -378,7 +378,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		return ctrl.Result{}, err
 	}
-
+	r.Log.Info("Finish reconciling CGU", "name", clusterGroupUpgrade.Name)
 	return nextReconcile, nil
 }
 
@@ -1358,8 +1358,8 @@ func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, 
 			return err
 		}
 	}
-
-	return nil
+	err := r.updateChildResourceNamesInStatus(ctx, clusterGroupUpgrade)
+	return err
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructured.Unstructured) ([]interface{}, error) {
@@ -1615,78 +1615,80 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-/* checkDuplicateChildResources goes through the list of resources against the current names map. Duplicate (with same desired name annotation value) ones are removed.
-   If no colision, u gets added to the childResourceNameList and safeNameMap gets updated
+/* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
+   adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
 
    returns: the updated childResourceNameList
 */
-func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNameList []string, u *unstructured.Unstructured) ([]string, error) {
-	if desiredName, ok := u.GetAnnotations()[utils.DesiredResourceName]; ok {
+func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource *unstructured.Unstructured) ([]string, error) {
+	if desiredName, ok := newResource.GetAnnotations()[utils.DesiredResourceName]; ok {
 		if safeName, ok := safeNameMap[desiredName]; ok {
-			if u.GetName() != safeName {
+			if newResource.GetName() != safeName {
 				// Found an object with the same object name in annotation but different from our records in the names map
 				// This could happen when reconcile calls work on a stale version of CGU right after a status update from a previous reconcile
 				// Or the controller pod fails to update the status after creating objects, e.g. node failure
 				// Remove it as we have created a new one and updated the map
-				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", u.GetName(), "kind", u.GetKind())
-				err := r.Client.Delete(ctx, u)
+				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetKind())
+				err := r.Client.Delete(ctx, newResource)
 				if err != nil {
-					return childResourceNameList, err
+					return childResourceNames, err
 				}
-				return childResourceNameList, nil
+				return childResourceNames, nil
 			}
 		} else {
-			safeNameMap[desiredName] = u.GetName()
+			safeNameMap[desiredName] = newResource.GetName()
 		}
 	}
-	childResourceNameList = append(childResourceNameList, u.GetName())
-	return childResourceNameList, nil
+	childResourceNames = append(childResourceNames, newResource.GetName())
+	return childResourceNames, nil
+}
+
+func (r *ClusterGroupUpgradeReconciler) updateChildResourceNamesInStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
+	if err != nil {
+		return err
+	}
+
+	placementRuleNames := make([]string, 0)
+	for _, placementRule := range placementRules.Items {
+		placementRuleNames, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, placementRuleNames, &placementRule)
+		if err != nil {
+			return err
+		}
+	}
+	clusterGroupUpgrade.Status.PlacementRules = placementRuleNames
+
+	placementBindings, err := r.getPlacementBindings(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	placementBindingNames := make([]string, 0)
+	for _, placementBinding := range placementBindings.Items {
+		placementBindingNames, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, placementBindingNames, &placementBinding)
+		if err != nil {
+			return err
+		}
+	}
+	clusterGroupUpgrade.Status.PlacementBindings = placementBindingNames
+
+	copiedPolicies, err := r.getCopiedPolicies(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return err
+	}
+	copiedPolicyNames := make([]string, 0)
+	for _, policy := range copiedPolicies.Items {
+		copiedPolicyNames, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, copiedPolicyNames, &policy)
+		if err != nil {
+			return err
+		}
+	}
+	clusterGroupUpgrade.Status.CopiedPolicies = copiedPolicyNames
+	return err
 }
 
 func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
-
-		placementRules, err := r.getPlacementRules(ctx, clusterGroupUpgrade, nil)
-		if err != nil {
-			return err
-		}
-
-		placementRulesStatus := make([]string, 0)
-		for _, placementRule := range placementRules.Items {
-			placementRulesStatus, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, placementRulesStatus, &placementRule)
-			if err != nil {
-				return err
-			}
-		}
-		clusterGroupUpgrade.Status.PlacementRules = placementRulesStatus
-
-		placementBindings, err := r.getPlacementBindings(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return err
-		}
-		placementBindingsStatus := make([]string, 0)
-		for _, placementBinding := range placementBindings.Items {
-			placementBindingsStatus, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, placementBindingsStatus, &placementBinding)
-			if err != nil {
-				return err
-			}
-		}
-		clusterGroupUpgrade.Status.PlacementBindings = placementBindingsStatus
-
-		copiedPolicies, err := r.getCopiedPolicies(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return err
-		}
-		policiesStatus := make([]string, 0)
-		for _, policy := range copiedPolicies.Items {
-			policiesStatus, err = r.checkDuplicateChildResources(ctx, clusterGroupUpgrade.Status.SafeResourceNames, policiesStatus, &policy)
-			if err != nil {
-				return err
-			}
-		}
-		clusterGroupUpgrade.Status.CopiedPolicies = policiesStatus
-
-		err = r.Status().Update(ctx, clusterGroupUpgrade)
+		err := r.Status().Update(ctx, clusterGroupUpgrade)
 		return err
 	})
 
