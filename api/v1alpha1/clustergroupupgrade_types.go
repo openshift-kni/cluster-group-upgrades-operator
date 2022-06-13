@@ -122,6 +122,20 @@ type ClusterGroupUpgradeSpec struct {
 	Actions Actions `json:"actions,omitempty"`
 }
 
+// ClusterRemediationProgress stores the remediation progress of a cluster
+type ClusterRemediationProgress struct {
+	// State should be one of the following: NotStarted, InProgress, Completed
+	State       string `json:"state,omitempty"`
+	PolicyIndex *int   `json:"policyIndex,omitempty"`
+}
+
+// ClusterRemediationProgress possible states
+const (
+	NotStarted = "NotStarted"
+	InProgress = "InProgress"
+	Completed  = "Completed"
+)
+
 // UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatus struct {
 	StartedAt             metav1.Time `json:"startedAt,omitempty"`
@@ -129,7 +143,7 @@ type UpgradeStatus struct {
 	CurrentBatch          int         `json:"currentBatch,omitempty"`
 	CurrentBatchStartedAt metav1.Time `json:"currentBatchStartedAt,omitempty"`
 
-	CurrentRemediationPolicyIndex map[string]int `json:"remediationPlanForBatch,omitempty"`
+	CurrentBatchRemediationProgress map[string]*ClusterRemediationProgress `json:"currentBatchRemediationProgress,omitempty"`
 }
 
 // ManagedPolicyForUpgrade defines the observed state of a Policy

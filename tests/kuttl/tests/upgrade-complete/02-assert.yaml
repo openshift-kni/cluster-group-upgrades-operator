@@ -27,5 +27,6 @@ status:
   remediationPlan:
   - - spoke1
   status:
-    remediationPlanForBatch:
-      spoke1: -2
+    currentBatchRemediationProgress:
+      spoke1:
+        state: Completed

@@ -16,12 +16,6 @@ const (
 	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
-// Indexes for managed policies in the CurrentRemediationPolicyIndex.
-const (
-	NoPolicyIndex        = -1
-	AllPoliciesValidated = -2
-)
-
 // Label specific to ACM child policies.
 const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"
