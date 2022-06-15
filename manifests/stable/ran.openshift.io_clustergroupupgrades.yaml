@@ -1,0 +1,333 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: clustergroupupgrades.ran.openshift.io
+spec:
+  group: ran.openshift.io
+  names:
+    kind: ClusterGroupUpgrade
+    listKind: ClusterGroupUpgradeList
+    plural: clustergroupupgrades
+    shortNames:
+    - cgu
+    singular: clustergroupupgrade
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
+            properties:
+              actions:
+                description: Actions defines the actions to be done either before
+                  or after the managedPolicies are remediated
+                properties:
+                  afterCompletion:
+                    description: AfterCompletion defines the actions to be done after
+                      upgrade is completed
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be added to the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be deleted for the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteObjects:
+                        default: true
+                        description: This field defines whether clean up the resources
+                          created for upgrade
+                        type: boolean
+                    type: object
+                  beforeEnable:
+                    description: BeforeEnable defines the actions to be done before
+                      starting upgrade
+                    properties:
+                      addClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be added to the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                      deleteClusterLabels:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster labels to be deleted for the specified
+                          clusters. Labels applied to the clusters either defined
+                          in spec.clusters or selected by spec.clusterSelector.
+                        type: object
+                    type: object
+                type: object
+              blockingCRs:
+                items:
+                  description: BlockingCR defines the Upgrade CRs that block the current
+                    CR from running if not completed
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
+              clusterSelector:
+                description: 'This field holds a label common to multiple clusters
+                  that will be updated. The expected format is as follows: clusterSelector:   -
+                  label1Name=label1Value   - label2Name=label2Value If the value is
+                  empty, then the expected format is: clusterSelector:   - label1Name
+                  All the clusters matching the labels specified in clusterSelector
+                  will be included in the update plan.'
+                items:
+                  type: string
+                type: array
+              clusters:
+                items:
+                  type: string
+                type: array
+              enable:
+                default: true
+                description: This field determines when the upgrade starts. While
+                  false, the upgrade doesn't start. The policies, placement rules
+                  and placement bindings are created, but clusters are not added to
+                  the placement rule. Once set to true, the clusters start being upgraded,
+                  one batch at a time.
+                type: boolean
+              managedPolicies:
+                items:
+                  type: string
+                type: array
+              preCaching:
+                default: false
+                description: This field determines whether container image pre-caching
+                  will be done on all the clusters matching the selector. If required,
+                  the pre-caching process starts immediately on all clusters irrespectively
+                  of the value of the "enable" flag
+                type: boolean
+              remediationStrategy:
+                description: RemediationStrategySpec defines the remediation policy
+                properties:
+                  canaries:
+                    description: Canaries defines the list of managed clusters that
+                      should be remediated first when remediateAction is set to enforce
+                    items:
+                      type: string
+                    type: array
+                  maxConcurrency:
+                    type: integer
+                  timeout:
+                    default: 240
+                    type: integer
+                required:
+                - maxConcurrency
+                type: object
+            required:
+            - remediationStrategy
+            type: object
+          status:
+            description: ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
+            properties:
+              computedMaxConcurrency:
+                type: integer
+              conditions:
+                items:
+                  description: "Condition contains details for one aspect of the current
+                    state of this API Resource. --- This struct is intended for direct
+                    use as an array at the field path .status.conditions.  For example,
+                    type FooStatus struct{     // Represents the observations of a
+                    foo's current state.     // Known .status.conditions.type are:
+                    \"Available\", \"Progressing\", and \"Degraded\"     // +patchMergeKey=type
+                    \    // +patchStrategy=merge     // +listType=map     // +listMapKey=type
+                    \    Conditions []metav1.Condition `json:\"conditions,omitempty\"
+                    patchStrategy:\"merge\" patchMergeKey:\"type\" protobuf:\"bytes,1,rep,name=conditions\"`
+                    \n     // other fields }"
+                  properties:
+                    lastTransitionTime:
+                      description: lastTransitionTime is the last time the condition
+                        transitioned from one status to another. This should be when
+                        the underlying condition changed.  If that is not known, then
+                        using the time when the API field changed is acceptable.
+                      format: date-time
+                      type: string
+                    message:
+                      description: message is a human readable message indicating
+                        details about the transition. This may be an empty string.
+                      maxLength: 32768
+                      type: string
+                    observedGeneration:
+                      description: observedGeneration represents the .metadata.generation
+                        that the condition was set based upon. For instance, if .metadata.generation
+                        is currently 12, but the .status.conditions[x].observedGeneration
+                        is 9, the condition is out of date with respect to the current
+                        state of the instance.
+                      format: int64
+                      minimum: 0
+                      type: integer
+                    reason:
+                      description: reason contains a programmatic identifier indicating
+                        the reason for the condition's last transition. Producers
+                        of specific condition types may define expected values and
+                        meanings for this field, and whether the values are considered
+                        a guaranteed API. The value should be a CamelCase string.
+                        This field may not be empty.
+                      maxLength: 1024
+                      minLength: 1
+                      pattern: ^[A-Za-z]([A-Za-z0-9_,:]*[A-Za-z0-9_])?$
+                      type: string
+                    status:
+                      description: status of the condition, one of True, False, Unknown.
+                      enum:
+                      - "True"
+                      - "False"
+                      - Unknown
+                      type: string
+                    type:
+                      description: type of condition in CamelCase or in foo.example.com/CamelCase.
+                        --- Many .condition.type values are consistent across resources
+                        like Available, but because arbitrary conditions can be useful
+                        (see .node.status.conditions), the ability to deconflict is
+                        important. The regex it matches is (dns1123SubdomainFmt/)?(qualifiedNameFmt)
+                      maxLength: 316
+                      pattern: ^([a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*/)?(([A-Za-z0-9][-A-Za-z0-9_.]*)?[A-Za-z0-9])$
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              copiedPolicies:
+                items:
+                  type: string
+                type: array
+              managedPoliciesCompliantBeforeUpgrade:
+                items:
+                  type: string
+                type: array
+              managedPoliciesContent:
+                additionalProperties:
+                  type: string
+                type: object
+              managedPoliciesForUpgrade:
+                description: Contains the managed policies (and the namespaces) that
+                  have NonCompliant clusters that require updating.
+                items:
+                  description: ManagedPolicyForUpgrade defines the observed state
+                    of a Policy
+                  properties:
+                    name:
+                      type: string
+                    namespace:
+                      type: string
+                  type: object
+                type: array
+              managedPoliciesNs:
+                additionalProperties:
+                  type: string
+                type: object
+              placementBindings:
+                description: 'INSERT ADDITIONAL STATUS FIELD - define observed state
+                  of cluster Important: Run "make" to regenerate code after modifying
+                  this file'
+                items:
+                  type: string
+                type: array
+              placementRules:
+                items:
+                  type: string
+                type: array
+              precaching:
+                description: PrecachingStatus defines the observed pre-caching status
+                properties:
+                  clusters:
+                    items:
+                      type: string
+                    type: array
+                  spec:
+                    description: PrecachingSpec defines the pre-caching software spec
+                      derived from policies
+                    properties:
+                      operatorsIndexes:
+                        items:
+                          type: string
+                        type: array
+                      operatorsPackagesAndChannels:
+                        items:
+                          type: string
+                        type: array
+                      platformImage:
+                        type: string
+                    type: object
+                  status:
+                    additionalProperties:
+                      type: string
+                    type: object
+                type: object
+              remediationPlan:
+                items:
+                  items:
+                    type: string
+                  type: array
+                type: array
+              status:
+                description: UpgradeStatus defines the observed state of the upgrade
+                properties:
+                  completedAt:
+                    format: date-time
+                    type: string
+                  currentBatch:
+                    type: integer
+                  currentBatchStartedAt:
+                    format: date-time
+                    type: string
+                  remediationPlanForBatch:
+                    additionalProperties:
+                      type: integer
+                    type: object
+                  startedAt:
+                    format: date-time
+                    type: string
+                type: object
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
