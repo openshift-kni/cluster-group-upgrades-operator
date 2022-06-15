@@ -140,7 +140,7 @@ controller-gen: ## Download controller-gen locally if necessary.
 
 operator-sdk: ## Download operator-sdk locally if necessary.
 ifeq (,$(wildcard $(OPERATOR_SDK)))
-	curl https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.9.0/operator-sdk-v1.10.1-ocp-linux-x86_64.tar.gz | tar -xz -C bin/ && sudo chmod +x $(OPERATOR_SDK)
+	curl https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.10.17/operator-sdk-v1.16.0-ocp-linux-x86_64.tar.gz | tar -xz -C bin/ && sudo chmod +x $(OPERATOR_SDK)
 endif
 
 kustomize: ## Download kustomize locally if necessary.
