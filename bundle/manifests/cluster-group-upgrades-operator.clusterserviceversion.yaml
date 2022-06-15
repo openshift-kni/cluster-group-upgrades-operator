@@ -109,6 +109,8 @@ spec:
         path: precaching
       - displayName: Remediation Plan
         path: remediationPlan
+      - displayName: Safe Resource Names
+        path: safeResourceNames
       - displayName: Status
         path: status
       version: v1alpha1

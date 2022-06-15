@@ -89,11 +89,6 @@ spec:
                         type: object
                     type: object
                 type: object
-              backup:
-                default: false
-                description: This field determines whether the cluster would be running
-                  a backup prior to the upgrade.
-                type: boolean
               blockingCRs:
                 items:
                   description: BlockingCR defines the Upgrade CRs that block the current
@@ -305,6 +300,10 @@ spec:
                     type: string
                   type: array
                 type: array
+              safeResourceNames:
+                additionalProperties:
+                  type: string
+                type: object
               status:
                 description: UpgradeStatus defines the observed state of the upgrade
                 properties:
@@ -313,19 +312,22 @@ spec:
                     type: string
                   currentBatch:
                     type: integer
-                  currentBatchStartedAt:
-                    format: date-time
-                    type: string
                   currentBatchRemediationProgress:
                     additionalProperties:
-                      description: ClusterRemediationProgress
+                      description: ClusterRemediationProgress stores the remediation
+                        progress of a cluster
                       properties:
                         policyIndex:
                           type: integer
                         state:
+                          description: 'State should be one of the following: NotStarted,
+                            InProgress, Completed'
                           type: string
                       type: object
                     type: object
+                  currentBatchStartedAt:
+                    format: date-time
+                    type: string
                   startedAt:
                     format: date-time
                     type: string

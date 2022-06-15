@@ -300,6 +300,10 @@ spec:
                     type: string
                   type: array
                 type: array
+              safeResourceNames:
+                additionalProperties:
+                  type: string
+                type: object
               status:
                 description: UpgradeStatus defines the observed state of the upgrade
                 properties:
@@ -308,13 +312,22 @@ spec:
                     type: string
                   currentBatch:
                     type: integer
+                  currentBatchRemediationProgress:
+                    additionalProperties:
+                      description: ClusterRemediationProgress stores the remediation
+                        progress of a cluster
+                      properties:
+                        policyIndex:
+                          type: integer
+                        state:
+                          description: 'State should be one of the following: NotStarted,
+                            InProgress, Completed'
+                          type: string
+                      type: object
+                    type: object
                   currentBatchStartedAt:
                     format: date-time
                     type: string
-                  remediationPlanForBatch:
-                    additionalProperties:
-                      type: integer
-                    type: object
                   startedAt:
                     format: date-time
                     type: string
