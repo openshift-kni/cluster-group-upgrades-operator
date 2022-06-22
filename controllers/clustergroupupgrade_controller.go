@@ -328,7 +328,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					}
 
 					// Check for batch timeout.
-					remainingTime := float64(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) - time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time).Seconds()
+					remainingTime := float64(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) - time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time).Seconds() - time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time).Seconds()
 					// Because the length of the plan will include the current batch but the status index starts at 0 we need to add one to the remaining batches
 					remainingBatches := len(clusterGroupUpgrade.Status.RemediationPlan) - clusterGroupUpgrade.Status.Status.CurrentBatch + 1
 
