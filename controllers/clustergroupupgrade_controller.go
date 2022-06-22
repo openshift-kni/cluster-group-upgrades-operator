@@ -57,6 +57,30 @@ type ClusterGroupUpgradeReconciler struct {
 
 const statusUpdateWaitInMilliSeconds = 100
 
+func doNotRequeue() ctrl.Result {
+	return ctrl.Result{}
+}
+
+func requeueImmediately() ctrl.Result {
+	return ctrl.Result{Requeue: true}
+}
+
+func requeueWithShortInterval() ctrl.Result {
+	return requeueWithCustomInterval(30 * time.Second)
+}
+
+func requeueWithMediumInterval() ctrl.Result {
+	return requeueWithCustomInterval(1 * time.Minute)
+}
+
+func requeueWithLongInterval() ctrl.Result {
+	return requeueWithCustomInterval(5 * time.Minute)
+}
+
+func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
+	return ctrl.Result{RequeueAfter: interval}
+}
+
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/finalizers,verbs=update
@@ -79,58 +103,64 @@ const statusUpdateWaitInMilliSeconds = 100
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
 //nolint:gocyclo // TODO: simplify this function
-func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 
+	r.Log.Info("Start reconciling CGU", "name", req.NamespacedName)
+	defer r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "with", nextReconcile)
+
+	nextReconcile = doNotRequeue()
 	// Wait a bit so that API server/etcd syncs up and this reconsile has a better chance of getting the updated CGU and policies
 	time.Sleep(statusUpdateWaitInMilliSeconds * time.Millisecond)
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
-	err := r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
+	err = r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			err = nil
+			return
 		}
 		r.Log.Error(err, "Failed to get ClusterGroupUpgrade")
-		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
+		return
 	}
 
-	r.Log.Info("Start reconciling CGU", "name", clusterGroupUpgrade.Name, "version", clusterGroupUpgrade.GetResourceVersion())
-	reconcileTime, err := r.handleCguFinalizer(ctx, clusterGroupUpgrade)
+	r.Log.Info("Loaded CGU", "version", clusterGroupUpgrade.GetResourceVersion())
+	var reconcileTime int
+	reconcileTime, err = r.handleCguFinalizer(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return ctrl.Result{}, err
+		return
 	}
 	if reconcileTime == utils.ReconcileNow {
-		return ctrl.Result{Requeue: true}, nil
+		nextReconcile = requeueImmediately()
+		return
 	} else if reconcileTime == utils.StopReconciling {
-		return ctrl.Result{}, nil
+		return
 	}
 
-	reconcile, err := r.validateCR(ctx, clusterGroupUpgrade)
+	var reconcile bool
+	reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return ctrl.Result{}, err
+		return
 	}
 	if reconcile {
-		return ctrl.Result{Requeue: true}, nil
+		nextReconcile = requeueImmediately()
+		return
 	}
-
-	nextReconcile := ctrl.Result{}
 
 	err = r.reconcileBackup(ctx, clusterGroupUpgrade)
 	if err != nil {
 		r.Log.Error(err, "reconcileBackup error")
-		return ctrl.Result{}, err
+		return
 	}
 
 	if clusterGroupUpgrade.Status.Backup != nil {
 		for _, v := range clusterGroupUpgrade.Status.Backup.Status {
 			//nolint
 			if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
-				requeueAfter := 30 * time.Second
-				nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 				err = r.updateStatus(ctx, clusterGroupUpgrade)
 				if err != nil {
-					return ctrl.Result{}, err
+					return
 				}
-				return nextReconcile, nil
+				nextReconcile = requeueWithShortInterval()
+				return
 			}
 		}
 	}
@@ -139,19 +169,18 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
 		if err != nil {
 			r.Log.Error(err, "reconcilePrecaching error")
-			return ctrl.Result{}, err
+			return
 		}
 		if clusterGroupUpgrade.Status.Precaching != nil {
 			for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
 				//nolint
 				if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
-					requeueAfter := 30 * time.Second
-					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 					err = r.updateStatus(ctx, clusterGroupUpgrade)
 					if err != nil {
-						return ctrl.Result{}, err
+						return
 					}
-					return nextReconcile, nil
+					nextReconcile = requeueWithShortInterval()
+					return
 				}
 			}
 
@@ -166,82 +195,81 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				Reason:  "UpgradeNotStarted",
 				Message: "The ClusterGroupUpgrade CR is not enabled",
 			})
-			nextReconcile = ctrl.Result{Requeue: true}
+			nextReconcile = requeueImmediately()
 		} else if readyCondition.Status == metav1.ConditionFalse {
 			if readyCondition.Reason == "PrecachingRequired" {
-				requeueAfter := 5 * time.Minute
-				nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+				nextReconcile = requeueWithLongInterval()
 			} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == utils.CannotStart {
 				// Before starting the upgrade check that all the managed policies exist.
-				allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err :=
+				var allManagedPoliciesExist bool
+				var managedPoliciesMissing []string
+				var managedPoliciesPresent []*unstructured.Unstructured
+				allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err =
 					r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
 				if err != nil {
-					return ctrl.Result{}, err
+					return
 				}
 
 				if allManagedPoliciesExist {
 					// Build the upgrade batches.
 					err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 					if err != nil {
-						return ctrl.Result{}, err
+						return
 					}
 
 					// Set default values for status reason and message.
 					var statusReason, statusMessage string
-					statusReason = "UpgradeNotStarted"
-					statusMessage = "The ClusterGroupUpgrade CR is not enabled"
-					requeueAfter := 5 * time.Minute
-
 					// If the remediation plan is empty, update the status.
 					if clusterGroupUpgrade.Status.RemediationPlan == nil {
 						statusReason = "UpgradeCompleted"
 						statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
-						nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+						nextReconcile = requeueImmediately()
 					} else {
 						// Create the needed resources for starting the upgrade.
 						err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 						if err != nil {
-							return ctrl.Result{}, err
+							return
 						}
 						err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 						if err != nil {
-							return ctrl.Result{}, err
+							return
 						}
 
 						if *clusterGroupUpgrade.Spec.Enable {
 							// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
-							blockingCRsNotCompleted, blockingCRsMissing, err := r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
+							var blockingCRsNotCompleted, blockingCRsMissing []string
+							blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
 							if err != nil {
-								return ctrl.Result{}, err
+								return
 							}
 
 							if len(blockingCRsMissing) > 0 {
 								// If there are blocking CRs missing, update the message to show which those are.
 								statusReason = utils.CannotStart
 								statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing)
-								requeueAfter := 1 * time.Minute
-								nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+								nextReconcile = requeueWithMediumInterval()
 							} else if len(blockingCRsNotCompleted) > 0 {
 								// If there are blocking CRs that are not completed, then the upgrade can't start.
 								statusReason = utils.CannotStart
 								statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
-								requeueAfter := 1 * time.Minute
-								nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+								nextReconcile = requeueWithMediumInterval()
 							} else {
 								// There are no blocking CRs, continue with the upgrade process.
 								// Take actions before starting upgrade.
-								err := r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
+								err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
 								if err != nil {
-									return ctrl.Result{}, err
+									return
 								}
 								// Start the upgrade.
 								statusReason = "UpgradeNotCompleted"
 								statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
 								clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
-								nextReconcile = ctrl.Result{Requeue: true}
+								nextReconcile = requeueImmediately()
 							}
 						} else {
-							nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+							statusReason = "UpgradeNotStarted"
+							statusMessage = "The ClusterGroupUpgrade CR is not enabled"
+							nextReconcile = requeueWithLongInterval()
 						}
 					}
 
@@ -251,7 +279,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						Reason:  statusReason,
 						Message: statusMessage,
 					})
-					r.Log.Info("[Reconcile]", "RequeueAfter:", requeueAfter)
 				} else {
 					// If not all managedPolicies exist, update the Status accordingly.
 					statusMessage := fmt.Sprintf("The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesMissing)
@@ -261,8 +288,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						Reason:  utils.CannotStart,
 						Message: statusMessage,
 					})
-					requeueAfter := 1 * time.Minute
-					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+					nextReconcile = requeueWithMediumInterval()
 				}
 			} else if readyCondition.Reason == "UpgradeNotCompleted" {
 				r.Log.Info("[Reconcile]", "Status.CurrentBatch", clusterGroupUpgrade.Status.Status.CurrentBatch)
@@ -273,15 +299,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
-					nextReconcile = ctrl.Result{Requeue: true}
+					nextReconcile = requeueImmediately()
 				} else {
 					//nolint
 					requeueAfter := clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Add(5 * time.Minute).Sub(time.Now())
 					if requeueAfter < 0 {
 						requeueAfter = 5 * time.Minute
 					}
-					r.Log.Info("[Reconcile] Requeuing after", "requeueAfter", requeueAfter)
-					nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+					nextReconcile = requeueWithCustomInterval(requeueAfter)
 				}
 
 				var isBatchComplete bool
@@ -295,9 +320,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				// Check if current policies have become compliant and if new policies have to be applied.
-				isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
+				isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
 				if err != nil {
-					return ctrl.Result{}, err
+					return
 				}
 
 				isUpgradeComplete := false
@@ -315,16 +340,16 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					} else {
 						clusterGroupUpgrade.Status.Status.CurrentBatch++
 					}
+					nextReconcile = requeueImmediately()
 				} else {
+					var reconcileSooner bool
 					// Add the needed cluster names to upgrade to the appropriate placement rule.
-					reconcileSooner, err := r.remediateCurrentBatch(ctx, clusterGroupUpgrade)
+					reconcileSooner, err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade)
 					if err != nil {
-						return ctrl.Result{}, err
+						return
 					}
 					if reconcileSooner {
-						requeueAfter := 30 * time.Second
-						r.Log.Info("[Reconcile] Requeuing after", "requeueAfter", requeueAfter)
-						nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
+						nextReconcile = requeueWithShortInterval()
 					}
 
 					// Check for batch timeout.
@@ -372,7 +397,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			} else if readyCondition.Reason == "UpgradeTimedOut" {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
-				nextReconcile = ctrl.Result{RequeueAfter: 60 * time.Minute}
 
 				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
 				isUpgradeComplete := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
@@ -384,6 +408,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						Reason:  "UpgradeCompleted",
 						Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
 					})
+					nextReconcile = requeueImmediately()
+				} else {
+					nextReconcile = requeueWithCustomInterval(60 * time.Minute)
 				}
 			}
 		} else {
@@ -392,8 +419,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// Take actions after upgrade is completed
 				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
 				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-				if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
-					return ctrl.Result{}, err
+				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+					return
 				}
 				// Set completion time only after post actions are executed with no errors
 				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
@@ -404,11 +431,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-	r.Log.Info("Finish reconciling CGU", "name", clusterGroupUpgrade.Name)
-	return nextReconcile, nil
+	return
 }
 
 func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
