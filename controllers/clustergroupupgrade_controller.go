@@ -375,11 +375,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				if isUpgradeComplete {
-					err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
-					if err != nil {
-						msg := fmt.Sprint("Job and managedclusterview cleanup failed with error:", err)
-						r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "JobAndViewCleanupFailed", msg)
-					}
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
 						Status:  metav1.ConditionTrue,
