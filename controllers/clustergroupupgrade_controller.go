@@ -327,37 +327,38 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						nextReconcile = ctrl.Result{RequeueAfter: requeueAfter}
 					}
 
-					// The remaining time will be the total timeout subtract the elapsed time spent on both the batch and cgu
-					// It is important to include the current batch here so that we don't let the entire timeout be consumed by a single batch that gets stuck
-					remainingTime := float64(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) - clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time.Sub(clusterGroupUpgrade.Status.Status.StartedAt.Time).Seconds()
-
-					// Because the length of the plan will include the current batch but the status index starts at 0 we need to add one to the remaining batches
-					// This also means its not possible for this to be zero so no worries about a division by zero later
-					remainingBatches := len(clusterGroupUpgrade.Status.RemediationPlan) - clusterGroupUpgrade.Status.Status.CurrentBatch + 1
-
-					// The current batch's timeout shall be the remaining time divided by the number of batches remaining
-					// This is to ensure we are giving each batch as much time as possible within the remaining allotment
-					currentBatchTimeout := time.Duration(remainingTime / float64(remainingBatches) * float64(time.Second))
-
 					// Check if this batch has timed out
-					if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() &&
-						time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
+					if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 
-						// Check if this was a canary or not
-						if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
-							clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
-							r.Log.Info("Canaries batch timed out")
-							meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-								Type:    "Ready",
-								Status:  metav1.ConditionFalse,
-								Reason:  "UpgradeTimedOut",
-								Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
-							})
-						} else {
-							r.Log.Info("Batch upgrade timed out")
-							clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-							if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
-								clusterGroupUpgrade.Status.Status.CurrentBatch++
+						// The remaining time will be the total timeout subtract the elapsed time spent on both the batch and cgu
+						// It is important to include the current batch here so that we don't let the entire timeout be consumed by a single batch that gets stuck
+						remainingTime := float64(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) - clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time.Sub(clusterGroupUpgrade.Status.Status.StartedAt.Time).Seconds()
+
+						// Because the length of the plan will include the current batch but the status index starts at 0 we need to add one to the remaining batches
+						// This also means its not possible for this to be zero so no worries about a division by zero later
+						remainingBatches := len(clusterGroupUpgrade.Status.RemediationPlan) - clusterGroupUpgrade.Status.Status.CurrentBatch + 1
+
+						// The current batch's timeout shall be the remaining time divided by the number of batches remaining
+						// This is to ensure we are giving each batch as much time as possible within the remaining allotment
+						currentBatchTimeout := time.Duration(remainingTime / float64(remainingBatches) * float64(time.Second))
+
+						if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
+							// Check if this was a canary or not
+							if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
+								clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
+								r.Log.Info("Canaries batch timed out")
+								meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+									Type:    "Ready",
+									Status:  metav1.ConditionFalse,
+									Reason:  "UpgradeTimedOut",
+									Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+								})
+							} else {
+								r.Log.Info("Batch upgrade timed out")
+								clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+								if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+									clusterGroupUpgrade.Status.Status.CurrentBatch++
+								}
 							}
 						}
 					}
