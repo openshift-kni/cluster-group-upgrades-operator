@@ -106,7 +106,7 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 
 	r.Log.Info("Start reconciling CGU", "name", req.NamespacedName)
-	defer r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "with", nextReconcile)
+	defer r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "result", nextReconcile)
 
 	nextReconcile = doNotRequeue()
 	// Wait a bit so that API server/etcd syncs up and this reconsile has a better chance of getting the updated CGU and policies
@@ -122,7 +122,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return
 	}
 
-	r.Log.Info("Loaded CGU", "version", clusterGroupUpgrade.GetResourceVersion())
+	r.Log.Info("Loaded CGU", "name", req.NamespacedName, "version", clusterGroupUpgrade.GetResourceVersion())
 	var reconcileTime int
 	reconcileTime, err = r.handleCguFinalizer(ctx, clusterGroupUpgrade)
 	if err != nil {
@@ -156,9 +156,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			//nolint
 			if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
 				err = r.updateStatus(ctx, clusterGroupUpgrade)
-				if err != nil {
-					return
-				}
 				nextReconcile = requeueWithShortInterval()
 				return
 			}
@@ -176,9 +173,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				//nolint
 				if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
 					err = r.updateStatus(ctx, clusterGroupUpgrade)
-					if err != nil {
-						return
-					}
 					nextReconcile = requeueWithShortInterval()
 					return
 				}
