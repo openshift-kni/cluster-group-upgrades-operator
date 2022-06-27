@@ -120,6 +120,8 @@ The backup workload generates an utility called `upgrade-recovery.sh` in the rec
 
 ## Recovery from Upgrade Failure
 
+In case, the upgrade failed in a spoke cluster, the TALO CR needs to be deleted in the hub cluster and an admin needs to login to the spoke cluster to start the recovery process.
+
 ### Platform Rollback
 
 Platform rollback, if needed, is handled by issuing the `rpm-ostree rollback -r` command. Not all upgrades will include
@@ -138,9 +140,9 @@ When the backup was taken, the active deployment was pinned and standby deployme
 
 The upgrade recovery utility is generated when taking the backup, before the upgrade starts, written as `/var/recovery/upgrade-recovery.sh`.
 
-* The first phase of the recovery shuts down containers and cleans up, and restore files from the backup partition/folder to the targeted directories. Afterwards, it prompts for a rebooting the node with `systemctl reboot`.
+* To start the recovery, you have to launch the script. The first phase of the recovery shuts down containers and cleans up, and restore files from the backup partition/folder to the targeted directories. Afterwards, it prompts for a rebooting the node with `systemctl reboot`.
 
-* The second stage restores cluster database and related files from the backup, relaunches containers and trigger required redeployments as per cluster restore procedure.
+* After the reboot, the script needs to be relaunched again with the resume option, i.e. `/var/recovery/upgrade-recovery.sh --resume`. This will restore cluster database and related files from the backup, will relaunch containers and trigger required redeployments as per cluster restore procedure.
 
 
 > **WARNING**: Should the recovery utility fail, the user can retry with the `--restart` option:<br>
