@@ -16,7 +16,14 @@ spec:
     singular: clustergroupupgrade
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .status.conditions[-1:].reason
+      name: Upgrade State
+      type: string
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
@@ -329,19 +336,22 @@ spec:
                     type: string
                   currentBatch:
                     type: integer
-                  currentBatchStartedAt:
-                    format: date-time
-                    type: string
                   currentBatchRemediationProgress:
                     additionalProperties:
-                      description: ClusterRemediationProgress
+                      description: ClusterRemediationProgress stores the remediation
+                        progress of a cluster
                       properties:
                         policyIndex:
                           type: integer
                         state:
+                          description: 'State should be one of the following: NotStarted,
+                            InProgress, Completed'
                           type: string
                       type: object
                     type: object
+                  currentBatchStartedAt:
+                    format: date-time
+                    type: string
                   startedAt:
                     format: date-time
                     type: string
