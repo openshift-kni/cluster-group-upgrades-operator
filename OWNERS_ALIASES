@@ -11,6 +11,7 @@ aliases:
     - serngawy
     - vitus133
     - jc-rh
+    - donpenney
   upgrades-operator-approvers:
     - browsell
     - rcarrillocruz
@@ -20,3 +21,4 @@ aliases:
     - serngawy
     - vitus133
     - jc-rh
+    - donpenney
