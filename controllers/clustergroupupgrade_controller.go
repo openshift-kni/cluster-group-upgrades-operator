@@ -321,11 +321,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if isUpgradeComplete {
-				err = r.precachingCleanup(ctx, clusterGroupUpgrade)
-				if err != nil {
-					msg := fmt.Sprint("Precaching cleanup failed with error:", err)
-					r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "PrecachingCleanupFailed", msg)
-				}
 				meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 					Type:    "Ready",
 					Status:  metav1.ConditionTrue,

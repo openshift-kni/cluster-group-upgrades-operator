@@ -162,6 +162,11 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	}
 	clusterGroupUpgrade.Status.CopiedPolicies = nil
 
+	err = r.precachingCleanup(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
+	}
+
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
