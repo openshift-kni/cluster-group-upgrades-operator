@@ -1,5 +1,0 @@
-packageName: cluster-group-upgrades-operator
-channels:
-- name: stable
-  currentCSV: cluster-group-upgrades-operator.v4.10.0
-defaultChannel: stable

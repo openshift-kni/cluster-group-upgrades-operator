@@ -1,13 +1,13 @@
 updates:
-  - file: "stable/cluster-group-upgrades-operator.clusterserviceversion.yaml" # relative to this file
+  - file: "stable/topology-aware-lifecycle-manager.clusterserviceversion.yaml" # relative to this file
     update_list:
-    - search: "cluster-group-upgrades-operator.v{MAJOR}.{MINOR}.0"
-      replace: "cluster-group-upgrades-operator.{FULL_VER}"
+    - search: "topology-aware-lifecycle-manager.v{MAJOR}.{MINOR}.0"
+      replace: "topology-aware-lifecycle-manager.{FULL_VER}"
     - search: "version: {MAJOR}.{MINOR}.0"
       replace: "version: {FULL_VER}"
     - search: 'olm.skipRange: ">=4.6.0 <{MAJOR}.{MINOR}.0"'
       replace: 'olm.skipRange: ">=4.6.0 <{FULL_VER}"'
-  - file: "cluster-group-upgrades-operator.package.yaml"
+  - file: "topology-aware-lifecycle-manager.package.yaml"
     update_list:
-    - search: "currentCSV: cluster-group-upgrades-operator.v{MAJOR}.{MINOR}.0"
-      replace: "currentCSV: cluster-group-upgrades-operator.{FULL_VER}"
+    - search: "currentCSV: topology-aware-lifecycle-manager.v{MAJOR}.{MINOR}.0"
+      replace: "currentCSV: topology-aware-lifecycle-manager.{FULL_VER}"
