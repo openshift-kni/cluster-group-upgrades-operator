@@ -1,0 +1,5 @@
+packageName: topology-aware-lifecycle-manager
+channels:
+- name: stable
+  currentCSV: topology-aware-lifecycle-manager.v4.10.0
+defaultChannel: stable
