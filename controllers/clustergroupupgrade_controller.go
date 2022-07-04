@@ -694,7 +694,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 			if filterNonCompliantPolicies == true {
 				// Check the policy has at least one of the clusters from the CR in NonCompliant state.
 				clustersNonCompliantWithPolicy, err := r.getClustersNonCompliantWithPolicy(
-					ctx, clusterGroupUpgrade, foundPolicy, true)
+					ctx, clusterGroupUpgrade, foundPolicy)
 				if err != nil {
 					return false, nil, nil, err
 				}
@@ -754,7 +754,7 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
 func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured, policyContent []ranv1alpha1.PolicyContent) error {
 
-	nonCompliantClusters, err := r.getClustersNonCompliantWithPolicy(ctx, clusterGroupUpgrade, policy, true)
+	nonCompliantClusters, err := r.getClustersNonCompliantWithPolicy(ctx, clusterGroupUpgrade, policy)
 	if err != nil {
 		return err
 	}
@@ -1346,43 +1346,21 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 
 func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	policy *unstructured.Unstructured, filterClustersForUpgrade bool) ([]string, error) {
-
-	// Get the status of the clusters matching the policy.
-	subStatus, err := r.getPolicyClusterStatus(policy)
-	if err != nil {
-		return nil, err
-	}
+	policy *unstructured.Unstructured) ([]string, error) {
 
 	var nonCompliantClusters []string
-	// Loop through all the clusters in the policy's compliance status.
-	for _, crtSubStatusCrt := range subStatus {
-		crtSubStatusMap := crtSubStatusCrt.(map[string]interface{})
-		// If the cluster is NonCompliant, add it to the list. A cluster without a status is also considered NonCompliant.
-		if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant || crtSubStatusMap["compliant"] == nil {
-			nonCompliantClusters = append(nonCompliantClusters, crtSubStatusMap["clustername"].(string))
-		}
+	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
-
-	// Filter only the clusters present in the current upgrade.
-	if filterClustersForUpgrade == true {
-		var nonCompliantClustersInUpgrade []string
-		allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	for _, cluster := range allClustersForUpgrade {
+		compliance, err := r.getClusterComplianceWithPolicy(cluster, policy)
 		if err != nil {
-			return nil, fmt.Errorf("Cannot obtain all the details about the clusters in the CR: %s", err)
+			nonCompliantClusters = append(nonCompliantClusters, cluster)
+		} else if compliance != utils.ClusterStatusCompliant {
+			nonCompliantClusters = append(nonCompliantClusters, cluster)
 		}
-		for _, nonCompliantCluster := range nonCompliantClusters {
-			for _, cluster := range allClustersForUpgrade {
-				if cluster == nonCompliantCluster {
-					nonCompliantClustersInUpgrade = append(nonCompliantClustersInUpgrade, cluster)
-					break
-				}
-			}
-		}
-		r.Log.Info("[getClustersNonCompliantWithPolicy]", "policy: ", policy.GetName(), "clusters: ", nonCompliantClusters)
-		return nonCompliantClustersInUpgrade, nil
 	}
-
 	r.Log.Info("[getClustersNonCompliantWithPolicy]", "policy: ", policy.GetName(), "clusters: ", nonCompliantClusters)
 	return nonCompliantClusters, nil
 }
