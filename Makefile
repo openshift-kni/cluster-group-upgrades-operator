@@ -177,9 +177,11 @@ non-kind-deps-update: common-deps-update
 controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.4.1)
 
+OPERATOR_SDK_VERSION = $(shell $(OPERATOR_SDK) version 2>/dev/null | sed 's/^operator-sdk version: "\([^"]*\).*/\1/')
+OPERATOR_SDK_VERSION_REQ = v1.16.0-ocp
 operator-sdk: ## Download operator-sdk locally if necessary.
-ifeq (,$(wildcard $(OPERATOR_SDK)))
-	curl https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/latest/operator-sdk-v1.16.0-ocp-linux-x86_64.tar.gz | tar -xz -C bin/
+ifneq ($(OPERATOR_SDK_VERSION_REQ),$(OPERATOR_SDK_VERSION))
+	curl https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.10.17/operator-sdk-v1.16.0-ocp-linux-x86_64.tar.gz | tar -xz -C bin/
 endif
 
 kustomize: ## Download kustomize locally if necessary.
@@ -248,7 +250,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 	$(KUSTOMIZE) build config/default | kubectl delete -f -
 
 .PHONY: bundle
-bundle: manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
+bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && PRECACHE_IMG=$(PRECACHE_IMG) RECOVERY_IMG=$(RECOVERY_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
