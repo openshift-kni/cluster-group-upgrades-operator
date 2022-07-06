@@ -160,7 +160,7 @@ bashate: ## Run bashate
 	hack/bashate.sh
 
 .PHONY: ci-job
-ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate
+ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
@@ -263,6 +263,10 @@ bundle-build: ## Build the bundle image.
 .PHONY: bundle-push
 bundle-push: ## Push the bundle image.
 	$(MAKE) docker-push IMG=$(BUNDLE_IMG)
+
+.PHONY: bundle-check
+bundle-check: bundle
+	hack/check-git-tree.sh
 
 .PHONY: opm
 OPM = ./bin/opm
