@@ -349,12 +349,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					// Check if this batch has timed out
 					if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 
-						currentBatchTimeout := calculateBatchTimeout(
+						currentBatchTimeout := utils.CalculateBatchTimeout(
 							clusterGroupUpgrade.Spec.RemediationStrategy.Timeout,
-							clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
-							clusterGroupUpgrade.Status.Status.StartedAt.Time,
 							len(clusterGroupUpgrade.Status.RemediationPlan),
-							clusterGroupUpgrade.Status.Status.CurrentBatch)
+							clusterGroupUpgrade.Status.Status.CurrentBatch,
+							clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
+							clusterGroupUpgrade.Status.Status.StartedAt.Time)
 
 						if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
 							// Check if this was a canary or not
@@ -431,22 +431,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
-}
-
-func calculateBatchTimeout(timeoutMinutes int, currentBatchStartTime, cguStartTime time.Time, numBatches, currentBatch int) time.Duration {
-
-	// The remaining time will be the total timeout subtract the elapsed time spent on both the batch and cgu
-	// It is important to include the current batch here so that we don't let the entire timeout be consumed by a single batch that gets stuck
-	remainingTime := float64(timeoutMinutes)*float64(time.Minute) - float64(currentBatchStartTime.Sub(cguStartTime).Nanoseconds())
-
-	// The number of batches will always be at least 1, and currentBatch is indexed from 0, so there should never be a <1 result here
-	remainingBatches := numBatches - currentBatch
-
-	// The current batch's timeout shall be the remaining time divided by the number of batches remaining
-	// This is to ensure we are giving each batch as much time as possible within the remaining allotment
-	currentBatchTimeout := time.Duration(remainingTime / float64(remainingBatches))
-
-	return currentBatchTimeout
 }
 
 func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
