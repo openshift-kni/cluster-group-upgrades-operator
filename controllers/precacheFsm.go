@@ -62,14 +62,14 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	r.setPrecachingRequired(clusterGroupUpgrade)
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
-		allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(
+		allManagedPoliciesExist, managedPoliciesInfo, err := r.doManagedPoliciesExist(
 			ctx, clusterGroupUpgrade, false)
 		if err != nil {
 			return err
 		}
 		if !allManagedPoliciesExist {
 			statusMessage := fmt.Sprintf(
-				"The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesMissing)
+				"The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesInfo.missingPolicies)
 			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 				Type:    utils.PrecacheSpecValidCondition,
 				Status:  metav1.ConditionFalse,
@@ -78,7 +78,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			return nil
 		}
 
-		spec, err := r.extractPrecachingSpecFromPolicies(clusterGroupUpgrade, managedPoliciesPresent)
+		spec, err := r.extractPrecachingSpecFromPolicies(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
 		if err != nil {
 			return err
 		}
