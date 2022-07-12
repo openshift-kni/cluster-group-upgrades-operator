@@ -23,7 +23,10 @@ require (
 	sigs.k8s.io/controller-runtime v0.9.3-0.20210709165254-650ea59f19cc
 )
 
-require golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
+require (
+	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
+	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
+)
 
 require (
 	cloud.google.com/go v0.65.0 // indirect
@@ -88,7 +91,6 @@ require (
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/tomb.v1 v1.0.0-20141024135613-dd632973f1e7 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 	k8s.io/apiextensions-apiserver v0.21.3 // indirect
 	k8s.io/component-base v0.21.3 // indirect
 	k8s.io/klog/v2 v2.9.0 // indirect
