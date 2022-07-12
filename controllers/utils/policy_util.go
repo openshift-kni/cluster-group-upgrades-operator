@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"strings"
 
 	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
@@ -10,6 +11,16 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// PolicyErr type
+type PolicyErr struct {
+	ObjName string
+	ErrMsg  string
+}
+
+func (e *PolicyErr) Error() string {
+	return fmt.Sprintf("%s: %s", e.ObjName, e.ErrMsg)
+}
 
 // GetChildPolicies gets the child policies for a list of clusters
 func GetChildPolicies(ctx context.Context, c client.Client, clusters []string) ([]policiesv1.Policy, error) {
@@ -114,4 +125,48 @@ func GetParentPolicyNameAndNamespace(childPolicyName string) []string {
 	// Extract the parent policy name and namespace by splitting the child policy name into two substrings separated by "."
 	// and we are safe to split with the separator "." as the namespace is disallowed to contain "."
 	return strings.SplitN(childPolicyName, ".", 2)
+}
+
+// VerifyPolicyObjects validates the policy objects and return error if the policy is invalid
+func VerifyPolicyObjects(policy *unstructured.Unstructured) error {
+	policyName := policy.GetName()
+	policySpec := policy.Object["spec"].(map[string]interface{})
+
+	// Get the policy templates.
+	policyTemplates := policySpec["policy-templates"].([]interface{})
+
+	// Go through the policy policy-templates.
+	for _, plcTmpl := range policyTemplates {
+		// Make sure the objectDefinition of the policy template exists.
+		if plcTmpl.(map[string]interface{})["objectDefinition"] == nil {
+			return &PolicyErr{policyName, PlcMissTmplDef}
+		}
+		plcTmplDef := plcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
+
+		// Make sure the ConfigurationPolicy metadata exists.
+		if plcTmplDef["metadata"] == nil {
+			return &PolicyErr{policyName, PlcMissTmplDefMeta}
+		}
+
+		// Make sure the ConfigurationPolicy spec exists.
+		if plcTmplDef["spec"] == nil {
+			return &PolicyErr{policyName, PlcMissTmplDefSpec}
+		}
+		plcTmplDefSpec := plcTmplDef["spec"].(map[string]interface{})
+
+		// Make sure the ConfigurationPolicy object-templates exists.
+		if plcTmplDefSpec["object-templates"] == nil {
+			return &PolicyErr{policyName, ConfigPlcMissObjTmpl}
+		}
+		configPlcTmpls := plcTmplDefSpec["object-templates"].([]interface{})
+
+		// Go through the ConfigurationPolicy object-templates.
+		for _, configPlcTmpl := range configPlcTmpls {
+			// Make sure the objectDefinition of the ConfigurationPolicy object template exists.
+			if configPlcTmpl.(map[string]interface{})["objectDefinition"] == nil {
+				return &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
+			}
+		}
+	}
+	return nil
 }
