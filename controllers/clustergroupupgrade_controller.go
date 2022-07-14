@@ -369,7 +369,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					}
 				} else {
 					// On last batch, check all batches
-					if r.isUpgradeComplete(ctx, clusterGroupUpgrade) {
+					var isUpgradeComplete bool
+					isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+					if err != nil {
+						return
+					}
+					if isUpgradeComplete {
 						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 							Type:    "Ready",
 							Status:  metav1.ConditionTrue,
@@ -395,8 +400,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
 
 				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
-				isUpgradeComplete := r.isUpgradeComplete(ctx, clusterGroupUpgrade)
-
+				var isUpgradeComplete bool
+				isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+				if err != nil {
+					return
+				}
 				if isUpgradeComplete {
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
@@ -1218,10 +1226,10 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
    returns: true/false if the upgrade is complete
             error/nil
 */
-func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) bool {
+func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return false
+		return false, err
 	}
 
 	if isBatchComplete {
@@ -1237,18 +1245,15 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 					startIndex = *clusterProgress.PolicyIndex
 				}
 				nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, startIndex)
-				if err != nil {
-					return false
-				}
-				if nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
-					return false
+				if err != nil || nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
+					return false, err
 				}
 			}
 		}
 	} else {
-		return false
+		return false, nil
 	}
-	return true
+	return true, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
