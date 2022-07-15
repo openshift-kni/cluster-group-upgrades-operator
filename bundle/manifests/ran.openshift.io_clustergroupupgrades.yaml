@@ -115,10 +115,11 @@ spec:
               clusterLabelSelectors:
                 description: 'This field holds a list of expressions or labels that
                   will be used to determine what clusters to include in the operation.
-                  The expected format is as follows: clusterLabelSelectors:   -  -
-                  matchExpressions:         - key: label1           operator: In           values:             -
-                  ''valueX''             - ''valueY''      - matchLabels:         -
-                  label1: value1         - label2: value2'
+                  The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+                  key: label1         operator: In         values:           - value1a           -
+                  value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+                  key: label3         operator: In         values:           - value3     matchLabels:       label4:
+                  value4'
                 items:
                   description: A label selector is a label query over a set of resources.
                     The result of matchLabels and matchExpressions are ANDed. An empty
