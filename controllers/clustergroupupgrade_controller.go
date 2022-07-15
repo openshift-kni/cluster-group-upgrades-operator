@@ -1629,8 +1629,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 			return nil, err
 		}
 
-		r.Log.Info("[getClusterBySelectors]", "clustersBySelector", clusterList)
-
 		for _, cluster := range clusterList.Items {
 			// Make sure a cluster name doesn't appear twice.
 			if _, value := keys[cluster.GetName()]; !value {
