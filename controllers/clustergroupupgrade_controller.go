@@ -1592,17 +1592,22 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
-	var clusterNames []string
+
+	// These will be used later
+	clusterNames := []string{}
 	keys := make(map[string]bool)
-	// The cluster selector field holds a label common to multiple clusters that will be updated.
-	// All the clusters matching the labels specified in clusterSelector will be included in the update plan.
-	// The expected format for Spec.ClusterSelector is as follows:
-	// clusterSelector:
-	//   - label1Name=label1Value
-	//   - label2Name=label2Value
-	// If the value is empty, then the expected format is:
-	// clusterSelector:
-	//   - label1Name
+
+	// First get a list of all the clusters explicitly specified in the spec
+	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+		// Make sure a cluster name doesn't appear twice.
+		if _, value := keys[clusterName]; !value {
+			keys[clusterName] = true
+			clusterNames = append(clusterNames, clusterName)
+		}
+	}
+
+	// Next get a list of all the clusters that match using the deprecated clusterSelector
+	// The expected format for ClusterSelector can be found in codedoc for its type definition
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
 		var clusterLabels map[string]string
@@ -1611,13 +1616,44 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		} else if len(selectorList) == 1 {
 			clusterLabels = map[string]string{selectorList[0]: ""}
 		} else {
-			r.Log.Info("Cluster selector has wrong format: %s", clusterSelector)
+			r.Log.Info("Ignoring malformed cluster selector: '%s'", clusterSelector)
 			continue
 		}
 
 		listOpts := []client.ListOption{
 			client.MatchingLabels(clusterLabels),
 		}
+
+		clusterList := &clusterv1.ManagedClusterList{}
+		if err := r.List(ctx, clusterList, listOpts...); err != nil {
+			return nil, err
+		}
+
+		r.Log.Info("[getClusterBySelectors]", "clustersBySelector", clusterList)
+
+		for _, cluster := range clusterList.Items {
+			// Make sure a cluster name doesn't appear twice.
+			if _, value := keys[cluster.GetName()]; !value {
+				keys[cluster.GetName()] = true
+				clusterNames = append(clusterNames, cluster.GetName())
+			}
+		}
+	}
+
+	// Finally get a list of all the clusters that matching using the clusterLabelSelector
+	// The expected format for ClusterLabelSelector can be found in codedoc for its type definition
+	for _, clusterLabelSelector := range clusterGroupUpgrade.Spec.ClusterLabelSelectors {
+
+		// The selector object has to be converted into this selector type to be used in the list options
+		selector, err := metav1.LabelSelectorAsSelector(&clusterLabelSelector)
+		if err != nil {
+			return nil, err
+		}
+
+		listOpts := []client.ListOption{
+			client.MatchingLabelsSelector{Selector: selector},
+		}
+
 		clusterList := &clusterv1.ManagedClusterList{}
 		if err := r.List(ctx, clusterList, listOpts...); err != nil {
 			return nil, err
@@ -1632,17 +1668,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
-	r.Log.Info("[getClusterBySelectors]", "clustersBySelector", clusterNames)
-
-	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
-		// Make sure a cluster name doesn't appear twice.
-		if _, value := keys[clusterName]; !value {
-			keys[clusterName] = true
-			clusterNames = append(clusterNames, clusterName)
-		}
-	}
-
-	r.Log.Info("[getClustersBySelectors]", "clusterNames", clusterNames)
+	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
 

@@ -113,8 +113,29 @@ type ClusterGroupUpgradeSpec struct {
 	//   - label1Name
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
+	// Deprecated: Use ClusterLabelSelectors instead
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ClusterSelector []string `json:"clusterSelector,omitempty"`
+	// This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
+	// The expected format is as follows:
+	// clusterLabelSelectors:
+	//   - matchExpressions:
+	//       - key: label1
+	//         operator: In
+	//         values:
+	//           - value1a
+	//           - value1b
+	//   - matchLabels:
+	//       label2: value2
+	//   - matchExpressions:
+	//       - key: label3
+	//         operator: In
+	//         values:
+	//           - value3
+	//     matchLabels:
+	//       label4: value4
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Remediation Strategy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Managed Policies",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
