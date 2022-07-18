@@ -4,9 +4,12 @@ metadata:
   name: cgu-cluster-selector
   namespace: default
 spec:
-  clusterSelector:
-  - upgrade
-  - upgrade2=true
+  clusterLabelSelector:
+  - matchLabels:
+      - upgrade2: true
+  - matchExpressions:
+      - key: upgrade
+        operator: Exists
   clusters:
   - spoke1
   - spoke2
@@ -63,8 +66,8 @@ status:
   - cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
-    - spoke4
-  - - spoke2
+    - spoke2
+  - - spoke4
     - spoke5
   - - spoke6
   safeResourceNames:
