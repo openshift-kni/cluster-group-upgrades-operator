@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -1666,6 +1667,8 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
+	// Sort the list before returning it
+	sort.Strings(clusterNames)
 	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
