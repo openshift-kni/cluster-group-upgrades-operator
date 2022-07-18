@@ -114,6 +114,7 @@ type ClusterGroupUpgradeSpec struct {
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
 	// Deprecated: Use ClusterLabelSelectors instead
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ClusterSelector []string `json:"clusterSelector,omitempty"`
 	// This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
