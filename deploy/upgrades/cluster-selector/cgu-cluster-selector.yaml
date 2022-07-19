@@ -13,11 +13,11 @@ spec:
     - policy4-common-sriov-sub-policy
   enable: false
   clusterLabelSelectors:
-  - matchLabels:
-      - upgrade2: true
-  - matchExpressions:
-      - key: upgrade
-        operator: Exists
+    - matchLabels:
+        upgrade2: true
+    - matchExpressions:
+        - key: upgrade
+          operator: Exists
   clusters:
   - spoke1
   - spoke2

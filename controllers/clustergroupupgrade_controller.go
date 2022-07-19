@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
 	"strings"
 	"time"
 
@@ -1598,16 +1597,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	clusterNames := []string{}
 	keys := make(map[string]bool)
 
-	// First get a list of all the clusters explicitly specified in the spec
-	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
-		// Make sure a cluster name doesn't appear twice.
-		if _, value := keys[clusterName]; !value {
-			keys[clusterName] = true
-			clusterNames = append(clusterNames, clusterName)
-		}
-	}
-
-	// Next get a list of all the clusters that match using the deprecated clusterSelector
+	// First get a list of all the clusters that match using the deprecated clusterSelector
 	// The expected format for ClusterSelector can be found in codedoc for its type definition
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
@@ -1639,7 +1629,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
-	// Finally get a list of all the clusters that matching using the clusterLabelSelector
+	// Next get a list of all the clusters that matching using the clusterLabelSelector
 	// The expected format for ClusterLabelSelector can be found in codedoc for its type definition
 	for _, clusterLabelSelector := range clusterGroupUpgrade.Spec.ClusterLabelSelectors {
 
@@ -1667,8 +1657,16 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
+	// Finally add all the clusters explicitly specified in the spec
+	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+		// Make sure a cluster name doesn't appear twice.
+		if _, value := keys[clusterName]; !value {
+			keys[clusterName] = true
+			clusterNames = append(clusterNames, clusterName)
+		}
+	}
+
 	// Sort the list before returning it
-	sort.Strings(clusterNames)
 	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
