@@ -4,7 +4,7 @@ metadata:
   name: cgu-cluster-selector
   namespace: default
 spec:
-  clusterLabelSelector:
+  clusterLabelSelectors:
   - matchLabels:
       - upgrade2: true
   - matchExpressions:
