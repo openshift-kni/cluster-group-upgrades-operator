@@ -65,8 +65,8 @@ status:
   - cgu-cluster-selector-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
-  - - spoke1
-    - spoke4
+  - - spoke4
+    - spoke1
   - - spoke2
     - spoke5
   - - spoke6
