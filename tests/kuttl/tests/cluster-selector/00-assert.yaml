@@ -6,7 +6,7 @@ metadata:
 spec:
   clusterLabelSelectors:
   - matchLabels:
-      - upgrade2: true
+      upgrade2: "true"
   - matchExpressions:
       - key: upgrade
         operator: Exists
