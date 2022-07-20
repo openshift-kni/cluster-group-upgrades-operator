@@ -1201,10 +1201,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 		}
 
 		// Check if current cluster is compliant or not for its current managed policy.
-		clusterStatus, err := r.getClusterComplianceWithPolicy(clusterName, currentManagedPolicy)
-		if err != nil {
-			return currentPolicyIndex, err
-		}
+		clusterStatus := r.getClusterComplianceWithPolicy(clusterName, currentManagedPolicy)
 
 		// If the cluster is compliant for the policy or if the cluster is not matched with the policy,
 		// move to the next policy index.
@@ -1423,12 +1420,13 @@ func (r *ClusterGroupUpgradeReconciler) reconcileResources(ctx context.Context, 
 	return err
 }
 
-func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructured.Unstructured) ([]interface{}, error) {
+func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructured.Unstructured) []interface{} {
 	policyName := policy.GetName()
 
 	// Get the compliant status part of the policy.
 	if policy.Object["status"] == nil {
-		return nil, fmt.Errorf("policy %s is missing its status", policyName)
+		r.Log.Info("[getPolicyClusterStatus] Policy has its status missing", "policyName", policyName)
+		return nil
 	}
 
 	statusObject := policy.Object["status"].(map[string]interface{})
@@ -1441,15 +1439,17 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 	// Get the policy's list of cluster compliance.
 	statusCompliance := statusObject["status"]
 	if statusCompliance == nil {
-		return nil, fmt.Errorf("policy %s has it's list of cluster statuses pending", policyName)
+		r.Log.Info("[getPolicyClusterStatus] Policy has it's list of cluster statuses pending", "policyName", policyName)
+		return nil
 	}
 
 	subStatus := statusCompliance.([]interface{})
 	if subStatus == nil {
-		return nil, fmt.Errorf("policy %s is missing it's compliance status", policyName)
+		r.Log.Info("[getPolicyClusterStatus] Policy is missing it's compliance status", "policyName", policyName)
+		return nil
 	}
 
-	return subStatus, nil
+	return subStatus
 }
 
 func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
@@ -1462,10 +1462,8 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 		return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
 	for _, cluster := range allClustersForUpgrade {
-		compliance, err := r.getClusterComplianceWithPolicy(cluster, policy)
-		if err != nil {
-			nonCompliantClusters = append(nonCompliantClusters, cluster)
-		} else if compliance != utils.ClusterStatusCompliant {
+		compliance := r.getClusterComplianceWithPolicy(cluster, policy)
+		if compliance != utils.ClusterStatusCompliant {
 			nonCompliantClusters = append(nonCompliantClusters, cluster)
 		}
 	}
@@ -1495,11 +1493,13 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 	         error
 */
 func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
-	clusterName string, policy *unstructured.Unstructured) (string, error) {
+	clusterName string, policy *unstructured.Unstructured) string {
 	// Get the status of the clusters matching the policy.
-	subStatus, err := r.getPolicyClusterStatus(policy)
-	if err != nil {
-		return utils.PolicyStatusUnknown, err
+	subStatus := r.getPolicyClusterStatus(policy)
+	if subStatus == nil {
+		r.Log.Info(
+			"[getClusterComplianceWithPolicy] Policy is missing its status, treat as NonCompliant")
+		return utils.ClusterStatusNonCompliant
 	}
 
 	// Loop through all the clusters in the policy's compliance status.
@@ -1508,18 +1508,18 @@ func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 		// If the cluster is Compliant, return true.
 		if clusterName == crtSubStatusMap["clustername"].(string) {
 			if crtSubStatusMap["compliant"] == utils.ClusterStatusCompliant {
-				return utils.ClusterStatusCompliant, nil
+				return utils.ClusterStatusCompliant
 			} else if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant {
-				return utils.ClusterStatusNonCompliant, nil
+				return utils.ClusterStatusNonCompliant
 			} else if crtSubStatusMap["compliant"] == nil {
 				r.Log.Info(
 					"[getClusterComplianceWithPolicy] Cluster is missing its compliance status, treat as NonCompliant",
 					"clusterName", clusterName, "policyName", policy.GetName())
-				return utils.ClusterStatusNonCompliant, nil
+				return utils.ClusterStatusNonCompliant
 			}
 		}
 	}
-	return utils.ClusterNotMatchedWithPolicy, nil
+	return utils.ClusterNotMatchedWithPolicy
 }
 
 func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(ctx context.Context,
@@ -1534,10 +1534,7 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 	}
 	for _, clusterName := range allClustersForUpgrade {
 		for _, managedPolicy := range managedPolicies {
-			clusterCompliance, err := r.getClusterComplianceWithPolicy(clusterName, managedPolicy)
-			if err != nil {
-				return nil, err
-			}
+			clusterCompliance := r.getClusterComplianceWithPolicy(clusterName, managedPolicy)
 
 			if clusterCompliance == utils.ClusterStatusNonCompliant {
 				// If the cluster is NonCompliant in this current policy mark it as such and move to the next cluster.
