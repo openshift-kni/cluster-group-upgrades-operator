@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -1666,7 +1667,9 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
-	// Sort the list before returning it
+	// The kubernetes api does not return consistent results for label selectors
+	// Due to this behaviour we have to sort the list so that the result is consistent
+	sort.Strings(clusterNames)
 	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
