@@ -24,3 +24,6 @@ testbin/*
 *.swp
 *.swo
 *~
+
+# Debug binary
+__debug_bin

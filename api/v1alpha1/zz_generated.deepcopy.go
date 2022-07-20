@@ -225,6 +225,13 @@ func (in *ClusterGroupUpgradeSpec) DeepCopyInto(out *ClusterGroupUpgradeSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.ClusterLabelSelectors != nil {
+		in, out := &in.ClusterLabelSelectors, &out.ClusterLabelSelectors
+		*out = make([]v1.LabelSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	if in.RemediationStrategy != nil {
 		in, out := &in.RemediationStrategy, &out.RemediationStrategy
 		*out = new(RemediationStrategySpec)

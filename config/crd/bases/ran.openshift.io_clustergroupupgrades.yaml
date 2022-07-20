@@ -114,13 +114,70 @@ spec:
                       type: string
                   type: object
                 type: array
+              clusterLabelSelectors:
+                description: 'This field holds a list of expressions or labels that
+                  will be used to determine what clusters to include in the operation.
+                  The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+                  key: label1         operator: In         values:           - value1a           -
+                  value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+                  key: label3         operator: In         values:           - value3     matchLabels:       label4:
+                  value4'
+                items:
+                  description: A label selector is a label query over a set of resources.
+                    The result of matchLabels and matchExpressions are ANDed. An empty
+                    label selector matches all objects. A null label selector matches
+                    no objects.
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements.
+                        The requirements are ANDed.
+                      items:
+                        description: A label selector requirement is a selector that
+                          contains values, a key, and an operator that relates the
+                          key and values.
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies
+                              to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship
+                              to a set of values. Valid operators are In, NotIn, Exists
+                              and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the
+                              operator is In or NotIn, the values array must be non-empty.
+                              If the operator is Exists or DoesNotExist, the values
+                              array must be empty. This array is replaced during a
+                              strategic merge patch.
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - key
+                        - operator
+                        type: object
+                      type: array
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: matchLabels is a map of {key,value} pairs. A single
+                        {key,value} in the matchLabels map is equivalent to an element
+                        of matchExpressions, whose key field is "key", the operator
+                        is "In", and the values array contains only "value". The requirements
+                        are ANDed.
+                      type: object
+                  type: object
+                type: array
               clusterSelector:
                 description: 'This field holds a label common to multiple clusters
                   that will be updated. The expected format is as follows: clusterSelector:   -
                   label1Name=label1Value   - label2Name=label2Value If the value is
                   empty, then the expected format is: clusterSelector:   - label1Name
                   All the clusters matching the labels specified in clusterSelector
-                  will be included in the update plan.'
+                  will be included in the update plan. Deprecated: Use ClusterLabelSelectors
+                  instead'
                 items:
                   type: string
                 type: array
