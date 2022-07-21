@@ -556,7 +556,8 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 
 func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
-	multiCloudPendingStatus := false
+
+	reconcileSooner := false
 	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
 		if clusterProgress.State != ranv1alpha1.InProgress {
 			continue
@@ -609,16 +610,17 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 			}
 			if installPlanStatus == utils.InstallPlanCannotBeApproved {
 				r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", policyContent.Name)
+				reconcileSooner = true
 			} else if installPlanStatus == utils.InstallPlanWasApproved {
 				r.Log.Info("InstallPlan for subscription was approved", "subscription name", policyContent.Name)
 			} else if installPlanStatus == utils.MultiCloudPendingStatus {
 				r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
 					"retry again later", "subscription name", policyContent.Name)
-				multiCloudPendingStatus = true
+				reconcileSooner = true
 			}
 		}
 	}
-	return multiCloudPendingStatus, nil
+	return reconcileSooner, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
