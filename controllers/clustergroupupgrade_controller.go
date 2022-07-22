@@ -319,7 +319,17 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
 				}
 
-				if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+				// Check whether we have time left on the cgu timeout
+				if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
+					// We are completely out of time
+					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+						Type:    "Ready",
+						Status:  metav1.ConditionFalse,
+						Reason:  "UpgradeTimedOut",
+						Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+					})
+					nextReconcile = requeueImmediately()
+				} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 					// Check if current policies have become compliant and if new policies have to be applied.
 					var isBatchComplete bool
 					isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
@@ -388,13 +398,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							Message: "The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
 						})
 						nextReconcile = requeueImmediately()
-					} else if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
-						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-							Type:    "Ready",
-							Status:  metav1.ConditionFalse,
-							Reason:  "UpgradeTimedOut",
-							Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
-						})
 					} else {
 						err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
 						if err != nil {
@@ -420,28 +423,32 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					})
 					nextReconcile = requeueImmediately()
 				} else {
-					nextReconcile = requeueWithCustomInterval(60 * time.Minute)
+					r.Log.Info("CGU has timed out")
+					r.finalizeCguCompletion(ctx, clusterGroupUpgrade)
 				}
 			}
 		} else {
 			r.Log.Info("Upgrade is completed")
-			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-				// Take actions after upgrade is completed
-				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
-				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
-					return
-				}
-				// Set completion time only after post actions are executed with no errors
-				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
-			}
+			r.finalizeCguCompletion(ctx, clusterGroupUpgrade)
 		}
-
 	}
-
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
+}
+
+func (r *ClusterGroupUpgradeReconciler) finalizeCguCompletion(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+		// Take actions after upgrade is completed
+		clusterGroupUpgrade.Status.Status.CurrentBatch = 0
+		clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+		if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+			return err
+		}
+		// Set completion time only after post actions are executed with no errors
+		clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
+	}
+	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
@@ -1242,6 +1249,7 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 
 	if isBatchComplete {
 		// Check previous batches
+		r.Log.Info("[isUpgradeComplete]", "RemediationProgress", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
 				// Start with policy index 0 as we don't keep progress info from previous batches
