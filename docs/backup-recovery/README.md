@@ -40,7 +40,8 @@ nodes:
 As an alternative way, a recovery partition can also be created at install time by defining an extra-manifest MachineConfig, as described here:<br>
 <https://github.com/openshift-kni/cnf-features-deploy/blob/master/ztp/gitops-subscriptions/argocd/README.md#deploying-a-site>
 
-The following extra-manifest MachineConfig will create a 50G partition on the specified disk:
+The following extra-manifest MachineConfig example will create a 50G partition on the specified secondary disk:
+<br>(NOTE: If using root disk for recovery partition, do not set `wipeTable: true`)
 
 ```yaml
 apiVersion: machineconfiguration.openshift.io/v1
@@ -57,7 +58,7 @@ spec:
       disks:
         # Use persistent disk path for device, as /dev/sd* names can change
         - device: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0
-          wipeTable: true # Wipe the disk
+          wipeTable: true # Wipe the disk. WARNING: Do not set if using root disk
           partitions:
           - label: recovery
             startMiB: 1 # Optional
