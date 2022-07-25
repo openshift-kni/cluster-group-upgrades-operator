@@ -112,3 +112,7 @@ const (
 	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
 	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
 )
+
+// ExcludeFromClusterBackup is a label to exclude object from cluster-backup-operator
+// https://github.com/stolostron/cluster-backup-operator#steps-to-identify-backup-data
+const ExcludeFromClusterBackup = "velero.io/exclude-from-backup"
