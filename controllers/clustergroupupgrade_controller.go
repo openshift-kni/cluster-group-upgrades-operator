@@ -107,7 +107,13 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 
 	r.Log.Info("Start reconciling CGU", "name", req.NamespacedName)
-	defer r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "result", nextReconcile)
+	defer func() {
+		if nextReconcile.RequeueAfter > 0 {
+			r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueAfter", nextReconcile.RequeueAfter.Seconds())
+		} else {
+			r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueRightAway", nextReconcile.Requeue)
+		}
+	}()
 
 	nextReconcile = doNotRequeue()
 
