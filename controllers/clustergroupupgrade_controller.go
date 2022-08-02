@@ -408,48 +408,30 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			} else if readyCondition.Reason == "UpgradeTimedOut" {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
-
-				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
-				var isUpgradeComplete bool
-				isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+				r.Log.Info("CGU has timed out")
+				// On timeout we don't want to complete actions other then to delete the resources
+				err = r.deleteResources(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return
-				}
-				if isUpgradeComplete {
-					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-						Type:    "Ready",
-						Status:  metav1.ConditionTrue,
-						Reason:  "UpgradeCompleted",
-						Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
-					})
-					nextReconcile = requeueImmediately()
-				} else {
-					r.Log.Info("CGU has timed out")
-					r.finalizeCguCompletion(ctx, clusterGroupUpgrade)
 				}
 			}
 		} else {
 			r.Log.Info("Upgrade is completed")
-			r.finalizeCguCompletion(ctx, clusterGroupUpgrade)
+			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+				// Take actions after upgrade is completed
+				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
+				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+					return
+				}
+				// Set completion time only after post actions are executed with no errors
+				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
+			}
 		}
 	}
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
-}
-
-func (r *ClusterGroupUpgradeReconciler) finalizeCguCompletion(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-		// Take actions after upgrade is completed
-		clusterGroupUpgrade.Status.Status.CurrentBatch = 0
-		clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-		if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
-			return err
-		}
-		// Set completion time only after post actions are executed with no errors
-		clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
-	}
-	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
@@ -1253,11 +1235,6 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
 				r.Log.Info("[isUpgradeComplete]", "batchClusterName", batchClusterName)
-				// Its possible when using label selectors that a selected cluster doesn't actually need a policy applied
-				// If this happens then it won't be present in the status list so we have to ignore its absence
-				if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] == nil {
-					continue
-				}
 				clusterProgress := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
 				if clusterProgress.State == ranv1alpha1.Completed {
 					continue
