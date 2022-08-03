@@ -1213,15 +1213,8 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 		// Check previous batches
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
-				clusterProgress := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
-				if clusterProgress.State == ranv1alpha1.Completed {
-					continue
-				}
-				startIndex := 0
-				if clusterProgress.PolicyIndex != nil {
-					startIndex = *clusterProgress.PolicyIndex
-				}
-				nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, startIndex)
+				// Start with policy index 0 as we don't keep progress info from previous batches
+				nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0)
 				if err != nil || nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
 					return false, err
 				}
