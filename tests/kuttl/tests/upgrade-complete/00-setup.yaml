@@ -20,5 +20,5 @@ commands:
     namespaced: true
 
   # Apply the UOCR.
-  - command: oc apply -f ../../../../deploy/upgrades/cgu-upgrade-complete.yaml
+  - command: oc apply -f ../../../../deploy/upgrades/upgrade-complete/cgu-upgrade-complete.yaml
     namespaced: true
