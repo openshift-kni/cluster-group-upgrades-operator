@@ -12,5 +12,5 @@ commands:
   - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
     namespaced: true
   # Delete the UOCR
-  - command: oc delete -f ../../../../deploy/upgrades/cgu-upgrade-complete.yaml
+  - command: oc delete -f ../../../../deploy/upgrades/upgrade-complete/cgu-upgrade-complete.yaml
     namespaced: true
