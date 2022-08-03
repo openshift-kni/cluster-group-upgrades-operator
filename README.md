@@ -47,7 +47,7 @@ In order to model the various phases of an upgrade, the ClusterGroupUpgrade CR c
     * If the **ClusterGroupUpgrade** has the first batch as canaries and the policies for this first batch are not compliant within the batch timeout
     * If the policies for the upgrade have not turned to compliant within the *timeout* value specified in the *remediationStrategy*
 * **UpgradeTimedOut**
-  * In this state, the controller will remove all the *managedPolicies* created for the **ClusterGroupUpgrade**. This is to ensure that changes are not made after the **ClusterGroupUpgrade** has passed its specified timeout. The user may re-run the **ClusterGroupUpgrade** again (perhaps with a longer timeout) if they still need to enforce changes on the clusters.
+  * In this state, the controller will remove all the *managedPolicies* copies created for the **ClusterGroupUpgrade**. This is to ensure that changes are not made after the **ClusterGroupUpgrade** has passed its specified timeout. The user may re-run the **ClusterGroupUpgrade** again (perhaps with a longer timeout) if they still need to enforce changes on the clusters.
 * **UpgradeCompleted**
   * In this state, the upgrades of the clusters are complete
   * If the *action.afterCompletion.deleteObjects* field is set to **true** (which is the default value), the controller will delete the underlying RHACM objects (policies, placement bindings, placement rules, managed cluster views) once the upgrade completes. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful.
