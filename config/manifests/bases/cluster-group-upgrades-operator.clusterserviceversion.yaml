@@ -34,6 +34,13 @@ spec:
         path: backup
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
+      - description: 'The Batch Timeout Action can be specified to control what happens
+          when a batch times out. The default value is `Continue`. The possible values
+          are:   - Continue   - Abort'
+        displayName: BatchTimeoutAction
+        path: batchTimeoutAction
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - displayName: Blocking CRs
         path: blockingCRs
         x-descriptors:

@@ -103,6 +103,11 @@ spec:
                 description: This field determines whether the cluster would be running
                   a backup prior to the upgrade.
                 type: boolean
+              batchTimeoutAction:
+                description: 'The Batch Timeout Action can be specified to control
+                  what happens when a batch times out. The default value is `Continue`.
+                  The possible values are:   - Continue   - Abort'
+                type: string
               blockingCRs:
                 items:
                   description: BlockingCR defines the Upgrade CRs that block the current
