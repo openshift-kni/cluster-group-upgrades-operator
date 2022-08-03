@@ -6,6 +6,7 @@ metadata:
 spec:
   clusters:
   - spoke1
+  - spoke4
   enable: true
   managedPolicies:
   - policy1-common-cluster-version-policy
@@ -41,6 +42,7 @@ status:
   - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
+  - - spoke4
   safeResourceNames:
     cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
     cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
