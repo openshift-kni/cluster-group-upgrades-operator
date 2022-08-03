@@ -1231,7 +1231,6 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 
 	if isBatchComplete {
 		// Check previous batches
-		r.Log.Info("[isUpgradeComplete]", "RemediationProgress", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
 				// Start with policy index 0 as we don't keep progress info from previous batches
