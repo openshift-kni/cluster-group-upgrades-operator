@@ -213,6 +213,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				if allManagedPoliciesExist {
+					// Trigger the before enable actions now since they should run even if all the clusters are already compliant.
+					err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
+					if err != nil {
+						return
+					}
+
 					// Build the upgrade batches.
 					err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
 					if err != nil {
@@ -221,10 +227,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 					// Set default values for status reason and message.
 					var statusReason, statusMessage string
+					var statusCondition metav1.ConditionStatus = metav1.ConditionFalse
 					// If the remediation plan is empty, update the status.
 					if clusterGroupUpgrade.Status.RemediationPlan == nil {
 						statusReason = "UpgradeCompleted"
 						statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
+						statusCondition = metav1.ConditionTrue
 						nextReconcile = requeueImmediately()
 					} else {
 						// Create the needed resources for starting the upgrade.
@@ -256,13 +264,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 								statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
 								nextReconcile = requeueWithMediumInterval()
 							} else {
-								// There are no blocking CRs, continue with the upgrade process.
-								// Take actions before starting upgrade.
-								err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
-								if err != nil {
-									return
-								}
-								// Start the upgrade.
+								// There are no blocking CRs, so start the upgrade.
 								statusReason = "UpgradeNotCompleted"
 								statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
 								clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
@@ -277,7 +279,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
-						Status:  metav1.ConditionFalse,
+						Status:  statusCondition,
 						Reason:  statusReason,
 						Message: statusMessage,
 					})
@@ -424,8 +426,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			}
 		} else {
-			r.Log.Info("Upgrade is completed")
 			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+				r.Log.Info("Upgrade is completed")
 				// Take actions after upgrade is completed
 				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
 				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
@@ -434,6 +436,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 				// Set completion time only after post actions are executed with no errors
 				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
+				nextReconcile = doNotRequeue()
 			}
 		}
 
