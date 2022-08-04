@@ -214,77 +214,73 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				if allManagedPoliciesExist {
+					// Build the upgrade batches.
+					err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+					if err != nil {
+						return
+					}
 
 					// Set default values for status reason and message.
 					var statusReason, statusMessage string
-					statusCondition := metav1.ConditionFalse
 
-					// Check if the cgu is even enabled
+					// Create the needed resources for starting the upgrade.
+					err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+					if err != nil {
+						return
+					}
+					err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesPresent)
+					if err != nil {
+						return
+					}
+
 					if *clusterGroupUpgrade.Spec.Enable {
-						// There are no blocking CRs, so start the upgrade.
-						statusReason = "UpgradeNotCompleted"
-						statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
-						clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
-						nextReconcile = requeueImmediately()
+						// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
+						var blockingCRsNotCompleted, blockingCRsMissing []string
+						blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
+						if err != nil {
+							return
+						}
+
+						if len(blockingCRsMissing) > 0 {
+							// If there are blocking CRs missing, update the message to show which those are.
+							statusReason = utils.CannotStart
+							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing)
+							nextReconcile = requeueWithMediumInterval()
+						} else if len(blockingCRsNotCompleted) > 0 {
+							// If there are blocking CRs that are not completed, then the upgrade can't start.
+							statusReason = utils.CannotStart
+							statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
+							nextReconcile = requeueWithMediumInterval()
+						} else {
+							// There are no blocking CRs, continue with the upgrade process.
+							// Take actions before starting upgrade.
+							err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
+							if err != nil {
+								return
+							}
+
+							// If the remediation plan is empty, update the status.
+							if clusterGroupUpgrade.Status.RemediationPlan == nil {
+								statusReason = "UpgradeCompleted"
+								statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
+								nextReconcile = requeueImmediately()
+							}
+
+							// Start the upgrade.
+							statusReason = "UpgradeNotCompleted"
+							statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
+							clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+							nextReconcile = requeueImmediately()
+						}
 					} else {
 						statusReason = "UpgradeNotStarted"
 						statusMessage = "The ClusterGroupUpgrade CR is not enabled"
 						nextReconcile = requeueWithLongInterval()
 					}
 
-					// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
-					var blockingCRsNotCompleted, blockingCRsMissing []string
-					blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
-					if err != nil {
-						return
-					}
-
-					if len(blockingCRsMissing) > 0 {
-						// If there are blocking CRs missing, update the message to show which those are.
-						statusReason = utils.CannotStart
-						statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing)
-						nextReconcile = requeueWithMediumInterval()
-					} else if len(blockingCRsNotCompleted) > 0 {
-						// If there are blocking CRs that are not completed, then the upgrade can't start.
-						statusReason = utils.CannotStart
-						statusMessage = fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted)
-						nextReconcile = requeueWithMediumInterval()
-					} else {
-
-						// Trigger the before enable actions now since we're about to start the execution
-						err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
-						if err != nil {
-							return
-						}
-
-						// Build the upgrade batches.
-						err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesPresent)
-						if err != nil {
-							return
-						}
-
-						// If the remediation plan is empty, update the status.
-						if clusterGroupUpgrade.Status.RemediationPlan == nil {
-							statusReason = "UpgradeCompleted"
-							statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
-							statusCondition = metav1.ConditionTrue
-							nextReconcile = requeueImmediately()
-						} else {
-							// Create the needed resources for starting the upgrade.
-							err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
-							if err != nil {
-								return
-							}
-							err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesPresent)
-							if err != nil {
-								return
-							}
-						}
-					}
-
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
-						Status:  statusCondition,
+						Status:  metav1.ConditionFalse,
 						Reason:  statusReason,
 						Message: statusMessage,
 					})
