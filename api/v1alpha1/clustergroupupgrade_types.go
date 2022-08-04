@@ -72,7 +72,7 @@ type AfterCompletion struct {
 	DeleteObjects *bool `json:"deleteObjects,omitempty"`
 }
 
-// Batch timeout action selections
+// BatchTimeoutAction selections
 var BatchTimeoutAction = struct {
 	Continue string
 	Abort    string
