@@ -264,13 +264,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 								statusReason = "UpgradeCompleted"
 								statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
 								nextReconcile = requeueImmediately()
+							} else {
+								// Start the upgrade.
+								statusReason = "UpgradeNotCompleted"
+								statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
+								clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+								nextReconcile = requeueImmediately()
 							}
-
-							// Start the upgrade.
-							statusReason = "UpgradeNotCompleted"
-							statusMessage = "The ClusterGroupUpgrade CR has upgrade policies that are still non compliant"
-							clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
-							nextReconcile = requeueImmediately()
 						}
 					} else {
 						statusReason = "UpgradeNotStarted"
