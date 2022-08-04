@@ -221,6 +221,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 					// Set default values for status reason and message.
 					var statusReason, statusMessage string
+					statusCondition := metav1.ConditionFalse
 
 					// Create the needed resources for starting the upgrade.
 					err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesPresent)
@@ -260,6 +261,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 							// If the remediation plan is empty, update the status.
 							if clusterGroupUpgrade.Status.RemediationPlan == nil {
+								statusCondition = metav1.ConditionTrue
 								statusReason = "UpgradeCompleted"
 								statusMessage = "The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies"
 								nextReconcile = requeueImmediately()
@@ -279,7 +281,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
 						Type:    "Ready",
-						Status:  metav1.ConditionFalse,
+						Status:  statusCondition,
 						Reason:  statusReason,
 						Message: statusMessage,
 					})
