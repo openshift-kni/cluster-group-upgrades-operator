@@ -6,7 +6,7 @@ metadata:
 spec:
   clusters:
   - spoke1
-  enable: false
+  enable: true
   managedPolicies:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
