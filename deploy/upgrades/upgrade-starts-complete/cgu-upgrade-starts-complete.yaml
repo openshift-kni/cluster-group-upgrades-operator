@@ -9,7 +9,7 @@ spec:
   managedPolicies:
     - policy1-common-cluster-version-policy
     - policy2-common-pao-sub-policy
-  enable: false
+  enable: true
   clusters:
   - spoke1
   remediationStrategy:
