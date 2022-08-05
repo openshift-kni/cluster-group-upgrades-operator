@@ -8,3 +8,13 @@ rules:
   - /metrics
   verbs:
   - get
+- apiGroups:
+  - ""
+  resources:
+  - services
+  - endpoints
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
