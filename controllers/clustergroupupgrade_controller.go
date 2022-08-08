@@ -349,12 +349,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						// Check if this batch has timed out
 						if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 
-							// Because the current batch index automatically advances from 0 to 1 on the first loop
-							// We need to subtract one when passing it in here to ensure the math is correct
 							currentBatchTimeout := utils.CalculateBatchTimeout(
 								clusterGroupUpgrade.Spec.RemediationStrategy.Timeout,
 								len(clusterGroupUpgrade.Status.RemediationPlan),
-								clusterGroupUpgrade.Status.Status.CurrentBatch-1,
+								clusterGroupUpgrade.Status.Status.CurrentBatch,
 								clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
 								clusterGroupUpgrade.Status.Status.StartedAt.Time)
 
