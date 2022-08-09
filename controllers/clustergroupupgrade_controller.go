@@ -367,6 +367,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 								clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
 								clusterGroupUpgrade.Status.Status.StartedAt.Time)
 
+							r.Log.Info("[Reconcile] Calculating batch timeout (minutes)", "currentBatchTimeout", fmt.Sprintf("%f", currentBatchTimeout.Minutes()))
+
 							if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
 								// Check if this was a canary or not
 								if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
