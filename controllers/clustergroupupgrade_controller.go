@@ -380,7 +380,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 											Reason:  "UpgradeTimedOut",
 											Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
 										})
-									case ranv1alpha1.BatchTimeoutAction.Continue:
 									default:
 										// If the value was continue or not defined then continue
 										clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
