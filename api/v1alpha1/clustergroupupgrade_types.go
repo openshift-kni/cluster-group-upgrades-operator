@@ -72,6 +72,15 @@ type AfterCompletion struct {
 	DeleteObjects *bool `json:"deleteObjects,omitempty"`
 }
 
+// BatchTimeoutAction selections
+var BatchTimeoutAction = struct {
+	Continue string
+	Abort    string
+}{
+	Continue: "Continue",
+	Abort:    "Abort",
+}
+
 // OperatorUpgradeSpec defines the configuration of an operator upgrade
 type OperatorUpgradeSpec struct {
 	Channel   string `json:"channel,omitempty"`
@@ -145,6 +154,12 @@ type ClusterGroupUpgradeSpec struct {
 	BlockingCRs []BlockingCR `json:"blockingCRs,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Actions",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Actions Actions `json:"actions,omitempty"`
+	// The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`.
+	// The possible values are:
+	//   - Continue
+	//   - Abort
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="BatchTimeoutAction",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	BatchTimeoutAction string `json:"batchTimeoutAction,omitempty"`
 }
 
 // ClusterRemediationProgress stores the remediation progress of a cluster

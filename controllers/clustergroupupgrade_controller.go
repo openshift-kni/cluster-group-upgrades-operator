@@ -382,9 +382,21 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 									})
 								} else {
 									r.Log.Info("Batch upgrade timed out")
-									clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-									if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
-										clusterGroupUpgrade.Status.Status.CurrentBatch++
+									switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
+									case ranv1alpha1.BatchTimeoutAction.Abort:
+										// If the value was abort then we need to fail out
+										meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+											Type:    "Ready",
+											Status:  metav1.ConditionFalse,
+											Reason:  "UpgradeTimedOut",
+											Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+										})
+									default:
+										// If the value was continue or not defined then continue
+										clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+										if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+											clusterGroupUpgrade.Status.Status.CurrentBatch++
+										}
 									}
 								}
 							}
