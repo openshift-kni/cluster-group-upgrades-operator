@@ -106,3 +106,12 @@ func DeletePlacementRules(ctx context.Context, c client.Client, ns string, label
 func GetResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initialString string) string {
 	return strings.ToLower(clusterGroupUpgrade.Name + "-" + initialString)
 }
+
+// GetParentPolicyNameAndNamespace gets the parent policy name and namespace from a given child policy
+// returns: []string       a two-element slice which the first element is policy namespace and the second one is policy name
+func GetParentPolicyNameAndNamespace(childPolicyName string) []string {
+	// The format of a child policy name is parent_policy_namespace.parent_policy_name.
+	// Extract the parent policy name and namespace by splitting the child policy name into two substrings separated by "."
+	// and we are safe to split with the separator "." as the namespace is disallowed to contain "."
+	return strings.SplitN(childPolicyName, ".", 2)
+}
