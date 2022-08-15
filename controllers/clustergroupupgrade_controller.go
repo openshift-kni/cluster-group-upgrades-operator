@@ -323,7 +323,17 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
 				}
 
-				if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+				// Check whether we have time left on the cgu timeout
+				if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
+					// We are completely out of time
+					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
+						Type:    "Ready",
+						Status:  metav1.ConditionFalse,
+						Reason:  "UpgradeTimedOut",
+						Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
+					})
+					nextReconcile = requeueImmediately()
+				} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 					// Check if current policies have become compliant and if new policies have to be applied.
 					var isBatchComplete bool
 					isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
@@ -406,13 +416,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							Message: "The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
 						})
 						nextReconcile = requeueImmediately()
-					} else if !clusterGroupUpgrade.Status.Status.StartedAt.IsZero() && time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
-						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-							Type:    "Ready",
-							Status:  metav1.ConditionFalse,
-							Reason:  "UpgradeTimedOut",
-							Message: "The ClusterGroupUpgrade CR policies are taking too long to complete",
-						})
 					} else {
 						err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
 						if err != nil {
@@ -422,23 +425,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			} else if readyCondition.Reason == "UpgradeTimedOut" {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
-
-				// If the upgrade timeout out,check if the upgrade has finished or not meanwhile.
-				var isUpgradeComplete bool
-				isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+				r.Log.Info("CGU has timed out")
+				// On timeout we don't want to complete actions other then to delete the resources
+				err = r.deleteResources(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return
-				}
-				if isUpgradeComplete {
-					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-						Type:    "Ready",
-						Status:  metav1.ConditionTrue,
-						Reason:  "UpgradeCompleted",
-						Message: "The ClusterGroupUpgrade CR has all upgrade policies compliant",
-					})
-					nextReconcile = requeueImmediately()
-				} else {
-					nextReconcile = requeueWithCustomInterval(60 * time.Minute)
 				}
 			}
 		} else {
@@ -454,9 +445,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
 			}
 		}
-
 	}
-
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
