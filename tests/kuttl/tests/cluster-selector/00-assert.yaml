@@ -33,7 +33,6 @@ status:
   - cgu-cluster-selector-policy3-common-ptp-sub-polic-kuttl
   - cgu-cluster-selector-policy4-common-sriov-sub-pol-kuttl
   managedPoliciesContent:
-    policy1-common-cluster-version-policy: "null"
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
     policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"}]'
