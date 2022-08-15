@@ -368,9 +368,9 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: v1.ObjectMeta{
-						Name:        "ztp-common.common-sub-policy",
+						Name:        "ztp-common.common-sub-4.11-policy",
 						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
+						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-4.11-policy"},
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "2"},
 					},
 				},
@@ -401,7 +401,7 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
 				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
-				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy", "group-du-config-policy"})
+				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-4.11-policy", "group-du-config-policy"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
