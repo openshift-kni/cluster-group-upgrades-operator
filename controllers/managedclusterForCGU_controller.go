@@ -161,7 +161,7 @@ func sortMapByValue(sortMap map[string]int) []string {
 
 // Create a clusterGroupUpgrade
 func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
-	ctx context.Context, cluster *clusterv1.ManagedCluster, policies []policiesv1.Policy) (err error) {
+	ctx context.Context, cluster *clusterv1.ManagedCluster, childPolicies []policiesv1.Policy) (err error) {
 
 	var policyWaveMap = make(map[string]int)
 
@@ -174,21 +174,21 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	//       "ran.openshift.io/ztp-deploy-wave": "1"
 	// The list of policies is ordered from the lowest value to the highest.
 	// Policy without a wave is not managed.
-	for _, policy := range policies {
+	for _, cPolicy := range childPolicies {
 		// Ignore policies with remediationAction enforce
-		if strings.EqualFold(string(policy.Spec.RemediationAction), "enforce") {
-			r.Log.Info("Ignoring policy " + policy.Name + " with remediationAction enforce")
+		if strings.EqualFold(string(cPolicy.Spec.RemediationAction), "enforce") {
+			r.Log.Info("Ignoring policy " + cPolicy.Name + " with remediationAction enforce")
 			continue
 		}
 
-		deployWave, found := policy.GetAnnotations()[ztpDeployWaveAnnotation]
+		deployWave, found := cPolicy.GetAnnotations()[ztpDeployWaveAnnotation]
 		if found {
 			deployWaveInt, err := strconv.Atoi(deployWave)
 			if err != nil {
 				// err convert from string to int
-				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, policy.GetName(), err)
+				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, cPolicy.GetName(), err)
 			}
-			policyName := strings.SplitAfter(policy.GetName(), ".")[1]
+			policyName := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())[1]
 			policyWaveMap[policyName] = deployWaveInt
 		}
 	}
