@@ -850,7 +850,7 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
 
 		// If the policy types did not return with useful data then continue to the next policy
 		// We don't want to create empty fields in the map with null values as that is confusing
-		if policyTypes == nil || len(policyTypes) == 0 {
+		if len(policyTypes) == 0 {
 			continue
 		}
 
