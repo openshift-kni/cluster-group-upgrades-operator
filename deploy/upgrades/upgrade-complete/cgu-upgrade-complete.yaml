@@ -12,5 +12,6 @@ spec:
   enable: false
   clusters:
   - spoke1
+  - spoke4
   remediationStrategy:
     maxConcurrency: 1
