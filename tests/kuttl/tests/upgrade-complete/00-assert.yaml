@@ -24,7 +24,6 @@ status:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
   managedPoliciesContent:
-    policy1-common-cluster-version-policy: "null"
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
