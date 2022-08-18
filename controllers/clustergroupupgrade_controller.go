@@ -347,6 +347,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 								clusterGroupUpgrade.Status.Status.StartedAt.Time)
 
 							if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
+								// We want to immediately continue to the next reconcile regardless of the timeout action
+								nextReconcile = requeueImmediately()
+
 								// Check if this was a canary or not
 								if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
 									clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
