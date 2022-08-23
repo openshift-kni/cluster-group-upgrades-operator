@@ -843,7 +843,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 
 			// If the parent policy is not valid due to missing field, add its name to the list of invalid policies.
 			policyErr := utils.VerifyPolicyObjects(foundPolicy)
-			if policyErr != nil || policyInvalidHubTmpl[managedPolicyName] {
+			if policyErr != nil {
 				r.Log.Error(policyErr, "Policy is invalid")
 				managedPoliciesInfo.invalidPolicies = append(managedPoliciesInfo.invalidPolicies, managedPolicyName)
 				continue
