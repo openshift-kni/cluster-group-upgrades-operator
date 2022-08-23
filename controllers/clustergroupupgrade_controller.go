@@ -118,7 +118,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	}()
 
 	nextReconcile = doNotRequeue()
-	// Wait a bit so that API server/etcd syncs up and this reconsile has a better chance of getting the updated CGU and policies
+	// Wait a bit so that API server/etcd syncs up and this reconcile has a better chance of getting the updated CGU and policies
 	time.Sleep(statusUpdateWaitInMilliSeconds * time.Millisecond)
 	clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{}
 	err = r.Get(ctx, req.NamespacedName, clusterGroupUpgrade)
