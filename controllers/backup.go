@@ -3,8 +3,10 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -32,11 +34,12 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 				Status:   make(map[string]string),
 				Clusters: []string{},
 			}
+			r.setBackupStartedCondition(clusterGroupUpgrade)
 		}
 
-		doneCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, BackupStateDone)
-		r.Log.Info("[reconcileBackup]", "FindStatusCondition  BackupDone", doneCondition)
-		if doneCondition != nil && doneCondition.Status == metav1.ConditionTrue {
+		doneCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
+		r.Log.Info("[reconcileBackup]", "FindStatusCondition", doneCondition)
+		if doneCondition != nil && doneCondition.Reason == string(utils.ConditionReasons.Completed) {
 			// Backup is done
 			return nil
 		}
@@ -48,8 +51,6 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 }
 
 func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-
-	r.setBackupRequired(clusterGroupUpgrade)
 
 	clusterStates := make(map[string]string)
 	var (
@@ -232,34 +233,67 @@ func (r *ClusterGroupUpgradeReconciler) backupActive(ctx context.Context, cluste
 
 }
 
-// setBackupRequired sets conditions of backup required
-func (r *ClusterGroupUpgradeReconciler) setBackupRequired(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-
-	meta.SetStatusCondition(
-		&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    BackupStateDone,
-			Status:  metav1.ConditionFalse,
-			Reason:  "BackupNotDone",
-			Message: "Backup is required and not done"})
+// setBackupStartedCondition sets conditions of backup required
+func (r *ClusterGroupUpgradeReconciler) setBackupStartedCondition(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+	utils.SetStatusCondition(
+		&clusterGroupUpgrade.Status.Conditions,
+		utils.ConditionTypes.BackupSuceeded,
+		utils.ConditionReasons.InProgress,
+		metav1.ConditionFalse,
+		"Backup is required and not done",
+	)
 }
 
 // checkAllBackupDone handles alleviation of BackupDone==False condition
 func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 	// Handle completion
-	if func() bool {
-		for _, state := range clusterGroupUpgrade.Status.Backup.Status {
-			if state != BackupStateSucceeded {
-				return false
-			}
+
+	var failedBackupClusters []string
+	var progressingBackupClusters []string
+
+	for clusterName, state := range clusterGroupUpgrade.Status.Backup.Status {
+		if state == BackupStateActive || state == BackupStateStarting || state == BackupStatePreparingToStart {
+			progressingBackupClusters = append(progressingBackupClusters, clusterName)
+		} else if state == BackupStateError || state == BackupStateTimeout {
+			failedBackupClusters = append(failedBackupClusters, clusterName)
 		}
-		return true
-	}() {
-		meta.SetStatusCondition(
-			&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-				Type:    BackupStateDone,
-				Status:  metav1.ConditionTrue,
-				Reason:  "BackupCompleted",
-				Message: "Backup is completed"})
+	}
+
+	if len(progressingBackupClusters) == 0 && len(failedBackupClusters) == 0 {
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.BackupSuceeded,
+			utils.ConditionReasons.Completed,
+			metav1.ConditionTrue,
+			"Backup is completed for all clusters",
+		)
+	} else if len(progressingBackupClusters) == 0 && len(failedBackupClusters) > 0 {
+		if len(failedBackupClusters) == len(clusterGroupUpgrade.Status.Backup.Status) {
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.BackupSuceeded,
+				utils.ConditionReasons.Failed,
+				metav1.ConditionTrue,
+				"Backup failed for all clusters",
+			)
+		} else {
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.BackupSuceeded,
+				utils.ConditionReasons.PartiallyDone,
+				metav1.ConditionTrue,
+				fmt.Sprintf("Backup failed for clusters: [%s]", strings.Join(failedBackupClusters, ",")),
+			)
+		}
+
+	} else {
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.BackupSuceeded,
+			utils.ConditionReasons.InProgress,
+			metav1.ConditionTrue,
+			fmt.Sprintf("Backup in progress for clusters: [%s]", strings.Join(progressingBackupClusters, ",")),
+		)
 	}
 }
