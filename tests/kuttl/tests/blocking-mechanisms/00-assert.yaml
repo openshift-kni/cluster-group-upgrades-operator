@@ -23,10 +23,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-a-policy1-common-cluster-version-policy-kuttl
   - cgu-a-policy2-common-pao-sub-policy-kuttl
@@ -93,10 +101,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-b-policy1-common-cluster-version-policy-kuttl
   - cgu-b-policy2-common-pao-sub-policy-kuttl
@@ -170,10 +186,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-c-policy1-common-cluster-version-policy-kuttl
   - cgu-c-policy4-common-sriov-sub-policy-kuttl

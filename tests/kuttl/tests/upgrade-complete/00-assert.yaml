@@ -16,10 +16,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl

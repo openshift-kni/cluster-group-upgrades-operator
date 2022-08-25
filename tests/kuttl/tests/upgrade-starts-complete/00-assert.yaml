@@ -15,11 +15,22 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: The ClusterGroupUpgrade CR has all clusters already compliant with the
-      specified managed policies
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
+  - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
+    reason: Completed
+    status: "False"
+    type: Progressing
+  - message: The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies
     reason: UpgradeCompleted
     status: "True"
-    type: Ready
+    type: Succeeded
   managedPoliciesCompliantBeforeUpgrade:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
