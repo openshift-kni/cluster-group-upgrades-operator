@@ -40,9 +40,9 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 		}
 
 		doneCondition := meta.FindStatusCondition(
-			clusterGroupUpgrade.Status.Conditions, "PrecachingDone")
+			clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.PrecachingSuceeded))
 		r.Log.Info("[reconcilePrecaching]",
-			"FindStatusCondition  PrecachingDone", doneCondition)
+			"FindStatusCondition", doneCondition)
 		if doneCondition != nil && doneCondition.Status == metav1.ConditionTrue {
 			// Precaching is done
 			return nil
@@ -131,11 +131,13 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 					if len(spec.PlatformImage) > 0 && spec.PlatformImage != image {
 						msg := fmt.Sprintf("Platform image must be set once, but %s and %s were given",
 							spec.PlatformImage, image)
-						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-							Type:    utils.PrecacheSpecValidCondition,
-							Status:  metav1.ConditionFalse,
-							Reason:  "PlatformImageConflict",
-							Message: msg})
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.PrecacheSpecValid,
+							utils.ConditionReasons.InvalidPlatformImage,
+							metav1.ConditionFalse,
+							msg,
+						)
 						return *new(ranv1alpha1.PrecachingSpec), nil
 					}
 					spec.PlatformImage = fmt.Sprintf("%s", image)
@@ -150,11 +152,13 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 					image, err = r.getImageForVersionFromUpdateGraph(upstream, channel, version)
 
 					if err != nil {
-						meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-							Type:    utils.PrecacheSpecValidCondition,
-							Status:  metav1.ConditionFalse,
-							Reason:  "PlatformImageInvalid",
-							Message: err.Error()})
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.PrecacheSpecValid,
+							utils.ConditionReasons.InvalidPlatformImage,
+							metav1.ConditionFalse,
+							err.Error(),
+						)
 						return *new(ranv1alpha1.PrecachingSpec), nil
 					}
 

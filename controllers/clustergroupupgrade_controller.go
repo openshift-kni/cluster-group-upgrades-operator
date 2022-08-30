@@ -171,7 +171,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
-	if clusterGroupUpgrade.Status.Backup == nil || meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, BackupStateDone) {
+	if clusterGroupUpgrade.Status.Backup == nil || meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded)) {
 		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
 		if err != nil {
 			r.Log.Error(err, "reconcilePrecaching error")
