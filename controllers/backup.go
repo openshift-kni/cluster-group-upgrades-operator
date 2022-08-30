@@ -211,7 +211,7 @@ func (r *ClusterGroupUpgradeReconciler) backupActive(ctx context.Context, cluste
 
 	switch condition {
 	case JobActive:
-		nextState = PrecacheStateActive
+		nextState = BackupStateActive
 
 	case JobSucceeded:
 		nextState = BackupStateSucceeded
@@ -305,4 +305,5 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 			fmt.Sprintf("Backup in progress for %d clusters", progressingBackupCount),
 		)
 	}
+
 }

@@ -745,7 +745,8 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	filterNonCompliantPolicies bool) (bool, []string, []*unstructured.Unstructured, error) {
 
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	r.Log.Info("[doManagedPoliciesExist]", "clusterList:", clusters)
 	if err != nil {
 		return false, nil, nil, err
 	}
@@ -1478,10 +1479,12 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 	policy *unstructured.Unstructured) ([]string, error) {
 
 	var nonCompliantClusters []string
-	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	r.Log.Info("[getClustersNonCompliantWithPolicy]", "clusterList:", allClustersForUpgrade)
 	if err != nil {
 		return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
+
 	for _, cluster := range allClustersForUpgrade {
 		compliance := r.getClusterComplianceWithPolicy(cluster, policy)
 		if compliance != utils.ClusterStatusCompliant {
@@ -1549,7 +1552,8 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 
 	// clustersNonCompliantMap will be a map of the clusters present in the CR and wether they are NonCompliant with at
 	// least one managed policy.
-	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	r.Log.Info("[getClustersNonCompliantWithManagedPolicies]", "clusterList:", allClustersForUpgrade)
 	if err != nil {
 		return nil, err
 	}
@@ -1588,8 +1592,8 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 			}
 		}
 	}
-
-	allClustersForUpgrade, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	//
+	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 	if err != nil {
 		return err
 	}
@@ -1697,6 +1701,42 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	sort.Strings(clusterNames)
 	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
+}
+
+// filters the cluster list matching with successful cluster list
+func (r *ClusterGroupUpgradeReconciler) getSuccessfulClustersList(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, feature string) ([]string, error) {
+
+	var clustersList []string
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return clusters, fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
+	}
+
+	// this condition is valid for precaching
+	if clusterGroupUpgrade.Status.Backup != nil {
+		for _, name := range clusters {
+			if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
+				clustersList = append(clustersList, name)
+			}
+		}
+	} else {
+		clustersList = clusters
+	}
+
+	// this condition applies to upgrade
+	if feature == "upgrade" {
+		if clusterGroupUpgrade.Status.Precaching != nil {
+			var newList []string
+			for _, name := range clusters {
+				if clusterGroupUpgrade.Status.Precaching.Status[name] == PrecacheStateSucceeded {
+					newList = append(newList, name)
+				}
+			}
+			clustersList = newList
+		}
+	}
+
+	return clustersList, nil
 }
 
 /* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
@@ -1825,7 +1865,7 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	reconcile := false
 	// Validate clusters in spec are ManagedCluster objects
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 	if err != nil {
 		return reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
@@ -1884,7 +1924,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 		if controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
 			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-			clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+			clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 			if err != nil {
 				return utils.StopReconciling, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 			}
