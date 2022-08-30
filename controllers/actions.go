@@ -19,10 +19,11 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 	actionsBeforeEnable := clusterGroupUpgrade.Spec.Actions.BeforeEnable
 	// Add/delete cluster labels
 	if actionsBeforeEnable.AddClusterLabels != nil || actionsBeforeEnable.DeleteClusterLabels != nil {
-		clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 		if err != nil {
 			return err
 		}
+		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsBeforeEnable.AddClusterLabels,
 			"delete": actionsBeforeEnable.DeleteClusterLabels,
@@ -44,10 +45,11 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 	actionsAfterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
 	// Add/delete cluster labels
 	if actionsAfterCompletion.AddClusterLabels != nil || actionsAfterCompletion.DeleteClusterLabels != nil {
-		clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 		if err != nil {
 			return err
 		}
+		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsAfterCompletion.AddClusterLabels,
 			"delete": actionsAfterCompletion.DeleteClusterLabels,
@@ -169,10 +171,11 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 	if err != nil {
 		return fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
+	r.Log.Info("[actions]", "clusterList", clusters)
 	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 	if err != nil {
 		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)

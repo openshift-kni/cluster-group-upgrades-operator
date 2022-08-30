@@ -211,7 +211,7 @@ func (r *ClusterGroupUpgradeReconciler) backupActive(ctx context.Context, cluste
 
 	switch condition {
 	case JobActive:
-		nextState = PrecacheStateActive
+		nextState = BackupStateActive
 
 	case JobSucceeded:
 		nextState = BackupStateSucceeded
@@ -262,4 +262,5 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 				Reason:  "BackupCompleted",
 				Message: "Backup is completed"})
 	}
+
 }
