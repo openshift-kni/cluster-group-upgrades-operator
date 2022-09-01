@@ -267,7 +267,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	}
 
 	// Compare the total number of clusters to their status
-	switch len(clusterGroupUpgrade.Status.Precaching.Status) {
+	switch len(clusterGroupUpgrade.Status.Backup.Status) {
 	// All clusters were successful
 	case successfulBackupCount:
 		utils.SetStatusCondition(
