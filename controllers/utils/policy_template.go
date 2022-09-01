@@ -146,21 +146,21 @@ func (r *TemplateResolver) copyConfigmap(ctx context.Context, fromResource, toRe
 
 	copiedCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:        toResource.Name,
-			Namespace:   toResource.Namespace,
-			Annotations: cm.GetAnnotations(),
+			Name:      toResource.Name,
+			Namespace: toResource.Namespace,
+			Labels:    cm.GetLabels(),
 		},
 		Data:       cm.Data,
 		BinaryData: cm.BinaryData,
 		Immutable:  cm.Immutable,
 	}
-	labels := cm.GetLabels()
-	if labels == nil {
-		labels = make(map[string]string)
+
+	annotations := cm.GetAnnotations()
+	if annotations == nil {
+		annotations = make(map[string]string)
 	}
-	labels["openshift-cluster-group-upgrades/fromCmName"] = cm.GetName()
-	labels["openshift-cluster-group-upgrades/fromCmNamespace"] = cm.GetNamespace()
-	copiedCM.SetLabels(labels)
+	annotations[DesiredResourceName] = fromResource.Namespace + "." + fromResource.Name
+	copiedCM.SetAnnotations(annotations)
 
 	existingCM := &corev1.ConfigMap{}
 	if err = r.Get(ctx, toResource, existingCM); err != nil {

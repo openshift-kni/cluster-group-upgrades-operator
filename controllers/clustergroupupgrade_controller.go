@@ -787,13 +787,10 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 		}
 
 		for _, policyT := range childPolicy.Spec.PolicyTemplates {
-			configPolicy := &unstructured.Unstructured{}
-			json.Unmarshal(policyT.ObjectDefinition.Raw, configPolicy)
-
-			configPlcTAnnotations := configPolicy.GetAnnotations()
-			// Identify policies have invalid hub templates
-			_, ok := configPlcTAnnotations["policy.open-cluster-management.io/hub-templates-error"]
-			if ok || strings.Contains(string(policyT.ObjectDefinition.Raw), "{{hub") {
+			// Identify policies have invalid hub templates.
+			// If the child configuration policy contains a string pattern "{{hub",
+			// it means the hub template is invalid and fails to be processed on the hub cluster.
+			if strings.Contains(string(policyT.ObjectDefinition.Raw), "{{hub") {
 				policyInvalidHubTmpl[policyNameArr[1]] = true
 			}
 		}
