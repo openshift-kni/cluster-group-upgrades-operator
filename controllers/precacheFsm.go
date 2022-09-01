@@ -377,9 +377,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 		switch state {
 		case PrecacheStateSucceeded:
 			successfulPrecacheCount++
-		case PrecacheStateActive:
-		case PrecacheStateStarting:
-		case PrecacheStatePreparingToStart:
+		case PrecacheStateActive, PrecacheStateStarting, PrecacheStatePreparingToStart:
 			progressingPrecacheCount++
 		default:
 			failedPrecacheCount++
@@ -403,7 +401,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.PrecachingSuceeded,
 			utils.ConditionReasons.Failed,
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 			"Precaching failed for all clusters",
 		)
 	// All clusters are completed but some failed
@@ -421,7 +419,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.PrecachingSuceeded,
 			utils.ConditionReasons.InProgress,
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 			fmt.Sprintf("Precaching in progress for %d clusters", progressingPrecacheCount),
 		)
 	}

@@ -39,11 +39,11 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 			}
 		}
 
-		doneCondition := meta.FindStatusCondition(
+		precachingCondition := meta.FindStatusCondition(
 			clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.PrecachingSuceeded))
 		r.Log.Info("[reconcilePrecaching]",
-			"FindStatusCondition", doneCondition)
-		if doneCondition != nil && doneCondition.Status == metav1.ConditionTrue {
+			"FindStatusCondition", precachingCondition)
+		if precachingCondition != nil && precachingCondition.Status == metav1.ConditionTrue {
 			// Precaching is done
 			return nil
 		}

@@ -36,9 +36,9 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 			r.setBackupStartedCondition(clusterGroupUpgrade)
 		}
 
-		doneCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
-		r.Log.Info("[reconcileBackup]", "FindStatusCondition", doneCondition)
-		if doneCondition != nil && doneCondition.Reason == string(utils.ConditionReasons.Completed) {
+		backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
+		r.Log.Info("[reconcileBackup]", "FindStatusCondition", backupCondition)
+		if backupCondition != nil && backupCondition.Status == metav1.ConditionTrue {
 			// Backup is done
 			return nil
 		}
@@ -257,9 +257,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 		switch state {
 		case BackupStateDone:
 			successfulBackupCount++
-		case BackupStateActive:
-		case BackupStateStarting:
-		case BackupStatePreparingToStart:
+		case BackupStateActive, BackupStateStarting, BackupStatePreparingToStart:
 			progressingBackupCount++
 		default:
 			failedBackupCount++
@@ -283,7 +281,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.BackupSuceeded,
 			utils.ConditionReasons.Failed,
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 			"Backup failed for all clusters",
 		)
 	// All clusters are completed but some failed
@@ -301,7 +299,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.BackupSuceeded,
 			utils.ConditionReasons.InProgress,
-			metav1.ConditionTrue,
+			metav1.ConditionFalse,
 			fmt.Sprintf("Backup in progress for %d clusters", progressingBackupCount),
 		)
 	}
