@@ -296,6 +296,7 @@ func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 		return nil
 	}
 
+	// we must fetch all the clusters rather than the only successful ones.
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return fmt.Errorf("[jobandViewCleanup]cannot obtain the CGU cluster list: %s", err)

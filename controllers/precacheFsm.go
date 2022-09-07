@@ -59,7 +59,7 @@ const (
 func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	r.setPrecachingRequired(clusterGroupUpgrade)
+	r.setPrecachingStartedCondition(clusterGroupUpgrade)
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
 		allManagedPoliciesExist, managedPoliciesMissing, managedPoliciesPresent, err := r.doManagedPoliciesExist(
@@ -70,11 +70,13 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		if !allManagedPoliciesExist {
 			statusMessage := fmt.Sprintf(
 				"The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesMissing)
-			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-				Type:    utils.PrecacheSpecValidCondition,
-				Status:  metav1.ConditionFalse,
-				Reason:  "NotAllManagedPoliciesExist",
-				Message: statusMessage})
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.PrecacheSpecValid,
+				utils.ConditionReasons.NotAllManagedPoliciesExist,
+				metav1.ConditionFalse,
+				statusMessage,
+			)
 			return nil
 		}
 
@@ -89,18 +91,22 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		}
 		ok, msg := r.checkPreCacheSpecConsistency(spec)
 		if !ok {
-			meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-				Type:    utils.PrecacheSpecValidCondition,
-				Status:  metav1.ConditionFalse,
-				Reason:  "PrecacheSpecIsIncomplete",
-				Message: msg})
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.PrecacheSpecValid,
+				utils.ConditionReasons.InvalidPlatformImage,
+				metav1.ConditionFalse,
+				fmt.Sprintf("Precache spec is incomplete: %s", msg),
+			)
 			return nil
 		}
-		meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    utils.PrecacheSpecValidCondition,
-			Status:  metav1.ConditionTrue,
-			Reason:  "PrecacheSpecIsWellFormed",
-			Message: "Pre-caching spec is valid and consistent"})
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.PrecacheSpecValid,
+			utils.ConditionReasons.PrecacheSpecIsWellFormed,
+			metav1.ConditionTrue,
+			"Precache spec is valid and consistent",
+		)
 
 		clusterGroupUpgrade.Status.Precaching.Spec = &spec
 	}
@@ -113,10 +119,11 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	if len(clusterGroupUpgrade.Status.Precaching.Clusters) != 0 {
 		clusters = clusterGroupUpgrade.Status.Precaching.Clusters
 	} else {
-		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		clusters, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
 		if err != nil {
 			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
 		}
+		r.Log.Info("[precachingFsm]", "clusterList", clusters)
 		clusterGroupUpgrade.Status.Precaching.Clusters = clusters
 	}
 
@@ -344,48 +351,76 @@ func (r *ClusterGroupUpgradeReconciler) handleActive(ctx context.Context,
 	return nextState, nil
 }
 
-// setPrecachingRequired sets conditions of precaching required
-func (r *ClusterGroupUpgradeReconciler) setPrecachingRequired(
+// setPrecachingStartedCondition sets conditions of precaching required
+func (r *ClusterGroupUpgradeReconciler) setPrecachingStartedCondition(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-	meta.SetStatusCondition(
-		&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  metav1.ConditionFalse,
-			Reason:  "PrecachingRequired",
-			Message: "Precaching is not completed (required)"})
-
-	meta.SetStatusCondition(
-		&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-			Type:    "PrecachingDone",
-			Status:  metav1.ConditionFalse,
-			Reason:  "PrecachingNotDone",
-			Message: "Precaching is required and not done"})
+	utils.SetStatusCondition(
+		&clusterGroupUpgrade.Status.Conditions,
+		utils.ConditionTypes.PrecachingSuceeded,
+		utils.ConditionReasons.InProgress,
+		metav1.ConditionFalse,
+		"Precaching is not completed",
+	)
 }
 
 // checkAllPrecachingDone handles alleviation of PrecachingDone==False condition
 func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-	// Handle completion
-	if func() bool {
-		for _, state := range clusterGroupUpgrade.Status.Precaching.Status {
-			if state != PrecacheStateSucceeded {
-				return false
-			}
+
+	// Counts for the various cluster states
+	var failedPrecacheCount int = 0
+	var progressingPrecacheCount int = 0
+	var successfulPrecacheCount int = 0
+
+	// Loop over all the clusters and take count of all their states
+	for _, state := range clusterGroupUpgrade.Status.Precaching.Status {
+		switch state {
+		case PrecacheStateSucceeded:
+			successfulPrecacheCount++
+		case PrecacheStateActive, PrecacheStateStarting, PrecacheStatePreparingToStart:
+			progressingPrecacheCount++
+		default:
+			failedPrecacheCount++
 		}
-		return true
-	}() {
-		meta.SetStatusCondition(
-			&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-				Type:    "Ready",
-				Status:  metav1.ConditionFalse,
-				Reason:  "UpgradeNotStarted",
-				Message: "Precaching is completed"})
-		meta.SetStatusCondition(
-			&clusterGroupUpgrade.Status.Conditions, metav1.Condition{
-				Type:    "PrecachingDone",
-				Status:  metav1.ConditionTrue,
-				Reason:  "PrecachingCompleted",
-				Message: "Precaching is completed"})
-		meta.RemoveStatusCondition(&clusterGroupUpgrade.Status.Conditions, "PrecacheSpecValid")
+	}
+
+	// Compare the total number of clusters to their status
+	switch len(clusterGroupUpgrade.Status.Precaching.Status) {
+	// All clusters were successful
+	case successfulPrecacheCount:
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.PrecachingSuceeded,
+			utils.ConditionReasons.Completed,
+			metav1.ConditionTrue,
+			"Precaching is completed for all clusters",
+		)
+	// All clusters failed
+	case failedPrecacheCount:
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.PrecachingSuceeded,
+			utils.ConditionReasons.Failed,
+			metav1.ConditionFalse,
+			"Precaching failed for all clusters",
+		)
+	// All clusters are completed but some failed
+	case (failedPrecacheCount + successfulPrecacheCount):
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.PrecachingSuceeded,
+			utils.ConditionReasons.PartiallyDone,
+			metav1.ConditionTrue,
+			fmt.Sprintf("Precaching failed for %d clusters", failedPrecacheCount),
+		)
+	// Clusters are still in progress
+	default:
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.PrecachingSuceeded,
+			utils.ConditionReasons.InProgress,
+			metav1.ConditionFalse,
+			fmt.Sprintf("Precaching in progress for %d clusters", progressingPrecacheCount),
+		)
 	}
 }
