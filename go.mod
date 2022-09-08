@@ -10,7 +10,7 @@ require (
 	github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-10-13-16-11-44
 	github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
-	github.com/operator-framework/api v0.1.1
+	github.com/operator-framework/api v0.16.0
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.1

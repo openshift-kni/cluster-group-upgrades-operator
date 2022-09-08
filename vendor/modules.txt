@@ -197,7 +197,7 @@ github.com/openshift/build-machinery-go/make/targets/golang
 github.com/openshift/build-machinery-go/make/targets/openshift
 github.com/openshift/build-machinery-go/make/targets/openshift/operator
 github.com/openshift/build-machinery-go/scripts
-# github.com/operator-framework/api v0.1.1
+# github.com/operator-framework/api v0.16.0
 ## explicit; go 1.13
 github.com/operator-framework/api/pkg/lib/version
 github.com/operator-framework/api/pkg/operators
