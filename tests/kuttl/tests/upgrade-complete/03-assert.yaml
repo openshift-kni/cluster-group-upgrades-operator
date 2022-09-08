@@ -15,6 +15,11 @@ spec:
     maxConcurrency: 1
     timeout: 240
 status:
+  clusters:
+    - name: spoke1
+      state: complete
+    - name: spoke4
+      state: complete
   conditions:
   - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
     reason: UpgradeCompleted

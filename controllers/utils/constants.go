@@ -15,6 +15,12 @@ const (
 	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
+// Possible status of cluster remediation progress
+const (
+	ClusterRemediationComplete = "complete"
+	ClusterRemediationTimedout = "timedout"
+)
+
 // Label specific to ACM child policies.
 const (
 	ChildPolicyLabel = "policy.open-cluster-management.io/root-policy"

@@ -242,6 +242,21 @@ spec:
                       type: string
                     type: object
                 type: object
+              clusters:
+                items:
+                  description: ClusterState defines the final state of a cluster
+                  properties:
+                    currentPolicyRemediate:
+                      type: string
+                    name:
+                      type: string
+                    state:
+                      type: string
+                  required:
+                  - name
+                  - state
+                  type: object
+                type: array
               computedMaxConcurrency:
                 type: integer
               conditions:

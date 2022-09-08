@@ -111,6 +111,8 @@ spec:
       statusDescriptors:
       - displayName: Backup
         path: backup
+      - displayName: Clusters
+        path: clusters
       - displayName: Computed Maximum Concurrency
         path: computedMaxConcurrency
       - displayName: Conditions
