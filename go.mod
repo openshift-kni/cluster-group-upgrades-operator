@@ -10,7 +10,7 @@ require (
 	github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-10-13-16-11-44
 	github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
-	github.com/operator-framework/api v0.1.1
+	github.com/operator-framework/api v0.10.4
 	github.com/sirupsen/logrus v1.7.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.1
@@ -39,7 +39,7 @@ require (
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
-	github.com/blang/semver v3.5.1+incompatible // indirect
+	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.1 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.14.2+incompatible // indirect
