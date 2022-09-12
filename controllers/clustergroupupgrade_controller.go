@@ -568,8 +568,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 		}
 	}
 
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "isBatchComplete", isBatchComplete)
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
+	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)
 	return isBatchComplete, nil
 }
 
@@ -1597,7 +1596,6 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 
 	var nonCompliantClusters []string
 	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-	r.Log.Info("[getClustersNonCompliantWithPolicy]", "clusterList:", allClustersForUpgrade)
 	if err != nil {
 		return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
@@ -1816,7 +1814,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	// The kubernetes api does not return consistent results for label selectors
 	// Due to this behaviour we have to sort the list so that the result is consistent
 	sort.Strings(clusterNames)
-	r.Log.Info("[getAllClustersForUpgrade]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
 
