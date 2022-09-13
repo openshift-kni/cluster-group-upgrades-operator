@@ -199,19 +199,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if clusterGroupUpgrade.Status.Backup == nil || meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded)) {
 		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
 		if err != nil {
-			r.Log.Error(err, "reconcilePrecaching error")
+			r.Log.Error(err, "reconcileBackup error")
 			return
 		}
-		if clusterGroupUpgrade.Status.Precaching != nil {
-			for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
+
+		if clusterGroupUpgrade.Status.Backup != nil {
+			for _, v := range clusterGroupUpgrade.Status.Backup.Status {
 				//nolint
-				if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
+				if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
 					err = r.updateStatus(ctx, clusterGroupUpgrade)
 					nextReconcile = requeueWithShortInterval()
 					return
 				}
 			}
-
 		}
 	}
 
@@ -383,6 +383,16 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				if len(managedPoliciesInfo.invalidPolicies) != 0 {
 					statusMessage += fmt.Sprintf("invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
 				}
+				nextReconcile = requeueWithCustomInterval(requeueAfter)
+			}
+
+			// At first, assume all clusters in the batch start applying policies starting with the first one.
+			// Also set the start time of the current batch to the current timestamp.
+			if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
+				r.initializeRemediationPolicyForBatch(clusterGroupUpgrade)
+				// Set the time for when the batch started updating.
+				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
+			}
 
 				// If not all managedPolicies exist, update the Status accordingly.
 				utils.SetStatusCondition(
@@ -541,7 +551,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
-	return
+	if err != nil {
+		return err
+	}
 }
 
 func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
@@ -796,7 +808,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	filterNonCompliantPolicies bool) (bool, policiesInfo, error) {
 
-	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	r.Log.Info("[doManagedPoliciesExist]", "clusterList:", clusters)
 	if err != nil {
 		return false, policiesInfo{}, err
@@ -1546,10 +1558,18 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 			}
 		}
 	}
-	//
-	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-	if err != nil {
-		return err
+	// comment:
+	var allClustersForUpgrade []string
+	if clusterGroupUpgrade.Status.Backup != nil {
+		allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+		if err != nil {
+			return err
+		}
+	} else {
+		allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
+		if err != nil {
+			return err
+		}
 	}
 
 	var batch []string
@@ -1665,12 +1685,14 @@ func (r *ClusterGroupUpgradeReconciler) getSuccessfulClustersList(ctx context.Co
 		return clusters, fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
 	}
 
-	// this condition is valid for precaching
-	if clusterGroupUpgrade.Status.Backup != nil {
+	// comment: this condition is valid for backup
+	// during building remediation plan after precaching succeeded
+	if clusterGroupUpgrade.Status.Precaching != nil {
 		for _, name := range clusters {
-			if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
+			if clusterGroupUpgrade.Status.Precaching.Status[name] == PrecacheStateSucceeded {
 				clustersList = append(clustersList, name)
 			}
+			r.Log.Info("getSuccessfulClustersList: backup", "clustersList", clustersList)
 		}
 	} else {
 		clustersList = clusters
@@ -1678,15 +1700,16 @@ func (r *ClusterGroupUpgradeReconciler) getSuccessfulClustersList(ctx context.Co
 
 	// this condition applies to upgrade
 	if feature == "upgrade" {
-		if clusterGroupUpgrade.Status.Precaching != nil {
+		if clusterGroupUpgrade.Status.Backup != nil {
 			var newList []string
 			for _, name := range clusters {
-				if clusterGroupUpgrade.Status.Precaching.Status[name] == PrecacheStateSucceeded {
+				if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
 					newList = append(newList, name)
 				}
 			}
 			clustersList = newList
 		}
+		r.Log.Info("getSuccessfulClustersList: upgrade", "clustersList", clustersList)
 	}
 
 	return clustersList, nil
@@ -1816,7 +1839,8 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	reconcile := false
 	// Validate clusters in spec are ManagedCluster objects
-	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	// comment:
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}

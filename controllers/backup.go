@@ -58,7 +58,7 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context, clust
 	if len(clusterGroupUpgrade.Status.Backup.Clusters) != 0 {
 		clusters = clusterGroupUpgrade.Status.Backup.Clusters
 	} else {
-		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		clusters, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
 		if err != nil {
 			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
 		}

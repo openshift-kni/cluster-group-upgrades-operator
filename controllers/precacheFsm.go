@@ -119,7 +119,10 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	if len(clusterGroupUpgrade.Status.Precaching.Clusters) != 0 {
 		clusters = clusterGroupUpgrade.Status.Precaching.Clusters
 	} else {
-		clusters, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
+		// As precaching is going first, it should use the getAllClustersForUpgrade function
+		// clusters, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
+		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+
 		if err != nil {
 			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
 		}
