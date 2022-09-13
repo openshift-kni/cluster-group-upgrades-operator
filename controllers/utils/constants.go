@@ -12,7 +12,6 @@ const (
 	ClusterStatusCompliant      = "Compliant"
 	ClusterNotMatchedWithPolicy = "NotMatchedWithPolicy"
 	ClusterStatusUnknown        = "ClusterStatusUnknown"
-	PolicyStatusUnknown         = "StatusUnknown"
 	PolicyStatusPresent         = "PolicyStatusPresent"
 )
 
