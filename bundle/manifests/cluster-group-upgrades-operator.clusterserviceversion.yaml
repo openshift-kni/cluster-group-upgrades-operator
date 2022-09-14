@@ -16,6 +16,7 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    olm.skipRange: '>=4.10.0 <4.11.1'
     operators.openshift.io/infrastructure-features: '["disconnected"]'
     operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
