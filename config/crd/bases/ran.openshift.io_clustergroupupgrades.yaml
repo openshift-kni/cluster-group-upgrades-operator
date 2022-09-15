@@ -248,8 +248,16 @@ spec:
                 items:
                   description: ClusterState defines the final state of a cluster
                   properties:
-                    currentPolicyRemediate:
-                      type: string
+                    currentPolicy:
+                      description: PolicyStatus defines the status of a certain policy
+                      properties:
+                        name:
+                          type: string
+                        status:
+                          type: string
+                      required:
+                      - name
+                      type: object
                     name:
                       type: string
                     state:
