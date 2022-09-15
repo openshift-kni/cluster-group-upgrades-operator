@@ -328,6 +328,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
 					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
+					},
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
@@ -371,6 +375,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Kind:      "InstallPlan",
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
+					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
 					},
 				},
 			},
@@ -423,6 +431,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
 					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
+					},
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
@@ -473,6 +485,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Kind:      "InstallPlan",
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
+					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
 					},
 				},
 			},
@@ -525,6 +541,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Kind:      "InstallPlan",
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
+					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
 					},
 				},
 			},
@@ -584,6 +604,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
 					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
+					},
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
@@ -641,6 +665,10 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 						Kind:      "InstallPlan",
 						Name:      "installPlan-xyz",
 						Namespace: "installPlan-xyz-namespace",
+					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "installPlan-xyz",
 					},
 				},
 			},
@@ -948,7 +976,8 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 						  "resourceVersion": "3850622"}, "spec": {"installPlanApproval:": "Manual"},
 				     	  "status":{"state":"UpgradePending","installPlanRef":{"apiVersion":"operators.coreos.com/v1alpha1",
 						  "kind":"InstallPlan","name":"install-jx8q5","namespace":"openshift-ptp",
-						  "resourceVersion":"3850433"}}}`,
+						  "resourceVersion":"3850433"},"installplan":{"apiVersion":"operators.coreos.com/v1alpha1",
+						  "kind":"InstallPlan","name":"install-jx8q5"}}}`,
 					)},
 				},
 			},
@@ -1000,7 +1029,8 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 						  "resourceVersion": "3850622"}, "spec": {"installPlanApproval:": "Manual"},
 				     	  "status":{"state":"UpgradePending","installPlanRef":{"apiVersion":"operators.coreos.com/v1alpha1",
 						  "kind":"InstallPlan","name":"install-jx8q5","namespace":"openshift-ptp",
-						  "resourceVersion":"3850433"}}}`,
+						  "resourceVersion":"3850433"},"installplan":{"apiVersion":"operators.coreos.com/v1alpha1",
+						  "kind":"InstallPlan","name":"install-jx8q5"}}}`,
 					)},
 				},
 			},
