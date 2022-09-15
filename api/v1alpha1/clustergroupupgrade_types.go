@@ -219,13 +219,6 @@ type BackupStatus struct {
 	Clusters []string          `json:"clusters,omitempty"`
 }
 
-// PolicyContent defines the details of an object configured through a Policy
-type PolicyContent struct {
-	Kind      string  `json:"kind,omitempty"`
-	Name      string  `json:"name,omitempty"`
-	Namespace *string `json:"namespace,omitempty"`
-}
-
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
 type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster

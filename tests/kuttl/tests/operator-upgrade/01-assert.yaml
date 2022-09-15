@@ -25,7 +25,7 @@ status:
   copiedPolicies:
   - cgu-policy5-subscriptions-kuttl
   managedPoliciesContent:
-    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","namespace":"openshift-local-storage"}]'
+    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-local-storage"}]'
   managedPoliciesForUpgrade:
   - name: policy5-subscriptions
     namespace: default
