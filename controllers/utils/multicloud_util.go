@@ -70,13 +70,13 @@ func ProcessSubscriptionManagedClusterView(
 				"subscription", subscription.ObjectMeta.Name, "namespace", subscription.ObjectMeta.Namespace)
 			return InstallPlanCannotBeApproved, nil
 		}
-		if subscription.Status.InstallPlanRef == nil {
+		if subscription.Status.Install == nil {
 			multiCloudLog.Info("Subscription status doesn't include information about the InstallPlan",
 				"subscription", subscription.ObjectMeta.Name, "namespace", subscription.ObjectMeta.Namespace)
 			return InstallPlanCannotBeApproved, nil
 		}
-		multiCloudLog.Info("Accept InstallPlan", "name", subscription.Status.InstallPlanRef.Name,
-			"namespace", subscription.Status.InstallPlanRef.Namespace)
+		multiCloudLog.Info("Accept InstallPlan", "name", subscription.Status.Install.Name,
+			"namespace", subscription.ObjectMeta.Namespace)
 		installPlanResult, err := EnsureInstallPlanIsApproved(ctx, c, clusterGroupUpgrade, subscription, clusterName)
 		if err != nil {
 			return installPlanResult, err
@@ -94,13 +94,13 @@ var EnsureInstallPlanIsApproved = func(
 	subscription operatorsv1alpha1.Subscription, clusterName string) (int, error) {
 	// Create a ManagedClusterView for the InstallPlan so that we can access its latest resourceVersion.
 	mcvForInstallPlanName := GetMultiCloudObjectName(
-		clusterGroupUpgrade, subscription.Status.InstallPlanRef.Kind, subscription.Status.InstallPlanRef.Name)
+		clusterGroupUpgrade, subscription.Status.Install.Kind, subscription.Status.Install.Name)
 	multiCloudLog.Info("[EnsureInstallPlanIsApproved] Create MCV for InstallPlan", "InstallPlan",
-		subscription.Status.InstallPlanRef.Name, "ns", clusterName)
+		subscription.Status.Install.Name, "ns", clusterName)
 	safeName := GetSafeResourceName(mcvForInstallPlanName, clusterGroupUpgrade, MaxObjectNameLength, 0)
 	mcvForInstallPlan, err := EnsureManagedClusterView(
-		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.InstallPlanRef.Name,
-		subscription.Status.InstallPlanRef.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
+		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.Install.Name,
+		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
 	}
