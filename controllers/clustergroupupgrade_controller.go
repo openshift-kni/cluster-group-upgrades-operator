@@ -491,7 +491,9 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 		}
 		clusterState.State = utils.ClusterRemediationTimedout
 		policyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
-		clusterState.CurrentPolicyRemediate = clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name
+		clusterState.CurrentPolicy = ranv1alpha1.PolicyStatus{
+			Name:   clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name,
+			Status: utils.ClusterStatusNonCompliant}
 		clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 	}
 }
