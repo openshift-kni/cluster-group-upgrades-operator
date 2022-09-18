@@ -42,7 +42,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -239,8 +238,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						nextReconcile = requeueWithMediumInterval()
 						return nextReconcile, nil
 					}
-
-					err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+					err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
 					if err != nil {
 						return
 					}
@@ -590,7 +588,7 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 		return err
 	}
 	// Approve needed InstallPlans.
-	reconcileSooner, err := r.approveInstallPlan(ctx, clusterGroupUpgrade)
+	reconcileSooner, err := r.processMonitoredObjects(ctx, clusterGroupUpgrade)
 	if reconcileSooner {
 		*nextReconcile = requeueWithShortInterval()
 	}
@@ -621,75 +619,6 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 		}
 	}
 	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
-
-	reconcileSooner := false
-	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
-		if clusterProgress.State != ranv1alpha1.InProgress {
-			continue
-		}
-		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[*clusterProgress.PolicyIndex].Name
-
-		// If there is no content saved for the current managed policy, return.
-		_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
-		if !ok {
-			r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
-			return false, nil
-		}
-
-		// If there is content saved for the current managed policy, retrieve it.
-		policyContentArr := []ranv1alpha1.PolicyContent{}
-		json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &policyContentArr)
-
-		for _, policyContent := range policyContentArr {
-			if policyContent.Kind != utils.PolicyTypeSubscription {
-				continue
-			}
-
-			r.Log.Info("[approveInstallPlan] Attempt to approve install plan for subscription",
-				"name", policyContent.Name, "in namespace", policyContent.Namespace)
-			// Get the managedClusterView for the subscription contained in the current managedPolicy.
-			// If missing, then return error.
-			mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-			safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvName]
-			if !ok {
-				r.Log.Info("ManagedClusterView name should have been present, but it was not found")
-				continue
-			}
-			mcv := &viewv1beta1.ManagedClusterView{}
-			if err := r.Get(ctx, types.NamespacedName{Name: safeName, Namespace: clusterName}, mcv); err != nil {
-				if errors.IsNotFound(err) {
-					r.Log.Info("ManagedClusterView should have been present, but it was not found")
-					continue
-				} else {
-					return false, err
-				}
-			}
-
-			// If the specific managedClusterView was found, check that it's condition Reason is "GetResourceProcessing"
-			installPlanStatus, err := utils.ProcessSubscriptionManagedClusterView(
-				ctx, r.Client, clusterGroupUpgrade, clusterName, mcv)
-			// If there is an error in trying to approve the install plan, just print the error and continue.
-			if err != nil {
-				r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
-				continue
-			}
-			if installPlanStatus == utils.InstallPlanCannotBeApproved {
-				r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", policyContent.Name)
-				reconcileSooner = true
-			} else if installPlanStatus == utils.InstallPlanWasApproved {
-				r.Log.Info("InstallPlan for subscription was approved", "subscription name", policyContent.Name)
-			} else if installPlanStatus == utils.MultiCloudPendingStatus {
-				r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
-					"retry again later", "subscription name", policyContent.Name)
-				reconcileSooner = true
-			}
-		}
-	}
-	return reconcileSooner, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
@@ -920,68 +849,6 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	return true, managedPoliciesInfo, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
-	for _, managedPolicy := range managedPoliciesForUpgrade {
-		// Get the policy content and create any needed ManagedClusterViews for subscription type policies.
-		policyTypes, err := r.getPolicyContent(clusterGroupUpgrade, managedPolicy)
-		if err != nil {
-			return err
-		}
-
-		// If the policy types did not return with useful data then continue to the next policy
-		// We don't want to create empty fields in the map with null values as that is confusing
-		if len(policyTypes) == 0 {
-			continue
-		}
-
-		p, err := json.Marshal(policyTypes)
-		if err != nil {
-			return err
-		}
-		clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicy.GetName()] = string(p)
-		r.createSubscriptionManagedClusterView(ctx, clusterGroupUpgrade, managedPolicy, policyTypes)
-	}
-
-	return nil
-}
-
-//nolint:unparam
-func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured, policyContent []ranv1alpha1.PolicyContent) error {
-
-	nonCompliantClusters, err := r.getClustersNonCompliantWithPolicy(ctx, clusterGroupUpgrade, policy)
-	if err != nil {
-		return err
-	}
-
-	policyContentArr := []ranv1alpha1.PolicyContent{}
-	json.Unmarshal(
-		[]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[policy.GetName()]),
-		&policyContentArr)
-
-	// Check if the current policy is also a subscription policy.
-	for _, policyContent := range policyContentArr {
-		if policyContent.Kind == utils.PolicyTypeSubscription {
-
-			// Compute the name of the managedClusterView
-			managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-			safeName := utils.GetSafeResourceName(managedClusterViewName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
-
-			// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
-			for _, nonCompliantCluster := range nonCompliantClusters {
-				_, err = utils.EnsureManagedClusterView(
-					ctx, r.Client, safeName, managedClusterViewName, nonCompliantCluster, "subscriptions.operators.coreos.com",
-					policyContent.Name, *policyContent.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
-	return nil
-}
-
 func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) (string, error) {
 
@@ -1141,105 +1008,6 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 		}
 	}
 	return nil
-}
-
-// getPolicyContent goes through all the managed policies that have been validated at the beginning
-// to get the configured resource content if it's a Subscription CR.
-// returns:     []ranv1alpha1.PolicyContent      a list of resource content
-//              error/nil
-//nolint:unparam
-func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) ([]ranv1alpha1.PolicyContent, error) {
-
-	managedPolicyName := managedPolicy.GetName()
-	specObject := managedPolicy.Object["spec"].(map[string]interface{})
-
-	// Get the policy templates.
-	policyTemplates := specObject["policy-templates"]
-	policyTemplatesArr := policyTemplates.([]interface{})
-	var policyContent []ranv1alpha1.PolicyContent
-
-	// Go through the template array.
-	for _, template := range policyTemplatesArr {
-		// Get to the metadata name of the ConfigurationPolicy.
-		objectDefinition := template.(map[string]interface{})["objectDefinition"]
-		objectDefinitionContent := objectDefinition.(map[string]interface{})
-
-		// Get the spec.
-		spec := objectDefinitionContent["spec"]
-
-		// Get the object-templates from the spec.
-		specContent := spec.(map[string]interface{})
-		objectTemplates := specContent["object-templates"]
-
-		objectTemplatesContent := objectTemplates.([]interface{})
-		for _, objectTemplate := range objectTemplatesContent {
-			objectTemplateContent := objectTemplate.(map[string]interface{})
-			innerObjectDefinition := objectTemplateContent["objectDefinition"]
-			innerObjectDefinitionContent := innerObjectDefinition.(map[string]interface{})
-
-			// Get the object's metadata.
-			objectDefinitionMetadata := innerObjectDefinitionContent["metadata"]
-			if objectDefinitionMetadata == nil {
-				r.Log.Info(
-					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata",
-					"policyName", managedPolicyName)
-				continue
-			}
-
-			objectDefinitionMetadataContent := innerObjectDefinitionContent["metadata"].(map[string]interface{})
-			// Save the kind, name and namespace if they exist and if kind is of Subscription type.
-			// If kind is missing, log and skip.
-			kind, ok := innerObjectDefinitionContent["kind"]
-			if !ok {
-				r.Log.Info(
-					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.kind",
-					"policyName", managedPolicyName)
-				continue
-			}
-
-			// Filter only Subscription templates.
-			if kind != utils.PolicyTypeSubscription {
-				r.Log.Info(
-					"[getPolicyContent] Policy spec.policy-templates.objectDefinition.spec.object-templates.kind is not of Subscription kind",
-					"policyName", managedPolicyName)
-				continue
-			}
-
-			// If name is missing, log and skip. We need Subscription name in order to have a valid content for
-			// Subscription InstallPlan approval.
-			_, ok = objectDefinitionMetadataContent["name"]
-			if !ok {
-				r.Log.Info(
-					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.name",
-					"policyName", managedPolicyName)
-				continue
-			}
-
-			// If namespace is missing, log and skip. We need Subscription namespace in order to have a valid content for
-			// Subscription InstallPlan approval.
-			_, ok = objectDefinitionMetadataContent["namespace"]
-			if !ok {
-				r.Log.Info(
-					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.namespace",
-					"policyName", managedPolicyName)
-				continue
-			}
-
-			// Save the info into the policy content status.
-			var policyContentCrt ranv1alpha1.PolicyContent
-			policyContentCrt.Kind = innerObjectDefinitionContent["kind"].(string)
-			policyContentCrt.Name = objectDefinitionMetadataContent["name"].(string)
-
-			namespace := objectDefinitionMetadataContent["namespace"].(string)
-			policyContentCrt.Namespace = &namespace
-
-			policyContent = append(policyContent, policyContentCrt)
-		}
-
-	}
-
-	return policyContent, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string, managedPolicy *unstructured.Unstructured) (string, error) {

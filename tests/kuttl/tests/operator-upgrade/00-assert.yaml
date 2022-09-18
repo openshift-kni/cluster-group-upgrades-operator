@@ -24,7 +24,7 @@ status:
   copiedPolicies:
   - cgu-policy5-subscriptions-kuttl
   managedPoliciesContent:
-    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","namespace":"openshift-local-storage"}]'
+    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-local-storage"}]'
   managedPoliciesForUpgrade:
   - name: policy5-subscriptions
     namespace: default
@@ -60,7 +60,7 @@ spec:
   scope:
     name: cluster-logging
     namespace: openshift-logging
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -71,7 +71,7 @@ spec:
   scope:
     name: cluster-logging
     namespace: openshift-logging
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -82,7 +82,7 @@ spec:
   scope:
     name: cluster-logging
     namespace: openshift-logging
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 # Check for the local storage operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
@@ -94,7 +94,7 @@ spec:
   scope:
     name: local-storage-operator
     namespace: openshift-local-storage
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -105,7 +105,7 @@ spec:
   scope:
     name: local-storage-operator
     namespace: openshift-local-storage
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -116,7 +116,7 @@ spec:
   scope:
     name: local-storage-operator
     namespace: openshift-local-storage
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 # Check for the PAO operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
@@ -128,7 +128,7 @@ spec:
   scope:
     name: performance-addon-operator
     namespace: openshift-performance-addon-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -139,7 +139,7 @@ spec:
   scope:
     name: performance-addon-operator
     namespace: openshift-performance-addon-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -150,7 +150,7 @@ spec:
   scope:
     name: performance-addon-operator
     namespace: openshift-performance-addon-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 # Check for the PTP operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
@@ -162,7 +162,7 @@ spec:
   scope:
     name: ptp-operator-subscription
     namespace: openshift-ptp
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -173,7 +173,7 @@ spec:
   scope:
     name: ptp-operator-subscription
     namespace: openshift-ptp
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -184,7 +184,7 @@ spec:
   scope:
     name: ptp-operator-subscription
     namespace: openshift-ptp
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 # Check for the SRIOV operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
@@ -196,7 +196,7 @@ spec:
   scope:
     name: sriov-network-operator-subscription
     namespace: openshift-sriov-network-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -207,7 +207,7 @@ spec:
   scope:
     name: sriov-network-operator-subscription
     namespace: openshift-sriov-network-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
@@ -218,4 +218,4 @@ spec:
   scope:
     name: sriov-network-operator-subscription
     namespace: openshift-sriov-network-operator
-    resource: subscriptions.operators.coreos.com
+    resource: Subscription.operators.coreos.com

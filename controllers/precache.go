@@ -120,7 +120,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 		for _, object := range objects {
 			kind := object["kind"]
 			switch kind {
-			case utils.PolicyTypeClusterVersion:
+			case utils.ClusterVersionGroupVersionKind().Kind:
 				cvSpec := object["spec"].(map[string]interface{})
 				desiredUpdate, found := cvSpec["desiredUpdate"]
 				if !found {
@@ -165,7 +165,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 					spec.PlatformImage = image.(string)
 				}
 				r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", spec.PlatformImage)
-			case utils.PolicyTypeSubscription:
+			case utils.SubscriptionGroupVersionKind().Kind:
 				packChan := fmt.Sprintf("%s:%s", object["spec"].(map[string]interface{})["name"],
 					object["spec"].(map[string]interface{})["channel"])
 				spec.OperatorsPackagesAndChannels = append(spec.OperatorsPackagesAndChannels, packChan)

@@ -24,7 +24,7 @@ status:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
   clusters:
     - name: spoke1
       state: complete
