@@ -24,10 +24,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
-    reason: UpgradeNotCompleted
-    status: "False"
-    type: Ready
+    reason: InProgress
+    status: "True"
+    type: Progressing
   copiedPolicies:
   - cgu-a-policy1-common-cluster-version-policy-kuttl
   - cgu-a-policy2-common-pao-sub-policy-kuttl
@@ -100,11 +108,19 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: All managed policies exist
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: 'The ClusterGroupUpgrade CR is blocked by other CRs that have not yet
       completed: [cgu-a]'
-    reason: UpgradeCannotStart
+    reason: IncompleteBlockingCR
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-b-policy1-common-cluster-version-policy-kuttl
   - cgu-b-policy2-common-pao-sub-policy-kuttl
