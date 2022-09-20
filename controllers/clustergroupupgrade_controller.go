@@ -1803,11 +1803,25 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 			continue
 		}
 
-		// If we find a blocking CR with a status different than "UpgradeCompleted", then we add it to the list.
+		// If we find a blocking CR that does not contain a successful completion condition then we add it to the list.
+		// For example, we need a condition like this:
+		/*
+			- message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
+			  reason: UpgradeCompleted
+			  status: "True"
+			  type: Succeeded
+		*/
+		upgradeCompleted := false
 		for i := range cgu.Status.Conditions {
-			if cgu.Status.Conditions[i].Reason != "UpgradeCompleted" {
-				blockingCRsNotCompleted = append(blockingCRsNotCompleted, cgu.Name)
+			if cgu.Status.Conditions[i].Reason == string(utils.ConditionReasons.UpgradeCompleted) &&
+				cgu.Status.Conditions[i].Status == "True" &&
+				cgu.Status.Conditions[i].Type == string(utils.ConditionTypes.Succeeded) {
+				upgradeCompleted = true
+
 			}
+		}
+		if !upgradeCompleted {
+			blockingCRsNotCompleted = append(blockingCRsNotCompleted, cgu.Name)
 		}
 	}
 
