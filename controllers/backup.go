@@ -17,7 +17,6 @@ const (
 	BackupStateStarting         = "Starting"
 	BackupStateActive           = "Active"
 	BackupStateSucceeded        = "Succeeded"
-	BackupStateDone             = "BackupDone"
 	BackupStateTimeout          = "BackupTimeout"
 	BackupStateError            = "UnrecoverableError"
 )
@@ -255,7 +254,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	// Loop over all the clusters and take count of all their states
 	for _, state := range clusterGroupUpgrade.Status.Backup.Status {
 		switch state {
-		case BackupStateDone:
+		case BackupStateSucceeded:
 			successfulBackupCount++
 		case BackupStateActive, BackupStateStarting, BackupStatePreparingToStart:
 			progressingBackupCount++
