@@ -493,8 +493,8 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 		}
 	}
 
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "isBatchComplete", isBatchComplete)
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress)
+	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress,
+		"isBatchComplete", isBatchComplete)
 	return isBatchComplete, nil
 }
 
@@ -1620,8 +1620,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
-	r.Log.Info("[getClusterBySelectors]", "clustersBySelector", clusterNames)
-
 	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
 		// Make sure a cluster name doesn't appear twice.
 		if _, value := keys[clusterName]; !value {
@@ -1630,7 +1628,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 		}
 	}
 
-	r.Log.Info("[getClustersBySelectors]", "clusterNames", clusterNames)
 	return clusterNames, nil
 }
 
