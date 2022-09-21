@@ -26,22 +26,55 @@ A set of **clustergroupupgrade** example CRs can be found in the **samples** fol
 
 ## How it works
 
-The ClusterGroupUpgrade controller is designed to perform an upgrade to a group of clusters in a given period of time, which by default is set to 4h.
-In order to model the various phases of an upgrade, the ClusterGroupUpgrade CR can be in the following states:
+The ClusterGroupUpgrade controller is designed to perform an upgrade to a group of clusters in a given period of time, which by default is set to 4h. In order to model the various phases of an upgrade, the ClusterGroupUpgrade CR can be in a variety of states.
 
-* **UpgradeNotStarted**
+The states generally are represented by Conditions using appropriate reasons and types. The general workflow is:
+
+ClusterSelected -> BackupSucceeded -> PrecacheSpecValid -> PrecachingSucceeded -> Validated -> Progressing -> Succeeded
+
+Note that if Backup is not enabled then the BackupSuceeded condition will not be present, and similarly if precaching is not enabled then neither precaching condition will be present.
+
+A full table of the conditions and their appropriate reasons and types is:
+
+  | Type | Status| Reason| Message |
+  |------|-------|---------|--------|
+  ClustersSelected| True| Completed||
+  | |False | NotFound/NotPresent| `comment: mention the cluster list that is not part of the manangedCluster, must block the upgrade`|
+  Validated | True | Completed||
+  | | False | MissingManagedPolicy| `comment: must block the upgrade`|
+  | | False | InvalidPlatformImage| `comment: must block the upgrade`| 
+  `BackupSucceeded` | True | Completed | Backup is completed |
+  | | True | PartiallyDone | Failed to create backups for some clusters |
+  | | False | InProgress | Backup is in progress |
+  | | False | Failed | Backup failed for all the clusters |
+  `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed/AsExpected | Pre-caching spec is valid and consistent|
+  | | False | NotAllManagedPoliciesExist| The ClusterGroupUpgrade CR has managed policies that are missing|
+  `PrecachingSucceeded` | True | Completed | Precaching is completed |
+  | | True | PartiallyDone | Failed to create preCaching for some clusters | 
+  | | False | InProgress | Precaching is in progress | 
+  | | False | Failed | PreCaching failed for all the clusters |
+  Progressing| True | InProgress||
+  | | False | Completed | |
+  | | False | NotEnabled| The ClusterGroupUpgrade CR is not enabled |
+  | | False | MissingBlockingCR | `comment: message must contain which blocking CRs are missing`|
+  | | False | IncompleteBlockingCR | `comment: blocked by other CR which is not completed, mention which CR is blocking`| 
+  Succeeded| True | UpgradeCompleted||
+  | | False | UpgradeTimedOut | |
+
+A few important ones to consider are:
+* **ClustersSelected**
+  * In this state, the list of clusters that will be considered for the **ClusterGroupUpgrade** will be checked.
+  * If any of the clusters are not present then the condition will block further progress of the **ClusterGroupUpgrade**
+  * The cluster list will be generated in a set order which may later be divided into batches if necessary. The list order is the combination of the specific clusters from the **clusters** option, the clusters selected by the **labelSelectors** option, and the clusters selected by the **clusterSelectors** option. All of these selected clusters are then sorted into one alphabetical list.
+* **NotEnabled**
   * In this state, the **ClusterGroupUpgrade** CR has just been created and the *enable* field is set to *false*
   * The controller will build a remediation plan based on the *clusters* list and with *enable* fields like:
     * If *canaries* field is defined with a list of clusters, the first batch(es) of the remediation plan will contain those clusters
     * The number of remediation batches will be the length of *clusters* divided by *maxConcurrency*, each batch with a length of *maxConcurrency* containing the clusters following the *clusters* list ordering
   * The admin can make changes to *clusters*, *managedPolicies* and *enable* only in this state, it will ignore them in others.
-  * The controller will transition to **UpgradeNotCompleted** state once the *enable* field is set to *true* or to **UpgradeCannotStart** if there are issues preventing the upgrade.
-* **UpgradeCannotStart**
-  * In this state, the upgrade cannot start because one the following reasons:
-    * Blocking CRs are missing from the system
-    * Blocking CRs have not yet reached the **UpgradeCompleted** state
-* **UpgradeNotCompleted**
-  * In this state, the controller will make copies of the inform *managedPolicies* policies. These copied policies will have their *remediationAction* set to **enforce**. Afterwards, the controller adds clusters to the corresponding placement rules following the remediation plan built in the **UpgradeNotStarted** state.
+  * The controller will transition to **InProgress** state once the *enable* field is set to *true* or to **MissingBlockingCR** or **IncompleteBlockingCR** if there are issues preventing the upgrade.
+* **InProgress**
+  * In this state, the controller will make copies of the inform *managedPolicies* policies. These copied policies will have their *remediationAction* set to **enforce**. Afterwards, the controller adds clusters to the corresponding placement rules following the remediation plan built in the **Progressiong+NotEnabled** state.
   * Enforcing the policies for subsequent batches starts immediately after all the clusters of the current batch are compliant with all the *managedPolicies*. If the current batch times out, then the controller moves on to the next batch. The value for the batch timeout is the **ClusterGroupUpgrade** timeout divided by the number of batches from the remediation plan.
   * The controller will transition to **UpgradeTimedOut** state in two cases:
     * If the **ClusterGroupUpgrade** has the first batch as canaries and the policies for this first batch are not compliant within the batch timeout
