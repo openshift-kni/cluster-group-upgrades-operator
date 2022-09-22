@@ -65,7 +65,9 @@ A few important ones to consider are:
 * **ClustersSelected**
   * In this state, the list of clusters that will be considered for the **ClusterGroupUpgrade** will be checked.
   * If any of the clusters are not present then the condition will block further progress of the **ClusterGroupUpgrade**
-  * The cluster list will be generated in a set order which may later be divided into batches if necessary. The list order is the combination of the specific clusters from the **clusters** option, the clusters selected by the **labelSelectors** option, and the clusters selected by the **clusterSelectors** option. All of these selected clusters are then sorted into one alphabetical list.
+  * The cluster list will be generated in a set order which may later be divided into batches if necessary. The order is:
+    * All the clusters explicitly specified using the *cluster* option on the *ClusterGroupUpgrade* configuration (This subset will be processed in the order defined in the configuration)
+    * All the clusters that match the *clusterLabelSelectors* and *clusterSelector* options on the *ClusterGroupUpgrade* configuration (This subset will be sorted in alphabetical order)
 * **NotEnabled**
   * In this state, the **ClusterGroupUpgrade** CR has just been created and the *enable* field is set to *false*
   * The controller will build a remediation plan based on the *clusters* list and with *enable* fields like:

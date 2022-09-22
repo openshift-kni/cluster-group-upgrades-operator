@@ -1579,9 +1579,19 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 
 	// These will be used later
 	clusterNames := []string{}
+	selectorClusters := []string{}
 	keys := make(map[string]bool)
 
-	// First get a list of all the clusters that match using the deprecated clusterSelector
+	// First add all the clusters explicitly specified in the spec
+	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
+		// Make sure a cluster name doesn't appear twice.
+		if _, value := keys[clusterName]; !value {
+			keys[clusterName] = true
+			clusterNames = append(clusterNames, clusterName)
+		}
+	}
+
+	// Next get a list of all the clusters that match using the deprecated clusterSelector
 	// The expected format for ClusterSelector can be found in codedoc for its type definition
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
@@ -1608,7 +1618,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 			// Make sure a cluster name doesn't appear twice.
 			if _, value := keys[cluster.GetName()]; !value {
 				keys[cluster.GetName()] = true
-				clusterNames = append(clusterNames, cluster.GetName())
+				selectorClusters = append(selectorClusters, cluster.GetName())
 			}
 		}
 	}
@@ -1636,23 +1646,19 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 			// Make sure a cluster name doesn't appear twice.
 			if _, value := keys[cluster.GetName()]; !value {
 				keys[cluster.GetName()] = true
-				clusterNames = append(clusterNames, cluster.GetName())
+				selectorClusters = append(selectorClusters, cluster.GetName())
 			}
 		}
 	}
 
-	// Finally add all the clusters explicitly specified in the spec
-	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
-		// Make sure a cluster name doesn't appear twice.
-		if _, value := keys[clusterName]; !value {
-			keys[clusterName] = true
-			clusterNames = append(clusterNames, clusterName)
-		}
-	}
+	// The kubernetes api does not return consistent results for selectors
+	// Due to this behaviour we have to sort that portion of the list so that the result is consistent
+	sort.Strings(selectorClusters)
 
-	// The kubernetes api does not return consistent results for label selectors
-	// Due to this behaviour we have to sort the list so that the result is consistent
-	sort.Strings(clusterNames)
+	// Add the selector clusters to the full list of clusters
+	clusterNames = append(clusterNames, selectorClusters...)
+
+	// Return the full list of clusters
 	return clusterNames, nil
 }
 
