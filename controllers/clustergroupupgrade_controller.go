@@ -177,6 +177,73 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
+	progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
+
+	// Set the progressing condition if it is not present
+	if progressingCondition == nil || (progressingCondition.Status == metav1.ConditionFalse && progressingCondition.Reason != string(utils.ConditionReasons.Completed)) {
+		var allManagedPoliciesExist bool
+		var managedPoliciesInfo policiesInfo
+		allManagedPoliciesExist, managedPoliciesInfo, err =
+			r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
+		if err != nil {
+			return
+		}
+		if allManagedPoliciesExist {
+			if !meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Validated)) {
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Validated,
+					utils.ConditionReasons.Completed,
+					metav1.ConditionTrue,
+					"All managed policies exist",
+				)
+			}
+
+			// Build the upgrade batches.
+			err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			if err != nil {
+				return
+			}
+
+			// Create the needed resources for starting the upgrade.
+			var isPolicyErr bool
+			isPolicyErr, err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			if err != nil {
+				return
+			} else if isPolicyErr {
+				nextReconcile = requeueWithMediumInterval()
+				return nextReconcile, nil
+			}
+			err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			if err != nil {
+				return
+			}
+		} else {
+			// If not all managedPolicies exist or invalid, update the Status accordingly.
+			var statusMessage string = "The ClusterGroupUpgrade CR has: "
+			if len(managedPoliciesInfo.missingPolicies) != 0 {
+				statusMessage += fmt.Sprintf("missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
+			}
+
+			if len(managedPoliciesInfo.invalidPolicies) != 0 {
+				statusMessage += fmt.Sprintf("invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
+			}
+
+			// If not all managedPolicies exist, update the Status accordingly.
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Validated,
+				utils.ConditionReasons.NotAllManagedPoliciesExist,
+				metav1.ConditionFalse,
+				statusMessage,
+			)
+			nextReconcile = requeueWithMediumInterval()
+			// Update status
+			err = r.updateStatus(ctx, clusterGroupUpgrade)
+			return
+		}
+	}
+
 	// Check for backup
 	err = r.reconcileBackup(ctx, clusterGroupUpgrade)
 	if err != nil {
@@ -215,10 +282,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
-	r.updateStatus(ctx, clusterGroupUpgrade)
-
-	backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
-	precachingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.PrecachingSuceeded))
 	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 
 	if suceededCondition != nil {
@@ -247,296 +310,227 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 		}
-	} else if (backupCondition == nil || (backupCondition != nil && (backupCondition.Reason == string(utils.ConditionReasons.Completed) || backupCondition.Reason == string(utils.ConditionReasons.PartiallyDone)))) &&
-		(precachingCondition == nil || (precachingCondition != nil && precachingCondition.Reason == string(utils.ConditionReasons.Completed))) {
-		// All conditions met to begin the upgrade
+	} else if progressingCondition == nil || progressingCondition.Status == metav1.ConditionFalse {
 
-		progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
+		if !*clusterGroupUpgrade.Spec.Enable {
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.NotEnabled,
+				metav1.ConditionFalse,
+				"The ClusterGroupUpgrade CR is not enabled",
+			)
+			nextReconcile = requeueWithLongInterval()
+			r.updateStatus(ctx, clusterGroupUpgrade)
+			return
+		}
 
-		// Set the progressing condition if it is not present
-		if progressingCondition == nil || progressingCondition.Status == metav1.ConditionFalse {
-			var allManagedPoliciesExist bool
-			var managedPoliciesInfo policiesInfo
-			allManagedPoliciesExist, managedPoliciesInfo, err =
-				r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
+		// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
+		var blockingCRsNotCompleted, blockingCRsMissing []string
+		blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return
+		}
+
+		if len(blockingCRsMissing) > 0 {
+			// If there are blocking CRs missing, update the message to show which those are.
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.MissingBlockingCR,
+				metav1.ConditionFalse,
+				fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing),
+			)
+			nextReconcile = requeueWithMediumInterval()
+		} else if len(blockingCRsNotCompleted) > 0 {
+			// If there are blocking CRs that are not completed, then the upgrade can't start.
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.IncompleteBlockingCR,
+				metav1.ConditionFalse,
+				fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted),
+			)
+			nextReconcile = requeueWithMediumInterval()
+		} else {
+			// There are no blocking CRs, continue with the upgrade process.
+			// Take actions before starting upgrade.
+			err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return
 			}
-			if allManagedPoliciesExist {
-				if !meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Validated)) {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Validated,
-						utils.ConditionReasons.Completed,
-						metav1.ConditionTrue,
-						"All managed policies exist",
-					)
-				}
 
-				// Build the upgrade batches.
-				err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-				if err != nil {
-					return
-				}
-
-				// Create the needed resources for starting the upgrade.
-				var isPolicyErr bool
-				isPolicyErr, err = r.reconcileResources(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-				if err != nil {
-					return
-				} else if isPolicyErr {
-					nextReconcile = requeueWithMediumInterval()
-					return nextReconcile, nil
-				}
-				err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-				if err != nil {
-					return
-				}
-
-				if !*clusterGroupUpgrade.Spec.Enable {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.NotEnabled,
-						metav1.ConditionFalse,
-						"The ClusterGroupUpgrade CR is not enabled",
-					)
-					nextReconcile = requeueWithLongInterval()
-					r.updateStatus(ctx, clusterGroupUpgrade)
-					return
-				}
-
-				// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
-				var blockingCRsNotCompleted, blockingCRsMissing []string
-				blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
-				if err != nil {
-					return
-				}
-
-				if len(blockingCRsMissing) > 0 {
-					// If there are blocking CRs missing, update the message to show which those are.
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.MissingBlockingCR,
-						metav1.ConditionFalse,
-						fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing),
-					)
-					nextReconcile = requeueWithMediumInterval()
-				} else if len(blockingCRsNotCompleted) > 0 {
-					// If there are blocking CRs that are not completed, then the upgrade can't start.
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.IncompleteBlockingCR,
-						metav1.ConditionFalse,
-						fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted),
-					)
-					nextReconcile = requeueWithMediumInterval()
-				} else {
-					// There are no blocking CRs, continue with the upgrade process.
-					// Take actions before starting upgrade.
-					err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
-					if err != nil {
-						return
-					}
-
-					// If the remediation plan is empty, update the status.
-					if clusterGroupUpgrade.Status.RemediationPlan == nil {
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.Progressing,
-							utils.ConditionReasons.Completed,
-							metav1.ConditionFalse,
-							"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
-						)
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.Succeeded,
-							utils.ConditionReasons.UpgradeCompleted,
-							metav1.ConditionTrue,
-							"The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies",
-						)
-						nextReconcile = requeueImmediately()
-					} else {
-						// Start the upgrade.
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.Progressing,
-							utils.ConditionReasons.InProgress,
-							metav1.ConditionTrue,
-							"The ClusterGroupUpgrade CR has upgrade policies that are still non compliant",
-						)
-						clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
-						nextReconcile = requeueImmediately()
-					}
-				}
-
-			} else {
-
-				// If not all managedPolicies exist or invalid, update the Status accordingly.
-				var statusMessage string = "The ClusterGroupUpgrade CR has: "
-				if len(managedPoliciesInfo.missingPolicies) != 0 {
-					statusMessage += fmt.Sprintf("missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
-				}
-
-				if len(managedPoliciesInfo.invalidPolicies) != 0 {
-					statusMessage += fmt.Sprintf("invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
-				}
-
-				// If not all managedPolicies exist, update the Status accordingly.
+			// If the remediation plan is empty, update the status.
+			if clusterGroupUpgrade.Status.RemediationPlan == nil {
 				utils.SetStatusCondition(
 					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Validated,
-					utils.ConditionReasons.NotAllManagedPoliciesExist,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.Completed,
 					metav1.ConditionFalse,
-					statusMessage,
+					"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
 				)
-				nextReconcile = requeueWithMediumInterval()
-			}
-
-			// If the condition is defined and the status isn't false, then it has to be true here
-			// so we can skip an explicit check for condition true
-		} else {
-			r.Log.Info("[Reconcile]", "Status.CurrentBatch", clusterGroupUpgrade.Status.Status.CurrentBatch)
-
-			// If the upgrade is just starting, set the batch to be shown in the Status as 1.
-			if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
-				clusterGroupUpgrade.Status.Status.CurrentBatch = 1
-			}
-
-			//nolint
-			requeueAfter := clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Add(5 * time.Minute).Sub(time.Now())
-			if requeueAfter < 0 {
-				requeueAfter = 5 * time.Minute
-			}
-			nextReconcile = requeueWithCustomInterval(requeueAfter)
-
-			// At first, assume all clusters in the batch start applying policies starting with the first one.
-			// Also set the start time of the current batch to the current timestamp.
-			if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
-				r.initializeRemediationPolicyForBatch(clusterGroupUpgrade)
-				// Set the time for when the batch started updating.
-				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
-			}
-
-			// Check whether we have time left on the cgu timeout
-			if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
-				// We are completely out of time
 				utils.SetStatusCondition(
 					&clusterGroupUpgrade.Status.Conditions,
 					utils.ConditionTypes.Succeeded,
-					utils.ConditionReasons.UpgradeTimedOut,
-					metav1.ConditionFalse,
-					"The ClusterGroupUpgrade CR policies are taking too long to complete",
+					utils.ConditionReasons.UpgradeCompleted,
+					metav1.ConditionTrue,
+					"The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies",
 				)
 				nextReconcile = requeueImmediately()
-			} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
-				// Check if current policies have become compliant and if new policies have to be applied.
-				var isBatchComplete bool
-				isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
+			} else {
+				// Start the upgrade.
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.InProgress,
+					metav1.ConditionTrue,
+					"The ClusterGroupUpgrade CR has upgrade policies that are still non compliant",
+				)
+				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+				nextReconcile = requeueImmediately()
+			}
+		}
+
+		// If the condition is defined and the status isn't false, then it has to be true here
+		// so we can skip an explicit check for condition true
+	} else {
+		r.Log.Info("[Reconcile]", "Status.CurrentBatch", clusterGroupUpgrade.Status.Status.CurrentBatch)
+
+		// If the upgrade is just starting, set the batch to be shown in the Status as 1.
+		if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
+			clusterGroupUpgrade.Status.Status.CurrentBatch = 1
+		}
+
+		//nolint
+		requeueAfter := clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Add(5 * time.Minute).Sub(time.Now())
+		if requeueAfter < 0 {
+			requeueAfter = 5 * time.Minute
+		}
+		nextReconcile = requeueWithCustomInterval(requeueAfter)
+
+		// At first, assume all clusters in the batch start applying policies starting with the first one.
+		// Also set the start time of the current batch to the current timestamp.
+		if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
+			r.initializeRemediationPolicyForBatch(clusterGroupUpgrade)
+			// Set the time for when the batch started updating.
+			clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
+		}
+
+		// Check whether we have time left on the cgu timeout
+		if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
+			// We are completely out of time
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Succeeded,
+				utils.ConditionReasons.UpgradeTimedOut,
+				metav1.ConditionFalse,
+				"The ClusterGroupUpgrade CR policies are taking too long to complete",
+			)
+			nextReconcile = requeueImmediately()
+		} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+			// Check if current policies have become compliant and if new policies have to be applied.
+			var isBatchComplete bool
+			isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return
+			}
+
+			if isBatchComplete {
+				// If the upgrade is completed for the current batch, cleanup and move to the next.
+				r.Log.Info("[Reconcile] Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
+				r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
+				r.addClustersStatusOnCompleteBatch(clusterGroupUpgrade)
+				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+				clusterGroupUpgrade.Status.Status.CurrentBatch++
+				nextReconcile = requeueImmediately()
+			} else {
+				// Add the needed cluster names to upgrade to the appropriate placement rule.
+				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
 				if err != nil {
 					return
 				}
 
-				if isBatchComplete {
-					// If the upgrade is completed for the current batch, cleanup and move to the next.
-					r.Log.Info("[Reconcile] Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
-					r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
-					r.addClustersStatusOnCompleteBatch(clusterGroupUpgrade)
-					clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-					clusterGroupUpgrade.Status.Status.CurrentBatch++
-					nextReconcile = requeueImmediately()
-				} else {
-					// Add the needed cluster names to upgrade to the appropriate placement rule.
-					err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
-					if err != nil {
-						return
-					}
+				// Check if this batch has timed out
+				if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 
-					// Check if this batch has timed out
-					if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
+					currentBatchTimeout := utils.CalculateBatchTimeout(
+						clusterGroupUpgrade.Spec.RemediationStrategy.Timeout,
+						len(clusterGroupUpgrade.Status.RemediationPlan),
+						clusterGroupUpgrade.Status.Status.CurrentBatch,
+						clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
+						clusterGroupUpgrade.Status.Status.StartedAt.Time)
 
-						currentBatchTimeout := utils.CalculateBatchTimeout(
-							clusterGroupUpgrade.Spec.RemediationStrategy.Timeout,
-							len(clusterGroupUpgrade.Status.RemediationPlan),
-							clusterGroupUpgrade.Status.Status.CurrentBatch,
-							clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time,
-							clusterGroupUpgrade.Status.Status.StartedAt.Time)
+					r.Log.Info("[Reconcile] Calculating batch timeout (minutes)", "currentBatchTimeout", fmt.Sprintf("%f", currentBatchTimeout.Minutes()))
 
-						r.Log.Info("[Reconcile] Calculating batch timeout (minutes)", "currentBatchTimeout", fmt.Sprintf("%f", currentBatchTimeout.Minutes()))
+					if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
+						// We want to immediately continue to the next reconcile regardless of the timeout action
+						nextReconcile = requeueImmediately()
 
-						if time.Since(clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.Time) > currentBatchTimeout {
-							// We want to immediately continue to the next reconcile regardless of the timeout action
-							nextReconcile = requeueImmediately()
-
-							// Check if this was a canary or not
-							if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
-								clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
-								r.Log.Info("Canaries batch timed out")
+						// Check if this was a canary or not
+						if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
+							clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
+							r.Log.Info("Canaries batch timed out")
+							utils.SetStatusCondition(
+								&clusterGroupUpgrade.Status.Conditions,
+								utils.ConditionTypes.Succeeded,
+								utils.ConditionReasons.UpgradeTimedOut,
+								metav1.ConditionFalse,
+								"The ClusterGroupUpgrade CR policies are taking too long to complete (Canary batch timed out)",
+							)
+						} else {
+							r.Log.Info("Batch upgrade timed out")
+							r.addClustersStatusOnTimeout(clusterGroupUpgrade)
+							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
+							case ranv1alpha1.BatchTimeoutAction.Abort:
+								// If the value was abort then we need to fail out
 								utils.SetStatusCondition(
 									&clusterGroupUpgrade.Status.Conditions,
 									utils.ConditionTypes.Succeeded,
 									utils.ConditionReasons.UpgradeTimedOut,
 									metav1.ConditionFalse,
-									"The ClusterGroupUpgrade CR policies are taking too long to complete (Canary batch timed out)",
+									"The ClusterGroupUpgrade CR policies are taking too long to complete (Aborting on failure)",
 								)
-							} else {
-								r.Log.Info("Batch upgrade timed out")
-								r.addClustersStatusOnTimeout(clusterGroupUpgrade)
-								switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
-								case ranv1alpha1.BatchTimeoutAction.Abort:
-									// If the value was abort then we need to fail out
-									utils.SetStatusCondition(
-										&clusterGroupUpgrade.Status.Conditions,
-										utils.ConditionTypes.Succeeded,
-										utils.ConditionReasons.UpgradeTimedOut,
-										metav1.ConditionFalse,
-										"The ClusterGroupUpgrade CR policies are taking too long to complete (Aborting on failure)",
-									)
-								default:
-									// If the value was continue or not defined then continue
-									clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-									if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
-										clusterGroupUpgrade.Status.Status.CurrentBatch++
-									}
+							default:
+								// If the value was continue or not defined then continue
+								clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+								if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
+									clusterGroupUpgrade.Status.Status.CurrentBatch++
 								}
 							}
 						}
 					}
 				}
+			}
+		} else {
+			// On last batch, check all batches
+			var isUpgradeComplete bool
+			isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return
+			}
+			if isUpgradeComplete {
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.Completed,
+					metav1.ConditionFalse,
+					"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
+				)
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Succeeded,
+					utils.ConditionReasons.UpgradeCompleted,
+					metav1.ConditionTrue,
+					"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
+				)
+				nextReconcile = requeueImmediately()
 			} else {
-				// On last batch, check all batches
-				var isUpgradeComplete bool
-				isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
 				if err != nil {
 					return
 				}
-				if isUpgradeComplete {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.Completed,
-						metav1.ConditionFalse,
-						"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
-					)
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Succeeded,
-						utils.ConditionReasons.UpgradeCompleted,
-						metav1.ConditionTrue,
-						"The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies",
-					)
-					nextReconcile = requeueImmediately()
-				} else {
-					err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
-					if err != nil {
-						return
-					}
-				}
 			}
 		}
-
 	}
 
 	// Update status
