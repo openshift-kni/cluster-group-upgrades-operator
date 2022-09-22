@@ -5,10 +5,10 @@ metadata:
   namespace: default
 spec:
   clusters:
-  - spoke1
-  - spoke2
-  - spoke5
   - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
   enable: true
   managedPolicies:
   - policy1-common-cluster-version-policy
@@ -62,10 +62,10 @@ status:
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
-  - - spoke1
+  - - spoke6
     - spoke2
+    - spoke1
     - spoke5
-    - spoke6
   safeResourceNames:
     cgu-common-cluster-version-policy-config: cgu-common-cluster-version-policy-config-kuttl
     cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
