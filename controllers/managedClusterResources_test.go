@@ -48,6 +48,8 @@ spec:
       kind: Namespace
       metadata:
         name: openshift-talo-pre-cache
+        labels:
+          pod-security.kubernetes.io/enforce: privileged
         annotations:
           workload.openshift.io/allowed: management
 `,
