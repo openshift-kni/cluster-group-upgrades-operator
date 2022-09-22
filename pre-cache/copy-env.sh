@@ -22,7 +22,9 @@ for lib in "${libs[@]}"; do
 done
 
 # Copy containers policy and cacert of disconnected registries if present
+mkdir /etc/containers
 cp /host/etc/containers/policy.json /etc/containers/policy.json
+cp /host/etc/containers/storage.conf /etc/containers/storage.conf
 cp /host/etc/containers/registries.conf /etc/containers/registries.conf || true
 cp -a /host/etc/docker /etc/ || true
 # shellcheck disable=SC2015
