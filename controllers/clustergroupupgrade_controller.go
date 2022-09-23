@@ -162,6 +162,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				metav1.ConditionFalse,
 				fmt.Sprintf("Unable to select clusters: %s", err),
 			)
+			err = r.updateStatus(ctx, clusterGroupUpgrade)
 			return
 		}
 		utils.SetStatusCondition(
