@@ -41,8 +41,12 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 			// Backup is done
 			return nil
 		}
+
 		// Backup is required and not marked as done
-		return r.triggerBackup(ctx, clusterGroupUpgrade)
+		if *clusterGroupUpgrade.Spec.Enable {
+			return r.triggerBackup(ctx, clusterGroupUpgrade)
+		}
+
 	}
 	// No backup required
 	return nil
@@ -58,12 +62,13 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context, clust
 	if len(clusterGroupUpgrade.Status.Backup.Clusters) != 0 {
 		clusters = clusterGroupUpgrade.Status.Backup.Clusters
 	} else {
-		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
+		clusters, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
 		if err != nil {
 			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
 		}
 		clusterGroupUpgrade.Status.Backup.Clusters = clusters
 	}
+	r.Log.Info("[triggerBackup]", "Backup Clusters", clusters)
 
 	for _, cluster := range clusters {
 		var (
@@ -236,7 +241,7 @@ func (r *ClusterGroupUpgradeReconciler) setBackupStartedCondition(clusterGroupUp
 	utils.SetStatusCondition(
 		&clusterGroupUpgrade.Status.Conditions,
 		utils.ConditionTypes.BackupSuceeded,
-		utils.ConditionReasons.InProgress,
+		utils.ConditionReasons.NotEnabled,
 		metav1.ConditionFalse,
 		"Backup is required and not done",
 	)

@@ -171,7 +171,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 
-	clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
