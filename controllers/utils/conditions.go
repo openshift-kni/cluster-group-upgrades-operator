@@ -40,6 +40,7 @@ var ConditionReasons = struct {
 	MissingBlockingCR          ConditionReason
 	NotAllManagedPoliciesExist ConditionReason
 	NotEnabled                 ConditionReason
+	NotStarted                 ConditionReason
 	NotFound                   ConditionReason
 	NotPresent                 ConditionReason
 	PartiallyDone              ConditionReason
@@ -55,6 +56,7 @@ var ConditionReasons = struct {
 	MissingBlockingCR:          "MissingBlockingCR",
 	NotAllManagedPoliciesExist: "NotAllManagedPoliciesExist",
 	NotEnabled:                 "NotEnabled",
+	NotStarted:                 "NotStarted",
 	NotFound:                   "NotFound",
 	NotPresent:                 "NotPresent",
 	PartiallyDone:              "PartiallyDone",
