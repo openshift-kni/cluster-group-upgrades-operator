@@ -30,7 +30,7 @@ The ClusterGroupUpgrade controller is designed to perform an upgrade to a group 
 
 The states generally are represented by Conditions using appropriate reasons and types. The general workflow is:
 
-ClusterSelected -> BackupSucceeded -> PrecacheSpecValid -> PrecachingSucceeded -> Validated -> Progressing -> Succeeded
+ClusterSelected -> Validated -> BackupSucceeded -> PrecacheSpecValid -> PrecachingSucceeded -> Progressing -> Succeeded
 
 Note that if Backup is not enabled then the BackupSuceeded condition will not be present, and similarly if precaching is not enabled then neither precaching condition will be present.
 

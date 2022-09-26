@@ -13,7 +13,7 @@ spec:
   - policy2-common-pao-sub-policy
   remediationStrategy:
     maxConcurrency: 1
-    timeout: 240
+    timeout: 241
 status:
   conditions:
   - message: All selected clusters are valid for upgrade
