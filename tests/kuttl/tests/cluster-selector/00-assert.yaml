@@ -30,7 +30,7 @@ status:
     reason: Completed
     status: "True"
     type: ClustersSelected
-  - message: All managed policies exist
+  - message: Completed upgrade validation
     reason: Completed
     status: "True"
     type: Validated
