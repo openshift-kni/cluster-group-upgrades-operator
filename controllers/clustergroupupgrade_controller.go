@@ -203,7 +203,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				utils.ConditionTypes.Validated,
 				utils.ConditionReasons.Completed,
 				metav1.ConditionTrue,
-				"Completed upgrade validation",
+				"Completed validation",
 			)
 
 			// Build the upgrade batches.

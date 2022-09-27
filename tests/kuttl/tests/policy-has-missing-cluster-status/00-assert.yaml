@@ -24,7 +24,7 @@ status:
     reason: Completed
     status: "True"
     type: ClustersSelected
-  - message: Completed upgrade validation
+  - message: Completed validation
     reason: Completed
     status: "True"
     type: Validated
