@@ -108,7 +108,6 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 //        All the clusters in the CGU must have same catalog source(s)
 // returns: precachingSpec, error
 func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	policies []*unstructured.Unstructured) (ranv1alpha1.PrecachingSpec, error) {
 
 	var spec ranv1alpha1.PrecachingSpec
