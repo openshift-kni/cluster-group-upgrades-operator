@@ -108,7 +108,6 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 //        All the clusters in the CGU must have same catalog source(s)
 // returns: precachingSpec, error
 func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	policies []*unstructured.Unstructured) (ranv1alpha1.PrecachingSpec, error) {
 
 	var spec ranv1alpha1.PrecachingSpec
@@ -120,51 +119,6 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 		for _, object := range objects {
 			kind := object["kind"]
 			switch kind {
-			case utils.ClusterVersionGroupVersionKind().Kind:
-				cvSpec := object["spec"].(map[string]interface{})
-				desiredUpdate, found := cvSpec["desiredUpdate"]
-				if !found {
-					continue
-				}
-				image, found := desiredUpdate.(map[string]interface{})["image"]
-				if found && image != "" {
-					if len(spec.PlatformImage) > 0 && spec.PlatformImage != image {
-						msg := fmt.Sprintf("Platform image must be set once, but %s and %s were given",
-							spec.PlatformImage, image)
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.PrecacheSpecValid,
-							utils.ConditionReasons.InvalidPlatformImage,
-							metav1.ConditionFalse,
-							msg,
-						)
-						return *new(ranv1alpha1.PrecachingSpec), nil
-					}
-					spec.PlatformImage = fmt.Sprintf("%s", image)
-				} else {
-					upstream := object["spec"].(map[string]interface {
-					})["upstream"].(string)
-					channel := object["spec"].(map[string]interface {
-					})["channel"].(string)
-					version := object["spec"].(map[string]interface {
-					})["desiredUpdate"].(map[string]interface{})["version"].(string)
-
-					image, err = r.getImageForVersionFromUpdateGraph(upstream, channel, version)
-
-					if err != nil {
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.PrecacheSpecValid,
-							utils.ConditionReasons.InvalidPlatformImage,
-							metav1.ConditionFalse,
-							err.Error(),
-						)
-						return *new(ranv1alpha1.PrecachingSpec), nil
-					}
-
-					spec.PlatformImage = image.(string)
-				}
-				r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", spec.PlatformImage)
 			case utils.SubscriptionGroupVersionKind().Kind:
 				packChan := fmt.Sprintf("%s:%s", object["spec"].(map[string]interface{})["name"],
 					object["spec"].(map[string]interface{})["channel"])
@@ -181,6 +135,15 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 			}
 		}
 	}
+
+	// Get the platform image spec from the policies
+	image, err := r.extractOpenshiftImagePlatformFromPolicies(policies)
+	if err != nil {
+		return *new(ranv1alpha1.PrecachingSpec), err
+	}
+	spec.PlatformImage = image
+	r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", spec.PlatformImage)
+
 	return spec, nil
 }
 

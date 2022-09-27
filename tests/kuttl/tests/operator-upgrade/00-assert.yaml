@@ -22,7 +22,7 @@ status:
     reason: Completed
     status: "True"
     type: ClustersSelected
-  - message: All managed policies exist
+  - message: Completed validation
     reason: Completed
     status: "True"
     type: Validated

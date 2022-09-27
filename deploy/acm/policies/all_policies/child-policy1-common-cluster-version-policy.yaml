@@ -31,11 +31,11 @@ spec:
             metadata:
               name: PlatformUpgrade
             spec:
-              channel: "4.9"
+              channel: "stable-4.9"
               desiredUpdate:
                 force: false
-                upstream: upstream
                 version: 4.9.8
+              upstream: https://api.openshift.com/api/upgrades_info/v1/graph
         remediationAction: inform
         severity: low
   remediationAction: inform

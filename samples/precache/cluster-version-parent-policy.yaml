@@ -33,7 +33,7 @@ spec:
             spec:
               clusterID: 0ed655d1-393e-40bb-b103-4dc9a89f54d3
               channel: "4.11"
-              upstream: upstream
+              upstream: https://api.openshift.com/api/upgrades_info/v1/graph
               desiredUpdate:
                 force: false
                 version: "4.9.11"

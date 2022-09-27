@@ -190,15 +190,21 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return
 		}
 		if allManagedPoliciesExist {
-			if !meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Validated)) {
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Validated,
-					utils.ConditionReasons.Completed,
-					metav1.ConditionTrue,
-					"All managed policies exist",
-				)
+
+			err = r.validateOpenshiftUpgradeVersion(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			if err != nil {
+				nextReconcile = requeueWithLongInterval()
+				err = r.updateStatus(ctx, clusterGroupUpgrade)
+				return
 			}
+
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Validated,
+				utils.ConditionReasons.Completed,
+				metav1.ConditionTrue,
+				"Completed validation",
+			)
 
 			// Build the upgrade batches.
 			err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
