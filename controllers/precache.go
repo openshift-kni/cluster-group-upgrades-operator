@@ -138,7 +138,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	}
 
 	// Get the platform image spec from the policies
-	_, _, _, image, err := r.extractCVOSpecFromPolicies(clusterGroupUpgrade, policies)
+	image, err := r.extractOpenshiftImagePlatformFromPolicies(policies)
 	if err != nil {
 		return *new(ranv1alpha1.PrecachingSpec), err
 	}
