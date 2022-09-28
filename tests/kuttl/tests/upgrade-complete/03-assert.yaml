@@ -22,11 +22,11 @@ status:
       state: complete
   conditions:
   - message: All selected clusters are valid for upgrade
-    reason: Completed
+    reason: WHAT
     status: "True"
     type: ClustersSelected
   - message: Completed validation
-    reason: Completed
+    reason: WHAT
     status: "True"
     type: Validated
   - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
