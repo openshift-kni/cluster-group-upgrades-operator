@@ -30,36 +30,40 @@ The ClusterGroupUpgrade controller is designed to perform an upgrade to a group 
 
 The states generally are represented by Conditions using appropriate reasons and types. The general workflow is:
 
-ClusterSelected -> Validated -> BackupSucceeded -> PrecacheSpecValid -> PrecachingSucceeded -> Progressing -> Succeeded
+ClusterSelected -> Validated -> PrecacheSpecValid -> PrecachingSucceeded -> BackupSucceeded -> Progressing -> Succeeded
 
-Note that if Backup is not enabled then the BackupSuceeded condition will not be present, and similarly if precaching is not enabled then neither precaching condition will be present.
+Note that if Backup is not set to true, then the BackupSuceeded condition will not be present, and similarly if precaching is not set to true then neither precaching condition will be present.
 
-A full table of the conditions and their appropriate reasons and types is:
+A full table of the conditions and their appropriate reasons and types are:
 
   | Type | Status| Reason| Message |
   |------|-------|---------|--------|
-  ClustersSelected| True| Completed||
-  | |False | NotFound/NotPresent| `comment: mention the cluster list that is not part of the manangedCluster, must block the upgrade`|
-  Validated | True | Completed||
-  | | False | MissingManagedPolicy| `comment: must block the upgrade`|
-  | | False | InvalidPlatformImage| `comment: must block the upgrade`| 
-  `BackupSucceeded` | True | Completed | Backup is completed |
-  | | True | PartiallyDone | Failed to create backups for some clusters |
-  | | False | InProgress | Backup is in progress |
-  | | False | Failed | Backup failed for all the clusters |
-  `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed/AsExpected | Pre-caching spec is valid and consistent|
+  `ClustersSelected`| True| Completed| All selected clusters are valid for upgrade| 
+  | |False | NotFound/NotPresent| Unable to select clusters: error message |
+  `Validated` | True | Completed| Completed validation |
+  | | False | NotAllManagedPoliciesExist| Missing managed policies: policyList,  invalid managed policies: policyList |
+  | | False | InvalidPlatformImage | Precache spec is incomplete |
+  `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
+  | | False | InvalidPlatformImage| Precaching spec is incomplete |
   | | False | NotAllManagedPoliciesExist| The ClusterGroupUpgrade CR has managed policies that are missing|
-  `PrecachingSucceeded` | True | Completed | Precaching is completed |
-  | | True | PartiallyDone | Failed to create preCaching for some clusters | 
-  | | False | InProgress | Precaching is in progress | 
-  | | False | Failed | PreCaching failed for all the clusters |
-  Progressing| True | InProgress||
-  | | False | Completed | |
+  `PrecachingSucceeded` | True | Completed | Precaching is completed for all clusters|
+  | | True | PartiallyDone | Precaching failed for x clusters | 
+  | | False | InProgress | Precaching is not completed | 
+  | | False | InProgress | Precaching is in progress for x clusters | 
+  | | False | Failed | Precaching failed for all clusters |
+  `BackupSucceeded` | True | Completed | Backup is completed for all clusters|
+  | | True | PartiallyDone | Backup failed for x clusters |
+   | | False | NotEnabled | Backup will start when enable is true |
+  | | False | InProgress | Backup is in progress for x clusters|
+  | | False | Failed | Backup failed for all the clusters |
+  `Progressing`| True | InProgress| The ClusterGroupUpgrade CR has upgrade policies that are still non compliant|
+  | | False | Completed | The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies |
+  | | False | NotStarted | The Cluster backup is in progress |
   | | False | NotEnabled| The ClusterGroupUpgrade CR is not enabled |
-  | | False | MissingBlockingCR | `comment: message must contain which blocking CRs are missing`|
-  | | False | IncompleteBlockingCR | `comment: blocked by other CR which is not completed, mention which CR is blocking`| 
-  Succeeded| True | UpgradeCompleted||
-  | | False | UpgradeTimedOut | |
+  | | False | MissingBlockingCR | The ClusterGroupUpgrade CR has blocking CRs that are missing |
+  | | False | IncompleteBlockingCR | The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed| 
+  `Succeeded`| True | UpgradeCompleted| The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies |
+  | | False | UpgradeTimedOut | The ClusterGroupUpgrade CR policies are taking too long to complete |
 
 A few important ones to consider are:
 * **ClustersSelected**

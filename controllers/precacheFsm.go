@@ -96,7 +96,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 				utils.ConditionTypes.PrecacheSpecValid,
 				utils.ConditionReasons.InvalidPlatformImage,
 				metav1.ConditionFalse,
-				fmt.Sprintf("Precache spec is incomplete: %s", msg),
+				fmt.Sprintf("Precaching spec is incomplete: %s", msg),
 			)
 			return nil
 		}
@@ -105,7 +105,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			utils.ConditionTypes.PrecacheSpecValid,
 			utils.ConditionReasons.PrecacheSpecIsWellFormed,
 			metav1.ConditionTrue,
-			"Precache spec is valid and consistent",
+			"Precaching spec is valid and consistent",
 		)
 
 		clusterGroupUpgrade.Status.Precaching.Spec = &spec
@@ -359,7 +359,7 @@ func (r *ClusterGroupUpgradeReconciler) setPrecachingStartedCondition(
 		utils.ConditionTypes.PrecachingSuceeded,
 		utils.ConditionReasons.InProgress,
 		metav1.ConditionFalse,
-		"Precaching is not completed",
+		"Precaching is required and not done",
 	)
 }
 

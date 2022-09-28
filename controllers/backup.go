@@ -243,7 +243,7 @@ func (r *ClusterGroupUpgradeReconciler) setBackupStartedCondition(clusterGroupUp
 		utils.ConditionTypes.BackupSuceeded,
 		utils.ConditionReasons.NotEnabled,
 		metav1.ConditionFalse,
-		"Backup is required and not done",
+		"Backup will start when enable is true",
 	)
 }
 

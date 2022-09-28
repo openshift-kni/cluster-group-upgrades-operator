@@ -94,7 +94,7 @@ Backup workload is a one-shot task created on each of the spoke cluster nodes to
   - A set of clusters to be upgraded  
   - The need for resource backup
 - User applies the TALO CR to the hub cluster at the beginning of the maintenance window
-- TALO checks the backup requirement in the TALO CR. If required, deploys a backup workload on the designated spoke.  
+- TALO checks the backup requirement in the TALO CR. If required, deploys a backup workload on the designated spoke when enable field is set to true.  
 
 ### States ###
 

@@ -312,79 +312,79 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return
 		}
 
-		// create backup
-		err = r.reconcileBackup(ctx, clusterGroupUpgrade)
+		// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
+		var blockingCRsNotCompleted, blockingCRsMissing []string
+		blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
 		if err != nil {
-			r.Log.Error(err, "reconcileBackup error")
 			return
 		}
 
-		if clusterGroupUpgrade.Status.Backup != nil {
-			for _, v := range clusterGroupUpgrade.Status.Backup.Status {
-				//nolint
-				if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.NotStarted,
-						metav1.ConditionFalse,
-						"The Cluster backup is in progress",
-					)
-					err = r.updateStatus(ctx, clusterGroupUpgrade)
-					nextReconcile = requeueWithShortInterval()
-					return
-				}
+		if len(blockingCRsMissing) > 0 {
+			// If there are blocking CRs missing, update the message to show which those are.
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.MissingBlockingCR,
+				metav1.ConditionFalse,
+				fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing),
+			)
+			nextReconcile = requeueWithMediumInterval()
+		} else if len(blockingCRsNotCompleted) > 0 {
+			// If there are blocking CRs that are not completed, then the upgrade can't start.
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.IncompleteBlockingCR,
+				metav1.ConditionFalse,
+				fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted),
+			)
+			nextReconcile = requeueWithMediumInterval()
+		} else {
+			// There are no blocking CRs, continue with the upgrade process.
+			// create backup
+			err = r.reconcileBackup(ctx, clusterGroupUpgrade)
+			if err != nil {
+				r.Log.Error(err, "reconcileBackup error")
+				return
 			}
-		}
 
-		backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
-		if clusterGroupUpgrade.Status.Backup == nil || (backupCondition != nil && backupCondition.Status == metav1.ConditionTrue) {
-
-			// rebuild remediation plan, since backup has finished.
 			if clusterGroupUpgrade.Status.Backup != nil {
-				var allManagedPoliciesExist bool
-				var managedPoliciesInfo policiesInfo
-				allManagedPoliciesExist, managedPoliciesInfo, err =
-					r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
-				if err != nil {
-					return
-				}
-				if allManagedPoliciesExist {
-					err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-					if err != nil {
+				for _, v := range clusterGroupUpgrade.Status.Backup.Status {
+					//nolint
+					if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.Progressing,
+							utils.ConditionReasons.NotStarted,
+							metav1.ConditionFalse,
+							"The Cluster backup is in progress",
+						)
+						err = r.updateStatus(ctx, clusterGroupUpgrade)
+						nextReconcile = requeueWithShortInterval()
 						return
 					}
 				}
 			}
-			// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
-			var blockingCRsNotCompleted, blockingCRsMissing []string
-			blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
-			if err != nil {
-				return
-			}
 
-			if len(blockingCRsMissing) > 0 {
-				// If there are blocking CRs missing, update the message to show which those are.
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Progressing,
-					utils.ConditionReasons.MissingBlockingCR,
-					metav1.ConditionFalse,
-					fmt.Sprintf("The ClusterGroupUpgrade CR has blocking CRs that are missing: %s", blockingCRsMissing),
-				)
-				nextReconcile = requeueWithMediumInterval()
-			} else if len(blockingCRsNotCompleted) > 0 {
-				// If there are blocking CRs that are not completed, then the upgrade can't start.
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Progressing,
-					utils.ConditionReasons.IncompleteBlockingCR,
-					metav1.ConditionFalse,
-					fmt.Sprintf("The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed: %s", blockingCRsNotCompleted),
-				)
-				nextReconcile = requeueWithMediumInterval()
-			} else {
-				// There are no blocking CRs, continue with the upgrade process.
+			backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
+			if clusterGroupUpgrade.Status.Backup == nil || (backupCondition != nil && backupCondition.Status == metav1.ConditionTrue) {
+
+				// rebuild remediation plan, since backup has finished.
+				if clusterGroupUpgrade.Status.Backup != nil {
+					var allManagedPoliciesExist bool
+					var managedPoliciesInfo policiesInfo
+					allManagedPoliciesExist, managedPoliciesInfo, err =
+						r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
+					if err != nil {
+						return
+					}
+					if allManagedPoliciesExist {
+						err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+						if err != nil {
+							return
+						}
+					}
+				}
 				// Take actions before starting upgrade.
 				err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
 				if err != nil {
@@ -1573,21 +1573,6 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	}
 
 	var allClustersForUpgrade []string
-	//nolint:gocritic
-	/*
-		switch clusterGroupUpgrade.Status.Backup {
-		case nil:
-			allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
-			if err != nil {
-				return err
-			}
-		default:
-			allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-			if err != nil {
-				return err
-			}
-		}
-	*/
 	if clusterGroupUpgrade.Status.Backup != nil {
 		allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
 		if err != nil {
