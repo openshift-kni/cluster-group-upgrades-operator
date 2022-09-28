@@ -162,6 +162,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				metav1.ConditionFalse,
 				fmt.Sprintf("Unable to select clusters: %s", err),
 			)
+			nextReconcile = requeueWithLongInterval()
 			err = r.updateStatus(ctx, clusterGroupUpgrade)
 			return
 		}
@@ -1879,21 +1880,26 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 
 	isCguMarkedToBeDeleted := clusterGroupUpgrade.GetDeletionTimestamp() != nil
 	if isCguMarkedToBeDeleted {
+		// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
+		// that we can retry during the next reconciliation.
 		if controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
-			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
-			// that we can retry during the next reconciliation.
-			clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-			if err != nil {
-				return utils.StopReconciling, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
-			}
-			err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
-			if err != nil {
-				return utils.StopReconciling, err
+			// If clusters were not able to be selected then there's probably a malformed selector
+			// Therefore we skip attempting to delete any of the associated objects since they would
+			// never have been created in the first place
+			if meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.ClustersSelected)) {
+				clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
+				if err != nil {
+					return utils.StopReconciling, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
+				}
+				err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+				if err != nil {
+					return utils.StopReconciling, err
+				}
 			}
 
 			// Remove cguFinalizer. Once all finalizers have been removed, the object will be deleted.
 			controllerutil.RemoveFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer)
-			err = r.Update(ctx, clusterGroupUpgrade)
+			err := r.Update(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return utils.StopReconciling, err
 			}
