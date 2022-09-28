@@ -1,13 +1,13 @@
 #!/bin/bash
 
-cwd="${cwd:-/opt/precache}"
+cwd=$(dirname "$0")
 . $cwd/common
 
 extract_pull_spec(){
     rendered_index=$1
     operators_spec_file=$2
     pull_spec_file=$3
-    /host/usr/libexec/platform-python /opt/precache/parse_index.py "${rendered_index}" "${operators_spec_file}" "${pull_spec_file}"
+    /usr/libexec/platform-python "${cwd}/parse_index.py" "${rendered_index}" "${operators_spec_file}" "${pull_spec_file}"
     return $?
 }
 
@@ -28,7 +28,13 @@ render_index(){
         opm_bin=$image_mount/bin/opm
     fi
 
-    $opm_bin render $index > $rendered_index_path
+    if [[ -d "$image_mount/configs" ]]; then
+      log_debug "Rendering file based catalog"
+      $opm_bin render "$image_mount/configs" > $rendered_index_path
+    else
+      log_debug "Rendering SQLite catalog"
+      $opm_bin render "$image_mount/database/index.db" > $rendered_index_path
+    fi
     if [[ $? -ne 0 ]]; then
         return 1
     fi
