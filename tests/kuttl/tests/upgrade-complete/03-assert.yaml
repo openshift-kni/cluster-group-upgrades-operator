@@ -24,7 +24,7 @@ status:
   - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
     reason: UpgradeCompleted
     status: "True"
-    type: Ready
+    type: WHAT
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
