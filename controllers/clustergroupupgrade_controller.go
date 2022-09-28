@@ -1896,7 +1896,10 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			if err != nil {
 				return utils.StopReconciling, err
 			}
-
+			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return utils.StopReconciling, err
+			}
 			// Remove cguFinalizer. Once all finalizers have been removed, the object will be deleted.
 			controllerutil.RemoveFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer)
 			err = r.Update(ctx, clusterGroupUpgrade)
