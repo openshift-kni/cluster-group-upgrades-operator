@@ -1880,13 +1880,14 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 
 	isCguMarkedToBeDeleted := clusterGroupUpgrade.GetDeletionTimestamp() != nil
 	if isCguMarkedToBeDeleted {
-		// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
-		// that we can retry during the next reconciliation.
 		if controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
+			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
+			// that we can retry during the next reconciliation.
 
 			// Get the list of clusters from the remediation plan
 			var clusters []string
-
+			// If there was an error selecting clusters or if no clusters required remediation
+			// then the plan will be empty, and no multicloud objects would have ever been created
 			for index, list := range clusterGroupUpgrade.Status.RemediationPlan {
 				clusters = append(clusters, list[index])
 			}
