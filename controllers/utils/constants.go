@@ -1,5 +1,7 @@
 package utils
 
+import "k8s.io/apimachinery/pkg/runtime/schema"
+
 // RemediationActionEnforce - Policy remediation for policies.
 const (
 	RemediationActionEnforce = "enforce"
@@ -58,10 +60,18 @@ const ViewUpdateSec = 20
 
 // Policy types used within the operator
 const (
-	PolicyTypeSubscription   = "Subscription"
-	PolicyTypeClusterVersion = "ClusterVersion"
-	PolicyTypeCatalogSource  = "CatalogSource"
+	PolicyTypeCatalogSource = "CatalogSource"
 )
+
+// SubscriptionGroupVersionKind for monitoring and other type specific logic
+func SubscriptionGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{Kind: "Subscription", Group: "operators.coreos.com"}
+}
+
+// ClusterVersionGroupVersionKind for monitoring and other type specific logic
+func ClusterVersionGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{Kind: "ClusterVersion", Group: "config.openshift.io"}
+}
 
 // Subscription possible states
 const (

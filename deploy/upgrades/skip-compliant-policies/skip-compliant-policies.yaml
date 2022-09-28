@@ -13,10 +13,10 @@ spec:
     - policy4-common-sriov-sub-policy
   enable: true
   clusters:
-  - spoke1
-  - spoke2
-  - spoke5
   - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
   remediationStrategy:
     maxConcurrency: 4
 

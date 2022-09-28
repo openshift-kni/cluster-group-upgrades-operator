@@ -192,11 +192,17 @@ type ManagedPolicyForUpgrade struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// PolicyStatus defines the status of a certain policy
+type PolicyStatus struct {
+	Name   string `json:"name"`
+	Status string `json:"status,omitempty"`
+}
+
 // ClusterState defines the final state of a cluster
 type ClusterState struct {
-	Name                   string `json:"name"`
-	State                  string `json:"state"`
-	CurrentPolicyRemediate string `json:"currentPolicyRemediate,omitempty"`
+	Name          string       `json:"name"`
+	State         string       `json:"state"`
+	CurrentPolicy PolicyStatus `json:"currentPolicy,omitempty"`
 }
 
 // PrecachingSpec defines the pre-caching software spec derived from policies
@@ -217,13 +223,6 @@ type PrecachingStatus struct {
 type BackupStatus struct {
 	Status   map[string]string `json:"status,omitempty"`
 	Clusters []string          `json:"clusters,omitempty"`
-}
-
-// PolicyContent defines the details of an object configured through a Policy
-type PolicyContent struct {
-	Kind      string  `json:"kind,omitempty"`
-	Name      string  `json:"name,omitempty"`
-	Namespace *string `json:"namespace,omitempty"`
 }
 
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade

@@ -80,7 +80,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			return nil
 		}
 
-		spec, err := r.extractPrecachingSpecFromPolicies(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+		spec, err := r.extractPrecachingSpecFromPolicies(managedPoliciesInfo.presentPolicies)
 		if err != nil {
 			return err
 		}

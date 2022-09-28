@@ -21,10 +21,22 @@ status:
     - name: spoke4
       state: complete
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
+  - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
+    reason: Completed
+    status: "False"
+    type: Progressing
   - message: The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies
     reason: UpgradeCompleted
     status: "True"
-    type: WHAT
+    type: Succeeded
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default

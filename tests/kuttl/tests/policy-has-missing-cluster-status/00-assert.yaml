@@ -20,16 +20,24 @@ spec:
 status:
   computedMaxConcurrency: 2
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-policy2-common-pao-sub-policy-kuttl
   - cgu-policy3-common-ptp-sub-policy-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
-    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
   managedPoliciesForUpgrade:
   - name: policy2-common-pao-sub-policy
     namespace: default

@@ -23,17 +23,25 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-a-policy1-common-cluster-version-policy-kuttl
   - cgu-a-policy2-common-pao-sub-policy-kuttl
   - cgu-a-policy3-common-ptp-sub-policy-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
-    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
@@ -93,19 +101,27 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-b-policy1-common-cluster-version-policy-kuttl
   - cgu-b-policy2-common-pao-sub-policy-kuttl
   - cgu-b-policy3-common-ptp-sub-policy-kuttl
   - cgu-b-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
-    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
-    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
@@ -170,10 +186,18 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-c-policy1-common-cluster-version-policy-kuttl
   - cgu-c-policy4-common-sriov-sub-policy-kuttl
@@ -181,7 +205,7 @@ status:
   - policy2-common-pao-sub-policy
   - policy3-common-ptp-sub-policy
   managedPoliciesContent:
-    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default

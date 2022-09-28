@@ -16,15 +16,23 @@ spec:
     timeout: 240
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR is not enabled
-    reason: UpgradeNotStarted
+    reason: NotEnabled
     status: "False"
-    type: Ready
+    type: Progressing
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default

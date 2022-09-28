@@ -5,3 +5,6 @@ commands:
   # Patch the InstallPlan ManagedClusterViews.
   - command: ../../../../deploy/upgrades/operator-upgrade/patch-install-plan-mcv-status.sh
     ignoreFailure: false
+
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge

@@ -13,18 +13,26 @@ spec:
   - policy2-common-pao-sub-policy
   remediationStrategy:
     maxConcurrency: 1
-    timeout: 240
+    timeout: 241
 status:
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
-    reason: UpgradeNotCompleted
-    status: "False"
-    type: Ready
+    reason: InProgress
+    status: "True"
+    type: Progressing
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
   managedPoliciesContent:
-    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","namespace":"openshift-performance-addon-operator"}]'
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
   clusters:
     - name: spoke1
       state: complete

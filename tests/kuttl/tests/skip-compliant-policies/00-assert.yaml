@@ -5,10 +5,10 @@ metadata:
   namespace: default
 spec:
   clusters:
-  - spoke1
-  - spoke2
-  - spoke5
   - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
   enable: true
   managedPolicies:
   - policy1-common-cluster-version-policy
@@ -21,10 +21,18 @@ spec:
 status:
   computedMaxConcurrency: 4
   conditions:
+  - message: All selected clusters are valid for upgrade
+    reason: Completed
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: Completed
+    status: "True"
+    type: Validated
   - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
-    reason: UpgradeNotCompleted
-    status: "False"
-    type: Ready
+    reason: InProgress
+    status: "True"
+    type: Progressing
   copiedPolicies:
   - cgu-policy1-common-cluster-version-policy-kuttl
   - cgu-policy3-common-ptp-sub-policy-kuttl
@@ -32,8 +40,8 @@ status:
   managedPoliciesCompliantBeforeUpgrade:
   - policy2-common-pao-sub-policy
   managedPoliciesContent:
-    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","namespace":"openshift-ptp"}]'
-    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","namespace":"openshift-sriov-network-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
     namespace: default
@@ -54,10 +62,10 @@ status:
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
-  - - spoke1
+  - - spoke6
     - spoke2
+    - spoke1
     - spoke5
-    - spoke6
   safeResourceNames:
     cgu-common-cluster-version-policy-config: cgu-common-cluster-version-policy-config-kuttl
     cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
