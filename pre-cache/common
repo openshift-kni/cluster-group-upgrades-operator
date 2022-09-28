@@ -1,14 +1,12 @@
 #!/bin/bash
 
 container_tool="${container_tool:-podman}"
-pull_secret_path="${pull_secret_path:-/host/var/lib/kubelet/config.json}"
+pull_secret_path="${pull_secret_path:-/var/lib/kubelet/config.json}"
 pull_spec_file="${pull_spec_file:-/tmp/images.txt}"
-config_volume_path="${config_volume_path:-/etc/config}"
-podman_pull_path="${podman_pull_path:-/run/containers/0}"
-docker_pull_path="${docker_pull_path:-/root/.docker}"
+config_volume_path="${config_volume_path:-/tmp/precache/config}"
 rendered_index_path="${rendered_index_path:-/tmp/index.json}"
 
-max_pull_threads="${MAX_PULL_THREADS:-10}" #number of simultaneous pulls executed can be modified by setting MAX_PULL_THREADS environment variable
+max_pull_threads="${MAX_PULL_THREADS:-10}" # number of simultaneous pulls executed can be modified by setting MAX_PULL_THREADS environment variable
 
 log_debug() {
   echo "upgrades.pre-cache $(date -Iseconds) DEBUG $@"
