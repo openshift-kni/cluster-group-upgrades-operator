@@ -135,7 +135,7 @@ spec:
               - -c
               env:
               - name: config_volume_path
-                value: /etc/config
+                value: /tmp/precache/config
               image: {{ .WorkloadImage }}
               name: pre-cache-container
               resources: {}
