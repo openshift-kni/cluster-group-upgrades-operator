@@ -547,6 +547,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+
+	// check if batch is initialized in case of timeout happened before the batch starting
+	if len(clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress) == 0 {
+		return
+	}
+
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
