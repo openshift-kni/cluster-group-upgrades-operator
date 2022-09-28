@@ -1888,8 +1888,8 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			var clusters []string
 			// If there was an error selecting clusters or if no clusters required remediation
 			// then the plan will be empty, and no multicloud objects would have ever been created
-			for index, list := range clusterGroupUpgrade.Status.RemediationPlan {
-				clusters = append(clusters, list[index])
+			for _, clusterBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+				clusters = append(clusters, clusterBatch...)
 			}
 
 			err := utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
