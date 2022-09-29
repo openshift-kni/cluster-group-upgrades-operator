@@ -200,9 +200,9 @@ type PolicyStatus struct {
 
 // ClusterState defines the final state of a cluster
 type ClusterState struct {
-	Name          string       `json:"name"`
-	State         string       `json:"state"`
-	CurrentPolicy PolicyStatus `json:"currentPolicy,omitempty"`
+	Name          string        `json:"name"`
+	State         string        `json:"state"`
+	CurrentPolicy *PolicyStatus `json:"currentPolicy,omitempty"`
 }
 
 // PrecachingSpec defines the pre-caching software spec derived from policies
