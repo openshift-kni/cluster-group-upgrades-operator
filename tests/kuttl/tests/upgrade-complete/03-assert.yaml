@@ -22,7 +22,7 @@ status:
       state: complete
   conditions:
   - message: All selected clusters are valid for upgrade
-    reason: Completed
+    reason: WHAT
     status: "True"
     type: ClustersSelected
   - message: Completed validation
