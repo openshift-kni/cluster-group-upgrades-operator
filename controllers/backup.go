@@ -43,9 +43,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 		}
 
 		// Backup is required and not marked as done
-		if *clusterGroupUpgrade.Spec.Enable {
-			return r.triggerBackup(ctx, clusterGroupUpgrade)
-		}
+		return r.triggerBackup(ctx, clusterGroupUpgrade)
 
 	}
 	// No backup required
