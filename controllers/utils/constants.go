@@ -103,3 +103,17 @@ const (
 // ExcludeFromClusterBackup is a label to exclude object from cluster-backup-operator
 // https://github.com/stolostron/cluster-backup-operator#steps-to-identify-backup-data
 const ExcludeFromClusterBackup = "velero.io/exclude-from-backup"
+
+// Policy errors
+const (
+	PlcMissTmplDef           = "policy is missing its spec.policy-templates.objectDefinition"
+	PlcMissTmplDefMeta       = "policy is missing its spec.policy-templates.objectDefinition.metadata"
+	PlcMissTmplDefSpec       = "policy is missing its spec.policy-templates.objectDefinition.spec"
+	ConfigPlcMissObjTmpl     = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates"
+	ConfigPlcMissObjTmplDef  = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition"
+	PlcHasHubTmplErr         = "policy has hub template error, check the configuration policy's annotation 'policy.open-cluster-management.io/hub-templates-error' for detail"
+	PlcHubTmplFmtErr         = "template format is not supported in TALM"
+	PlcHubTmplFuncErr        = "template function is not supported in TALM"
+	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
+	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
+)
