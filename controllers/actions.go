@@ -19,10 +19,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 	actionsBeforeEnable := clusterGroupUpgrade.Spec.Actions.BeforeEnable
 	// Add/delete cluster labels
 	if actionsBeforeEnable.AddClusterLabels != nil || actionsBeforeEnable.DeleteClusterLabels != nil {
-		clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-		if err != nil {
-			return err
-		}
+		clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsBeforeEnable.AddClusterLabels,
@@ -45,10 +42,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 	actionsAfterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
 	// Add/delete cluster labels
 	if actionsAfterCompletion.AddClusterLabels != nil || actionsAfterCompletion.DeleteClusterLabels != nil {
-		clusters, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-		if err != nil {
-			return err
-		}
+		clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsAfterCompletion.AddClusterLabels,
@@ -166,19 +160,16 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	}
 	clusterGroupUpgrade.Status.CopiedPolicies = nil
 
-	err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
-	}
-
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
-	}
+	clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 	r.Log.Info("[actions]", "clusterList", clusters)
+
 	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 	if err != nil {
 		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
+	}
+	err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade, clusters)
+	if err != nil {
+		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	clusterGroupUpgrade.Status.SafeResourceNames = nil
 	return nil

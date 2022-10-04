@@ -23,7 +23,7 @@ import (
 // returns: 			error
 func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 	ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) error {
 
 	if clusterGroupUpgrade.Spec.PreCaching {
 		// Pre-caching is required
@@ -48,7 +48,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 			return nil
 		}
 		// Precaching is required and not marked as done
-		return r.precachingFsm(ctx, clusterGroupUpgrade)
+		return r.precachingFsm(ctx, clusterGroupUpgrade, clusters)
 	}
 	// No precaching required
 	return nil
