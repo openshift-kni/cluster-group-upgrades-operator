@@ -323,3 +323,14 @@ func DeleteMultiCloudObjects(
 func GetMultiCloudObjectName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, kind, objectName string) string {
 	return strings.ToLower(clusterGroupUpgrade.Name + "-" + clusterGroupUpgrade.Namespace + "-" + kind + "-" + objectName)
 }
+
+// GetMCVUpdateInterval computes a reasonable value based on the number of clusters
+func GetMCVUpdateInterval(totalClusters int) int {
+	interval := ViewUpdateSecPerCluster * totalClusters
+	if interval > ViewUpdateSecTotalMax {
+		interval = ViewUpdateSecTotalMax
+	} else if interval < ViewUpdateSecTotalMin {
+		interval = ViewUpdateSecTotalMin
+	}
+	return interval
+}
