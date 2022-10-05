@@ -144,11 +144,11 @@ func (r *TemplateResolver) copyConfigmap(ctx context.Context, fromResource, toRe
 		return err
 	}
 
+	// Do not copy labels from the original configmap to avoid the copied configmap be deleted by ArgoCD
 	copiedCM := &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      toResource.Name,
 			Namespace: toResource.Namespace,
-			Labels:    cm.GetLabels(),
 		},
 		Data:       cm.Data,
 		BinaryData: cm.BinaryData,
@@ -169,8 +169,10 @@ func (r *TemplateResolver) copyConfigmap(ctx context.Context, fromResource, toRe
 		}
 
 		if err := r.Create(ctx, copiedCM); err != nil {
-			r.Log.Error(err, "Fail to create config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
-			return err
+			if !errors.IsAlreadyExists(err) {
+				r.Log.Error(err, "Fail to create config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
+				return err
+			}
 		}
 	} else {
 		err = r.Update(ctx, copiedCM)
