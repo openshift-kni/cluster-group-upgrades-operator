@@ -260,7 +260,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	case NoJobView:
 		data := templateData{
 			Cluster:               cluster,
-			ViewUpdateIntervalSec: utils.ViewUpdateSec * len(clusterGroupUpgrade.Status.Precaching.Clusters),
+			ViewUpdateIntervalSec: utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Clusters)),
 		}
 		err = r.createResourcesFromTemplates(ctx, &data, precacheJobView)
 		if err != nil {
