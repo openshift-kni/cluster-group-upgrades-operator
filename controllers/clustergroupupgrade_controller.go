@@ -208,6 +208,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			if readyCondition.Reason == "PrecachingRequired" {
 				nextReconcile = requeueWithLongInterval()
 			} else if readyCondition.Reason == "UpgradeNotStarted" || readyCondition.Reason == utils.CannotStart {
+				if clusterGroupUpgrade.Status.Conditions[len(clusterGroupUpgrade.Status.Conditions)-1].Type != "Ready" {
+					copyCondition := *readyCondition
+					meta.RemoveStatusCondition(&clusterGroupUpgrade.Status.Conditions, "Ready")
+					meta.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions, copyCondition)
+					readyCondition = &copyCondition
+				}
 				// Before starting the upgrade check that all the managed policies exist.
 				var allManagedPoliciesExist bool
 				var managedPoliciesInfo policiesInfo
