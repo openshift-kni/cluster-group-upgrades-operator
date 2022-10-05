@@ -157,11 +157,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if progressingCondition == nil || (progressingCondition.Status == metav1.ConditionFalse && progressingCondition.Reason != string(utils.ConditionReasons.Completed)) {
 
 		var reconcile bool
-		if len(clusters) == 0 {
-			clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
-		} else {
-			_, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
-		}
+		clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 		if err != nil {
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
