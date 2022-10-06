@@ -239,6 +239,23 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	}
 
 	if err := r.Create(ctx, clusterGroupUpgrade); err != nil {
+		if errors.IsNotFound(err) && strings.Contains(err.Error(), "namespace") {
+			namespace := &corev1.Namespace{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: ztpInstallNS,
+				},
+			}
+			if err := r.Create(ctx, namespace); err != nil {
+				r.Log.Error(err, "Fail to create namespace", "name", ztpInstallNS)
+				return err
+			}
+			// retry
+			if err := r.Create(ctx, clusterGroupUpgrade); err != nil {
+				r.Log.Error(err, "Fail to create clusterGroupUpgrade", "name", cluster.Name, "namespace", ztpInstallNS)
+				return err
+			}
+		}
+
 		r.Log.Error(err, "Fail to create clusterGroupUpgrade", "name", cluster.Name, "namespace", ztpInstallNS)
 		return err
 	}
