@@ -585,7 +585,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 		if err != nil {
 			return err
 		}
-		spec.ViewUpdateIntervalSec = utils.ViewUpdateSec * len(clusterGroupUpgrade.Status.Precaching.Clusters)
+		spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Clusters))
 		r.Log.Info("[deployPrecachingWorkload]", "getPrecacheJobTemplateData",
 			cluster, "status", "success")
 
