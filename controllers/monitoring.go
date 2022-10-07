@@ -23,7 +23,7 @@ type ConfigurationObject struct {
 }
 
 func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForMonitoredObjects(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
 	for _, managedPolicy := range managedPoliciesForUpgrade {
 		// Get the policy content and create any needed ManagedClusterViews for subscription type policies.
 		monitoredObjects, err := r.getMonitoredObjects(managedPolicy)
@@ -36,7 +36,7 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForMonitoredObjects(
 			return err
 		}
 		clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicy.GetName()] = string(p)
-		r.createManagedClusterView(ctx, clusterGroupUpgrade, managedPolicy, monitoredObjects)
+		r.createManagedClusterView(ctx, clusterGroupUpgrade, clusters, managedPolicy, monitoredObjects)
 	}
 
 	return nil
@@ -153,12 +153,9 @@ func isMonitoredObjectType(kind interface{}) bool {
 }
 
 func (r *ClusterGroupUpgradeReconciler) createManagedClusterView(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured, objects []ConfigurationObject) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, policy *unstructured.Unstructured, objects []ConfigurationObject) error {
 
-	nonCompliantClusters, err := r.getClustersNonCompliantWithPolicy(ctx, clusterGroupUpgrade, policy)
-	if err != nil {
-		return err
-	}
+	nonCompliantClusters := r.getClustersNonCompliantWithPolicy(clusters, policy)
 
 	// Check if the current policy is also a subscription policy.
 	for _, object := range objects {
@@ -168,7 +165,7 @@ func (r *ClusterGroupUpgradeReconciler) createManagedClusterView(
 
 		// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
 		for _, nonCompliantCluster := range nonCompliantClusters {
-			_, err = utils.EnsureManagedClusterView(
+			_, err := utils.EnsureManagedClusterView(
 				ctx, r.Client, safeName, managedClusterViewName, nonCompliantCluster, object.Kind+"."+strings.Split(object.APIVersion, "/")[0],
 				object.Name, *object.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 			if err != nil {

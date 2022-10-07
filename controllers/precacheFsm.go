@@ -57,13 +57,13 @@ const (
 // precachingFsm implements the precaching state machine
 // returns: error
 func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) error {
 
 	r.setPrecachingStartedCondition(clusterGroupUpgrade)
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
 		allManagedPoliciesExist, managedPoliciesInfo, err := r.doManagedPoliciesExist(
-			ctx, clusterGroupUpgrade, false)
+			ctx, clusterGroupUpgrade, clusters, false)
 		if err != nil {
 			return err
 		}
@@ -111,21 +111,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		clusterGroupUpgrade.Status.Precaching.Spec = &spec
 	}
 
-	var (
-		clusters []string
-		err      error
-	)
-
-	if len(clusterGroupUpgrade.Status.Precaching.Clusters) != 0 {
-		clusters = clusterGroupUpgrade.Status.Precaching.Clusters
-	} else {
-		clusters, err = r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-		if err != nil {
-			return fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
-		}
-		r.Log.Info("[precachingFsm]", "clusterList", clusters)
-		clusterGroupUpgrade.Status.Precaching.Clusters = clusters
-	}
+	clusterGroupUpgrade.Status.Precaching.Clusters = clusters
 
 	clusterStates := make(map[string]string)
 	for _, cluster := range clusters {

@@ -149,11 +149,15 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return
 	}
 
-	// Verify that the selected clusters are all valid
-	// If this has already been done we will skip it on further reconcile loops
-	if !meta.IsStatusConditionTrue(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.ClustersSelected)) {
+	// This may be empty for the first reconcile but that's fine since it will get overwritten by the start of the cgu
+	clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
+	progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
+
+	// Set the progressing condition if it is not present
+	if progressingCondition == nil || (progressingCondition.Status == metav1.ConditionFalse && progressingCondition.Reason != string(utils.ConditionReasons.Completed)) {
+
 		var reconcile bool
-		reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
+		clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 		if err != nil {
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
@@ -177,16 +181,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			nextReconcile = requeueImmediately()
 			return
 		}
-	}
 
-	progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
-
-	// Set the progressing condition if it is not present
-	if progressingCondition == nil || (progressingCondition.Status == metav1.ConditionFalse && progressingCondition.Reason != string(utils.ConditionReasons.Completed)) {
 		var allManagedPoliciesExist bool
 		var managedPoliciesInfo policiesInfo
 		allManagedPoliciesExist, managedPoliciesInfo, err =
-			r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
+			r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, clusters, true)
 		if err != nil {
 			return
 		}
@@ -208,10 +207,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			)
 
 			// Build the upgrade batches.
-			err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-			if err != nil {
-				return
-			}
+			r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+
+			// Recheck clusters list for any changes to the plan
+			clusters = r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 
 			// Create the needed resources for starting the upgrade.
 			var isPolicyErr bool
@@ -222,11 +221,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				nextReconcile = requeueWithMediumInterval()
 				return nextReconcile, nil
 			}
-			err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 			if err != nil {
 				return
 			}
 		} else {
+
 			// If not all managedPolicies exist or invalid, update the Status accordingly.
 			var statusMessage string = "The ClusterGroupUpgrade CR has: "
 			if len(managedPoliciesInfo.missingPolicies) != 0 {
@@ -252,7 +252,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
-	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade)
+	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters)
 	if err != nil {
 		r.Log.Error(err, "reconcilePrecaching error")
 		return
@@ -342,7 +342,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		} else {
 			// There are no blocking CRs, continue with the upgrade process.
 			// create backup
-			err = r.reconcileBackup(ctx, clusterGroupUpgrade)
+			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				r.Log.Error(err, "reconcileBackup error")
 				return
@@ -374,15 +374,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					var allManagedPoliciesExist bool
 					var managedPoliciesInfo policiesInfo
 					allManagedPoliciesExist, managedPoliciesInfo, err =
-						r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, true)
+						r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, clusters, true)
 					if err != nil {
 						return
 					}
 					if allManagedPoliciesExist {
-						err = r.buildRemediationPlan(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
-						if err != nil {
-							return
-						}
+						r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 					}
 				}
 				// Take actions before starting upgrade.
@@ -825,13 +822,9 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 */
 func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
+	clusters []string,
 	filterNonCompliantPolicies bool) (bool, policiesInfo, error) {
 
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-	r.Log.Info("[doManagedPoliciesExist]", "clusterList:", clusters)
-	if err != nil {
-		return false, policiesInfo{}, err
-	}
 	childPoliciesList, err := utils.GetChildPolicies(ctx, r.Client, clusters)
 	if err != nil {
 		return false, policiesInfo{}, err
@@ -911,11 +904,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 
 			if filterNonCompliantPolicies {
 				// Check the policy has at least one of the clusters from the CR in NonCompliant state.
-				clustersNonCompliantWithPolicy, err := r.getClustersNonCompliantWithPolicy(
-					ctx, clusterGroupUpgrade, foundPolicy)
-				if err != nil {
-					return false, managedPoliciesInfo, err
-				}
+				clustersNonCompliantWithPolicy := r.getClustersNonCompliantWithPolicy(clusters, foundPolicy)
 
 				if len(clustersNonCompliantWithPolicy) == 0 {
 					managedPoliciesCompliantBeforeUpgrade = append(managedPoliciesCompliantBeforeUpgrade, foundPolicy.GetName())
@@ -1461,23 +1450,19 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyClusterStatus(policy *unstructu
 }
 
 func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	policy *unstructured.Unstructured) ([]string, error) {
+	clusters []string,
+	policy *unstructured.Unstructured) []string {
 
 	var nonCompliantClusters []string
-	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-	if err != nil {
-		return nil, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
-	}
 
-	for _, cluster := range allClustersForUpgrade {
+	for _, cluster := range clusters {
 		compliance := r.getClusterComplianceWithPolicy(cluster, policy)
 		if compliance != utils.ClusterStatusCompliant {
 			nonCompliantClusters = append(nonCompliantClusters, cluster)
 		}
 	}
 	r.Log.Info("[getClustersNonCompliantWithPolicy]", "policy: ", policy.GetName(), "clusters: ", nonCompliantClusters)
-	return nonCompliantClusters, nil
+	return nonCompliantClusters
 }
 
 /*
@@ -1531,18 +1516,12 @@ func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 	return utils.ClusterNotMatchedWithPolicy
 }
 
-func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) (map[string]bool, error) {
+func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolicies(clusters []string, managedPolicies []*unstructured.Unstructured) map[string]bool {
 	clustersNonCompliantMap := make(map[string]bool)
 
 	// clustersNonCompliantMap will be a map of the clusters present in the CR and wether they are NonCompliant with at
 	// least one managed policy.
-	allClustersForUpgrade, err := r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-	r.Log.Info("[getClustersNonCompliantWithManagedPolicies]", "clusterList:", allClustersForUpgrade)
-	if err != nil {
-		return nil, err
-	}
-	for _, clusterName := range allClustersForUpgrade {
+	for _, clusterName := range clusters {
 		for _, managedPolicy := range managedPolicies {
 			clusterCompliance := r.getClusterComplianceWithPolicy(clusterName, managedPolicy)
 
@@ -1554,16 +1533,13 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 		}
 	}
 
-	return clustersNonCompliantMap, nil
+	return clustersNonCompliantMap
 }
 
 func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicies []*unstructured.Unstructured) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPolicies []*unstructured.Unstructured) {
 	// Get all clusters from the CR that are non compliant with at least one of the managedPolicies.
-	clusterNonCompliantWithManagedPoliciesMap, err := r.getClustersNonCompliantWithManagedPolicies(ctx, clusterGroupUpgrade, managedPolicies)
-	if err != nil {
-		return err
-	}
+	clusterNonCompliantWithManagedPoliciesMap := r.getClustersNonCompliantWithManagedPolicies(clusters, managedPolicies)
 
 	// Create remediation plan
 	var remediationPlan [][]string
@@ -1578,28 +1554,16 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 		}
 	}
 
-	var allClustersForUpgrade []string
-	if clusterGroupUpgrade.Status.Backup != nil {
-		allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "upgrade")
-		if err != nil {
-			return err
-		}
-	} else {
-		allClustersForUpgrade, err = r.getSuccessfulClustersList(ctx, clusterGroupUpgrade, "")
-		if err != nil {
-			return err
-		}
-	}
 	var batch []string
 	clusterCount := 0
-	for i := 0; i < len(allClustersForUpgrade); i++ {
-		site := allClustersForUpgrade[i]
+	for i := 0; i < len(clusters); i++ {
+		site := clusters[i]
 		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] {
 			batch = append(batch, site)
 			clusterCount++
 		}
 
-		if clusterCount == clusterGroupUpgrade.Status.ComputedMaxConcurrency || i == len(allClustersForUpgrade)-1 {
+		if clusterCount == clusterGroupUpgrade.Status.ComputedMaxConcurrency || i == len(clusters)-1 {
 			if len(batch) > 0 {
 				remediationPlan = append(remediationPlan, batch)
 				clusterCount = 0
@@ -1610,7 +1574,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
 	clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
 
-	return nil
+	return
 }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
@@ -1698,6 +1662,15 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 
 	// Return the full list of clusters
 	return clusterNames, nil
+}
+
+// Get the list of clusters from the remediation plan
+func (r *ClusterGroupUpgradeReconciler) getClustersListFromRemediationPlan(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) []string {
+	var clusters []string
+	for _, clusterBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+		clusters = append(clusters, clusterBatch...)
+	}
+	return clusters
 }
 
 // filters the cluster list matching with successful cluster list
@@ -1858,19 +1831,19 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 	return blockingCRsNotCompleted, blockingCRsMissing, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, bool, error) {
 	reconcile := false
 	// Validate clusters in spec are ManagedCluster objects
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
+		return nil, reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
 
 	for _, cluster := range clusters {
 		managedCluster := &clusterv1.ManagedCluster{}
 		err := r.Client.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
 		if err != nil {
-			return reconcile, fmt.Errorf("cluster %s is not a ManagedCluster", cluster)
+			return nil, reconcile, fmt.Errorf("cluster %s is not a ManagedCluster", cluster)
 		}
 	}
 
@@ -1885,7 +1858,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 				}
 			}
 			if !foundCanary {
-				return reconcile, fmt.Errorf("canary cluster %s is not in the list of clusters", canary)
+				return nil, reconcile, fmt.Errorf("canary cluster %s is not in the list of clusters", canary)
 			}
 		}
 	}
@@ -1904,12 +1877,12 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 		err = r.updateStatus(ctx, clusterGroupUpgrade)
 		if err != nil {
 			r.Log.Info("Error updating Cluster Group Upgrade")
-			return reconcile, err
+			return nil, reconcile, err
 		}
 		reconcile = true
 	}
 
-	return reconcile, nil
+	return clusters, reconcile, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
@@ -1921,15 +1894,14 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
 
-			// Get the list of clusters from the remediation plan
-			var clusters []string
-			// If there was an error selecting clusters or if no clusters required remediation
-			// then the plan will be empty, and no multicloud objects would have ever been created
-			for _, clusterBatch := range clusterGroupUpgrade.Status.RemediationPlan {
-				clusters = append(clusters, clusterBatch...)
-			}
+			clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 
 			err := utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+			if err != nil {
+				return utils.StopReconciling, err
+			}
+
+			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				return utils.StopReconciling, err
 			}
