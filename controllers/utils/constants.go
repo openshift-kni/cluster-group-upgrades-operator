@@ -45,10 +45,14 @@ const (
 	PrecacheSpecValidCondition = "PrecacheSpecValid"
 )
 
-// ViewUpdateSec defines default ManagementClusterView update periodicity
+// ViewUpdateSecPerCluster defines default ManagementClusterView update periodicity
 // When configuring managedclusterview for clusters in precache-starting state,
-// this value is multiplied by number of clusters
-const ViewUpdateSec = 20
+// this value is multiplied by number of clusters, then bound by min and max
+const (
+	ViewUpdateSecPerCluster = 6
+	ViewUpdateSecTotalMin   = 30
+	ViewUpdateSecTotalMax   = 300
+)
 
 // Policy types used within the operator
 const (
