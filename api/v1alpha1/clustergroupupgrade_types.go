@@ -266,8 +266,9 @@ type ClusterGroupUpgradeStatus struct {
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:path=clustergroupupgrades,shortName=cgu
-//+kubebuilder:printcolumn:name="Upgrade State",type="string",JSONPath=".status.conditions[-1:].reason"
 //+kubebuilder:printcolumn:name="Age",type="date",JSONPath=".metadata.creationTimestamp"
+//+kubebuilder:printcolumn:name="State",type="string",JSONPath=".status.conditions[-1:].reason"
+//+kubebuilder:printcolumn:name="Details",type="string",JSONPath=".status.conditions[-1:].message"
 
 // ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
 //+operator-sdk:csv:customresourcedefinitions:displayName="Cluster Group Upgrade",resources={{Namespace, v1},{Deployment,apps/v1}}

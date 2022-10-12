@@ -19,12 +19,15 @@ spec:
   scope: Namespaced
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .status.conditions[-1:].reason
-      name: Upgrade State
-      type: string
     - jsonPath: .metadata.creationTimestamp
       name: Age
       type: date
+    - jsonPath: .status.conditions[-1:].reason
+      name: State
+      type: string
+    - jsonPath: .status.conditions[-1:].message
+      name: Details
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:

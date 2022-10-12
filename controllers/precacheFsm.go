@@ -24,6 +24,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
 // Pre-cache states
@@ -57,30 +58,12 @@ const (
 // precachingFsm implements the precaching state machine
 // returns: error
 func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, policies []*unstructured.Unstructured) error {
 
 	r.setPrecachingStartedCondition(clusterGroupUpgrade)
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
-		allManagedPoliciesExist, managedPoliciesInfo, err := r.doManagedPoliciesExist(
-			ctx, clusterGroupUpgrade, clusters, false)
-		if err != nil {
-			return err
-		}
-		if !allManagedPoliciesExist {
-			statusMessage := fmt.Sprintf(
-				"The ClusterGroupUpgrade CR has managed policies that are missing: %s", managedPoliciesInfo.missingPolicies)
-			utils.SetStatusCondition(
-				&clusterGroupUpgrade.Status.Conditions,
-				utils.ConditionTypes.PrecacheSpecValid,
-				utils.ConditionReasons.NotAllManagedPoliciesExist,
-				metav1.ConditionFalse,
-				statusMessage,
-			)
-			return nil
-		}
-
-		spec, err := r.extractPrecachingSpecFromPolicies(managedPoliciesInfo.presentPolicies)
+		spec, err := r.extractPrecachingSpecFromPolicies(policies)
 		if err != nil {
 			return err
 		}
@@ -377,7 +360,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 		utils.SetStatusCondition(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.PrecachingSuceeded,
-			utils.ConditionReasons.Completed,
+			utils.ConditionReasons.PrecachingCompleted,
 			metav1.ConditionTrue,
 			"Precaching is completed for all clusters",
 		)

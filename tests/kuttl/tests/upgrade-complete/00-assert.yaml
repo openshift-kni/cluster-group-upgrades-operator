@@ -16,15 +16,15 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: All selected clusters are valid for upgrade
-    reason: Completed
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
   - message: Completed validation
-    reason: Completed
+    reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: The ClusterGroupUpgrade CR is not enabled
+  - message: Not enabled
     reason: NotEnabled
     status: "False"
     type: Progressing

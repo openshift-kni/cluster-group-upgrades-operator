@@ -33,7 +33,6 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 				Status:   make(map[string]string),
 				Clusters: []string{},
 			}
-			r.setBackupStartedCondition(clusterGroupUpgrade)
 		}
 
 		backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
@@ -223,17 +222,6 @@ func (r *ClusterGroupUpgradeReconciler) backupActive(ctx context.Context, cluste
 
 }
 
-// setBackupStartedCondition sets conditions of backup required
-func (r *ClusterGroupUpgradeReconciler) setBackupStartedCondition(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-	utils.SetStatusCondition(
-		&clusterGroupUpgrade.Status.Conditions,
-		utils.ConditionTypes.BackupSuceeded,
-		utils.ConditionReasons.NotEnabled,
-		metav1.ConditionFalse,
-		"Backup will start when enable is true",
-	)
-}
-
 // checkAllBackupDone handles alleviation of BackupDone==False condition
 func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
@@ -262,7 +250,7 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 		utils.SetStatusCondition(
 			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.BackupSuceeded,
-			utils.ConditionReasons.Completed,
+			utils.ConditionReasons.BackupCompleted,
 			metav1.ConditionTrue,
 			"Backup is completed for all clusters",
 		)

@@ -23,16 +23,15 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: All selected clusters are valid for upgrade
-    reason: Completed
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
   - message: Completed validation
-    reason: Completed
+    reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: 'The ClusterGroupUpgrade CR is blocked by other CRs that have not yet
-      completed: [cgu-c]'
+  - message: 'Blocking CRs that are not completed: [cgu-c]'
     reason: IncompleteBlockingCR
     status: "False"
     type: Progressing
@@ -102,16 +101,15 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: All selected clusters are valid for upgrade
-    reason: Completed
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
   - message: Completed validation
-    reason: Completed
+    reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: 'The ClusterGroupUpgrade CR is blocked by other CRs that have not yet
-      completed: [cgu-a]'
+  - message: 'Blocking CRs that are not completed: [cgu-a]'
     reason: IncompleteBlockingCR
     status: "False"
     type: Progressing
@@ -188,15 +186,15 @@ spec:
     timeout: 240
 status:
   conditions:
-  - message: All selected clusters are valid for upgrade
-    reason: Completed
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
   - message: Completed validation
-    reason: Completed
+    reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
+  - message: Remediating non-compliant policies
     reason: InProgress
     status: "True"
     type: Progressing
