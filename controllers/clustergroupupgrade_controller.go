@@ -449,6 +449,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// We are completely out of time
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.TimedOut,
+				metav1.ConditionFalse,
+				"Policy remediation took too long",
+			)
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.Succeeded,
 				utils.ConditionReasons.TimedOut,
 				metav1.ConditionFalse,
@@ -500,6 +507,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							r.Log.Info("Canaries batch timed out")
 							utils.SetStatusCondition(
 								&clusterGroupUpgrade.Status.Conditions,
+								utils.ConditionTypes.Progressing,
+								utils.ConditionReasons.TimedOut,
+								metav1.ConditionFalse,
+								"Policy remediation took too long on canary clusters",
+							)
+							utils.SetStatusCondition(
+								&clusterGroupUpgrade.Status.Conditions,
 								utils.ConditionTypes.Succeeded,
 								utils.ConditionReasons.TimedOut,
 								metav1.ConditionFalse,
@@ -511,6 +525,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
 							case ranv1alpha1.BatchTimeoutAction.Abort:
 								// If the value was abort then we need to fail out
+								utils.SetStatusCondition(
+									&clusterGroupUpgrade.Status.Conditions,
+									utils.ConditionTypes.Progressing,
+									utils.ConditionReasons.TimedOut,
+									metav1.ConditionFalse,
+									"Policy remediation took too long on some clusters",
+								)
 								utils.SetStatusCondition(
 									&clusterGroupUpgrade.Status.Conditions,
 									utils.ConditionTypes.Succeeded,
