@@ -29,11 +29,11 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: All clusters compliant with all the managed policies
+  - message: All clusters are compliant with all the managed policies
     reason: Completed
     status: "False"
     type: Progressing
-  - message: All clusters compliant with all the managed policies
+  - message: All clusters are compliant with all the managed policies
     reason: Completed
     status: "True"
     type: Succeeded

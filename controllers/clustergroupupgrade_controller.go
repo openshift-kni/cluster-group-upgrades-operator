@@ -395,7 +395,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						utils.ConditionTypes.Progressing,
 						utils.ConditionReasons.Completed,
 						metav1.ConditionFalse,
-						"All clusters compliant with all the managed policies",
+						"All clusters are compliant with all the managed policies",
 					)
 					utils.SetStatusCondition(
 						&clusterGroupUpgrade.Status.Conditions,
@@ -542,14 +542,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					utils.ConditionTypes.Progressing,
 					utils.ConditionReasons.Completed,
 					metav1.ConditionFalse,
-					"All clusters compliant with all the managed policies",
+					"All clusters are compliant with all the managed policies",
 				)
 				utils.SetStatusCondition(
 					&clusterGroupUpgrade.Status.Conditions,
 					utils.ConditionTypes.Succeeded,
 					utils.ConditionReasons.Completed,
 					metav1.ConditionTrue,
-					"All clusters compliant with all the managed policies",
+					"All clusters are compliant with all the managed policies",
 				)
 				nextReconcile = requeueImmediately()
 			} else {

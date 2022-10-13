@@ -55,7 +55,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | InProgress | Backup is in progress for x clusters|
   | | False | Failed | Backup failed for all the clusters |
   `Progressing`| True | InProgress| Remediating non-compliant policies|
-  | | False | Completed | All clusters compliant with all the managed policies |
+  | | False | Completed | All clusters are compliant with all the managed policies |
   | | False | NotStarted | The Cluster backup is in progress |
   | | False | NotEnabled| Not enabled |
   | | False | MissingBlockingCR | Missing blocking CRs: ... |
