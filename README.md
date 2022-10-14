@@ -38,32 +38,31 @@ A full table of the conditions and their appropriate reasons and types are:
 
   | Type | Status| Reason| Message |
   |------|-------|---------|--------|
-  `ClustersSelected`| True| Completed| All selected clusters are valid for upgrade| 
-  | |False | NotFound/NotPresent| Unable to select clusters: error message |
-  `Validated` | True | Completed| Completed validation |
+  `ClustersSelected`| True| ClusterSelectionCompleted| All selected clusters are valid| 
+  | |False | ClusterNotFound | Unable to select clusters: error message |
+  `Validated` | True | ValidationCompleted| Completed validation |
   | | False | NotAllManagedPoliciesExist| Missing managed policies: policyList,  invalid managed policies: policyList |
-  | | False | InvalidPlatformImage | Precache spec is incomplete |
+  | | False | InvalidPlatformImage | Error related to platform image |
   `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
   | | False | InvalidPlatformImage| Precaching spec is incomplete |
-  | | False | NotAllManagedPoliciesExist| The ClusterGroupUpgrade CR has managed policies that are missing|
-  `PrecachingSucceeded` | True | Completed | Precaching is completed for all clusters|
+  `PrecachingSucceeded` | True | PrecachingCompleted | Precaching is completed for all clusters|
   | | True | PartiallyDone | Precaching failed for x clusters | 
   | | False | InProgress | Precaching is not completed | 
   | | False | InProgress | Precaching is in progress for x clusters | 
   | | False | Failed | Precaching failed for all clusters |
-  `BackupSucceeded` | True | Completed | Backup is completed for all clusters|
+  `BackupSucceeded` | True | BackupCompleted | Backup is completed for all clusters|
   | | True | PartiallyDone | Backup failed for x clusters |
-   | | False | NotEnabled | Backup will start when enable is true |
   | | False | InProgress | Backup is in progress for x clusters|
   | | False | Failed | Backup failed for all the clusters |
-  `Progressing`| True | InProgress| The ClusterGroupUpgrade CR has upgrade policies that are still non compliant|
-  | | False | Completed | The ClusterGroupUpgrade CR has all clusters compliant with all the managed policies |
+  `Progressing`| True | InProgress| Remediating non-compliant policies|
+  | | False | Completed | All clusters are compliant with all the managed policies |
+  | | False | TimedOut | Policy remediation took too long |
   | | False | NotStarted | The Cluster backup is in progress |
-  | | False | NotEnabled| The ClusterGroupUpgrade CR is not enabled |
-  | | False | MissingBlockingCR | The ClusterGroupUpgrade CR has blocking CRs that are missing |
-  | | False | IncompleteBlockingCR | The ClusterGroupUpgrade CR is blocked by other CRs that have not yet completed| 
-  `Succeeded`| True | UpgradeCompleted| The ClusterGroupUpgrade CR has all clusters already compliant with the specified managed policies |
-  | | False | UpgradeTimedOut | The ClusterGroupUpgrade CR policies are taking too long to complete |
+  | | False | NotEnabled| Not enabled |
+  | | False | MissingBlockingCR | Missing blocking CRs: ... |
+  | | False | IncompleteBlockingCR | Blocking CRs that are not completed: ... | 
+  `Succeeded`| True | Completed| All clusters compliant with the specified managed policies |
+  | | False | TimedOut | Policy remediation took too long |
 
 A few important ones to consider are:
 * **ClustersSelected**
@@ -82,12 +81,12 @@ A few important ones to consider are:
 * **InProgress**
   * In this state, the controller will make copies of the inform *managedPolicies* policies. These copied policies will have their *remediationAction* set to **enforce**. Afterwards, the controller adds clusters to the corresponding placement rules following the remediation plan built in the **Progressiong+NotEnabled** state.
   * Enforcing the policies for subsequent batches starts immediately after all the clusters of the current batch are compliant with all the *managedPolicies*. If the current batch times out, then the controller moves on to the next batch. The value for the batch timeout is the **ClusterGroupUpgrade** timeout divided by the number of batches from the remediation plan.
-  * The controller will transition to **UpgradeTimedOut** state in two cases:
+  * The controller will transition to **TimedOut** state in two cases:
     * If the **ClusterGroupUpgrade** has the first batch as canaries and the policies for this first batch are not compliant within the batch timeout
     * If the policies for the upgrade have not turned to compliant within the *timeout* value specified in the *remediationStrategy*
-* **UpgradeTimedOut**
+* **TimedOut**
   * In this state, the controller will remove all the *managedPolicies* copies created for the **ClusterGroupUpgrade**. This is to ensure that changes are not made after the **ClusterGroupUpgrade** has passed its specified timeout. The user may re-run the **ClusterGroupUpgrade** again (perhaps with a longer timeout) if they still need to enforce changes on the clusters.
-* **UpgradeCompleted**
+* **Completed**
   * In this state, the upgrades of the clusters are complete
   * If the *action.afterCompletion.deleteObjects* field is set to **true** (which is the default value), the controller will delete the underlying RHACM objects (policies, placement bindings, placement rules, managed cluster views) once the upgrade completes. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful.
 

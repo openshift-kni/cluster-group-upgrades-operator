@@ -33,6 +33,10 @@ type ConditionReason string
 // ConditionReasons define the different reasons that conditions will be set for
 var ConditionReasons = struct {
 	Completed                  ConditionReason
+	ClusterSelectionCompleted  ConditionReason
+	ValidationCompleted        ConditionReason
+	BackupCompleted            ConditionReason
+	PrecachingCompleted        ConditionReason
 	Failed                     ConditionReason
 	IncompleteBlockingCR       ConditionReason
 	InProgress                 ConditionReason
@@ -41,14 +45,17 @@ var ConditionReasons = struct {
 	NotAllManagedPoliciesExist ConditionReason
 	NotEnabled                 ConditionReason
 	NotStarted                 ConditionReason
-	NotFound                   ConditionReason
+	ClusterNotFound            ConditionReason
 	NotPresent                 ConditionReason
 	PartiallyDone              ConditionReason
 	PrecacheSpecIsWellFormed   ConditionReason
-	UpgradeCompleted           ConditionReason
-	UpgradeTimedOut            ConditionReason
+	TimedOut                   ConditionReason
 }{
 	Completed:                  "Completed",
+	ClusterSelectionCompleted:  "ClusterSelectionCompleted",
+	ValidationCompleted:        "ValidationCompleted",
+	BackupCompleted:            "BackupCompleted",
+	PrecachingCompleted:        "PrecachingCompleted",
 	Failed:                     "Failed",
 	IncompleteBlockingCR:       "IncompleteBlockingCR",
 	InProgress:                 "InProgress",
@@ -57,12 +64,11 @@ var ConditionReasons = struct {
 	NotAllManagedPoliciesExist: "NotAllManagedPoliciesExist",
 	NotEnabled:                 "NotEnabled",
 	NotStarted:                 "NotStarted",
-	NotFound:                   "NotFound",
+	ClusterNotFound:            "ClusterNotFound",
 	NotPresent:                 "NotPresent",
 	PartiallyDone:              "PartiallyDone",
 	PrecacheSpecIsWellFormed:   "PrecacheSpecIsWellFormed",
-	UpgradeCompleted:           "UpgradeCompleted",
-	UpgradeTimedOut:            "UpgradeTimedOut",
+	TimedOut:                   "TimedOut",
 }
 
 // SetStatusCondition is a convenience wrapper for meta.SetStatusCondition that takes in the types defined here and converts them to strings
