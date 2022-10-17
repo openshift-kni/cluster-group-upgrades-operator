@@ -263,6 +263,7 @@ type ClusterGroupUpgradeStatus struct {
 	ComputedMaxConcurrency int `json:"computedMaxConcurrency,omitempty"`
 }
 
+// +genclient
 //+kubebuilder:object:root=true
 //+kubebuilder:subresource:status
 //+kubebuilder:resource:path=clustergroupupgrades,shortName=cgu
@@ -271,7 +272,7 @@ type ClusterGroupUpgradeStatus struct {
 //+kubebuilder:printcolumn:name="Details",type="string",JSONPath=".status.conditions[-1:].message"
 
 // ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API
-//+operator-sdk:csv:customresourcedefinitions:displayName="Cluster Group Upgrade",resources={{Namespace, v1},{Deployment,apps/v1}}
+// +operator-sdk:csv:customresourcedefinitions:displayName="Cluster Group Upgrade",resources={{Namespace, v1},{Deployment,apps/v1}}
 type ClusterGroupUpgrade struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

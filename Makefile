@@ -117,8 +117,12 @@ help: ## Display this help.
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) $(CRD_OPTIONS) rbac:roleName=manager-role webhook paths="./..." output:crd:artifacts:config=config/crd/bases
 
-generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
+generate: controller-gen generate-code ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+generate-code: ## Generate code containing Clientset, Informers, Listers
+	@echo "Running generate-code"
+	hack/update-codegen.sh
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -160,7 +164,7 @@ bashate: ## Run bashate
 	hack/bashate.sh
 
 .PHONY: ci-job
-ci-job: common-deps-update fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
+ci-job: common-deps-update generate fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
