@@ -31,6 +31,11 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForMonitoredObjects(
 			return err
 		}
 
+		// Attempting to marshal nil objects will result in a null value showing up in the managedPoliciesContent field
+		if monitoredObjects == nil {
+			continue
+		}
+
 		p, err := json.Marshal(monitoredObjects)
 		if err != nil {
 			return err
