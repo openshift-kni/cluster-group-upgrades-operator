@@ -252,6 +252,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
+	if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
+		// We expected to remediate some clusters but currently have none
+		// There should already be a condition present describing the issue so just reconcile and return
+		nextReconcile = requeueWithLongInterval()
+		return
+	}
+
 	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 	if err != nil {
 		r.Log.Error(err, "reconcilePrecaching error")
@@ -344,6 +351,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		} else {
 			// There are no blocking CRs, continue with the upgrade process.
 			// create backup
+
+			if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
+				// We expected to remediate some clusters but currently have none
+				// There should already be a condition present describing the issue so just reconcile and return
+				nextReconcile = requeueWithLongInterval()
+				return
+			}
+
 			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				r.Log.Error(err, "reconcileBackup error")
@@ -416,19 +431,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					)
 					nextReconcile = requeueImmediately()
 				} else {
-
-					// Check that we still have clusters to remediate since errors may have occured above
-					if len(clusters) == 0 {
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.Progressing,
-							utils.ConditionReasons.NotStarted,
-							metav1.ConditionFalse,
-							"Unable to begin upgrade due to precaching/backup errors",
-						)
-						nextReconcile = requeueWithLongInterval()
-						return
-					}
 
 					// Start the upgrade.
 					utils.SetStatusCondition(
