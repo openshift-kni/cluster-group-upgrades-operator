@@ -266,8 +266,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return
 			}
 		}
-
 	}
+
+	// Update the clusters list based on the precaching results
+	clusters = r.filterFailedPrecachingClusters(ctx, clusterGroupUpgrade, clusters)
 
 	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 
@@ -366,6 +368,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 			}
 
+			// Update the clusters list based on the backup results
+			clusters = r.filterFailedBackupClusters(ctx, clusterGroupUpgrade, clusters)
+
 			backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
 			if clusterGroupUpgrade.Status.Backup == nil || (backupCondition != nil && backupCondition.Status == metav1.ConditionTrue) {
 
@@ -380,6 +385,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					}
 					if allManagedPoliciesExist {
 						r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+
+						// Rebuild clusters list since remediation plan may have changed
+						clusters = r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
+						clusters = r.filterFailedPrecachingClusters(ctx, clusterGroupUpgrade, clusters)
+						clusters = r.filterFailedBackupClusters(ctx, clusterGroupUpgrade, clusters)
 					}
 				}
 				// Take actions before starting upgrade.
@@ -406,6 +416,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					)
 					nextReconcile = requeueImmediately()
 				} else {
+
+					// Check that we still have clusters to remediate since errors may have occured above
+					if len(clusters) == 0 {
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.Progressing,
+							utils.ConditionReasons.NotStarted,
+							metav1.ConditionFalse,
+							"Unable to begin upgrade due to precaching/backup errors",
+						)
+						nextReconcile = requeueWithLongInterval()
+					}
+
 					// Start the upgrade.
 					utils.SetStatusCondition(
 						&clusterGroupUpgrade.Status.Conditions,
@@ -1694,41 +1717,36 @@ func (r *ClusterGroupUpgradeReconciler) getClustersListFromRemediationPlan(clust
 	return clusters
 }
 
-// filters the cluster list matching with successful cluster list
-func (r *ClusterGroupUpgradeReconciler) getSuccessfulClustersList(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, feature string) ([]string, error) {
-
+// filterFailedPrecachingClusters filters the input cluster list by removing any clusters which failed to perform their backup.
+func (r *ClusterGroupUpgradeReconciler) filterFailedPrecachingClusters(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) []string {
 	var clustersList []string
-	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
-	if err != nil {
-		return clusters, fmt.Errorf("cannot obtain the CGU cluster list: %s", err)
-	}
-
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for _, name := range clusters {
 			if clusterGroupUpgrade.Status.Precaching.Status[name] == PrecacheStateSucceeded {
 				clustersList = append(clustersList, name)
 			}
-			r.Log.Info("getSuccessfulClustersList: backup", "clustersList", clustersList)
 		}
 	} else {
 		clustersList = clusters
 	}
+	r.Log.Info("filterFailedPrecachingClusters: ", "clustersList", clustersList)
+	return clustersList
+}
 
-	// this condition applies to upgrade
-	if feature == "upgrade" {
-		if clusterGroupUpgrade.Status.Backup != nil {
-			var newList []string
-			for _, name := range clusters {
-				if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
-					newList = append(newList, name)
-				}
+// filterFailedBackupClusters filters the input cluster list by removing any clusters which failed to perform their backup.
+func (r *ClusterGroupUpgradeReconciler) filterFailedBackupClusters(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) []string {
+	var clustersList []string
+	if clusterGroupUpgrade.Status.Backup != nil {
+		for _, name := range clusters {
+			if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
+				clustersList = append(clustersList, name)
 			}
-			clustersList = newList
-			r.Log.Info("getSuccessfulClustersList: upgrade", "clustersList", clustersList)
 		}
+	} else {
+		clustersList = clusters
 	}
-
-	return clustersList, nil
+	r.Log.Info("filterFailedBackupClusters:", "clustersList", clustersList)
+	return clustersList
 }
 
 /* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
