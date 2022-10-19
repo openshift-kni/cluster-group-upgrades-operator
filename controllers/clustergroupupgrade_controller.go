@@ -427,6 +427,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							"Unable to begin upgrade due to precaching/backup errors",
 						)
 						nextReconcile = requeueWithLongInterval()
+						return
 					}
 
 					// Start the upgrade.
