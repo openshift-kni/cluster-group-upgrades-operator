@@ -160,7 +160,7 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 	r.Log.Info("[precachingFsm]", "currentState", currentState, "condition", "entry",
 		"cluster", cluster, "nextState", nextState)
 
-	err := r.deleteAllViews(ctx, cluster, precacheAllViews)
+	err := r.deleteManagedClusterObjects(ctx, cluster, precacheAllViews, utils.ManagedClusterViewPrefix)
 	if err != nil {
 		return currentState, err
 	}

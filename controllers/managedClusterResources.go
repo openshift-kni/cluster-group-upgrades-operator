@@ -126,11 +126,23 @@ var backupView = []resourceTemplate{ // only used for deleting, hence empty temp
 	{"view-backup-namespace", ""},
 }
 
+var backupMcaDeletion = []resourceTemplate{ // only used for deleting NotReachable clusters MCA
+	{"backup-ns-create", ""},
+	{"backup-ns-delete", ""},
+	{"backup-sa-create", ""},
+	{"backup-crb-create", ""},
+}
+
 var (
 	jobsInitialStatus = []string{"status", "conditions"}
 	jobsFinalStatus   = []string{"status", "result", "status"}
 	precache          = "precache"
 	backup            = "backup"
+)
+
+const (
+	backupJobTimeout       = 480
+	backupJobTimeoutBuffer = 120
 )
 
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
@@ -186,6 +198,26 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
 	return nil
 }
 
+// ddeleteManagedClusterActionResource deletes actions by name and namespace
+// returns: error
+func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterActionResource(
+	ctx context.Context, name string, namespace string) error {
+
+	var obj = &unstructured.Unstructured{}
+	obj.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "action.open-cluster-management.io",
+		Kind:    "ManagedClusterAction",
+		Version: "v1beta1",
+	})
+	obj.SetName(name)
+	obj.SetNamespace(namespace)
+	err := r.Delete(ctx, obj)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // getView gets view resource
 // returns:     *unstructured.Unstructured (view data)
 //              bool (available)
@@ -213,18 +245,29 @@ func (r *ClusterGroupUpgradeReconciler) getView(
 	return view, true, nil
 }
 
-// deleteAllViews deletes all managed cluster view resources
+// deleteManagedClusterObjects deletes all managed cluster view  and action resources
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) deleteAllViews(ctx context.Context, cluster string, deleteViews []resourceTemplate) error {
+func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterObjects(ctx context.Context, cluster string, deleteObjects []resourceTemplate, obj string) error {
 	// Cleanup all existing view objects that might have been left behind
 	// in case of a crash etc.
-	for _, item := range deleteViews {
-		err := r.deleteManagedClusterViewResource(ctx, item.resourceName, cluster)
-		if err != nil {
-			if !errors.IsNotFound(err) {
-				return err
+	for _, item := range deleteObjects {
+		switch obj {
+		case utils.ManagedClusterViewPrefix:
+			err := r.deleteManagedClusterViewResource(ctx, item.resourceName, cluster)
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					return err
+				}
+			}
+		case utils.ManagedClusterActionPrefix:
+			err := r.deleteManagedClusterActionResource(ctx, item.resourceName, cluster)
+			if err != nil {
+				if !errors.IsNotFound(err) {
+					return err
+				}
 			}
 		}
+
 	}
 	return nil
 }
@@ -271,47 +314,73 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 // returns: 			error
 func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	clusters []string) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	var viewTemplate, deleteTemplate []resourceTemplate
+	var viewTemplate []resourceTemplate
 
 	switch {
 	case clusterGroupUpgrade.Spec.Backup && clusterGroupUpgrade.Spec.PreCaching:
 		for _, v := range append(backupView, precacheAllViews...) {
 			viewTemplate = append(viewTemplate, v)
 		}
-		for _, v := range append(backupDeleteTemplates, precacheDeleteTemplates...) {
-			deleteTemplate = append(deleteTemplate, v)
-		}
 
 	case clusterGroupUpgrade.Spec.Backup:
 		viewTemplate = backupView
-		deleteTemplate = backupDeleteTemplates
 
 	case clusterGroupUpgrade.Spec.PreCaching:
 		viewTemplate = precacheAllViews
-		deleteTemplate = precacheDeleteTemplates
 
 	default:
 		return nil
 	}
 
-	for _, cluster := range clusters {
-		err := r.deleteAllViews(ctx, cluster, viewTemplate)
+	var clusterList []string
+	if clusterGroupUpgrade.Status.Precaching != nil {
+		clusterList = clusterGroupUpgrade.Status.Precaching.Clusters
+	} else if clusterGroupUpgrade.Status.Backup != nil {
+		clusterList = clusterGroupUpgrade.Status.Backup.Clusters
+	}
 
+	for _, cluster := range clusterList {
+		// delete managedClusterView for backup and precaching
+		err := r.deleteManagedClusterObjects(ctx, cluster, viewTemplate, utils.ManagedClusterViewPrefix)
 		if err != nil {
 			return err
 		}
-		data := templateData{
-			Cluster: cluster,
-		}
-		err = r.createResourcesFromTemplates(ctx, &data, deleteTemplate)
-		if err != nil {
-			return err
+
+		// delete precaching job in the spoke cluster
+		if clusterGroupUpgrade.Status.Precaching != nil {
+			data := templateData{
+				Cluster: cluster,
+			}
+			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
+	if clusterGroupUpgrade.Status.Backup != nil {
+		for cluster, state := range clusterGroupUpgrade.Status.Backup.Status {
+			data := templateData{
+				Cluster: cluster,
+			}
+			switch state {
+			case BackupStateNotReachable:
+				// delete managedClusterAction related to Backup in Not reachable cluster
+				err := r.deleteManagedClusterObjects(ctx, cluster, backupMcaDeletion, utils.ManagedClusterActionPrefix)
+				if err != nil {
+					return err
+				}
+			default:
+				// delete backup job in the spoke cluster
+				err := r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return nil
 }
 
@@ -552,12 +621,11 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 // getBackupJobTemplateData initializes template data for the backup job creation
 // returns: 	*templateData
 //				error
-func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) (*templateData, error) {
+func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterName string) (*templateData, error) {
 
 	rv := new(templateData)
 	rv.Cluster = clusterName
-	rv.JobTimeout = uint64(
-		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)
+	rv.JobTimeout = uint64(backupJobTimeout)
 
 	rv.WorkloadImage = os.Getenv("RECOVERY_IMG")
 	r.Log.Info("[getBackupJobTemplateData]", "workload image", rv.WorkloadImage)
@@ -590,7 +658,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 			cluster, "status", "success")
 
 	case backup:
-		spec, err = r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+		spec, err = r.getBackupJobTemplateData(cluster)
 		if err != nil {
 			return err
 		}

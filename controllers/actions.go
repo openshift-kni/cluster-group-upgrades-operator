@@ -167,10 +167,14 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	if err != nil {
 		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
-	err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade, clusters)
-	if err != nil {
-		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
+
+	if clusterGroupUpgrade.Status.Precaching != nil || clusterGroupUpgrade.Status.Backup != nil {
+		err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
+		if err != nil {
+			return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		}
 	}
+
 	clusterGroupUpgrade.Status.SafeResourceNames = nil
 	return nil
 }

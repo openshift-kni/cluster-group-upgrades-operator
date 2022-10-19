@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -19,6 +20,7 @@ const (
 	BackupStateSucceeded        = "Succeeded"
 	BackupStateTimeout          = "BackupTimeout"
 	BackupStateError            = "UnrecoverableError"
+	BackupStateNotReachable     = "NotReachable"
 )
 
 func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
@@ -71,17 +73,19 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 		switch currentState {
 		// Initial State
 		case BackupStatePreparingToStart:
-			nextState, err = r.backupPreparing(ctx, clusterGroupUpgrade, cluster)
+			nextState, err = r.backupPreparing(ctx, cluster)
 			if err != nil {
 				return err
 			}
 		case BackupStateStarting:
 			nextState, err = r.backupStarting(ctx, clusterGroupUpgrade, cluster)
 			if err != nil {
-				return err
+				if !strings.Contains(err.Error(), "[getPreparingConditions] no ManagedClusterView conditions found") {
+					return err
+				}
 			}
 		// Final states that don't change for the life of the CR
-		case BackupStateSucceeded, BackupStateTimeout, BackupStateError:
+		case BackupStateSucceeded, BackupStateTimeout, BackupStateError, BackupStateNotReachable:
 			nextState = currentState
 			r.Log.Info("[triggerBackup]", "cluster", cluster, "final state", currentState)
 
@@ -104,7 +108,7 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 
 // backupPreparing handles conditions in BackupStatePreparingToStart
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
+func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context,
 	cluster string) (string, error) {
 
 	currentState, nextState := BackupStatePreparingToStart, BackupStateStarting
@@ -112,12 +116,12 @@ func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clu
 		"cluster", cluster, "nextState", nextState)
 
 	// delete managedclusterview objects if present
-	err := r.deleteAllViews(ctx, cluster, backupView)
+	err := r.deleteManagedClusterObjects(ctx, cluster, backupView, utils.ManagedClusterViewPrefix)
 	if err != nil {
 		return currentState, err
 	}
 
-	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+	spec, err := r.getBackupJobTemplateData(cluster)
 	if err != nil {
 		return currentState, err
 	}
@@ -127,7 +131,7 @@ func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clu
 	if err != nil {
 		return currentState, err
 	}
-	// log nextState, to be deleted
+	// log nextState
 	r.Log.Info("[preparing]", "nextState returned", nextState)
 	return nextState, nil
 }
@@ -141,11 +145,12 @@ func (r *ClusterGroupUpgradeReconciler) backupStarting(ctx context.Context, clus
 	var condition string
 
 	condition, err := r.getStartingConditions(ctx, cluster, backupJobView[0].resourceName, backup)
+	r.Log.Info("[backupstarting]", "starting started condition: ", condition)
 	if err != nil {
 		return currentState, err
 	}
-	r.Log.Info("[starting]", "starting started condition: ", condition)
-	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+
+	spec, err := r.getBackupJobTemplateData(cluster)
 	if err != nil {
 		return currentState, err
 	}
@@ -281,6 +286,21 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 			metav1.ConditionFalse,
 			fmt.Sprintf("Backup in progress for %d clusters", progressingBackupCount),
 		)
+	}
+
+}
+
+// AddBackupStatusOnTimeout set cluster status of backup on timeout
+func (r *ClusterGroupUpgradeReconciler) AddBackupStatusOnTimeout(
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+
+	// loop through the backup status and mark BackupStateNotReachable
+	// to those cluster which aren't
+	// BackupStateSucceeded, BackupStateTimeout or BackupStateError
+	for cluster, state := range clusterGroupUpgrade.Status.Backup.Status {
+		if state != BackupStateSucceeded && state != BackupStateTimeout && state != BackupStateError {
+			clusterGroupUpgrade.Status.Backup.Status[cluster] = BackupStateNotReachable
+		}
 	}
 
 }

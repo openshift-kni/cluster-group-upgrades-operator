@@ -260,7 +260,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
 			//nolint
-			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
+			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting || v == PrecacheStateActive {
 				err = r.updateStatus(ctx, clusterGroupUpgrade)
 				nextReconcile = requeueWithShortInterval()
 				return
@@ -342,6 +342,11 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		} else {
 			// There are no blocking CRs, continue with the upgrade process.
 			// create backup
+			// we set the start time
+			if clusterGroupUpgrade.Status.Status.StartedAt.IsZero() {
+				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+			}
+
 			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				r.Log.Error(err, "reconcileBackup error")
@@ -359,6 +364,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							metav1.ConditionFalse,
 							"Cluster backup is in progress",
 						)
+						if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(backupJobTimeout+backupJobTimeoutBuffer)*time.Second {
+							r.AddBackupStatusOnTimeout(clusterGroupUpgrade)
+							r.checkAllBackupDone(clusterGroupUpgrade)
+						}
 						err = r.updateStatus(ctx, clusterGroupUpgrade)
 						nextReconcile = requeueWithShortInterval()
 						return
@@ -414,7 +423,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						metav1.ConditionTrue,
 						"Remediating non-compliant policies",
 					)
-					clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+
 					nextReconcile = requeueImmediately()
 				}
 			}
@@ -1921,12 +1930,12 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			if err != nil {
 				return utils.StopReconciling, err
 			}
-
-			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade, clusters)
-			if err != nil {
-				return utils.StopReconciling, err
+			if clusterGroupUpgrade.Status.Precaching != nil || clusterGroupUpgrade.Status.Backup != nil {
+				err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
+				if err != nil {
+					return utils.StopReconciling, err
+				}
 			}
-
 			// Remove cguFinalizer. Once all finalizers have been removed, the object will be deleted.
 			controllerutil.RemoveFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer)
 			err = r.Update(ctx, clusterGroupUpgrade)
