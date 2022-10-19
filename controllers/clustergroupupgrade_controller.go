@@ -595,6 +595,11 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 		return
 	}
 
+	// check if there was a remediation plan at all
+	if len(clusterGroupUpgrade.Status.RemediationPlan) == 0 {
+		return
+	}
+
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
