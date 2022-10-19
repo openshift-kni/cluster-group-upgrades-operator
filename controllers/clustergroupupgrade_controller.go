@@ -260,7 +260,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
 			//nolint
-			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting {
+			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting || v == PrecacheStateActive {
 				err = r.updateStatus(ctx, clusterGroupUpgrade)
 				nextReconcile = requeueWithShortInterval()
 				return
