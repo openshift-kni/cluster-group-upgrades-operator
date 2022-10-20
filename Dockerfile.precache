@@ -7,5 +7,3 @@ COPY pre-cache/release \
      pre-cache/pull \
      pre-cache/precache.sh \
      /opt/precache
-ENV PATH="/opt/precache:/host/usr/bin:/host/usr/libexec:${PATH}"
-ENV LD_LIBRARY_PATH="/host/usr/lib64"
