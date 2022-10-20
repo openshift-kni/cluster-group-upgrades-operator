@@ -607,14 +607,16 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 			Name: batchClusterName, State: utils.ClusterRemediationComplete}
 		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State == ranv1alpha1.Completed {
 			clusterState.State = utils.ClusterRemediationComplete
-			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
-			continue
+		} else {
+			clusterState.State = utils.ClusterRemediationTimedout
+			policyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
+			// Avoid panics because of index out of bound in edge cases
+			if policyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
+				clusterState.CurrentPolicy = &ranv1alpha1.PolicyStatus{
+					Name:   clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name,
+					Status: utils.ClusterStatusNonCompliant}
+			}
 		}
-		clusterState.State = utils.ClusterRemediationTimedout
-		policyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
-		clusterState.CurrentPolicy = &ranv1alpha1.PolicyStatus{
-			Name:   clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name,
-			Status: utils.ClusterStatusNonCompliant}
 		clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 	}
 }
@@ -666,6 +668,14 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 	isBatchComplete := true
 
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
+		// nil check to avoid panic in edge cases
+		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress == nil {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress = make(map[string]*ranv1alpha1.ClusterRemediationProgress)
+		}
+		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] == nil {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] = new(ranv1alpha1.ClusterRemediationProgress)
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.NotStarted
+		}
 		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State
 		if clusterProgressState == ranv1alpha1.NotStarted {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = new(int)
