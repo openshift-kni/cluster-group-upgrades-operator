@@ -252,13 +252,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 	}
 
-	if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
-		// We expected to remediate some clusters but currently have none
-		// There should already be a condition present describing the issue so just reconcile and return
-		nextReconcile = requeueWithLongInterval()
-		return
-	}
-
 	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 	if err != nil {
 		r.Log.Error(err, "reconcilePrecaching error")
