@@ -303,10 +303,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		} else {
 			// Upgrade has failed
-			r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, "UpgradeTimedOut", "The ClusterGroupUpgrade CR policies are taking too long to complete")
-			r.Log.Info("CGU has timed out")
+			r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
+			r.Log.Info("CGU has failed")
 			r.addClustersStatusOnTimeout(clusterGroupUpgrade)
-			// On timeout we don't want to complete actions other then to delete the resources
+			// On failure we don't want to complete actions other then to delete the resources
 			err = r.deleteResources(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return
@@ -402,50 +402,46 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return
 			}
 
-			backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
-			if clusterGroupUpgrade.Status.Backup == nil || (backupCondition != nil && backupCondition.Status == metav1.ConditionTrue) {
+			// Rebuild remediation plan since we are about to start the upgrade and want to make sure the non-successful clusters were filtered out
+			r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 
-				// Rebuild remediation plan since we are about to start the upgrade and want to make sure the non-successful clusters were filtered out
-				r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
-
-				// Take actions before starting upgrade.
-				err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
-				if err != nil {
-					return
-				}
-
-				// If the remediation plan is empty, update the status.
-				// Because we are inside the backup condition check we know it was successful here
-				if clusterGroupUpgrade.Status.RemediationPlan == nil {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.Completed,
-						metav1.ConditionFalse,
-						"All clusters are compliant with all the managed policies",
-					)
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Succeeded,
-						utils.ConditionReasons.Completed,
-						metav1.ConditionTrue,
-						"All clusters already compliant with the specified managed policies",
-					)
-					nextReconcile = requeueImmediately()
-				} else {
-
-					// Start the upgrade.
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.InProgress,
-						metav1.ConditionTrue,
-						"Remediating non-compliant policies",
-					)
-					clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
-					nextReconcile = requeueImmediately()
-				}
+			// Take actions before starting upgrade.
+			err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
+			if err != nil {
+				return
 			}
+
+			// If the remediation plan is empty, update the status.
+			if clusterGroupUpgrade.Status.RemediationPlan == nil {
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.Completed,
+					metav1.ConditionFalse,
+					"All clusters are compliant with all the managed policies",
+				)
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Succeeded,
+					utils.ConditionReasons.Completed,
+					metav1.ConditionTrue,
+					"All clusters already compliant with the specified managed policies",
+				)
+				nextReconcile = requeueImmediately()
+			} else {
+
+				// Start the upgrade.
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.InProgress,
+					metav1.ConditionTrue,
+					"Remediating non-compliant policies",
+				)
+				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+				nextReconcile = requeueImmediately()
+			}
+
 		}
 		// If the condition is defined and the status isn't false, then it has to be true here
 		// so we can skip an explicit check for condition true
