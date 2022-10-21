@@ -283,6 +283,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			"No clusters available for remediation (Precaching failed)",
 		)
 		// Requeue is not required since the succeeded condition will be checked right after this
+		r.updateStatus(ctx, clusterGroupUpgrade)
 	}
 
 	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
@@ -311,7 +312,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			if err != nil {
 				return
 			}
-
 		}
 	} else if progressingCondition == nil || progressingCondition.Status == metav1.ConditionFalse {
 
@@ -399,6 +399,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				)
 				// Requeue is required here since we need to come back and check the succeeded condition for final cleanup
 				nextReconcile = requeueImmediately()
+				r.updateStatus(ctx, clusterGroupUpgrade)
 				return
 			}
 
