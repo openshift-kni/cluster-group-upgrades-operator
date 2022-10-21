@@ -271,6 +271,20 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Update the clusters list based on the precaching results
 	clusters = r.filterFailedPrecachingClusters(clusterGroupUpgrade, clusters)
 
+	// Check if there were any issues with the precaching
+	if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
+		// We expected to remediate some clusters but currently have none
+		// There should already be a condition present describing the issue we just need to set succeeded and requeue once
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.Succeeded,
+			utils.ConditionReasons.Failed,
+			metav1.ConditionFalse,
+			"No clusters available for remediation (Precaching failed)",
+		)
+		// Requeue is not required since the succeeded condition will be checked right after this
+	}
+
 	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 
 	if suceededCondition != nil {
@@ -345,13 +359,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// There are no blocking CRs, continue with the upgrade process.
 			// create backup
 
-			if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
-				// We expected to remediate some clusters but currently have none
-				// There should already be a condition present describing the issue so just reconcile and return
-				nextReconcile = requeueWithLongInterval()
-				return
-			}
-
 			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				r.Log.Error(err, "reconcileBackup error")
@@ -379,6 +386,22 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// Update the clusters list based on the backup results
 			clusters = r.filterFailedBackupClusters(clusterGroupUpgrade, clusters)
 
+			// Check if there were any issues with the backup
+			if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
+				// We expected to remediate some clusters but currently have none
+				// There should already be a condition present describing the issue we just need to set succeeded and requeue once
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Succeeded,
+					utils.ConditionReasons.Failed,
+					metav1.ConditionFalse,
+					"No clusters available for remediation (Backup failed)",
+				)
+				// Requeue is required here since we need to come back and check the succeeded condition for final cleanup
+				nextReconcile = requeueImmediately()
+				return
+			}
+
 			backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
 			if clusterGroupUpgrade.Status.Backup == nil || (backupCondition != nil && backupCondition.Status == metav1.ConditionTrue) {
 
@@ -392,6 +415,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				}
 
 				// If the remediation plan is empty, update the status.
+				// Because we are inside the backup condition check we know it was successful here
 				if clusterGroupUpgrade.Status.RemediationPlan == nil {
 					utils.SetStatusCondition(
 						&clusterGroupUpgrade.Status.Conditions,
