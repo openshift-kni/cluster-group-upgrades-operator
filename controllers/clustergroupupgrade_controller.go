@@ -277,6 +277,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		// There should already be a condition present describing the issue we just need to set succeeded and requeue once
 		utils.SetStatusCondition(
 			&clusterGroupUpgrade.Status.Conditions,
+			utils.ConditionTypes.Progressing,
+			utils.ConditionReasons.Completed,
+			metav1.ConditionFalse,
+			"No clusters available for remediation (Precaching failed)",
+		)
+		utils.SetStatusCondition(
+			&clusterGroupUpgrade.Status.Conditions,
 			utils.ConditionTypes.Succeeded,
 			utils.ConditionReasons.Failed,
 			metav1.ConditionFalse,
@@ -390,6 +397,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
 				// We expected to remediate some clusters but currently have none
 				// There should already be a condition present describing the issue we just need to set succeeded and requeue once
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.Completed,
+					metav1.ConditionFalse,
+					"No clusters available for remediation (Backup failed)",
+				)
 				utils.SetStatusCondition(
 					&clusterGroupUpgrade.Status.Conditions,
 					utils.ConditionTypes.Succeeded,
