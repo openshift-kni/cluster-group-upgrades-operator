@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cwd="${cwd:-/opt/precache}"
+cwd=$(dirname "$0")
 . $cwd/common
 
 extract_pull_spec(){

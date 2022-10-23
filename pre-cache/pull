@@ -4,39 +4,82 @@ cwd="${cwd:-/tmp/precache}"
 . $cwd/common
 
 mirror_images() {
+
     if ! [[ -f $pull_spec_file ]]; then
         log_debug "no pull spec provided - misconfiguration error"
         return 1
     fi
+    # definition of vars once the config is provided
+    local max_bg=$max_pull_threads
+    declare -A pids # Hash that include the images pulled along with their pids to be monitored by wait command
+    local total_pulls=$(sort -u $pull_spec_file | wc -l)  # Required to keep track of the pull task vs total
+    local current_pull=1
+
     for line in $(sort -u $pull_spec_file) ; do
         # Strip double quotes
         img="${line%\"}"
         img="${img#\"}"
-
+        log_debug "Pulling ${img} [${current_pull}/${total_pulls}]"
+        # If image is on disk, then skip. This improves the global performance
         $container_tool image exists $img
         if [[ $? == 0 ]]; then
             log_debug "Skipping existing image $img"
+            current_pull=$((current_pull + 1))
             continue
         fi
-        success=0
-        iterations=10
-        until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]
-        do
-            $container_tool  pull $img --authfile=/var/lib/kubelet/config.json
-            if [[ $? == 0 ]]; then
-                success=1
+        $container_tool pull $img --authfile=/var/lib/kubelet/config.json -q > /dev/null &
+        #$container_tool copy docker://${img} --authfile=/var/lib/kubelet/config.json containers-storage:${img} -q & # SKOPEO 
+        pids[${img}]=$! # Keeping track of the PID and container image in case the pull fails
+        max_bg=$((max_bg - 1)) # Batch size adapted 
+        current_pull=$((current_pull + 1)) 
+        if [[ $max_bg == 0 ]] # If the batch is done, then monitor the status of all pulls before moving to the next batch
+        then
+          for pid in ${!pids[@]}; do
+            wait ${pids[$pid]} # The way wait monitor for each background task (PID). If any error then copy the image in the failed array so it can be retried later
+            if [[ $? != 0 ]]; then
+              log_debug "Pull failed for container image: ${pid} . Retrying later... "
+              failed_pulls+=(${pid}) # Failed, then add the image to be retrieved later
             fi
-            iterations=$((iterations - 1))
-        done
-        if [[ $success == 0 ]]; then
-            log_debug "failed to pull ${img}"
+          done
+          # Once the batch is processed, reset the new batch size and clear the processes hash for the next one
+          max_bg=$max_pull_threads
+          pids=()
         fi
     done
-    log_debug "Image pre-cache done"
 }
 
+retry_images() {
+    local success
+    local iterations
+    local rv=0
+    for failed_pull in ${failed_pulls[@]}; do
+      success=0
+      iterations=10
+      until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]
+      do
+        log_debug "Retrying failed image pull: ${failed_pull}"
+        $container_tool pull $failed_pull --authfile=/var/lib/kubelet/config.json
+        if [[ $? == 0 ]]; then
+          success=1
+        fi
+          iterations=$((iterations - 1))
+      done
+      if [[ $success == 0 ]]; then
+       log_debug "Limit number of retries reached. The image could not be pulled: ${failed_pull}"
+       rv=1
+      fi
+    done
+    log_debug "Image pre-cache done"
+    return $rv
+}
 
 if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
+  failed_pulls=() # Array that will include all the images that failed to be pulled
   mirror_images
-  exit $?
+  retry_images # Return 1 if max.retries reached
+  if [[ $? -ne 0 ]]; then
+    log_debug "[FAIL] One or more images were not precached successfully"
+    exit 1
+  fi
+  exit 0
 fi
