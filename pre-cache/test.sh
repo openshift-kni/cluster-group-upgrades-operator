@@ -3,13 +3,13 @@
 set -e
 
 fatal() {
-  echo "FATAL: $@"
-  exit 1
+    echo "FATAL: $*"
+    exit 1
 }
 
-for f in common olm release pull
-do
+for f in common olm release pull; do
     echo "Testing import of $f"
+    # shellcheck disable=1090,2154
     . $cwd/$f
     rc=$?
     [[ $rc -eq 0 ]] || fatal "Could not import $f"
@@ -22,7 +22,8 @@ echo "test_index2" >> /tmp/operators.indexes
 echo "  package1:  channel1 " > /tmp/operators.packagesAndChannels
 echo "  package2:channel2" >> /tmp/operators.packagesAndChannels
 mkdir -p /tmp/release-manifests
-printf '{
+cat <<EOF > /tmp/release-manifests/image-references
+{
   "spec": {
     "tags": [
       {
@@ -31,35 +32,41 @@ printf '{
         }
       }]
   }
-}' > /tmp/release-manifests/image-references
+}
+EOF
+
+# shellcheck disable=SC2154
 (rm $pull_spec_file || true) &> /dev/null
 
+# shellcheck disable=SC2034
 container_tool=/usr/bin/echo
+# shellcheck disable=SC2034
 config_volume_path=/tmp
 
 # Test common
 echo "Testing common functions:"
 
+# shellcheck disable=SC2154
 result=$(pull_index "temp" $pull_secret_path)
 [[ $? -eq 0 ]] || fatal "pull_index unexpected exit code"
-[[ $result == "pull --quiet temp --root=/cache --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
+[[ $result == "pull --quiet temp --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
 echo " Index pull pass"
 
 result=$(mount_index test)
 [[ $? -eq 0 ]] || fatal "mount_index unexpected exit code"
-[[ $result == "--root=/cache image mount test" ]]  || fatal "Index image mount failure"
+[[ $result == "image mount test" ]]  || fatal "Index image mount failure"
 echo " Index image mount pass"
 
 result=$(unmount_index test)
 [[ $? -eq 0 ]] || fatal "mount_index_image unexpected exit code"
-[[ $result == "--root=/cache image unmount test" ]]  || fatal "Index image unmount failure"
+[[ $result == "image unmount test" ]]  || fatal "Index image unmount failure"
 echo " Index image unmount pass"
 
 # Test olm
 echo "Testing olm unit:"
 result=$(extract_packages)
 [[ $result == "package1,package2" ]]  || fatal "Package name extraction failure"
-echo " extract_packages - OK"
+echo " extract_packages - pass"
 
 # Test release
 echo "Testing release unit:"

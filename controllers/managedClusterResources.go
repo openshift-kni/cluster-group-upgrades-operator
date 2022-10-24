@@ -97,7 +97,9 @@ var allViews = []resourceTemplate{ // only used for deleting, hence empty templa
 }
 
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
-//      resources from templates using dynamic client
+//
+//	resources from templates using dynamic client
+//
 // returns:   error
 func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	ctx context.Context, data *templateData, templates []resourceTemplate) error {
@@ -170,8 +172,9 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
 
 // getView gets view resource
 // returns:     *unstructured.Unstructured (view data)
-//              bool (available)
-//              error
+//
+//	bool (available)
+//	error
 func (r *ClusterGroupUpgradeReconciler) getView(
 	ctx context.Context, name string, namespace string) (
 	*unstructured.Unstructured, bool, error) {
@@ -227,10 +230,13 @@ func (r *ClusterGroupUpgradeReconciler) checkViewProcessing(viewConditions []int
 }
 
 // renderYamlTemplate renders a single yaml template
-//            resourceName - resource name
-//            templateBody - template body
+//
+//	resourceName - resource name
+//	templateBody - template body
+//
 // returns:   bytes.Buffer rendered template
-//            error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	resourceName string,
 	templateBody string,
@@ -280,6 +286,8 @@ spec:
       kind: Namespace
       metadata:
         name: openshift-talo-pre-cache
+        labels:
+          pod-security.kubernetes.io/enforce: privileged
         annotations:
           workload.openshift.io/allowed: management
 `
@@ -375,7 +383,7 @@ spec:
               - -c
               env:
               - name: config_volume_path
-                value: /etc/config
+                value: /tmp/precache/config
               image: {{ .PrecachingWorkloadImage }}
               name: pre-cache-container
               resources: {}
