@@ -113,35 +113,33 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		// Initial State
 		case PrecacheStateNotStarted:
 			nextState, err = r.handleNotStarted(ctx, cluster)
-			if err != nil {
-				return err
-			}
+
 		case PrecacheStatePreparingToStart:
 			nextState, err = r.handlePreparing(ctx, cluster)
-			if err != nil {
-				return err
-			}
+
 		case PrecacheStateStarting:
 			nextState, err = r.handleStarting(ctx, clusterGroupUpgrade, cluster)
-			if err != nil {
-				return err
-			}
+
+		case PrecacheStateActive:
+			nextState, err = r.handleActive(ctx, cluster)
+
 		// Final states that don't change for the life of the CR
 		case PrecacheStateSucceeded, PrecacheStateTimeout, PrecacheStateError:
 			nextState = currentState
 			r.Log.Info("[precachingFsm]", "cluster", cluster, "final state", currentState)
-
-		case PrecacheStateActive:
-			nextState, err = r.handleActive(ctx, cluster)
-			if err != nil {
-				return err
-			}
+			continue
 
 		default:
 			return fmt.Errorf("[precachingFsm] unknown state %s", currentState)
 
 		}
-
+		if err != nil {
+			r.Log.Info("[precachingFsm]", "cluster", cluster, "err", err)
+			// Stop retrying on err and transition to the final state if CGU has been enabled
+			if *clusterGroupUpgrade.Spec.Enable == true {
+				nextState = PrecacheStateError
+			}
+		}
 		clusterStates[cluster] = nextState
 		r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 
