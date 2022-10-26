@@ -15,6 +15,7 @@ aliases:
     - danielmellado
     - jc-rh
     - Missxiaoguo
+    - fontivan
   upgrades-operator-approvers:
     - browsell
     - donpenney
@@ -28,3 +29,4 @@ aliases:
     - danielmellado
     - jc-rh
     - Missxiaoguo
+    - fontivan
