@@ -18,7 +18,7 @@ var (
 	etcPath             = "/etc"
 	binPath             = "/etc/kubernetes/static-pod-resources/bin/"
 	backupDir           = "/var/recovery"
-	backupSizeSafetyNet = 10.00 // in GiB
+	backupSizeSafetyNet = 10.00 * 1024 * 1024 * 1024 // in GiB
 	units               = []string{"B", "KiB", "MiB", "GiB", "TiB", "EiB", "ZiB"}
 )
 
@@ -34,49 +34,39 @@ type resourceList struct {
 // returns: boolean, error
 func compareBackupToDisk() (bool, error) {
 
-	estimated, err := estimateFsSpaceRequirements()
+	estimated, err := EstimateFsSpaceRequirements()
 	if err != nil {
 		log.Errorf("Couldn't calculate estimated disk space required for backup")
 		return false, err
 	}
 
-	freeDisk, err := diskPartitionSize()
+	freeDisk, err := DiskPartitionSize()
 	if err != nil {
 		log.Errorf("Couldn't calculate free disk space")
 		return false, err
 	}
 
-	estimated, ebytes := sizeConversion(estimated)
-	freeDisk, fbytes := sizeConversion(freeDisk)
+	estimatedSizeConverted, ebytes := SizeConversion(estimated)
+	freeDiskSizeConverted, fbytes := SizeConversion(freeDisk)
 
-	log.Infof("Available disk space : %.2f %s; Estimated disk space required for backup: %.2f %s \n", freeDisk, fbytes, estimated, ebytes)
+	log.Infof("Available disk space : %.2f %s; Estimated disk space required for backup: %.2f %s \n", freeDiskSizeConverted, fbytes, estimatedSizeConverted, ebytes)
 
-	// find the index of estimated and freedisk space in units[]
-	var ebytesID, fbytesID int
-	for i := range units {
-		if units[i] == ebytes {
-			ebytesID = i
-		}
-		if units[i] == fbytes {
-			fbytesID = i
-		}
-	}
-
-	if ebytesID <= fbytesID {
-		x := float64(fbytesID - ebytesID)
-		if x != 0.0 {
-			estimated /= 1024 * x
-		}
-		if freeDisk > backupSizeSafetyNet+estimated {
-			return true, nil
-		}
-	}
-	return false, nil
+	return Compare(freeDisk, estimated), nil
 }
 
-// estimateFsSpaceRequirements calculate the required backup size
+// Compare verifies freedisk against estimated and safetyNet calculation
+// returns: boolean
+func Compare(freeDisk, estimated float64) bool {
+
+	if freeDisk > estimated+backupSizeSafetyNet {
+		return true
+	}
+	return false
+}
+
+// EstimateFsSpaceRequirements calculate the required backup size
 // returns: disk size(float64), error
-func estimateFsSpaceRequirements() (float64, error) {
+func EstimateFsSpaceRequirements() (float64, error) {
 
 	DirList := resourceList{
 		&[]resource{{staticPodsPath},
@@ -98,14 +88,14 @@ func estimateFsSpaceRequirements() (float64, error) {
 
 		switch v.dirPath {
 		case staticPodsPath:
-			binPathSize := dirSize(binPath)
-			estDirMap[v.dirPath] = dirSize(v.dirPath) - binPathSize
+			binPathSize := DirSize(binPath)
+			estDirMap[v.dirPath] = DirSize(v.dirPath) - binPathSize
 
 		case clusterPath:
-			estDirMap[v.dirPath] = dirSize(v.dirPath) + estDirMap[staticPodsPath]
+			estDirMap[v.dirPath] = DirSize(v.dirPath) + estDirMap[staticPodsPath]
 
 		default:
-			estDirMap[v.dirPath] = dirSize(v.dirPath)
+			estDirMap[v.dirPath] = DirSize(v.dirPath)
 		}
 
 		total += estDirMap[v.dirPath]
@@ -114,9 +104,9 @@ func estimateFsSpaceRequirements() (float64, error) {
 	return total, nil
 }
 
-// diskPartitionSize calculate current disk space
+// DiskPartitionSize calculate current disk space
 // returns:     disk size(float64), error
-func diskPartitionSize() (float64, error) {
+func DiskPartitionSize() (float64, error) {
 
 	var (
 		stat          unix.Statfs_t
@@ -133,9 +123,9 @@ func diskPartitionSize() (float64, error) {
 	return freeDiskSpace, nil
 }
 
-// dirSize calculates current diskspace used by the files under a directory
+// DirSize calculates current diskspace used by the files under a directory
 // returns:    size of the directory(float64)
-func dirSize(path string) float64 {
+func DirSize(path string) float64 {
 	var size float64
 	var dirs []string
 
@@ -166,9 +156,9 @@ func dirSize(path string) float64 {
 	return size
 }
 
-// sizeConversion coverts the bytes into its multiple
+// SizeConversion coverts the bytes into its multiple
 // returns:  converted size(float64), corresponding metric(string)
-func sizeConversion(size float64) (float64, string) {
+func SizeConversion(size float64) (float64, string) {
 	i := 0
 	if size >= 1024 {
 		for i < len(units) && size >= 1024 {
