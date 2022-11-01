@@ -144,8 +144,6 @@ lint: ## Run golint against code.
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
 	go test -v ./controllers/...
-	@echo "Running backup unittests"
-	go test -v ./recovery/cmd/...
 
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
