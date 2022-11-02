@@ -141,8 +141,9 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			}
 		}
 		clusterStates[cluster] = nextState
-		r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
-
+		if currentState != nextState {
+			r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
+		}
 	}
 	clusterGroupUpgrade.Status.Precaching.Status = clusterStates
 	r.checkAllPrecachingDone(clusterGroupUpgrade)

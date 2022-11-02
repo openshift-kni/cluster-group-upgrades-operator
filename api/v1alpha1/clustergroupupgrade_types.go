@@ -221,8 +221,9 @@ type PrecachingStatus struct {
 
 // BackupStatus defines the observed backup status
 type BackupStatus struct {
-	Status   map[string]string `json:"status,omitempty"`
-	Clusters []string          `json:"clusters,omitempty"`
+	StartedAt metav1.Time       `json:"startedAt,omitempty"`
+	Status    map[string]string `json:"status,omitempty"`
+	Clusters  []string          `json:"clusters,omitempty"`
 }
 
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade

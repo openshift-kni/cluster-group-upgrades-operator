@@ -242,6 +242,9 @@ spec:
                     items:
                       type: string
                     type: array
+                  startedAt:
+                    format: date-time
+                    type: string
                   status:
                     additionalProperties:
                       type: string
