@@ -940,6 +940,7 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	labels["app"] = "openshift-cluster-group-upgrades"
 	labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = clusterGroupUpgrade.Name
 	labels["openshift-cluster-group-upgrades/parentPolicyName"] = managedPolicy.GetName()
+	labels[utils.ExcludeFromClusterBackup] = "true"
 	newPolicy.SetLabels(labels)
 
 	// Set new policy annotations - copy them from the managed policy.
@@ -1223,6 +1224,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/forPolicy":           policyName,
+				utils.ExcludeFromClusterBackup:                         "true",
 			},
 			"annotations": map[string]interface{}{
 				utils.DesiredResourceName: desiredName,
@@ -1374,6 +1376,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
+				utils.ExcludeFromClusterBackup:                         "true",
 			},
 			"annotations": map[string]interface{}{
 				utils.DesiredResourceName: desiredName,
