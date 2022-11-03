@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"time"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -21,6 +22,11 @@ const (
 	BackupStateError            = "UnrecoverableError"
 )
 
+const (
+	backupJobTimeout       = 480
+	backupJobTimeoutBuffer = 120
+)
+
 func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
@@ -30,8 +36,9 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 		// Backup is required
 		if clusterGroupUpgrade.Status.Backup == nil {
 			clusterGroupUpgrade.Status.Backup = &ranv1alpha1.BackupStatus{
-				Status:   make(map[string]string),
-				Clusters: []string{},
+				Status:    make(map[string]string),
+				Clusters:  []string{},
+				StartedAt: metav1.Now(),
 			}
 		}
 
@@ -55,6 +62,7 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 
 	clusterStates := make(map[string]string)
 	clusterGroupUpgrade.Status.Backup.Clusters = clusters
+	isTimedOut := time.Since(clusterGroupUpgrade.Status.Backup.StartedAt.Time) > time.Duration(backupJobTimeout+backupJobTimeoutBuffer)*time.Second
 
 	for _, cluster := range clusters {
 		var (
@@ -72,30 +80,37 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 		// Initial State
 		case BackupStatePreparingToStart:
 			nextState, err = r.backupPreparing(ctx, clusterGroupUpgrade, cluster)
-			if err != nil {
-				return err
-			}
+
 		case BackupStateStarting:
 			nextState, err = r.backupStarting(ctx, clusterGroupUpgrade, cluster)
-			if err != nil {
-				return err
-			}
+
+		case BackupStateActive:
+			nextState, err = r.backupActive(ctx, cluster)
+
 		// Final states that don't change for the life of the CR
 		case BackupStateSucceeded, BackupStateTimeout, BackupStateError:
 			nextState = currentState
 			r.Log.Info("[triggerBackup]", "cluster", cluster, "final state", currentState)
-
-		case BackupStateActive:
-			nextState, err = r.backupActive(ctx, cluster)
-			if err != nil {
-				return err
-			}
+			continue
 
 		default:
 			return fmt.Errorf("[triggerBackup] unknown state %s", currentState)
 
 		}
+
+		if err != nil {
+			r.Log.Info("[triggerBackup]", "cluster", cluster, "err", err)
+		}
+
+		if isTimedOut && (nextState == BackupStatePreparingToStart || nextState == BackupStateStarting || nextState == BackupStateActive) {
+			nextState = BackupStateTimeout
+		}
+
 		clusterStates[cluster] = nextState
+
+		if currentState != nextState {
+			r.Log.Info("[triggerBackup]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
+		}
 	}
 	clusterGroupUpgrade.Status.Backup.Status = clusterStates
 	r.checkAllBackupDone(clusterGroupUpgrade)

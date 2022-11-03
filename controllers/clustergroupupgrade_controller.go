@@ -110,6 +110,7 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.8.3/pkg/reconcile
+//
 //nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 
@@ -335,6 +336,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return
 		}
 
+		if clusterGroupUpgrade.Status.Status.StartedAt.IsZero() {
+			clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
+		}
 		// Check if there are any CRs that are blocking the start of the current one and are not yet completed.
 		var blockingCRsNotCompleted, blockingCRsMissing []string
 		blockingCRsNotCompleted, blockingCRsMissing, err = r.blockingCRsNotCompleted(ctx, clusterGroupUpgrade)
@@ -373,23 +377,20 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if clusterGroupUpgrade.Status.Backup != nil {
-				for _, v := range clusterGroupUpgrade.Status.Backup.Status {
-					//nolint
-					if v == BackupStatePreparingToStart || v == BackupStateStarting || v == BackupStateActive {
-						utils.SetStatusCondition(
-							&clusterGroupUpgrade.Status.Conditions,
-							utils.ConditionTypes.Progressing,
-							utils.ConditionReasons.NotStarted,
-							metav1.ConditionFalse,
-							"Cluster backup is in progress",
-						)
-						err = r.updateStatus(ctx, clusterGroupUpgrade)
-						nextReconcile = requeueWithShortInterval()
-						return
-					}
+				backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
+				if backupCondition == nil || backupCondition.Status == metav1.ConditionFalse {
+					utils.SetStatusCondition(
+						&clusterGroupUpgrade.Status.Conditions,
+						utils.ConditionTypes.Progressing,
+						utils.ConditionReasons.NotStarted,
+						metav1.ConditionFalse,
+						"Cluster backup is in progress",
+					)
+					err = r.updateStatus(ctx, clusterGroupUpgrade)
+					nextReconcile = requeueWithShortInterval()
+					return
 				}
 			}
-
 			// Update the clusters list based on the backup results
 			clusters = r.filterFailedBackupClusters(clusterGroupUpgrade, clusters)
 
@@ -453,7 +454,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					metav1.ConditionTrue,
 					"Remediating non-compliant policies",
 				)
-				clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
 				nextReconcile = requeueImmediately()
 			}
 
@@ -689,16 +689,17 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 }
 
 /*
-  getNextRemediationPoliciesForBatch: Each cluster is checked against each policy in order. If the cluster is not bound
-  to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
-  policy is found for the cluster or the end of the list is reached.
+getNextRemediationPoliciesForBatch: Each cluster is checked against each policy in order. If the cluster is not bound
+to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
+policy is found for the cluster or the end of the list is reached.
 
-  The policy currently applied for each cluster has its index held in
-  clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
-  policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
+The policy currently applied for each cluster has its index held in
+clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
+policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
 
-  returns: bool     : true if the batch is done upgrading; false if not
-           error/nil: in case any error happens
+returns: bool     : true if the batch is done upgrading; false if not
+
+	error/nil: in case any error happens
 */
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
@@ -745,12 +746,12 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 }
 
 /*
-  remediateCurrentBatch:
-  - steps through the remediationPolicyIndex and add the clusterNames to the corresponding
-  placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
-  - approves the needed InstallPlans for the Subscription type policies
+remediateCurrentBatch:
+- steps through the remediationPolicyIndex and add the clusterNames to the corresponding
+placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
+- approves the needed InstallPlans for the Subscription type policies
 
-  returns: error/nil
+returns: error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, nextReconcile *ctrl.Result) error {
@@ -889,11 +890,12 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	return foundPolicy, r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
 }
 
-/* doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
-   returns: true/false                   if all the policies exist or not
-			policiesInfo                 managed policies info including the missing policy names,
-			                             the invalid policy names and the policies present on the system
-			error
+/*
+	 doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
+	   returns: true/false                   if all the policies exist or not
+				policiesInfo                 managed policies info including the missing policy names,
+				                             the invalid policy names and the policies present on the system
+				error
 */
 func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
@@ -1251,11 +1253,13 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 	return u
 }
 
-/* getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
-   policy index for the requested cluster and returns the index of the first policy that has the cluster as NonCompliant.
+/*
+getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
 
-   returns: policyIndex the index of the next policy for which the cluster is NonCompliant or -1 if no policy found
-            error/nil
+	policy index for the requested cluster and returns the index of the first policy that has the cluster as NonCompliant.
+
+	returns: policyIndex the index of the next policy for which the cluster is NonCompliant or -1 if no policy found
+	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, error) {
@@ -1286,11 +1290,13 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	return currentPolicyIndex, nil
 }
 
-/* isUpgradeComplete checks if there is at least one managed policy left for which at least one cluster in the
-   batch is NonCompliant.
+/*
+isUpgradeComplete checks if there is at least one managed policy left for which at least one cluster in the
 
-   returns: true/false if the upgrade is complete
-            error/nil
+	batch is NonCompliant.
+
+	returns: true/false if the upgrade is complete
+	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
@@ -1541,25 +1547,25 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 }
 
 /*
-  getClusterComplianceWithPolicy returns the compliance of a certain cluster with a certain policy
-  based on a policy's status structure which is below. If a policy is bound to a placementRule, then
-  all the clusters bound to the policy will appear in status.status as either Compliant or NonCompliant.
+	  getClusterComplianceWithPolicy returns the compliance of a certain cluster with a certain policy
+	  based on a policy's status structure which is below. If a policy is bound to a placementRule, then
+	  all the clusters bound to the policy will appear in status.status as either Compliant or NonCompliant.
 
-  status:
-    compliant: NonCompliant
-    placement:
-    - placementBinding: binding-policy1-common-cluster-version-policy
-      placementRule: placement-policy1-common-cluster-version-policy
-    status:
-    - clustername: spoke1
-      clusternamespace: spoke1
-      compliant: NonCompliant
-    - clustername: spoke4
-      clusternamespace: spoke4
-      compliant: NonCompliant
+	  status:
+	    compliant: NonCompliant
+	    placement:
+	    - placementBinding: binding-policy1-common-cluster-version-policy
+	      placementRule: placement-policy1-common-cluster-version-policy
+	    status:
+	    - clustername: spoke1
+	      clusternamespace: spoke1
+	      compliant: NonCompliant
+	    - clustername: spoke4
+	      clusternamespace: spoke4
+	      compliant: NonCompliant
 
-	returns: *string pointer to a string holding either Compliant/NonCompliant/NotMatchedWithPolicy
-	         error
+		returns: *string pointer to a string holding either Compliant/NonCompliant/NotMatchedWithPolicy
+		         error
 */
 func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 	clusterName string, policy *unstructured.Unstructured) string {
@@ -1778,10 +1784,12 @@ func (r *ClusterGroupUpgradeReconciler) filterFailedBackupClusters(clusterGroupU
 	return clustersList
 }
 
-/* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
-   adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
+/*
+checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
 
-   returns: the updated childResourceNameList
+	adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
+
+	returns: the updated childResourceNameList
 */
 func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource *unstructured.Unstructured) ([]string, error) {
 	if desiredName, ok := newResource.GetAnnotations()[utils.DesiredResourceName]; ok {
