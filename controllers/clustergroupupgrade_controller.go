@@ -641,14 +641,25 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 
+	// If the index is longer then the remediation plan that would cause a nil access below
+	if batchIndex >= len(clusterGroupUpgrade.Status.RemediationPlan) {
+		return
+	}
+
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		clusterState := ranv1alpha1.ClusterState{
 			Name: batchClusterName, State: utils.ClusterRemediationComplete}
-		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State == ranv1alpha1.Completed {
+		// In certain edge cases we need to be careful to avoid a nil pointer on this access
+		clusterStatus := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
+		if clusterStatus == nil {
+			// Assume the cluster timed out if the status was not defined when it should have been
+			// This implies that this batch did not even get a chance to start
+			clusterState.State = utils.ClusterRemediationTimedout
+		} else if clusterStatus.State == ranv1alpha1.Completed {
 			clusterState.State = utils.ClusterRemediationComplete
 		} else {
 			clusterState.State = utils.ClusterRemediationTimedout
-			policyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
+			policyIndex := *clusterStatus.PolicyIndex
 			// Avoid panics because of index out of bound in edge cases
 			if policyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
 				clusterState.CurrentPolicy = &ranv1alpha1.PolicyStatus{
