@@ -191,12 +191,10 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
 			continue
 		}
 		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[*clusterProgress.PolicyIndex].Name
-
-		// If there is no monitored object saved for the current managed policy, return.
 		_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
 		if !ok {
-			r.Log.Info("[approveInstallPlan] No content for policy", "managedPolicyName", managedPolicyName)
-			return false, nil
+			r.Log.Info("[processMonitoredObjects] No monitored object found for policy", "managedPolicyName", managedPolicyName)
+			continue
 		}
 
 		// If there is content saved for the current managed policy, retrieve it.
