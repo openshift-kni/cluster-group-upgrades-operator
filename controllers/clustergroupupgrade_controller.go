@@ -222,7 +222,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				nextReconcile = requeueWithMediumInterval()
 				return nextReconcile, nil
 			}
-			err = r.processManagedPolicyForMonitoredObjects(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			err = r.processManagedPolicyForMonitoredObjects(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
 			if err != nil {
 				return
 			}

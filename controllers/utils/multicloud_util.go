@@ -104,7 +104,7 @@ var EnsureInstallPlanIsApproved = func(
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
 	}
-	clusterGroupUpgrade.Status.SafeResourceNames[mcvForInstallPlanName] = safeName
+
 	conditionMCVforInstallPlan := meta.FindStatusCondition(
 		mcvForInstallPlan.Status.Conditions, viewv1beta1.ConditionViewProcessing)
 	if conditionMCVforInstallPlan == nil {

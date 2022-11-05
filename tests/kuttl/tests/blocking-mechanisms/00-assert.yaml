@@ -68,8 +68,6 @@ status:
     cgu-a-common-cluster-version-policy-config: cgu-a-common-cluster-version-policy-config-kuttl
     cgu-a-common-pao-sub-policy-config: cgu-a-common-pao-sub-policy-config-kuttl
     cgu-a-common-ptp-sub-policy-config: cgu-a-common-ptp-sub-policy-config-kuttl
-    cgu-a-default-subscription-performance-addon-operator: cgu-a-default-subscription-performance-addon-operator-kuttl
-    cgu-a-default-subscription-ptp-operator-subscription: cgu-a-default-subscription-ptp-operator-subscription-kuttl
     cgu-a-policy1-common-cluster-version-policy: cgu-a-policy1-common-cluster-version-policy-kuttl
     cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
     cgu-a-policy2-common-pao-sub-policy: cgu-a-policy2-common-pao-sub-policy-kuttl
@@ -154,9 +152,6 @@ status:
     cgu-b-common-pao-sub-policy-config: cgu-b-common-pao-sub-policy-config-kuttl
     cgu-b-common-ptp-sub-policy-config: cgu-b-common-ptp-sub-policy-config-kuttl
     cgu-b-common-sriov-sub-policy-config: cgu-b-common-sriov-sub-policy-config-kuttl
-    cgu-b-default-subscription-performance-addon-operator: cgu-b-default-subscription-performance-addon-operator-kuttl
-    cgu-b-default-subscription-ptp-operator-subscription: cgu-b-default-subscription-ptp-operator-subscription-kuttl
-    cgu-b-default-subscription-sriov-network-operator-subscription: cgu-b-default-subscription-sriov-network-operator-subscription-kuttl
     cgu-b-policy1-common-cluster-version-policy: cgu-b-policy1-common-cluster-version-policy-kuttl
     cgu-b-policy1-common-cluster-version-policy-placement: cgu-b-policy1-common-cluster-version-policy-placement-kuttl
     cgu-b-policy2-common-pao-sub-policy: cgu-b-policy2-common-pao-sub-policy-kuttl
@@ -225,7 +220,6 @@ status:
   safeResourceNames:
     cgu-c-common-cluster-version-policy-config: cgu-c-common-cluster-version-policy-config-kuttl
     cgu-c-common-sriov-sub-policy-config: cgu-c-common-sriov-sub-policy-config-kuttl
-    cgu-c-default-subscription-sriov-network-operator-subscription: cgu-c-default-subscription-sriov-network-operator-subscription-kuttl
     cgu-c-policy1-common-cluster-version-policy: cgu-c-policy1-common-cluster-version-policy-kuttl
     cgu-c-policy1-common-cluster-version-policy-placement: cgu-c-policy1-common-cluster-version-policy-placement-kuttl
     cgu-c-policy4-common-sriov-sub-policy: cgu-c-policy4-common-sriov-sub-policy-kuttl

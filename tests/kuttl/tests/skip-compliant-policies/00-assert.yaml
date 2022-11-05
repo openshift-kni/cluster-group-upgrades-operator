@@ -70,8 +70,6 @@ status:
     cgu-common-cluster-version-policy-config: cgu-common-cluster-version-policy-config-kuttl
     cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
     cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
-    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
-    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
     cgu-policy1-common-cluster-version-policy: cgu-policy1-common-cluster-version-policy-kuttl
     cgu-policy1-common-cluster-version-policy-placement: cgu-policy1-common-cluster-version-policy-placement-kuttl
     cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
