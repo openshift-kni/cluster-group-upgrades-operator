@@ -79,7 +79,7 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 		switch currentState {
 		// Initial State
 		case BackupStatePreparingToStart:
-			nextState, err = r.backupPreparing(ctx, clusterGroupUpgrade, cluster)
+			nextState, err = r.backupPreparing(ctx, cluster)
 
 		case BackupStateStarting:
 			nextState, err = r.backupStarting(ctx, clusterGroupUpgrade, cluster)
@@ -119,20 +119,19 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 
 // backupPreparing handles conditions in BackupStatePreparingToStart
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	cluster string) (string, error) {
+func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, cluster string) (string, error) {
 
 	currentState, nextState := BackupStatePreparingToStart, BackupStateStarting
 	r.Log.Info("[triggerBackup]", "currentState", currentState, "condition", "entry",
 		"cluster", cluster, "nextState", nextState)
 
 	// delete managedclusterview objects if present
-	err := r.deleteAllViews(ctx, cluster, backupView)
+	err := r.deleteManagedClusterResources(ctx, cluster, append(backupView, backupMCAs...))
 	if err != nil {
 		return currentState, err
 	}
 
-	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+	spec, err := r.getBackupJobTemplateData(cluster)
 	if err != nil {
 		return currentState, err
 	}
@@ -160,7 +159,7 @@ func (r *ClusterGroupUpgradeReconciler) backupStarting(ctx context.Context, clus
 		return currentState, err
 	}
 	r.Log.Info("[starting]", "starting started condition: ", condition)
-	spec, err := r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+	spec, err := r.getBackupJobTemplateData(cluster)
 	if err != nil {
 		return currentState, err
 	}

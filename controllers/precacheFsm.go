@@ -159,7 +159,7 @@ func (r *ClusterGroupUpgradeReconciler) handleNotStarted(ctx context.Context,
 	r.Log.Info("[precachingFsm]", "currentState", currentState, "condition", "entry",
 		"cluster", cluster, "nextState", nextState)
 
-	err := r.deleteAllViews(ctx, cluster, precacheAllViews)
+	err := r.deleteManagedClusterResources(ctx, cluster, append(precacheAllViews, precacheMCAs...))
 	if err != nil {
 		return currentState, err
 	}
@@ -246,7 +246,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 		if err != nil {
 			return currentState, err
 		}
-		err = r.deleteManagedClusterViewResource(ctx, "view-precache-namespace", cluster)
+		err = r.deleteManagedClusterResource(ctx, "view-precache-namespace", cluster, viewGroupVersionKind())
 		if err != nil {
 			return currentState, err
 		}
