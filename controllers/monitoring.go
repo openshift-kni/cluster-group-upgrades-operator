@@ -6,12 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
-	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/types"
 )
 
 // ConfigurationObject defines the details of an object configured through a Policy
@@ -23,7 +20,7 @@ type ConfigurationObject struct {
 }
 
 func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForMonitoredObjects(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
 	for _, managedPolicy := range managedPoliciesForUpgrade {
 		// Get the policy content and create any needed ManagedClusterViews for subscription type policies.
 		monitoredObjects, err := r.getMonitoredObjects(managedPolicy)
@@ -41,7 +38,6 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForMonitoredObjects(
 			return err
 		}
 		clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicy.GetName()] = string(p)
-		r.createManagedClusterView(ctx, clusterGroupUpgrade, clusters, managedPolicy, monitoredObjects)
 	}
 
 	return nil
@@ -157,31 +153,6 @@ func isMonitoredObjectType(kind interface{}) bool {
 	return false
 }
 
-func (r *ClusterGroupUpgradeReconciler) createManagedClusterView(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, policy *unstructured.Unstructured, objects []ConfigurationObject) error {
-
-	nonCompliantClusters := r.getClustersNonCompliantWithPolicy(clusters, policy)
-
-	// Check if the current policy is also a subscription policy.
-	for _, object := range objects {
-		// Compute the name of the managedClusterView
-		managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, object.Kind, object.Name)
-		safeName := utils.GetSafeResourceName(managedClusterViewName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
-
-		// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
-		for _, nonCompliantCluster := range nonCompliantClusters {
-			_, err := utils.EnsureManagedClusterView(
-				ctx, r.Client, safeName, managedClusterViewName, nonCompliantCluster, object.Kind+"."+strings.Split(object.APIVersion, "/")[0],
-				object.Name, *object.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
-			if err != nil {
-				return err
-			}
-		}
-
-	}
-	return nil
-}
-
 func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 
@@ -193,7 +164,7 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
 		managedPolicyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[*clusterProgress.PolicyIndex].Name
 		_, ok := clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]
 		if !ok {
-			r.Log.Info("[processMonitoredObjects] No monitored object found for policy", "managedPolicyName", managedPolicyName)
+			// Current policy for this cluster doesn't contain any monitored object for processing, continue on to the next cluster
 			continue
 		}
 
@@ -220,17 +191,11 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 	// Get the managedClusterView for the monitored object contained in the current managedPolicy.
 	// If missing, then return error.
 	mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, object.Kind, object.Name)
-	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvName]
-	if !ok {
-		r.Log.Info("ManagedClusterView name should have been present, but it was not found")
-		return false, nil
-	}
-	mcv := &viewv1beta1.ManagedClusterView{}
-	if err := r.Get(ctx, types.NamespacedName{Name: safeName, Namespace: clusterName}, mcv); err != nil {
-		if errors.IsNotFound(err) {
-			r.Log.Info("ManagedClusterView should have been present, but it was not found")
-			return false, nil
-		}
+	safeName := utils.GetSafeResourceName(mcvName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
+	mcv, err := utils.EnsureManagedClusterView(
+		ctx, r.Client, safeName, mcvName, clusterName, object.Kind+"."+strings.Split(object.APIVersion, "/")[0],
+		object.Name, *object.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
+	if err != nil {
 		return false, err
 	}
 

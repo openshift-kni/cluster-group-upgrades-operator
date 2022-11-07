@@ -52,7 +52,6 @@ status:
   safeResourceNames:
     cgu-adjust-max-conc-common-cluster-version-policy-config: cgu-adjust-max-conc-common-cluster-version-policy-config-kuttl
     cgu-adjust-max-conc-common-pao-sub-policy-config: cgu-adjust-max-conc-common-pao-sub-policy-config-kuttl
-    cgu-adjust-max-conc-default-subscription-performance-addon-operator: cgu-adjust-max-conc-default-subscription-performance-addon-operator-kuttl
     cgu-adjust-max-conc-policy1-common-cluster-version-policy: cgu-adjust-max-conc-policy1-common-cluster-versio-kuttl
     cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement: cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
     cgu-adjust-max-conc-policy2-common-pao-sub-policy: cgu-adjust-max-conc-policy2-common-pao-sub-policy-kuttl
