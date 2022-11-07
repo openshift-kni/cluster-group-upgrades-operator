@@ -309,47 +309,49 @@ func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	var resourceTemplates []resourceTemplate
-	for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
-		if status == PrecacheStateSucceeded {
-			resourceTemplates = precacheAllViews
-		} else {
-			resourceTemplates = append(precacheAllViews, precacheMCAs...)
-		}
-		err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
+	if clusterGroupUpgrade.Status.Precaching != nil {
+		for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
+			if status == PrecacheStateSucceeded {
+				resourceTemplates = precacheAllViews
+			} else {
+				resourceTemplates = append(precacheAllViews, precacheMCAs...)
+			}
+			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+			data := templateData{
+				Cluster: cluster,
+			}
+			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
+			if err != nil {
+				return err
+			}
 		}
-		data := templateData{
-			Cluster: cluster,
-		}
-		err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
-		if err != nil {
-			return err
-		}
-
 	}
 
-	for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
-		if status == BackupStateSucceeded {
-			resourceTemplates = backupView
-		} else {
-			resourceTemplates = append(backupView, backupMCAs...)
-		}
+	if clusterGroupUpgrade.Status.Backup != nil {
+		for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
+			if status == BackupStateSucceeded {
+				resourceTemplates = backupView
+			} else {
+				resourceTemplates = append(backupView, backupMCAs...)
+			}
 
-		err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
+			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
 
-		if err != nil {
-			return err
+			if err != nil {
+				return err
+			}
+			data := templateData{
+				Cluster: cluster,
+			}
+			err = r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
+			if err != nil {
+				return err
+			}
 		}
-		data := templateData{
-			Cluster: cluster,
-		}
-		err = r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
-		if err != nil {
-			return err
-		}
-
 	}
 
 	return nil
