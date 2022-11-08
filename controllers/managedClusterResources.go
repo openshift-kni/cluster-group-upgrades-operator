@@ -308,9 +308,9 @@ func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	var resourceTemplates []resourceTemplate
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
+			var resourceTemplates []resourceTemplate
 			if status == PrecacheStateSucceeded {
 				resourceTemplates = precacheAllViews
 			} else {
@@ -333,6 +333,7 @@ func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 
 	if clusterGroupUpgrade.Status.Backup != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
+			var resourceTemplates []resourceTemplate
 			if status == BackupStateSucceeded {
 				resourceTemplates = backupView
 			} else {
