@@ -1995,7 +1995,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 				return utils.StopReconciling, err
 			}
 
-			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade, clusters)
+			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return utils.StopReconciling, err
 			}

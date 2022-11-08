@@ -89,12 +89,20 @@ var precacheNSViewTemplates = []resourceTemplate{
 	{"view-precache-namespace", templates.MngClusterViewNamespace},
 }
 
-var precacheAllViews = []resourceTemplate{ // only used for deleting, hence empty templates
-	{"view-precache-namespace", ""},
-	{"view-precache-job", ""},
-	{"view-precache-spec-configmap", ""},
-	{"view-precache-service-acct", ""},
-	{"view-precache-cluster-role-binding", ""},
+var precacheAllViews = []resourceTemplate{
+	{"view-precache-namespace", utils.ManagedClusterViewPrefix},
+	{"view-precache-job", utils.ManagedClusterViewPrefix},
+	{"view-precache-spec-configmap", utils.ManagedClusterViewPrefix},
+	{"view-precache-service-acct", utils.ManagedClusterViewPrefix},
+	{"view-precache-cluster-role-binding", utils.ManagedClusterViewPrefix},
+}
+
+var precacheMCAs = []resourceTemplate{
+	{"precache-ns-create", utils.ManagedClusterActionPrefix},
+	{"precache-spec-cm-create", utils.ManagedClusterActionPrefix},
+	{"precache-sa-create", utils.ManagedClusterActionPrefix},
+	{"precache-crb-create", utils.ManagedClusterActionPrefix},
+	{"precache-job-create", utils.ManagedClusterActionPrefix},
 }
 
 var backupDependenciesCreateTemplates = []resourceTemplate{
@@ -121,9 +129,16 @@ var backupDeleteTemplates = []resourceTemplate{
 	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
 }
 
-var backupView = []resourceTemplate{ // only used for deleting, hence empty templates
-	{"view-backup-job", ""},
-	{"view-backup-namespace", ""},
+var backupView = []resourceTemplate{
+	{"view-backup-job", utils.ManagedClusterViewPrefix},
+	{"view-backup-namespace", utils.ManagedClusterViewPrefix},
+}
+
+var backupMCAs = []resourceTemplate{
+	{"backup-ns-create", utils.ManagedClusterActionPrefix},
+	{"backup-sa-create", utils.ManagedClusterActionPrefix},
+	{"backup-crb-create", utils.ManagedClusterActionPrefix},
+	{"backup-job-create", utils.ManagedClusterActionPrefix},
 }
 
 var (
@@ -133,8 +148,26 @@ var (
 	backup            = "backup"
 )
 
+func viewGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   "view.open-cluster-management.io",
+		Kind:    "ManagedClusterView",
+		Version: "v1beta1",
+	}
+}
+
+func actionGroupVersionKind() schema.GroupVersionKind {
+	return schema.GroupVersionKind{
+		Group:   "action.open-cluster-management.io",
+		Kind:    "ManagedClusterAction",
+		Version: "v1beta1",
+	}
+}
+
 // createResourceFromTemplate creates managedclusteraction or managedclusterview
-//      resources from templates
+//
+//	resources from templates
+//
 // returns:   error
 func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	ctx context.Context, data *templateData, templates []resourceTemplate) error {
@@ -166,17 +199,13 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 	return nil
 }
 
-// deleteManagedClusterViewResource deletes view by name and namespace
+// deleteManagedClusterResource deletes resource by name and namespace
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
-	ctx context.Context, name string, namespace string) error {
+func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResource(
+	ctx context.Context, name string, namespace string, gvk schema.GroupVersionKind) error {
 
 	var obj = &unstructured.Unstructured{}
-	obj.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "view.open-cluster-management.io",
-		Kind:    "ManagedClusterView",
-		Version: "v1beta1",
-	})
+	obj.SetGroupVersionKind(gvk)
 	obj.SetName(name)
 	obj.SetNamespace(namespace)
 	err := r.Delete(ctx, obj)
@@ -188,18 +217,15 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterViewResource(
 
 // getView gets view resource
 // returns:     *unstructured.Unstructured (view data)
-//              bool (available)
-//              error
+//
+//	bool (available)
+//	error
 func (r *ClusterGroupUpgradeReconciler) getView(
 	ctx context.Context, name string, namespace string) (
 	*unstructured.Unstructured, bool, error) {
 
 	view := &unstructured.Unstructured{}
-	view.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "view.open-cluster-management.io",
-		Kind:    "ManagedClusterView",
-		Version: "v1beta1",
-	})
+	view.SetGroupVersionKind(viewGroupVersionKind())
 	err := r.Client.Get(ctx, client.ObjectKey{
 		Name:      name,
 		Namespace: namespace,
@@ -213,13 +239,19 @@ func (r *ClusterGroupUpgradeReconciler) getView(
 	return view, true, nil
 }
 
-// deleteAllViews deletes all managed cluster view resources
+// deleteManagedClusterResources deletes all managed cluster resources in the templates
 // returns: error
-func (r *ClusterGroupUpgradeReconciler) deleteAllViews(ctx context.Context, cluster string, deleteViews []resourceTemplate) error {
+func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResources(ctx context.Context, cluster string, resources []resourceTemplate) error {
 	// Cleanup all existing view objects that might have been left behind
 	// in case of a crash etc.
-	for _, item := range deleteViews {
-		err := r.deleteManagedClusterViewResource(ctx, item.resourceName, cluster)
+	for _, item := range resources {
+		var err error
+		switch item.template {
+		case utils.ManagedClusterViewPrefix:
+			err = r.deleteManagedClusterResource(ctx, item.resourceName, cluster, viewGroupVersionKind())
+		case utils.ManagedClusterActionPrefix:
+			err = r.deleteManagedClusterResource(ctx, item.resourceName, cluster, actionGroupVersionKind())
+		}
 		if err != nil {
 			if !errors.IsNotFound(err) {
 				return err
@@ -245,10 +277,13 @@ func (r *ClusterGroupUpgradeReconciler) checkViewProcessing(viewConditions []int
 }
 
 // renderYamlTemplate renders a single yaml template
-//            resourceName - resource name
-//            templateBody - template body
+//
+//	resourceName - resource name
+//	templateBody - template body
+//
 // returns:   bytes.Buffer rendered template
-//            error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	resourceName string,
 	templateBody string,
@@ -267,48 +302,56 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	return w, nil
 }
 
-// precachingCleanup deletes all precaching objects. Called when upgrade is done
+// jobAndViewCleanup deletes all precaching/backup objects. Called when upgrade is done
 // returns: 			error
 func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 	ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
-	clusters []string) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	var viewTemplate, deleteTemplate []resourceTemplate
+	if clusterGroupUpgrade.Status.Precaching != nil {
+		for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
+			var resourceTemplates []resourceTemplate
+			if status == PrecacheStateSucceeded {
+				resourceTemplates = precacheAllViews
+			} else {
+				resourceTemplates = append(precacheAllViews, precacheMCAs...)
+			}
+			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
 
-	switch {
-	case clusterGroupUpgrade.Spec.Backup && clusterGroupUpgrade.Spec.PreCaching:
-		for _, v := range append(backupView, precacheAllViews...) {
-			viewTemplate = append(viewTemplate, v)
+			if err != nil {
+				return err
+			}
+			data := templateData{
+				Cluster: cluster,
+			}
+			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
+			if err != nil {
+				return err
+			}
 		}
-		for _, v := range append(backupDeleteTemplates, precacheDeleteTemplates...) {
-			deleteTemplate = append(deleteTemplate, v)
-		}
-
-	case clusterGroupUpgrade.Spec.Backup:
-		viewTemplate = backupView
-		deleteTemplate = backupDeleteTemplates
-
-	case clusterGroupUpgrade.Spec.PreCaching:
-		viewTemplate = precacheAllViews
-		deleteTemplate = precacheDeleteTemplates
-
-	default:
-		return nil
 	}
 
-	for _, cluster := range clusters {
-		err := r.deleteAllViews(ctx, cluster, viewTemplate)
+	if clusterGroupUpgrade.Status.Backup != nil {
+		for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
+			var resourceTemplates []resourceTemplate
+			if status == BackupStateSucceeded {
+				resourceTemplates = backupView
+			} else {
+				resourceTemplates = append(backupView, backupMCAs...)
+			}
 
-		if err != nil {
-			return err
-		}
-		data := templateData{
-			Cluster: cluster,
-		}
-		err = r.createResourcesFromTemplates(ctx, &data, deleteTemplate)
-		if err != nil {
-			return err
+			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
+
+			if err != nil {
+				return err
+			}
+			data := templateData{
+				Cluster: cluster,
+			}
+			err = r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
@@ -317,7 +360,8 @@ func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
 
 // getPreparingConditions gets the pre-caching preparing conditions
 // returns: condition (string)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getPreparingConditions(
 	ctx context.Context, cluster, resourceName string) (
 	string, error) {
@@ -346,7 +390,8 @@ func (r *ClusterGroupUpgradeReconciler) getPreparingConditions(
 
 // getJobStatus gets job status from its view
 // returns: condition (string)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 	jobView *unstructured.Unstructured) (string, error) {
 	usJobStatus, exists, err := unstructured.NestedFieldCopy(
@@ -394,7 +439,8 @@ func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 
 // getStartingConditions gets the pre-caching starting conditions
 // returns: condition (string)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getStartingConditions(
 	ctx context.Context, cluster, resourceName string, jobType string) (
 	string, error) {
@@ -440,7 +486,8 @@ func (r *ClusterGroupUpgradeReconciler) getStartingConditions(
 
 // getActiveCondition gets the pre-caching active state conditions
 // returns: condition (string)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getActiveConditions(
 	ctx context.Context, cluster, resourceName string) (
 	string, error) {
@@ -468,9 +515,12 @@ func (r *ClusterGroupUpgradeReconciler) getActiveConditions(
 }
 
 // checkDependenciesViews check all precache job dependencies views
-//		have been deployed
+//
+//	have been deployed
+//
 // returns: available (bool)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) checkDependenciesViews(
 	ctx context.Context, cluster string) (bool, error) {
 
@@ -489,7 +539,8 @@ func (r *ClusterGroupUpgradeReconciler) checkDependenciesViews(
 
 // checkDependencies check all precache job dependencies are available
 // returns: 	available (bool)
-//				error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 	ctx context.Context, cluster, jobType string) (bool, error) {
 
@@ -530,7 +581,8 @@ func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 
 // getPrecacheJobTemplateData initializes template data for the job creation
 // returns: 	*templateData
-//				error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) (
@@ -551,13 +603,13 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 
 // getBackupJobTemplateData initializes template data for the backup job creation
 // returns: 	*templateData
-//				error
-func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) (*templateData, error) {
+//
+//	error
+func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterName string) (*templateData, error) {
 
 	rv := new(templateData)
 	rv.Cluster = clusterName
-	rv.JobTimeout = uint64(
-		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)
+	rv.JobTimeout = uint64(backupJobTimeout)
 
 	rv.WorkloadImage = os.Getenv("RECOVERY_IMG")
 	r.Log.Info("[getBackupJobTemplateData]", "workload image", rv.WorkloadImage)
@@ -570,7 +622,9 @@ func (r *ClusterGroupUpgradeReconciler) getBackupJobTemplateData(clusterGroupUpg
 }
 
 // deployPrecachingWorkload deploys precaching workload on the spoke
-//          using a set of templated manifests
+//
+//	using a set of templated manifests
+//
 // returns: error
 func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	ctx context.Context,
@@ -590,7 +644,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 			cluster, "status", "success")
 
 	case backup:
-		spec, err = r.getBackupJobTemplateData(clusterGroupUpgrade, cluster)
+		spec, err = r.getBackupJobTemplateData(cluster)
 		if err != nil {
 			return err
 		}
@@ -602,7 +656,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	}
 
 	// Delete the job view so it is refreshed
-	err = r.deleteManagedClusterViewResource(ctx, mcvTemplate, cluster)
+	err = r.deleteManagedClusterResource(ctx, mcvTemplate, cluster, viewGroupVersionKind())
 	// if the job view is not present, we should continue
 	if err != nil {
 		if !errors.IsNotFound(err) {
@@ -622,8 +676,8 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 func (r *ClusterGroupUpgradeReconciler) deleteDependenciesViews(
 	ctx context.Context, cluster string) error {
 	for _, item := range precacheDependenciesViewTemplates {
-		err := r.deleteManagedClusterViewResource(
-			ctx, item.resourceName, cluster)
+		err := r.deleteManagedClusterResource(
+			ctx, item.resourceName, cluster, viewGroupVersionKind())
 		if err != nil {
 			if errors.IsNotFound(err) {
 				continue
