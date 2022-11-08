@@ -72,9 +72,6 @@ status:
     cgu-cluster-selector-common-pao-sub-policy-config: cgu-cluster-selector-common-pao-sub-policy-config-kuttl
     cgu-cluster-selector-common-ptp-sub-policy-config: cgu-cluster-selector-common-ptp-sub-policy-config-kuttl
     cgu-cluster-selector-common-sriov-sub-policy-config: cgu-cluster-selector-common-sriov-sub-policy-config-kuttl
-    cgu-cluster-selector-default-subscription-performance-addon-operator: cgu-cluster-selector-default-subscription-performance-addon-operator-kuttl
-    cgu-cluster-selector-default-subscription-ptp-operator-subscription: cgu-cluster-selector-default-subscription-ptp-operator-subscription-kuttl
-    cgu-cluster-selector-default-subscription-sriov-network-operator-subscription: cgu-cluster-selector-default-subscription-sriov-network-operator-subscription-kuttl
     cgu-cluster-selector-policy1-common-cluster-version-policy: cgu-cluster-selector-policy1-common-cluster-versi-kuttl
     cgu-cluster-selector-policy1-common-cluster-version-policy-placement: cgu-cluster-selector-policy1-common-cluster-version-policy-placement-kuttl
     cgu-cluster-selector-policy2-common-pao-sub-policy: cgu-cluster-selector-policy2-common-pao-sub-polic-kuttl
