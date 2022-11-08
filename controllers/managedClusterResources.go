@@ -89,7 +89,7 @@ var precacheNSViewTemplates = []resourceTemplate{
 	{"view-precache-namespace", templates.MngClusterViewNamespace},
 }
 
-var precacheAllViews = []resourceTemplate{ // only used for deleting, hence resource type as templates
+var precacheAllViews = []resourceTemplate{
 	{"view-precache-namespace", utils.ManagedClusterViewPrefix},
 	{"view-precache-job", utils.ManagedClusterViewPrefix},
 	{"view-precache-spec-configmap", utils.ManagedClusterViewPrefix},
@@ -97,7 +97,7 @@ var precacheAllViews = []resourceTemplate{ // only used for deleting, hence reso
 	{"view-precache-cluster-role-binding", utils.ManagedClusterViewPrefix},
 }
 
-var precacheMCAs = []resourceTemplate{ // only used for deleting, hence resource type as templates
+var precacheMCAs = []resourceTemplate{
 	{"precache-ns-create", utils.ManagedClusterActionPrefix},
 	{"precache-spec-cm-create", utils.ManagedClusterActionPrefix},
 	{"precache-sa-create", utils.ManagedClusterActionPrefix},
@@ -129,12 +129,12 @@ var backupDeleteTemplates = []resourceTemplate{
 	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
 }
 
-var backupView = []resourceTemplate{ // only used for deleting, hence resource type as templates
+var backupView = []resourceTemplate{
 	{"view-backup-job", utils.ManagedClusterViewPrefix},
 	{"view-backup-namespace", utils.ManagedClusterViewPrefix},
 }
 
-var backupMCAs = []resourceTemplate{ // only used for deleting, hence resource type as templates
+var backupMCAs = []resourceTemplate{
 	{"backup-ns-create", utils.ManagedClusterActionPrefix},
 	{"backup-sa-create", utils.ManagedClusterActionPrefix},
 	{"backup-crb-create", utils.ManagedClusterActionPrefix},
