@@ -51,8 +51,6 @@ status:
   safeResourceNames:
     cgu-common-pao-sub-policy-config: cgu-common-pao-sub-policy-config-kuttl
     cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
-    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
     cgu-policy2-common-pao-sub-policy: cgu-policy2-common-pao-sub-policy-kuttl
     cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
     cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl

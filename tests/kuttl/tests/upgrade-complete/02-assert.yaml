@@ -13,7 +13,7 @@ spec:
   - policy2-common-pao-sub-policy
   remediationStrategy:
     maxConcurrency: 1
-    timeout: 240
+    timeout: 241
 status:
   conditions:
   - message: The ClusterGroupUpgrade CR has upgrade policies that are still non compliant
@@ -45,7 +45,6 @@ status:
   safeResourceNames:
     cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
     cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
-    cgu-upgrade-complete-default-subscription-performance-addon-operator: cgu-upgrade-complete-default-subscription-performance-addon-operator-kuttl
     cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
     cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
     cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
