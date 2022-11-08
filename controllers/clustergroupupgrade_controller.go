@@ -1674,6 +1674,13 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	selectorClusters := []string{}
 	keys := make(map[string]bool)
 
+	// Check to make sure at least one cluster selection method is defined
+	if clusterGroupUpgrade.Spec.Clusters == nil &&
+		clusterGroupUpgrade.Spec.ClusterSelector == nil &&
+		clusterGroupUpgrade.Spec.ClusterLabelSelectors == nil {
+		return clusterNames, errors.NewBadRequest("no cluster specified for remediation")
+	}
+
 	// First add all the clusters explicitly specified in the spec
 	for _, clusterName := range clusterGroupUpgrade.Spec.Clusters {
 		// Make sure a cluster name doesn't appear twice.
