@@ -13,6 +13,6 @@ configMapGenerator:
 images:
 - name: controller
   newName: quay.io/openshift-kni/cluster-group-upgrades-operator
-  newTag: 4.12.0
+  newTag: 4.13.0
 patchesStrategicMerge:
 - related-images/patch.yaml
