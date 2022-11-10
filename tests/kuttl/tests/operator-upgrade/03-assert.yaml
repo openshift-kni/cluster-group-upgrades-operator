@@ -1,0 +1,202 @@
+# Check the ManagedClusterActions.
+# spoke1
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-aaaa1-kuttl
+  namespace: spoke1
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-logging
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-aaaa1
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-aaaa2-kuttl
+  namespace: spoke1
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-local-storage
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-aaaa2
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-aaaa3-kuttl
+  namespace: spoke1
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-performance-addon-operator
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-aaaa3
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-aaaa4-kuttl
+  namespace: spoke1
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-ptp
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-aaaa4
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-aaaa5-kuttl
+  namespace: spoke1
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-sriov-network-operator
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-aaaa5
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+# spoke2
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-bbbb1-kuttl
+  namespace: spoke2
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-logging
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-bbbb1
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-bbbb2-kuttl
+  namespace: spoke2
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-local-storage
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-bbbb2
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-bbbb3-kuttl
+  namespace: spoke2
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-performance-addon-operator
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-bbbb3
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-bbbb4-kuttl
+  namespace: spoke2
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-ptp
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-bbbb4
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: cgu-default-installplan-install-bbbb5-kuttl
+  namespace: spoke2
+spec:
+  actionType: Update
+  kube:
+    namespace: openshift-sriov-network-operator
+    resource: installplan
+    template:
+      apiVersion: operators.coreos.com/v1alpha1
+      kind: InstallPlan
+      metadata:
+        name: install-bbbb5
+        resourceVersion: "1532546"
+      spec:
+        approval: Manual
+        approved: true

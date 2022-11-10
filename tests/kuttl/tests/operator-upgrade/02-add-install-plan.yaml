@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the Subscription ManagedClusterViews.
+  - command: ../../../../deploy/upgrades/operator-upgrade/patch-sub-mcv-status.sh
+    ignoreFailure: false
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":242}}}' --type=merge

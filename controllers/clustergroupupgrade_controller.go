@@ -41,7 +41,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -216,7 +215,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					return nextReconcile, nil
 				}
 
-				err = r.processManagedPolicyForUpgradeContent(ctx, clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+				err = r.processManagedPolicyForUpgradeContent(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
 				if err != nil {
 					return
 				}
@@ -469,16 +468,17 @@ func (r *ClusterGroupUpgradeReconciler) initializeRemediationPolicyForBatch(
 }
 
 /*
-  getNextRemediationPoliciesForBatch: Each cluster is checked against each policy in order. If the cluster is not bound
-  to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
-  policy is found for the cluster or the end of the list is reached.
+getNextRemediationPoliciesForBatch: Each cluster is checked against each policy in order. If the cluster is not bound
+to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
+policy is found for the cluster or the end of the list is reached.
 
-  The policy currently applied for each cluster has its index held in
-  clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
-  policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
+The policy currently applied for each cluster has its index held in
+clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
+policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
 
-  returns: bool     : true if the batch is done upgrading; false if not
-           error/nil: in case any error happens
+returns: bool     : true if the batch is done upgrading; false if not
+
+	error/nil: in case any error happens
 */
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
@@ -518,12 +518,12 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 }
 
 /*
-  remediateCurrentBatch:
-  - steps through the remediationPolicyIndex and add the clusterNames to the corresponding
-  placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
-  - approves the needed InstallPlans for the Subscription type policies
+remediateCurrentBatch:
+- steps through the remediationPolicyIndex and add the clusterNames to the corresponding
+placement rules in order so that at the end of a batch upgrade, all the copied policies are Compliant.
+- approves the needed InstallPlans for the Subscription type policies
 
-  returns: error/nil
+returns: error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, nextReconcile *ctrl.Result) error {
@@ -596,19 +596,12 @@ func (r *ClusterGroupUpgradeReconciler) approveInstallPlan(
 			// Get the managedClusterView for the subscription contained in the current managedPolicy.
 			// If missing, then return error.
 			mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-			safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[mcvName]
-			if !ok {
-				r.Log.Info("ManagedClusterView name should have been present, but it was not found")
-				continue
-			}
-			mcv := &viewv1beta1.ManagedClusterView{}
-			if err := r.Get(ctx, types.NamespacedName{Name: safeName, Namespace: clusterName}, mcv); err != nil {
-				if errors.IsNotFound(err) {
-					r.Log.Info("ManagedClusterView should have been present, but it was not found")
-					continue
-				} else {
-					return false, err
-				}
+			safeName := utils.GetSafeResourceName(mcvName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
+			mcv, err := utils.EnsureManagedClusterView(
+				ctx, r.Client, safeName, mcvName, clusterName, "Subscription.operators.coreos.com",
+				policyContent.Name, *policyContent.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
+			if err != nil {
+				return false, err
 			}
 
 			// If the specific managedClusterView was found, check that it's condition Reason is "GetResourceProcessing"
@@ -729,11 +722,12 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	return foundPolicy, r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
 }
 
-/* doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
-   returns: true/false                   if all the policies exist or not
-			policiesInfo                 managed policies info including the missing policy names,
-			                             the invalid policy names and the policies present on the system
-			error
+/*
+	 doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
+	   returns: true/false                   if all the policies exist or not
+				policiesInfo                 managed policies info including the missing policy names,
+				                             the invalid policy names and the policies present on the system
+				error
 */
 func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
@@ -861,7 +855,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 }
 
 func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
 	for _, managedPolicy := range managedPoliciesForUpgrade {
 		// Get the policy content and create any needed ManagedClusterViews for subscription type policies.
 		policyTypes, err := r.getPolicyContent(clusterGroupUpgrade, managedPolicy)
@@ -874,44 +868,8 @@ func (r *ClusterGroupUpgradeReconciler) processManagedPolicyForUpgradeContent(
 			return err
 		}
 		clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicy.GetName()] = string(p)
-		r.createSubscriptionManagedClusterView(ctx, clusterGroupUpgrade, managedPolicy, policyTypes)
 	}
 
-	return nil
-}
-
-func (r *ClusterGroupUpgradeReconciler) createSubscriptionManagedClusterView(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured, policyContent []ranv1alpha1.PolicyContent) error {
-
-	nonCompliantClusters, err := r.getClustersNonCompliantWithPolicy(ctx, clusterGroupUpgrade, policy)
-	if err != nil {
-		return err
-	}
-
-	policyContentArr := []ranv1alpha1.PolicyContent{}
-	json.Unmarshal(
-		[]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[policy.GetName()]),
-		&policyContentArr)
-
-	// Check if the current policy is also a subscription policy.
-	for _, policyContent := range policyContentArr {
-		if policyContent.Kind == utils.PolicyTypeSubscription {
-
-			// Compute the name of the managedClusterView
-			managedClusterViewName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, policyContent.Kind, policyContent.Name)
-			safeName := utils.GetSafeResourceName(managedClusterViewName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
-
-			// Create managedClusterView in each of the NonCompliant managed clusters' namespaces to access information for the policy.
-			for _, nonCompliantCluster := range nonCompliantClusters {
-				_, err = utils.EnsureManagedClusterView(
-					ctx, r.Client, safeName, managedClusterViewName, nonCompliantCluster, "subscriptions.operators.coreos.com",
-					policyContent.Name, *policyContent.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
 	return nil
 }
 
@@ -1076,7 +1034,9 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 // getPolicyContent goes through all the managed policies that have been validated at the beginning
 // to get the configured resource content if it's a Subscription CR.
 // returns:     []ranv1alpha1.PolicyContent      a list of resource content
-//              error/nil
+//
+//	error/nil
+//
 //nolint:unparam
 func (r *ClusterGroupUpgradeReconciler) getPolicyContent(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPolicy *unstructured.Unstructured) ([]ranv1alpha1.PolicyContent, error) {
@@ -1249,11 +1209,13 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 	return u
 }
 
-/* getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
-   policy index for the requested cluster and returns the index of the first policy that has the cluster as NonCompliant.
+/*
+getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
 
-   returns: policyIndex the index of the next policy for which the cluster is NonCompliant or -1 if no policy found
-            error/nil
+	policy index for the requested cluster and returns the index of the first policy that has the cluster as NonCompliant.
+
+	returns: policyIndex the index of the next policy for which the cluster is NonCompliant or -1 if no policy found
+	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, error) {
@@ -1284,11 +1246,13 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	return currentPolicyIndex, nil
 }
 
-/* isUpgradeComplete checks if there is at least one managed policy left for which at least one cluster in the
-   batch is NonCompliant.
+/*
+isUpgradeComplete checks if there is at least one managed policy left for which at least one cluster in the
 
-   returns: true/false if the upgrade is complete
-            error/nil
+	batch is NonCompliant.
+
+	returns: true/false if the upgrade is complete
+	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
@@ -1541,25 +1505,25 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithPolicy(
 }
 
 /*
-  getClusterComplianceWithPolicy returns the compliance of a certain cluster with a certain policy
-  based on a policy's status structure which is below. If a policy is bound to a placementRule, then
-  all the clusters bound to the policy will appear in status.status as either Compliant or NonCompliant.
+	  getClusterComplianceWithPolicy returns the compliance of a certain cluster with a certain policy
+	  based on a policy's status structure which is below. If a policy is bound to a placementRule, then
+	  all the clusters bound to the policy will appear in status.status as either Compliant or NonCompliant.
 
-  status:
-    compliant: NonCompliant
-    placement:
-    - placementBinding: binding-policy1-common-cluster-version-policy
-      placementRule: placement-policy1-common-cluster-version-policy
-    status:
-    - clustername: spoke1
-      clusternamespace: spoke1
-      compliant: NonCompliant
-    - clustername: spoke4
-      clusternamespace: spoke4
-      compliant: NonCompliant
+	  status:
+	    compliant: NonCompliant
+	    placement:
+	    - placementBinding: binding-policy1-common-cluster-version-policy
+	      placementRule: placement-policy1-common-cluster-version-policy
+	    status:
+	    - clustername: spoke1
+	      clusternamespace: spoke1
+	      compliant: NonCompliant
+	    - clustername: spoke4
+	      clusternamespace: spoke4
+	      compliant: NonCompliant
 
-	returns: *string pointer to a string holding either Compliant/NonCompliant/NotMatchedWithPolicy
-	         error
+		returns: *string pointer to a string holding either Compliant/NonCompliant/NotMatchedWithPolicy
+		         error
 */
 func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 	clusterName string, policy *unstructured.Unstructured) string {
@@ -1717,10 +1681,12 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-/* checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
-   adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
+/*
+checkDuplicateChildResources looks up the name and desired name of the new resource in the list of resource names and the safe name map, before
 
-   returns: the updated childResourceNameList
+	adding the names to them. If duplicate (with same desired name annotation value) resource is found, it gets deleted, i.e. the new one takes precedence.
+
+	returns: the updated childResourceNameList
 */
 func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource *unstructured.Unstructured) ([]string, error) {
 	if desiredName, ok := newResource.GetAnnotations()[utils.DesiredResourceName]; ok {
