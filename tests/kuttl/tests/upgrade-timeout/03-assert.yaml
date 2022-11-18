@@ -1,0 +1,50 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 0
+status:
+  clusters:
+    - name: spoke1
+      state: complete
+    - currentPolicy:
+        name: policy1-common-cluster-version-policy
+        status: NonCompliant
+      name: spoke4
+      state: timedout
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Progressing
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Succeeded
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  remediationPlan:
+  - - spoke1
+  - - spoke4
