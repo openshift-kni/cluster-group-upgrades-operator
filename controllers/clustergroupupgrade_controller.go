@@ -150,15 +150,40 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return
 	}
 
-	// This may be empty for the first reconcile but that's fine since it will get overwritten by the start of the cgu
-	clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
+	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 	progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
 
-	var allManagedPoliciesExist bool
-	var managedPoliciesInfo policiesInfo
+	if suceededCondition != nil {
+		if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+			if suceededCondition.Status == metav1.ConditionTrue {
+				// Upgrade has successfully finished
+				r.Log.Info("Upgrade is completed")
+				// Take actions after upgrade is completed
+				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+					return
+				}
+			} else {
+				// Upgrade has failed
+				// On failure we don't want to complete actions other then to delete the resources
+				err = r.deleteResources(ctx, clusterGroupUpgrade)
+				if err != nil {
+					return
+				}
+				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
+				r.Log.Info("CGU has failed")
+				r.addClustersStatusOnTimeout(clusterGroupUpgrade)
+			}
+			// Set completion time only after post actions are executed with no errors
+			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
+			clusterGroupUpgrade.Status.Status.CurrentBatch = 0
+			clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress = nil
+		}
+	} else if progressingCondition == nil || progressingCondition.Status == metav1.ConditionFalse {
 
-	if progressingCondition == nil || (progressingCondition.Status == metav1.ConditionFalse && progressingCondition.Reason != string(utils.ConditionReasons.Completed)) {
-
+		var allManagedPoliciesExist bool
+		var managedPoliciesInfo policiesInfo
+		var clusters []string
 		var reconcile bool
 		clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 		if err != nil {
@@ -251,77 +276,47 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			err = r.updateStatus(ctx, clusterGroupUpgrade)
 			return
 		}
-	}
 
-	err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
-	if err != nil {
-		r.Log.Error(err, "reconcilePrecaching error")
-		return
-	}
-	if clusterGroupUpgrade.Status.Precaching != nil {
-		for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
-			//nolint
-			if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting || v == PrecacheStateActive {
-				err = r.updateStatus(ctx, clusterGroupUpgrade)
-				nextReconcile = requeueWithShortInterval()
-				return
-			}
+		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+		if err != nil {
+			r.Log.Error(err, "reconcilePrecaching error")
+			return
 		}
-	}
-
-	// Update the clusters list based on the precaching results
-	clusters = r.filterFailedPrecachingClusters(clusterGroupUpgrade, clusters)
-
-	// Check if there were any issues with the precaching
-	if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
-		// We expected to remediate some clusters but currently have none
-		// There should already be a condition present describing the issue we just need to set succeeded and requeue once
-		utils.SetStatusCondition(
-			&clusterGroupUpgrade.Status.Conditions,
-			utils.ConditionTypes.Progressing,
-			utils.ConditionReasons.Completed,
-			metav1.ConditionFalse,
-			"No clusters available for remediation (Precaching failed)",
-		)
-		utils.SetStatusCondition(
-			&clusterGroupUpgrade.Status.Conditions,
-			utils.ConditionTypes.Succeeded,
-			utils.ConditionReasons.Failed,
-			metav1.ConditionFalse,
-			"No clusters available for remediation (Precaching failed)",
-		)
-		// Requeue is not required since the succeeded condition will be checked right after this
-		r.updateStatus(ctx, clusterGroupUpgrade)
-	}
-
-	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
-
-	if suceededCondition != nil {
-		if suceededCondition.Status == metav1.ConditionTrue {
-			// Upgrade has successfully finished
-			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-				r.Log.Info("Upgrade is completed")
-				// Take actions after upgrade is completed
-				clusterGroupUpgrade.Status.Status.CurrentBatch = 0
-				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
-				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
+		if clusterGroupUpgrade.Status.Precaching != nil {
+			for _, v := range clusterGroupUpgrade.Status.Precaching.Status {
+				//nolint
+				if v == PrecacheStatePreparingToStart || v == PrecacheStateStarting || v == PrecacheStateActive {
+					err = r.updateStatus(ctx, clusterGroupUpgrade)
+					nextReconcile = requeueWithShortInterval()
 					return
 				}
-				// Set completion time only after post actions are executed with no errors
-				clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
-			}
-		} else {
-			// Upgrade has failed
-			r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
-			r.Log.Info("CGU has failed")
-			r.addClustersStatusOnTimeout(clusterGroupUpgrade)
-			// On failure we don't want to complete actions other then to delete the resources
-			err = r.deleteResources(ctx, clusterGroupUpgrade)
-			if err != nil {
-				return
 			}
 		}
-	} else if progressingCondition == nil || progressingCondition.Status == metav1.ConditionFalse {
+
+		// Update the clusters list based on the precaching results
+		clusters = r.filterFailedPrecachingClusters(clusterGroupUpgrade, clusters)
+
+		// Check if there were any issues with the precaching
+		if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
+			// We expected to remediate some clusters but currently have none
+			// There should already be a condition present describing the issue we just need to set succeeded and requeue once
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.Completed,
+				metav1.ConditionFalse,
+				"No clusters available for remediation (Precaching failed)",
+			)
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.Succeeded,
+				utils.ConditionReasons.Failed,
+				metav1.ConditionFalse,
+				"No clusters available for remediation (Precaching failed)",
+			)
+			// Requeue is not required since the succeeded condition will be checked right after this
+			r.updateStatus(ctx, clusterGroupUpgrade)
+		}
 
 		if !*clusterGroupUpgrade.Spec.Enable {
 			utils.SetStatusCondition(
