@@ -13,13 +13,16 @@ spec:
   - policy2-common-pao-sub-policy
   remediationStrategy:
     maxConcurrency: 1
-    timeout: 240
+    timeout: 0
 status:
   clusters:
     - name: spoke1
       state: complete
-    - name: spoke4
-      state: complete
+    - currentPolicy:
+        name: policy1-common-cluster-version-policy
+        status: NonCompliant
+      name: spoke4
+      state: timedout
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
@@ -29,13 +32,13 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: All clusters are compliant with all the managed policies
-    reason: Completed
+  - message: Policy remediation took too long
+    reason: TimedOut
     status: "False"
     type: Progressing
-  - message: All clusters are compliant with all the managed policies
-    reason: Completed
-    status: "True"
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
     type: Succeeded
   managedPoliciesForUpgrade:
   - name: policy1-common-cluster-version-policy
