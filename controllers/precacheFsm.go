@@ -96,13 +96,11 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 
 	clusterGroupUpgrade.Status.Precaching.Clusters = clusters
 
-	clusterStates := make(map[string]string)
 	for _, cluster := range clusters {
 		var currentState string
-		if len(clusterGroupUpgrade.Status.Precaching.Status) == 0 {
+		var ok bool
+		if currentState, ok = clusterGroupUpgrade.Status.Precaching.Status[cluster]; !ok {
 			currentState = PrecacheStateNotStarted
-		} else {
-			currentState = clusterGroupUpgrade.Status.Precaching.Status[cluster]
 		}
 		var (
 			nextState string
@@ -140,12 +138,11 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 				nextState = PrecacheStateError
 			}
 		}
-		clusterStates[cluster] = nextState
+		clusterGroupUpgrade.Status.Precaching.Status[cluster] = nextState
 		if currentState != nextState {
 			r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 		}
 	}
-	clusterGroupUpgrade.Status.Precaching.Status = clusterStates
 	r.checkAllPrecachingDone(clusterGroupUpgrade)
 	return nil
 }
