@@ -262,6 +262,30 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
       - name: cluster-group-upgrades-controller-manager
