@@ -75,10 +75,14 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 	if err != nil {
 		return "", fmt.Errorf("unable to request update graph on url %s: %w", updateGraphURL, err)
 	}
+	if res.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("error response from update graph url %s: %d", updateGraphURL, res.StatusCode)
+	}
 
 	defer res.Body.Close()
+
 	body, err := ioutil.ReadAll(res.Body)
-	if err != nil {
+	if err != nil && len(body) > 0 {
 		return "", fmt.Errorf("unable to read body from response: %w", err)
 	}
 
