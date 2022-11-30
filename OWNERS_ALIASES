@@ -16,6 +16,7 @@ aliases:
     - jc-rh
     - Missxiaoguo
     - fontivan
+    - pixelsoccupied
   upgrades-operator-approvers:
     - browsell
     - donpenney
