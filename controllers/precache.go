@@ -92,14 +92,14 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 		return "", fmt.Errorf("unable to unmarshal body: %w", err)
 	}
 
-	nodes := graph["nodes"].([]interface{})
-	for _, n := range nodes {
-		node := n.(map[string]interface{})
-		if node["version"] == version {
-			return node["payload"].(string), nil
+	if nodes, ok := graph["nodes"]; ok {
+		for _, n := range nodes.([]interface{}) {
+			node := n.(map[string]interface{})
+			if node["version"] == version && node["payload"] != "" {
+				return node["payload"].(string), nil
+			}
 		}
 	}
-
 	return "", fmt.Errorf("unable to find version %s on update graph on url %s", version, updateGraphURL)
 }
 
