@@ -638,6 +638,8 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 
 	// If the index is longer then the remediation plan that would cause a nil access below
 	if batchIndex >= len(clusterGroupUpgrade.Status.RemediationPlan) {
+		r.Log.Info("Batch index out of range")
+		r.Log.Info("[addClustersStatusOnTimeout]", "RemediationPlan", clusterGroupUpgrade.Status.RemediationPlan)
 		return
 	}
 
@@ -654,6 +656,15 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 			clusterState.State = utils.ClusterRemediationComplete
 		} else {
 			clusterState.State = utils.ClusterRemediationTimedout
+
+			if clusterStatus.PolicyIndex == nil {
+				r.Log.Info("[addClustsersStatusOnTimeout] Undefined policy index for cluster")
+				r.Log.Info("[addClustersStatusOnTimeout]", "batchClusterName", batchClusterName)
+				r.Log.Info("[addClustersStatusOnTimeout]", "batchIndex", batchIndex)
+				r.Log.Info("[addClustersStatusOnTimeout]", "RemediationPlan", clusterGroupUpgrade.Status.RemediationPlan)
+				continue
+			}
+
 			policyIndex := *clusterStatus.PolicyIndex
 			// Avoid panics because of index out of bound in edge cases
 			if policyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
