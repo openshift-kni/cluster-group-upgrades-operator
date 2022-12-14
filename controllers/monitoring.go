@@ -106,8 +106,7 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 			// Filter only Subscription templates.
 			if !isMonitoredObjectType(kind) {
 				r.Log.Info(
-					"[getPolicyContent] Policy spec.policy-templates.objectDefinition.spec.object-templates.kind does not need to be monitored",
-					"policyName", managedPolicyName)
+					"[getPolicyContent] Object does not need to be monitored", "policyName", managedPolicyName, "kind", kind)
 				continue
 			}
 
