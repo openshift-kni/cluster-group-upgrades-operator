@@ -56,9 +56,10 @@ type ClusterGroupUpgradeReconciler struct {
 }
 
 type policiesInfo struct {
-	invalidPolicies []string
-	missingPolicies []string
-	presentPolicies []*unstructured.Unstructured
+	invalidPolicies   []string
+	missingPolicies   []string
+	presentPolicies   []*unstructured.Unstructured
+	compliantPolicies []*unstructured.Unstructured
 }
 
 const statusUpdateWaitInMilliSeconds = 100
@@ -276,8 +277,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			err = r.updateStatus(ctx, clusterGroupUpgrade)
 			return
 		}
-
-		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+		// Pass in already compliant policies as the catalog source info is needed by precaching
+		err = r.reconcilePrecaching(ctx, clusterGroupUpgrade, clusters, append(managedPoliciesInfo.presentPolicies, managedPoliciesInfo.compliantPolicies...))
 		if err != nil {
 			r.Log.Error(err, "reconcilePrecaching error")
 			return
@@ -1002,6 +1003,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 
 				if len(clustersNonCompliantWithPolicy) == 0 {
 					managedPoliciesCompliantBeforeUpgrade = append(managedPoliciesCompliantBeforeUpgrade, foundPolicy.GetName())
+					managedPoliciesInfo.compliantPolicies = append(managedPoliciesInfo.compliantPolicies, foundPolicy)
 					continue
 				}
 
