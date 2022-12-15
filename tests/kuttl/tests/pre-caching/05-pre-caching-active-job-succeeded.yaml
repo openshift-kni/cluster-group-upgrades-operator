@@ -6,4 +6,6 @@ commands:
   - command: ../../../../deploy/upgrades/pre-caching/patch-job-mcv-status-succeeded.sh
     ignoreFailure: false
   # Force a quick reconcile
-  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
