@@ -9,3 +9,4 @@ commands:
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu
         --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+        
