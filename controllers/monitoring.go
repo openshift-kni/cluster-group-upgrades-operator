@@ -93,8 +93,7 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 			}
 
 			objectDefinitionMetadataContent := innerObjectDefinitionContent["metadata"].(map[string]interface{})
-			// Save the kind, name and namespace if they exist and if kind is of Subscription type.
-			// If kind is missing, log and skip.
+
 			kind, ok := innerObjectDefinitionContent["kind"]
 			if !ok {
 				r.Log.Info(
@@ -103,16 +102,10 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 				continue
 			}
 
-			// Filter only Subscription templates.
 			if !isMonitoredObjectType(kind) {
-				r.Log.Info(
-					"[getPolicyContent] Policy spec.policy-templates.objectDefinition.spec.object-templates.kind does not need to be monitored",
-					"policyName", managedPolicyName)
 				continue
 			}
 
-			// If name is missing, log and skip. We need Subscription name in order to have a valid content for
-			// Subscription InstallPlan approval.
 			_, ok = objectDefinitionMetadataContent["name"]
 			if !ok {
 				r.Log.Info(
@@ -121,7 +114,6 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 				continue
 			}
 
-			// If namespace is missing, log and skip.
 			_, ok = objectDefinitionMetadataContent["namespace"]
 			if !ok {
 				r.Log.Info(

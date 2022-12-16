@@ -3,7 +3,7 @@ kind: TestStep
 
 commands:
   # Delete all the managed inform policies
-  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy0-common-config-policy.yaml
     namespaced: true
   - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
     namespaced: true
@@ -13,11 +13,11 @@ commands:
     namespaced: true
 
   # Delete all the child policies to map the inform policies above.
-  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true
-  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true
-  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true
 
   - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
@@ -42,3 +42,5 @@ commands:
   # Delete the UOCR.
   - command: oc delete -f ../../../../deploy/upgrades/skip-compliant-policies/skip-compliant-policies.yaml
     namespaced: true
+
+  - command: ../../../../deploy/upgrades/pre-caching/cleanup.sh 
