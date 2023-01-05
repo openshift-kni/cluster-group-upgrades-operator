@@ -44,7 +44,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | NotAllManagedPoliciesExist| Missing managed policies: policyList,  invalid managed policies: policyList |
   | | False | InvalidPlatformImage | Error related to platform image |
   `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
-  | | False | InvalidPlatformImage| Precaching spec is incomplete |
+  | | False | PrecacheSpecIncomplete| Precaching spec is incomplete |
   `PrecachingSucceeded` | True | PrecachingCompleted | Precaching is completed for all clusters|
   | | True | PartiallyDone | Precaching failed for x clusters | 
   | | False | InProgress | Precaching is not completed | 

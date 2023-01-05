@@ -10,7 +10,7 @@ commands:
 testDirs:
 - tests/kuttl/tests/
 crdDir: ./config/crd/bases/
-timeout: 30
+timeout: 25
 parallel: 1
 namespace: default
 
