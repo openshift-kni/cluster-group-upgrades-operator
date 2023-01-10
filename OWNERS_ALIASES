@@ -17,6 +17,7 @@ aliases:
     - Missxiaoguo
     - fontivan
     - pixelsoccupied
+    - sudomakeinstall2 
   upgrades-operator-approvers:
     - browsell
     - donpenney
@@ -31,3 +32,4 @@ aliases:
     - jc-rh
     - Missxiaoguo
     - fontivan
+    - sudomakeinstall2 
