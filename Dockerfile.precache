@@ -6,4 +6,5 @@ COPY pre-cache/release \
      pre-cache/parse_index.py \
      pre-cache/pull \
      pre-cache/precache.sh \
-     /opt/precache
+     pre-cache/check_space \
+     /opt/precache/
