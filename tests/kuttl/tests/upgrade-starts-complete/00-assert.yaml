@@ -14,7 +14,9 @@ spec:
     maxConcurrency: 1
     timeout: 240
 status:
-
+  clusters:
+    - name: spoke1
+      state: complete
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
