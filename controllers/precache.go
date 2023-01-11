@@ -37,6 +37,8 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 				Status:   make(map[string]string),
 				Clusters: []string{},
 			}
+		} else if clusterGroupUpgrade.Status.Precaching.Status == nil {
+			clusterGroupUpgrade.Status.Precaching.Status = make(map[string]string)
 		}
 
 		precachingCondition := meta.FindStatusCondition(
@@ -104,12 +106,14 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 }
 
 // extractPrecachingSpecFromPolicies extracts the software spec to be pre-cached
-// 		from policies.
-//		There are three object types to look at in the policies:
-//      - ClusterVersion: release image must be specified to be pre-cached
-//      - Subscription: provides the list of operator packages and channels
-//      - CatalogSource: must be explicitly configured to be precached.
-//        All the clusters in the CGU must have same catalog source(s)
+//
+//			from policies.
+//			There are three object types to look at in the policies:
+//	     - ClusterVersion: release image must be specified to be pre-cached
+//	     - Subscription: provides the list of operator packages and channels
+//	     - CatalogSource: must be explicitly configured to be precached.
+//	       All the clusters in the CGU must have same catalog source(s)
+//
 // returns: precachingSpec, error
 func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	policies []*unstructured.Unstructured) (ranv1alpha1.PrecachingSpec, error) {
@@ -153,7 +157,8 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 
 // stripPolicy strips policy information and returns the underlying objects
 // returns: []interface{} - list of the underlying objects in the policy
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) stripPolicy(
 	policyObject map[string]interface{}) ([]map[string]interface{}, error) {
 
@@ -187,7 +192,8 @@ func (r *ClusterGroupUpgradeReconciler) stripPolicy(
 
 // deployDependencies deploys precaching workload dependencies
 // returns: ok (bool)
-//			error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
@@ -213,7 +219,8 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 
 // getPrecacheimagePullSpec gets the precaching workload image pull spec.
 // returns: image - pull spec string
-//          error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
@@ -238,7 +245,8 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
 // returns: precacheTemplateData (softwareSpec)
-//          error
+//
+//	error
 func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) *templateData {
 
@@ -252,16 +260,18 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 
 // includeSoftwareSpecOverrides includes software spec overrides if present
 // Overrides can be used to force a specific pre-cache workload or payload
-//		irrespective of the configured policies or the operator csv. This can be done
-//		by creating a Configmap object named "cluster-group-upgrade-overrides"
-//		in the CGU namespace with zero or more of the following "data" entries:
-//		1. "precache.image" - pre-caching workload image pull spec. Normally derived
-//			from the operator ClusterServiceVersion object.
-//		2. "platform.image" - OCP release image pull URI
-//		3. "operators.indexes" - OLM index images (list of index image URIs)
-//		4. "operators.packagesAndChannels" - operator packages and channels
-//			(list of  <package:channel> string entries)
-//		If overrides are used, the configmap must be created before the CGU
+//
+//	irrespective of the configured policies or the operator csv. This can be done
+//	by creating a Configmap object named "cluster-group-upgrade-overrides"
+//	in the CGU namespace with zero or more of the following "data" entries:
+//	1. "precache.image" - pre-caching workload image pull spec. Normally derived
+//		from the operator ClusterServiceVersion object.
+//	2. "platform.image" - OCP release image pull URI
+//	3. "operators.indexes" - OLM index images (list of index image URIs)
+//	4. "operators.packagesAndChannels" - operator packages and channels
+//		(list of  <package:channel> string entries)
+//	If overrides are used, the configmap must be created before the CGU
+//
 // returns: *ranv1alpha1.PrecachingSpec, error
 func (r *ClusterGroupUpgradeReconciler) includeSoftwareSpecOverrides(
 	ctx context.Context,
