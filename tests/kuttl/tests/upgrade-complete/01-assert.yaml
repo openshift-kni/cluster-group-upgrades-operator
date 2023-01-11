@@ -7,6 +7,7 @@ spec:
   clusters:
   - spoke1
   - spoke4
+  - spoke6
   enable: true
   managedPolicies:
   - policy1-common-cluster-version-policy
@@ -77,3 +78,10 @@ metadata:
   labels:
     ztp-running: ""
   name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ""
+  name: spoke6

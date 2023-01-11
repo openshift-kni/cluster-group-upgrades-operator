@@ -23,5 +23,6 @@ spec:
   clusters:
   - spoke1
   - spoke4
+  - spoke6
   remediationStrategy:
     maxConcurrency: 1

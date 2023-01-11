@@ -14,6 +14,7 @@ spec:
     maxConcurrency: 1
     timeout: 240
 status:
+
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
@@ -35,3 +36,10 @@ status:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   status: {}
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ""
+  name: spoke1
