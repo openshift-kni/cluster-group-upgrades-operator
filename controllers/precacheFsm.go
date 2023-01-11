@@ -76,7 +76,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.PrecacheSpecValid,
-				utils.ConditionReasons.InvalidPlatformImage,
+				utils.ConditionReasons.PrecacheSpecIncomplete,
 				metav1.ConditionFalse,
 				fmt.Sprintf("Precaching spec is incomplete: %s", msg),
 			)

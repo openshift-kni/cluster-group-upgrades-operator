@@ -37,6 +37,8 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 				Status:   make(map[string]string),
 				Clusters: []string{},
 			}
+		} else if clusterGroupUpgrade.Status.Precaching.Status == nil {
+			clusterGroupUpgrade.Status.Precaching.Status = make(map[string]string)
 		}
 
 		precachingCondition := meta.FindStatusCondition(

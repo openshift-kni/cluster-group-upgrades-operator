@@ -49,6 +49,7 @@ var ConditionReasons = struct {
 	ClusterNotFound               ConditionReason
 	NotPresent                    ConditionReason
 	PartiallyDone                 ConditionReason
+	PrecacheSpecIncomplete        ConditionReason
 	PrecacheSpecIsWellFormed      ConditionReason
 	TimedOut                      ConditionReason
 }{
@@ -69,6 +70,7 @@ var ConditionReasons = struct {
 	ClusterNotFound:               "ClusterNotFound",
 	NotPresent:                    "NotPresent",
 	PartiallyDone:                 "PartiallyDone",
+	PrecacheSpecIncomplete:        "PrecacheSpecIncomplete",
 	PrecacheSpecIsWellFormed:      "PrecacheSpecIsWellFormed",
 	TimedOut:                      "TimedOut",
 }
