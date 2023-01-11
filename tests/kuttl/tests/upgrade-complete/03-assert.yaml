@@ -17,6 +17,8 @@ spec:
     timeout: 240
 status:
   clusters:
+    - name: spoke6
+      state: complete      
     - name: spoke1
       state: complete
     - name: spoke4

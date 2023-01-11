@@ -168,7 +168,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeNormal, suceededCondition.Reason, suceededCondition.Message)
 			} else {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
-				r.addClustersStatusOnTimeout(clusterGroupUpgrade)
+				r.addTimedoutClustersInStatus(clusterGroupUpgrade)
 			}
 			// Set completion time only after post actions are executed with no errors
 			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
@@ -505,7 +505,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// If the upgrade is completed for the current batch, cleanup and move to the next.
 				r.Log.Info("[Reconcile] Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
 				r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
-				r.addClustersStatusOnCompleteBatch(clusterGroupUpgrade)
 				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
 				clusterGroupUpgrade.Status.Status.CurrentBatch++
 				nextReconcile = requeueImmediately()
@@ -552,7 +551,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							)
 						} else {
 							r.Log.Info("Batch upgrade timed out")
-							r.addClustersStatusOnTimeout(clusterGroupUpgrade)
+							r.addTimedoutClustersInStatus(clusterGroupUpgrade)
 							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
 							case ranv1alpha1.BatchTimeoutAction.Abort:
 								// If the value was abort then we need to fail out
@@ -618,7 +617,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	return
 }
 
-func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
+func (r *ClusterGroupUpgradeReconciler) addTimedoutClustersInStatus(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
 	// check if batch is initialized in case of timeout happened before the batch starting
@@ -649,9 +648,7 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 			// Assume the cluster timed out if the status was not defined when it should have been
 			// This implies that this batch did not even get a chance to start
 			clusterState.State = utils.ClusterRemediationTimedout
-		} else if clusterStatus.State == ranv1alpha1.Completed {
-			clusterState.State = utils.ClusterRemediationComplete
-		} else {
+		} else if clusterStatus.State == ranv1alpha1.InProgress {
 			clusterState.State = utils.ClusterRemediationTimedout
 
 			if clusterStatus.PolicyIndex == nil {
@@ -670,17 +667,6 @@ func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnTimeout(
 					Status: utils.ClusterStatusNonCompliant}
 			}
 		}
-		clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
-	}
-}
-
-func (r *ClusterGroupUpgradeReconciler) addClustersStatusOnCompleteBatch(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
-
-	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		clusterState := ranv1alpha1.ClusterState{
-			Name: batchClusterName, State: utils.ClusterRemediationComplete}
 		clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 	}
 }
@@ -1323,7 +1309,6 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 	}
 
 	if isBatchComplete {
-		r.addClustersStatusOnCompleteBatch(clusterGroupUpgrade)
 		// Check previous batches
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
