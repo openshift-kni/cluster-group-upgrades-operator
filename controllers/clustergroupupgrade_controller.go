@@ -156,22 +156,18 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	if suceededCondition != nil {
 		if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-			if suceededCondition.Status == metav1.ConditionTrue {
-				// Upgrade has successfully finished
-				r.Log.Info("Upgrade is completed")
-				// Take actions after upgrade is completed
-				if err = r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade); err != nil {
-					return
-				}
-			} else {
-				// Upgrade has failed
-				// On failure we don't want to complete actions other then to delete the resources
+			deleteObjects := clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteObjects
+			if deleteObjects == nil || *deleteObjects {
 				err = r.deleteResources(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return
 				}
+			}
+
+			if suceededCondition.Status == metav1.ConditionTrue {
+				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeNormal, suceededCondition.Reason, suceededCondition.Message)
+			} else {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
-				r.Log.Info("CGU has failed")
 				r.addClustersStatusOnTimeout(clusterGroupUpgrade)
 			}
 			// Set completion time only after post actions are executed with no errors
@@ -234,7 +230,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			)
 
 			// Build the upgrade batches.
-			r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			r.buildRemediationPlan(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 
 			// Recheck clusters list for any changes to the plan
 			clusters = r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
@@ -415,7 +411,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			// Rebuild remediation plan since we are about to start the upgrade and want to make sure the non-successful clusters were filtered out
-			r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			r.buildRemediationPlan(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 
 			// Take actions before starting upgrade.
 			err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
@@ -753,6 +749,10 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 		if currentPolicyIndex >= numberOfPolicies {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = nil
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.Completed
+			err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, batchClusterName)
+			if err != nil {
+				return false, err
+			}
 		} else {
 			isBatchComplete = false
 			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = currentPolicyIndex
@@ -1635,7 +1635,7 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 	return clustersNonCompliantMap
 }
 
-func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPolicies []*unstructured.Unstructured) {
 	// Get all clusters from the CR that are non compliant with at least one of the managedPolicies.
 	clusterNonCompliantWithManagedPoliciesMap := r.getClustersNonCompliantWithManagedPolicies(clusters, managedPolicies)
@@ -1645,10 +1645,11 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	isCanary := make(map[string]bool)
 	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
 		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
-			// TODO: make sure the canary clusters are in the list of clusters.
 			if clusterNonCompliantWithManagedPoliciesMap[canary] {
 				remediationPlan = append(remediationPlan, []string{canary})
 				isCanary[canary] = true
+			} else if *clusterGroupUpgrade.Spec.Enable {
+				r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, canary)
 			}
 		}
 	}
@@ -1656,10 +1657,14 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	var batch []string
 	clusterCount := 0
 	for i := 0; i < len(clusters); i++ {
-		site := clusters[i]
-		if !isCanary[site] && clusterNonCompliantWithManagedPoliciesMap[site] {
-			batch = append(batch, site)
-			clusterCount++
+		cluster := clusters[i]
+		if !isCanary[cluster] {
+			if clusterNonCompliantWithManagedPoliciesMap[cluster] {
+				batch = append(batch, cluster)
+				clusterCount++
+			} else if *clusterGroupUpgrade.Spec.Enable {
+				r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, cluster)
+			}
 		}
 
 		if clusterCount == clusterGroupUpgrade.Status.ComputedMaxConcurrency || i == len(clusters)-1 {
