@@ -1,0 +1,48 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Create all the managed inform policies
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy0-common-config-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Patch the inform policies to reflect the compliance status. Make policy 3 compliant with all the clusters.
+  - command: ../../../../deploy/upgrades/pre-caching-missing-sub-policy/patch-policies-status.sh default default default default
+    ignoreFailure: false
+
+  # Create all the child policies to map the inform policies above.
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Apply the UOCR.
+  - command: oc apply -f ../../../../deploy/upgrades/pre-caching-missing-sub-policy/pre-caching.yaml
+    namespaced: true

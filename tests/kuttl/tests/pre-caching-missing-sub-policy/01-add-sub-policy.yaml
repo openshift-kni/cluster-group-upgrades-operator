@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"managedPolicies":["policy0-common-config-policy",
+        "policy2-common-pao-sub-policy", "policy3-common-ptp-sub-policy",
+        "policy4-common-sriov-sub-policy"]}}' --type=merge
+
