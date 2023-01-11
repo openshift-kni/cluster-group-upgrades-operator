@@ -45,3 +45,17 @@ status:
   remediationPlan:
   - - spoke1
   - - spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ""
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ""
+  name: spoke4
