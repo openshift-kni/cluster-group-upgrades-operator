@@ -26,37 +26,32 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 			"delete": actionsBeforeEnable.DeleteClusterLabels,
 		}
 
-		if err := r.manageClusterLabels(ctx, clusters, labels); err != nil {
-			return err
+		for _, c := range clusters {
+			err := r.manageClusterLabels(ctx, c, labels)
+			if err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-// takeActionsAfterCompletion takes the required actions after upgrade is completed
-// returns: error/nil
 func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, cluster string) error {
+
+	clusterState := ranv1alpha1.ClusterState{
+		Name: cluster, State: utils.ClusterRemediationComplete}
+	clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 
 	actionsAfterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
 	// Add/delete cluster labels
 	if actionsAfterCompletion.AddClusterLabels != nil || actionsAfterCompletion.DeleteClusterLabels != nil {
-		clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
-		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsAfterCompletion.AddClusterLabels,
 			"delete": actionsAfterCompletion.DeleteClusterLabels,
 		}
-
-		if err := r.manageClusterLabels(ctx, clusters, labels); err != nil {
-			return err
-		}
-	}
-
-	// Cleanup resources
-	if actionsAfterCompletion.DeleteObjects == nil || *actionsAfterCompletion.DeleteObjects {
-		err := r.deleteResources(ctx, clusterGroupUpgrade)
+		err := r.manageClusterLabels(ctx, cluster, labels)
 		if err != nil {
 			return err
 		}
@@ -67,22 +62,20 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 
 // manageClusterLabels adds/deletes the cluster labels for selected clusters
 func (r *ClusterGroupUpgradeReconciler) manageClusterLabels(
-	ctx context.Context, clusters []string, labels map[string]map[string]string) error {
+	ctx context.Context, cluster string, labels map[string]map[string]string) error {
 
-	for _, c := range clusters {
-		managedCluster := &clusterv1.ManagedCluster{}
-		if err := r.Get(ctx, types.NamespacedName{Name: c}, managedCluster); err != nil {
-			if errors.IsNotFound(err) {
-				continue
-			}
-			return err
+	managedCluster := &clusterv1.ManagedCluster{}
+	if err := r.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster); err != nil {
+		if errors.IsNotFound(err) {
+			return nil
 		}
-		if err := r.addClusterLabels(ctx, managedCluster, labels["add"]); err != nil {
-			return fmt.Errorf("fail to add labels for cluster %s: %v", managedCluster.Name, err)
-		}
-		if err := r.deleteClusterLabels(ctx, managedCluster, labels["delete"]); err != nil {
-			return fmt.Errorf("fail to delete labels for cluster %s: %v", managedCluster.Name, err)
-		}
+		return err
+	}
+	if err := r.addClusterLabels(ctx, managedCluster, labels["add"]); err != nil {
+		return fmt.Errorf("fail to add labels for cluster %s: %v", managedCluster.Name, err)
+	}
+	if err := r.deleteClusterLabels(ctx, managedCluster, labels["delete"]); err != nil {
+		return fmt.Errorf("fail to delete labels for cluster %s: %v", managedCluster.Name, err)
 	}
 	return nil
 }

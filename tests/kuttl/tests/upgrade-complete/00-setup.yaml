@@ -2,6 +2,13 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
+
+  # Recreate spokes for label verification
+  - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml 
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml 
+    namespaced: true
+
   # Create all the managed inform policies
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
     namespaced: true

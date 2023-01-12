@@ -7,6 +7,7 @@ spec:
   clusters:
   - spoke1
   - spoke4
+  - spoke6
   enable: false
   managedPolicies:
   - policy1-common-cluster-version-policy
