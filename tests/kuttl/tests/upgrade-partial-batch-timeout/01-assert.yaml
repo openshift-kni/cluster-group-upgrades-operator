@@ -1,0 +1,91 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy0-common-config-policy
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  clusters:
+    - name: spoke6
+      state: complete  
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  copiedPolicies:
+  - cgu-upgrade-complete-policy0-common-config-policy-kuttl
+  - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy0-common-config-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy0-common-config-policy: default
+  placementBindings:
+  - cgu-upgrade-complete-policy0-common-config-policy-placement-kuttl
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  placementRules:
+  - cgu-upgrade-complete-policy0-common-config-policy-placement-kuttl
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  remediationPlan:
+  - - spoke1
+    - spoke4
+  safeResourceNames:
+    cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
+    cgu-upgrade-complete-common-config-policy-config: cgu-upgrade-complete-common-config-policy-config-kuttl
+    cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+    cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+    cgu-upgrade-complete-policy0-common-config-policy: cgu-upgrade-complete-policy0-common-config-policy-kuttl
+    cgu-upgrade-complete-policy0-common-config-policy-placement: cgu-upgrade-complete-policy0-common-config-policy-placement-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
+      spoke4:
+        policyIndex: 0
+        state: InProgress        
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ""
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ""
+  name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ""
+  name: spoke6
