@@ -60,7 +60,6 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	clusters []string) error {
 
-	clusterStates := make(map[string]string)
 	clusterGroupUpgrade.Status.Backup.Clusters = clusters
 	isTimedOut := time.Since(clusterGroupUpgrade.Status.Backup.StartedAt.Time) > time.Duration(backupJobTimeout+backupJobTimeoutBuffer)*time.Second
 
@@ -68,11 +67,10 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 		var (
 			currentState, nextState string
 			err                     error
+			ok                      bool
 		)
-		if len(clusterGroupUpgrade.Status.Backup.Status) == 0 {
+		if currentState, ok = clusterGroupUpgrade.Status.Backup.Status[cluster]; !ok {
 			currentState = BackupStatePreparingToStart
-		} else {
-			currentState = clusterGroupUpgrade.Status.Backup.Status[cluster]
 		}
 
 		r.Log.Info("[triggerBackup]", "currentState", currentState, "cluster", cluster)
@@ -106,13 +104,12 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 			nextState = BackupStateTimeout
 		}
 
-		clusterStates[cluster] = nextState
+		clusterGroupUpgrade.Status.Precaching.Status[cluster] = nextState
 
 		if currentState != nextState {
 			r.Log.Info("[triggerBackup]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 		}
 	}
-	clusterGroupUpgrade.Status.Backup.Status = clusterStates
 	r.checkAllBackupDone(clusterGroupUpgrade)
 	return nil
 }
