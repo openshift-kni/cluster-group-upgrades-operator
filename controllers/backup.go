@@ -104,7 +104,7 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 			nextState = BackupStateTimeout
 		}
 
-		clusterGroupUpgrade.Status.Precaching.Status[cluster] = nextState
+		clusterGroupUpgrade.Status.Backup.Status[cluster] = nextState
 
 		if currentState != nextState {
 			r.Log.Info("[triggerBackup]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
