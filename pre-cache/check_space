@@ -1,12 +1,13 @@
 #!/bin/bash
+set -e
 
 APISERVER=https://kubernetes.default.svc
 SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
 NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace)
 TOKEN=$(cat ${SERVICEACCOUNT}/token)
 CACERT=${SERVICEACCOUNT}/ca.crt
-curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz > /tmp/kubeletconfig
-let high=$(cat /tmp/kubeletconfig | jq '.kubeletconfig.imageGCHighThresholdPercent')
+let high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
+            chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
 let size=$(df -h /var/lib/ | awk '{ print $2 }' | sed -n '2p' | sed  's/G//')
 let used=$(df -h /var/lib/ | awk '{ print $3 }' | sed -n '2p' | sed  's/G//')
 echo "highThresholdPercent: $high diskSize:$size used:$used"

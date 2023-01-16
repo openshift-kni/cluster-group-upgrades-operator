@@ -137,3 +137,7 @@ const (
 	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
 	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
 )
+
+// SpaceRequiredForPrecache is an env variable for precaching job that indicates the amount of space required
+// for precahing job. This is an rough estimate. 10 GB for OCP images and 5 GB for operator images.
+const SpaceRequiredForPrecache = "15" // Gigabytes

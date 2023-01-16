@@ -38,11 +38,13 @@ import (
 
 // templateData provides template rendering data
 type templateData struct {
-	Cluster               string
-	ResourceName          string
-	PlatformImage         string
-	Operators             operatorsData
-	WorkloadImage         string
+	Cluster       string
+	ResourceName  string
+	PlatformImage string
+	Operators     operatorsData
+	WorkloadImage string
+	// Amount of space the node should have in GB to run precaching job
+	SpaceRequired         string
 	JobTimeout            uint64
 	ViewUpdateIntervalSec int
 }
@@ -597,7 +599,12 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	if err != nil {
 		return rv, err
 	}
+	spaceRequired, err := r.getPrecacheSpaceRequiredSpec(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return rv, err
+	}
 	rv.WorkloadImage = image
+	rv.SpaceRequired = spaceRequired
 	return rv, nil
 }
 

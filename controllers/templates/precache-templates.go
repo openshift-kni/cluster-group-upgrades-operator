@@ -137,7 +137,7 @@ spec:
               - name: config_volume_path
                 value: /tmp/precache/config
               - name: SPACE_REQUIRED
-                value: "15"
+                value: "{{ .SpaceRequired }}"
               - name: NODE_NAME
                 valueFrom:
                   fieldRef:

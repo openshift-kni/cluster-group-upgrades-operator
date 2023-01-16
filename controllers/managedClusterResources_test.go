@@ -119,6 +119,7 @@ spec:
 				Cluster:       "test",
 				ResourceName:  "test-crb",
 				WorkloadImage: "test-image",
+				SpaceRequired: "15",
 				JobTimeout:    12,
 			},
 			template: templates.MngClusterActCreateJob,
