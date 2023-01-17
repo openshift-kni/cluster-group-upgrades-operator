@@ -1,0 +1,9 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the inform policies to reflect the compliance status Compliant for spoke1.
+  - command: ../../../../deploy/acm/policies/upgrade_complete/patch-policies-status-spoke1-policy1.sh default
+    ignoreFailure: false
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-upgrade-complete --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge

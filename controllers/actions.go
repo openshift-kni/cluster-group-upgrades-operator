@@ -156,7 +156,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 	r.Log.Info("[actions]", "clusterList", clusters)
 
-	err = utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+	err = utils.DeleteAllMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 	if err != nil {
 		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
