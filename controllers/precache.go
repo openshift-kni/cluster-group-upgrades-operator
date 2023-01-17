@@ -284,6 +284,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 	rv.PlatformImage = spec.PlatformImage
 	rv.Operators.Indexes = spec.OperatorsIndexes
 	rv.Operators.PackagesAndChannels = spec.OperatorsPackagesAndChannels
+	rv.ExcludePrecachePatterns = spec.ExcludePrecachePatterns
 	return rv
 }
 
@@ -299,6 +300,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 //	3. "operators.indexes" - OLM index images (list of index image URIs)
 //	4. "operators.packagesAndChannels" - operator packages and channels
 //		(list of  <package:channel> string entries)
+//	5. "excludePrecachePatterns" - list of patterns to exclude from precaching
 //	If overrides are used, the configmap must be created before the CGU
 //
 // returns: *ranv1alpha1.PrecachingSpec, error
@@ -332,6 +334,8 @@ func (r *ClusterGroupUpgradeReconciler) includeSoftwareSpecOverrides(
 		operatorsPackagesAndChannels = spec.OperatorsPackagesAndChannels
 	}
 	rv.OperatorsPackagesAndChannels = operatorsPackagesAndChannels
+
+	rv.ExcludePrecachePatterns = strings.Split(overrides["excludePrecachePatterns"], "\n")
 
 	if err != nil {
 		return *rv, err

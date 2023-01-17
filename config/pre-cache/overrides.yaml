@@ -13,4 +13,8 @@ data:
   #   performance-addon-operator: 4.9
   #   ptp-operator: stable
   #   sriov-network-operator: stable
-
+  # excludePrecachePatterns: |
+  #   aws
+  #   alibaba
+  #   azure
+  #   vsphere

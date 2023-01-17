@@ -393,6 +393,10 @@ spec:
                     description: PrecachingSpec defines the pre-caching software spec
                       derived from policies
                     properties:
+                      excludePrecachePatterns:
+                        items:
+                          type: string
+                        type: array
                       operatorsIndexes:
                         items:
                           type: string

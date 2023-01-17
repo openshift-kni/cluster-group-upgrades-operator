@@ -31,12 +31,14 @@ func TestOverrides_getOverrides(t *testing.T) {
 				"platform.image":                "test-platform-image:test-tag",
 				"operators.indexes":             "registry.example.com:5000/test-index:v0.0",
 				"operators.packagesAndChannels": "local-storage-operator: stable\nperformance-addon-operator: 4.9\nptp-operator: stable\nsriov-network-operator: stable",
+				"excludePrecachePatterns":       "thanos\naws",
 			},
 			rdData: map[string]string{
 				"precache.image":                "test-image:test-tag",
 				"platform.image":                "test-platform-image:test-tag",
 				"operators.indexes":             "registry.example.com:5000/test-index:v0.0",
 				"operators.packagesAndChannels": "local-storage-operator: stable\nperformance-addon-operator: 4.9\nptp-operator: stable\nsriov-network-operator: stable",
+				"excludePrecachePatterns":       "thanos\naws",
 			},
 		},
 		{
@@ -48,6 +50,7 @@ func TestOverrides_getOverrides(t *testing.T) {
 				"platform.image":                "test-platform-image:test_tag",
 				"operators.indexes":             "registry.example.com:5000/test-index:v0.0",
 				"operators.packagesAndChannels": "local-storage-operator: stable\nperformance-addon-operator: 4.9\nptp-operator: stable\nsriov-network-operator: stable",
+				"excludePrecachePatterns":       "thanos\naws",
 			},
 			rdData: map[string]string{},
 		},

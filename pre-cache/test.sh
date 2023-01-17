@@ -21,16 +21,27 @@ echo "test_index1" > /tmp/operators.indexes
 echo "test_index2" >> /tmp/operators.indexes
 echo "  package1:  channel1 " > /tmp/operators.packagesAndChannels
 echo "  package2:channel2" >> /tmp/operators.packagesAndChannels
+# the script should ignore traling and leading whitespaces and empty lines
+echo -e "\n\n aws \n alibaba \n" > /tmp/excludePrecachePatterns
+
 mkdir -p /tmp/release-manifests
 cat <<EOF > /tmp/release-manifests/image-references
 {
   "spec": {
     "tags": [
       {
+        "name": "redhat",
         "from": {
-          "name": "test"
+          "name": "quay.io/1"
         }
-      }]
+      },
+      {
+        "name": "bawsa",
+        "from": {
+          "name": "quay.io/2"
+        }
+      }
+      ]
   }
 }
 EOF
@@ -72,7 +83,7 @@ echo " extract_packages - pass"
 echo "Testing release unit:"
 result=$(extract_pull_spec "/tmp")
 [[ $? -eq 0 ]] || fatal "release_image extract unexpected exit code"
-[[ $(cat $pull_spec_file) == "\"test\"" ]] || fatal "release pull spec extract failure"
+[[ $(cat $pull_spec_file) == "\"quay.io/1\"" ]] || fatal "release pull spec extract failure"
 echo " release extract_pull_spec pass"
 
 # Clean

@@ -210,6 +210,7 @@ type PrecachingSpec struct {
 	PlatformImage                string   `json:"platformImage,omitempty"`
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`
 	OperatorsPackagesAndChannels []string `json:"operatorsPackagesAndChannels,omitempty"`
+	ExcludePrecachePatterns      []string `json:"excludePrecachePatterns,omitempty"`
 }
 
 // PrecachingStatus defines the observed pre-caching status

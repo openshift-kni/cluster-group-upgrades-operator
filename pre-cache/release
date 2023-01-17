@@ -5,7 +5,17 @@ cwd=$(dirname "$0")
 
 extract_pull_spec(){
     local rel_img_mount=$1
-    cat ${rel_img_mount}/release-manifests/image-references |jq '.spec.tags[].from.name' >> $pull_spec_file
+
+    # remove empty lines
+    sed -i '/^[[:space:]]*$/d' $config_volume_path/excludePrecachePatterns
+    # remove trailing and leading whitespace
+    sed -i 's/^[ \t]*//;s/[ \t]*$//' $config_volume_path/excludePrecachePatterns
+    
+    cat ${rel_img_mount}/release-manifests/image-references | \
+      jq  '.spec.tags[] | .name as $name |.from.name as $pull |[$name,$pull] |join("$")' | \
+       grep -vG -f $config_volume_path/excludePrecachePatterns | \
+       cut -d "$" -f2 | \
+       sed 's/^/"/' >> $pull_spec_file
     log_debug "Release index image processing done"
 }
 

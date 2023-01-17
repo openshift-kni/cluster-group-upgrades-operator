@@ -3,6 +3,7 @@
 set -e
 
 rm -rf /host/tmp/precache
+rm -f /host/tmp/images.txt
 cp -a /opt/precache /host/tmp/
 cp -rf /etc/config /host/tmp/precache/config
 # only check space for OCP upgrade
