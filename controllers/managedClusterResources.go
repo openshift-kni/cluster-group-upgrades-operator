@@ -38,12 +38,11 @@ import (
 
 // templateData provides template rendering data
 type templateData struct {
-	Cluster       string
-	ResourceName  string
-	PlatformImage string
-	Operators     operatorsData
-	WorkloadImage string
-	// Amount of space the node should have in GB to run precaching job
+	Cluster               string
+	ResourceName          string
+	PlatformImage         string
+	Operators             operatorsData
+	WorkloadImage         string
 	SpaceRequired         string
 	JobTimeout            uint64
 	ViewUpdateIntervalSec int

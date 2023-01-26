@@ -139,5 +139,6 @@ const (
 )
 
 // SpaceRequiredForPrecache is an env variable for precaching job that indicates the amount of space required
-// for precahing job. This is an rough estimate. 10 GB for OCP images and 5 GB for operator images.
+// for precaching job. This is a rough estimate. 10 GB for OCP images and 5 GB as a buffer for operator images
+// and other disk allocations that can happen between the job and the actual upgrade kicked off by the CGU.
 const SpaceRequiredForPrecache = "15" // Gigabytes

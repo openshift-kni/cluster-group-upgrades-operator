@@ -168,7 +168,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeNormal, suceededCondition.Reason, suceededCondition.Message)
 			} else {
 				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
-				r.addTimedoutClustersInStatus(clusterGroupUpgrade)
+				r.handleBatchTimeout(ctx, clusterGroupUpgrade)
 			}
 			// Set completion time only after post actions are executed with no errors
 			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
@@ -504,7 +504,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 			// Check if current policies have become compliant and if new policies have to be applied.
 			var isBatchComplete bool
-			isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
+			isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
 			if err != nil {
 				return
 			}
@@ -559,7 +559,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							)
 						} else {
 							r.Log.Info("Batch upgrade timed out")
-							r.addTimedoutClustersInStatus(clusterGroupUpgrade)
+							r.handleBatchTimeout(ctx, clusterGroupUpgrade)
 							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
 							case ranv1alpha1.BatchTimeoutAction.Abort:
 								// If the value was abort then we need to fail out
@@ -625,7 +625,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	return
 }
 
-func (r *ClusterGroupUpgradeReconciler) addTimedoutClustersInStatus(
+func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
 	// check if batch is initialized in case of timeout happened before the batch starting
@@ -656,6 +656,8 @@ func (r *ClusterGroupUpgradeReconciler) addTimedoutClustersInStatus(
 			// Assume the cluster timed out if the status was not defined when it should have been
 			// This implies that this batch did not even get a chance to start
 			clusterState.State = utils.ClusterRemediationTimedout
+			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
+			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 		} else if clusterStatus.State == ranv1alpha1.InProgress {
 			clusterState.State = utils.ClusterRemediationTimedout
 
@@ -674,8 +676,9 @@ func (r *ClusterGroupUpgradeReconciler) addTimedoutClustersInStatus(
 					Name:   clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name,
 					Status: utils.ClusterStatusNonCompliant}
 			}
+			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
+			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 		}
-		clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 	}
 }
 
@@ -710,46 +713,50 @@ returns: bool     : true if the batch is done upgrading; false if not
 	error/nil: in case any error happens
 */
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+	ctx context.Context, client client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	isBatchComplete := true
 
-	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
+	for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		// nil check to avoid panic in edge cases
 		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress == nil {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress = make(map[string]*ranv1alpha1.ClusterRemediationProgress)
 		}
-		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] == nil {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName] = new(ranv1alpha1.ClusterRemediationProgress)
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.NotStarted
+		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName] == nil {
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName] = new(ranv1alpha1.ClusterRemediationProgress)
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.NotStarted
 		}
-		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State
+		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State
 		if clusterProgressState == ranv1alpha1.NotStarted {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = new(int)
-			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = 0
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.InProgress
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = new(int)
+			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = 0
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.InProgress
 		} else if clusterProgressState == ranv1alpha1.Completed {
 			continue
 		}
-		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex
+		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex
 
 		// Get the index of the next policy for which the cluster is NonCompliant.
-		currentPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, currentPolicyIndex)
+		currentPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, currentPolicyIndex)
 		if err != nil {
 			return false, err
 		}
 
 		if currentPolicyIndex >= numberOfPolicies {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = nil
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].State = ranv1alpha1.Completed
-			err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, batchClusterName)
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = nil
+			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.Completed
+			err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, clusterName)
+			if err != nil {
+				return false, err
+			}
+			err = utils.DeleteMultiCloudObjects(ctx, client, clusterGroupUpgrade, clusterName)
 			if err != nil {
 				return false, err
 			}
 		} else {
 			isBatchComplete = false
-			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName].PolicyIndex = currentPolicyIndex
+			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = currentPolicyIndex
 		}
 	}
 
@@ -1310,7 +1317,7 @@ isUpgradeComplete checks if there is at least one managed policy left for which 
 	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
-	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, clusterGroupUpgrade)
+	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
 	if err != nil {
 		return false, err
 	}
@@ -1994,7 +2001,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 
 			clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
 
-			err := utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+			err := utils.DeleteAllMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
 			if err != nil {
 				return utils.StopReconciling, err
 			}
