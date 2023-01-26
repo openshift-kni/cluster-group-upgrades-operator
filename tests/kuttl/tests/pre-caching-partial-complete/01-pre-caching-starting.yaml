@@ -3,9 +3,13 @@ kind: TestStep
 
 commands:
   # Patch the inform policies to reflect the compliance status Compliant for spoke1.
-  - command: ../../../../deploy/upgrades/pre-caching/patch-job-status-succeeded.sh
+  - command: ../../../../deploy/upgrades/pre-caching/patch-ns-mcv-status-processing-false.sh
     ignoreFailure: false
-  # Force a quick reconcile
+  # Force two quick reconcile calls
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
         --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge

@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Start the upgrade by enabling the UOCR.
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"enable":true}}' --type=merge
+    ignoreFailure: false
