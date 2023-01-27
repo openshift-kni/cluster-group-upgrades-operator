@@ -136,6 +136,12 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
+              - name: SPACE_REQUIRED
+                value: "{{ .SpaceRequired }}"
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
               image: {{ .WorkloadImage }}
               name: pre-cache-container
               resources: {}

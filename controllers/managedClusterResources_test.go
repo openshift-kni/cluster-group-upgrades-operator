@@ -119,6 +119,7 @@ spec:
 				Cluster:       "test",
 				ResourceName:  "test-crb",
 				WorkloadImage: "test-image",
+				SpaceRequired: "15",
 				JobTimeout:    12,
 			},
 			template: templates.MngClusterActCreateJob,
@@ -159,6 +160,12 @@ spec:
                     env:
                     - name: config_volume_path
                       value: /tmp/precache/config
+                    - name: SPACE_REQUIRED
+                      value: "15"
+                    - name: NODE_NAME
+                      valueFrom:
+                        fieldRef:
+                          fieldPath: spec.nodeName
                     image: test-image
                     name: pre-cache-container
                     resources: {}

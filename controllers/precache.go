@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 
 	"strings"
 
@@ -241,6 +243,33 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 		}
 	}
 	return image, nil
+}
+
+// getPrecacheSpaceRequiredSpec gets the precaching space required spec.
+// returns: spaceRequired - space required string
+//
+//	error
+func (r *ClusterGroupUpgradeReconciler) getPrecacheSpaceRequiredSpec(
+	ctx context.Context,
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
+	string, error) {
+
+	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
+	if err != nil {
+		r.Log.Error(err, "getOverrides failed ")
+		return "", err
+	}
+	spaceRequired := overrides["precache.spaceRequired"]
+	if spaceRequired == "" {
+		spaceRequired = utils.SpaceRequiredForPrecache
+	} else {
+		spaceRequiredInt, err := strconv.Atoi(spaceRequired)
+
+		if spaceRequiredInt < 0 || err != nil {
+			return "", errors.New("invalid value for precache.spaceRequired, must be integer greater than 0")
+		}
+	}
+	return spaceRequired, nil
 }
 
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
