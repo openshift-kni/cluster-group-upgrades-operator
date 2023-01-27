@@ -211,7 +211,7 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	if err != nil {
 		return false, err
 	}
-	spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Clusters))
+	spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Status))
 	err = r.createResourcesFromTemplates(ctx, spec, precacheDependenciesViewTemplates)
 	if err != nil {
 		return false, err
