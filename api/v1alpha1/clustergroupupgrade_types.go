@@ -214,16 +214,18 @@ type PrecachingSpec struct {
 
 // PrecachingStatus defines the observed pre-caching status
 type PrecachingStatus struct {
-	Spec     *PrecachingSpec   `json:"spec,omitempty"`
-	Status   map[string]string `json:"status,omitempty"`
-	Clusters []string          `json:"clusters,omitempty"`
+	Spec   *PrecachingSpec   `json:"spec,omitempty"`
+	Status map[string]string `json:"status,omitempty"`
+	//+kubebuilder:deprecatedversion:warning="PrecachingStatus.Clusters is deprecated"
+	Clusters []string `json:"clusters,omitempty"`
 }
 
 // BackupStatus defines the observed backup status
 type BackupStatus struct {
 	StartedAt metav1.Time       `json:"startedAt,omitempty"`
 	Status    map[string]string `json:"status,omitempty"`
-	Clusters  []string          `json:"clusters,omitempty"`
+	//+kubebuilder:deprecatedversion:warning="BackupStatus.Clusters is deprecated"
+	Clusters []string `json:"clusters,omitempty"`
 }
 
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
