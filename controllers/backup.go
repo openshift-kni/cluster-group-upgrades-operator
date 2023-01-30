@@ -24,7 +24,7 @@ const (
 
 const (
 	backupJobTimeout       = 480
-	backupJobTimeoutBuffer = 120
+	backupJobTimeoutBuffer = 720
 )
 
 func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
