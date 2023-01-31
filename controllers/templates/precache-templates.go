@@ -55,6 +55,8 @@ spec:
           {{ . }} {{ end }}
         operators.packagesAndChannels: |{{ range .Operators.PackagesAndChannels }} 
           {{ . }} {{ end }}
+        excludePrecachePatterns: |{{ range .ExcludePrecachePatterns }} 
+          {{ . }} {{ end }}
         platform.image: {{ .PlatformImage }}
       kind: ConfigMap
       metadata:

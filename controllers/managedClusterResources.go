@@ -38,14 +38,15 @@ import (
 
 // templateData provides template rendering data
 type templateData struct {
-	Cluster               string
-	ResourceName          string
-	PlatformImage         string
-	Operators             operatorsData
-	WorkloadImage         string
-	SpaceRequired         string
-	JobTimeout            uint64
-	ViewUpdateIntervalSec int
+	Cluster                 string
+	ResourceName            string
+	PlatformImage           string
+	Operators               operatorsData
+	WorkloadImage           string
+	SpaceRequired           string
+	JobTimeout              uint64
+	ViewUpdateIntervalSec   int
+	ExcludePrecachePatterns []string
 }
 
 // operatorsData provides operators data for template rendering

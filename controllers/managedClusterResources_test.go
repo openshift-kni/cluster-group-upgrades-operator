@@ -2,6 +2,8 @@ package controllers
 
 import (
 	"context"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
@@ -25,6 +27,40 @@ func TestMCR_renderYamlTemplates(t *testing.T) {
 		resourceName string
 		result       string
 	}{
+		{
+			name:         "create configmap",
+			resourceName: "precache-spec",
+			data: templateData{
+				Cluster:                 "test",
+				ResourceName:            "precache-spec",
+				ExcludePrecachePatterns: []string{"aws", "thanos"},
+			},
+			template: templates.MngClusterActCreatePrecachingSpecCM,
+			result: `
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: precache-spec
+  namespace: test
+spec:
+  actionType: Create
+  kube:
+    resource: configmap
+    template:
+      apiVersion: v1
+      data:
+        excludePrecachePatterns: |
+          aws  
+          thanos 
+        operators.indexes: ""
+        operators.packagesAndChannels: ""
+        platform.image: 
+      kind: ConfigMap
+      metadata:
+        name: pre-cache-spec
+        namespace: openshift-talo-pre-cache
+`,
+		},
 		{
 			name:         "create namespace",
 			resourceName: "test-ns",
@@ -351,6 +387,12 @@ spec:
 				t.Errorf("error serializing yaml string: %v", err)
 			}
 			assert.Equal(t, true, reflect.DeepEqual(renderedObject, desiredObject))
+			l := log.New(os.Stderr, "", 0)
+
+			if !reflect.DeepEqual(renderedObject, desiredObject) {
+				l.Println(renderedObject)
+				l.Println(desiredObject)
+			}
 		})
 	}
 }

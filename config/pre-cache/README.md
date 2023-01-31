@@ -6,6 +6,7 @@ Supported  overrides:
 2. `platform.image` - OCP release image 
 3. `operators.indexes` - OLM index images (list of image pull specs)
 4. `operators.packagesAndChannels` - operator packages and channels (list of  <package:channel> string entries)
+5. `excludePrecachePatterns` - list of patterns to exclude from precaching (using this command: grep -vG -f)
 
 :warning: We need to set the precache.image value as a container image digest. This value is going to be used by the pre-cache task to pull all the required container images and for the upgrade operator to replace the Clusterversion spec.desiredUpdate.image field. The cluster-version operator of the managed cluster requires this format to continue automatically with the upgrade since container image digest uniquely and immutably identifies a container image
 
@@ -40,5 +41,8 @@ data:
     performance-addon-operator: 4.9
     ptp-operator: stable
     sriov-network-operator: stable
+  excludePrecachePatterns: |
+    aws
+    thanos
 ```
 
