@@ -35,9 +35,6 @@ spec:
               image: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
               publisher: Red Hat
               sourceType: grpc
-            status:
-              connectionState:
-                lastObservedState: READY
         remediationAction: inform
         severity: low
   remediationAction: inform

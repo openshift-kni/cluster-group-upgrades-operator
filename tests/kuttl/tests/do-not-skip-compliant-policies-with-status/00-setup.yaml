@@ -5,7 +5,7 @@ commands:
   # Create all the managed inform policies
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
     namespaced: true
-  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-with-status-policy.yaml
     namespaced: true
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
     namespaced: true

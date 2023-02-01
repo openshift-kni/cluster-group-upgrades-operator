@@ -1,0 +1,102 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  remediationStrategy:
+    maxConcurrency: 4
+    timeout: 240
+status:
+  computedMaxConcurrency: 4
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  copiedPolicies:
+  - cgu-policy1-common-cluster-version-policy-kuttl
+  - cgu-policy2-common-pao-sub-policy-kuttl
+  - cgu-policy3-common-ptp-sub-policy-kuttl
+  - cgu-policy4-common-sriov-sub-policy-kuttl
+  managedPoliciesContent:
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+    policy3-common-ptp-sub-policy: default
+    policy4-common-sriov-sub-policy: default
+  placementBindings:
+  - cgu-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-policy2-common-pao-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  placementRules:
+  - cgu-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-policy2-common-pao-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  remediationPlan:
+  - - spoke6
+    - spoke2
+    - spoke1
+    - spoke5
+  safeResourceNames:
+    cgu-common-cluster-version-policy-config: cgu-common-cluster-version-policy-config-kuttl
+    cgu-common-pao-sub-policy-config: cgu-common-pao-sub-policy-config-kuttl
+    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    cgu-policy1-common-cluster-version-policy: cgu-policy1-common-cluster-version-policy-kuttl
+    cgu-policy1-common-cluster-version-policy-placement: cgu-policy1-common-cluster-version-policy-placement-kuttl
+    cgu-policy2-common-pao-sub-policy: cgu-policy2-common-pao-sub-policy-kuttl
+    cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
+    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
+      spoke2:
+        policyIndex: 2
+        state: InProgress
+      spoke5:
+        policyIndex: 3
+        state: InProgress
+      spoke6:
+        policyIndex: 0
+        state: InProgress

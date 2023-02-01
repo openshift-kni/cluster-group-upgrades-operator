@@ -1,0 +1,44 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Delete all the managed inform policies
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Delete all the child policies to map the inform policies above.
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Delete the UOCR.
+  - command: oc delete -f ../../../../deploy/upgrades/skip-compliant-policies/skip-compliant-policies.yaml
+    namespaced: true
