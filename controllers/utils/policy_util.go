@@ -127,8 +127,11 @@ func GetParentPolicyNameAndNamespace(childPolicyName string) []string {
 	return strings.SplitN(childPolicyName, ".", 2)
 }
 
-// VerifyPolicyObjects validates the policy objects and return error if the policy is invalid
-func VerifyPolicyObjects(policy *unstructured.Unstructured) error {
+// InspectPolicyObjects validates the policy objects, checks if it contains a status section in any object templates
+// and return error if the policy is invalid
+func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
+
+	containsStatus := false
 	policyName := policy.GetName()
 	policySpec := policy.Object["spec"].(map[string]interface{})
 
@@ -139,24 +142,24 @@ func VerifyPolicyObjects(policy *unstructured.Unstructured) error {
 	for _, plcTmpl := range policyTemplates {
 		// Make sure the objectDefinition of the policy template exists.
 		if plcTmpl.(map[string]interface{})["objectDefinition"] == nil {
-			return &PolicyErr{policyName, PlcMissTmplDef}
+			return containsStatus, &PolicyErr{policyName, PlcMissTmplDef}
 		}
 		plcTmplDef := plcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
 
 		// Make sure the ConfigurationPolicy metadata exists.
 		if plcTmplDef["metadata"] == nil {
-			return &PolicyErr{policyName, PlcMissTmplDefMeta}
+			return containsStatus, &PolicyErr{policyName, PlcMissTmplDefMeta}
 		}
 
 		// Make sure the ConfigurationPolicy spec exists.
 		if plcTmplDef["spec"] == nil {
-			return &PolicyErr{policyName, PlcMissTmplDefSpec}
+			return containsStatus, &PolicyErr{policyName, PlcMissTmplDefSpec}
 		}
 		plcTmplDefSpec := plcTmplDef["spec"].(map[string]interface{})
 
 		// Make sure the ConfigurationPolicy object-templates exists.
 		if plcTmplDefSpec["object-templates"] == nil {
-			return &PolicyErr{policyName, ConfigPlcMissObjTmpl}
+			return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmpl}
 		}
 		configPlcTmpls := plcTmplDefSpec["object-templates"].([]interface{})
 
@@ -164,9 +167,13 @@ func VerifyPolicyObjects(policy *unstructured.Unstructured) error {
 		for _, configPlcTmpl := range configPlcTmpls {
 			// Make sure the objectDefinition of the ConfigurationPolicy object template exists.
 			if configPlcTmpl.(map[string]interface{})["objectDefinition"] == nil {
-				return &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
+				return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
+			}
+			objectDefinition := configPlcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
+			if objectDefinition["status"] != nil {
+				containsStatus = true
 			}
 		}
 	}
-	return nil
+	return containsStatus, nil
 }
