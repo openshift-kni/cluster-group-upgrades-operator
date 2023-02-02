@@ -20,11 +20,6 @@ spec:
     maxConcurrency: 4
 status:
   backup:
-    clusters:
-    - spoke6
-    - spoke2
-    - spoke1
-    - spoke5
     status:
       spoke1: Starting
       spoke2: Starting
