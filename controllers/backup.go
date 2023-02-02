@@ -60,7 +60,6 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	clusters []string) error {
 
-	clusterGroupUpgrade.Status.Backup.Clusters = clusters
 	isTimedOut := time.Since(clusterGroupUpgrade.Status.Backup.StartedAt.Time) > time.Duration(backupJobTimeout+backupJobTimeoutBuffer)*time.Second
 
 	for _, cluster := range clusters {
