@@ -989,22 +989,23 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 			}
 
 			// If the parent policy is not valid due to missing field, add its name to the list of invalid policies.
-			policyErr := utils.VerifyPolicyObjects(foundPolicy)
+			containsStatus, policyErr := utils.InspectPolicyObjects(foundPolicy)
 			if policyErr != nil {
 				r.Log.Error(policyErr, "Policy is invalid")
 				managedPoliciesInfo.invalidPolicies = append(managedPoliciesInfo.invalidPolicies, managedPolicyName)
 				continue
 			}
 
-			// Check the policy has at least one of the clusters from the CR in NonCompliant state.
-			clustersNonCompliantWithPolicy := r.getClustersNonCompliantWithPolicy(clusters, foundPolicy)
+			if !containsStatus {
+				// Check the policy has at least one of the clusters from the CR in NonCompliant state.
+				clustersNonCompliantWithPolicy := r.getClustersNonCompliantWithPolicy(clusters, foundPolicy)
 
-			if len(clustersNonCompliantWithPolicy) == 0 {
-				managedPoliciesCompliantBeforeUpgrade = append(managedPoliciesCompliantBeforeUpgrade, foundPolicy.GetName())
-				managedPoliciesInfo.compliantPolicies = append(managedPoliciesInfo.compliantPolicies, foundPolicy)
-				continue
+				if len(clustersNonCompliantWithPolicy) == 0 {
+					managedPoliciesCompliantBeforeUpgrade = append(managedPoliciesCompliantBeforeUpgrade, foundPolicy.GetName())
+					managedPoliciesInfo.compliantPolicies = append(managedPoliciesInfo.compliantPolicies, foundPolicy)
+					continue
+				}
 			}
-
 			// Update the info on the policies used in the upgrade.
 			newPolicyInfo := ranv1alpha1.ManagedPolicyForUpgrade{Name: managedPolicyName, Namespace: managedPolicyNamespace}
 			managedPoliciesForUpgrade = append(managedPoliciesForUpgrade, newPolicyInfo)
