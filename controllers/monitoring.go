@@ -77,6 +77,12 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 		objectTemplatesContent := objectTemplates.([]interface{})
 		for _, objectTemplate := range objectTemplatesContent {
 			objectTemplateContent := objectTemplate.(map[string]interface{})
+			if objectTemplateContent["complianceType"] == "mustnothave" {
+				r.Log.Info(
+					"[getMonitoredObjects] skipping object because compliance type is mustnothave",
+					"policyName", managedPolicyName)
+				continue
+			}
 			innerObjectDefinition := objectTemplateContent["objectDefinition"]
 			if innerObjectDefinition == nil {
 				return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition", managedPolicyName)
