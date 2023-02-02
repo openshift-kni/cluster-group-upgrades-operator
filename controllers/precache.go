@@ -158,6 +158,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 }
 
 // stripPolicy strips policy information and returns the underlying objects
+// filters objects with mustnothave compliance type
 // returns: []interface{} - list of the underlying objects in the policy
 //
 //	error
@@ -182,6 +183,10 @@ func (r *ClusterGroupUpgradeReconciler) stripPolicy(
 			return nil, fmt.Errorf("[stripPolicy] can't find object-templates in policyTemplate")
 		}
 		for _, objTemplate := range objTemplates.([]interface{}) {
+			complianceType := objTemplate.(map[string]interface{})["complianceType"]
+			if complianceType == "mustnothave" {
+				continue
+			}
 			spec := objTemplate.(map[string]interface{})["objectDefinition"]
 			if spec == nil {
 				return nil, fmt.Errorf("[stripPolicy] can't find any objectDefinition")
