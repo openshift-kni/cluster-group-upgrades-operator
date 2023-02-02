@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/upgrades/backup/patch-ns-mcv-status-processing-false.sh
+    ignoreFailure: false
+  # Force two quick reconcile calls
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
