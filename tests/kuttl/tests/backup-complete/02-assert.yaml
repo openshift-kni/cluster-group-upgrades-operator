@@ -1,0 +1,311 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
+  enable: true
+  backup: true
+  managedPolicies:
+  - policy0-common-config-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  remediationStrategy:
+    maxConcurrency: 4
+status:
+  backup:
+    clusters:
+    - spoke6
+    - spoke2
+    - spoke1
+    - spoke5
+    status:
+      spoke1: Starting
+      spoke2: Starting
+      spoke5: Starting
+      spoke6: Starting
+  computedMaxConcurrency: 4
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Backup in progress for 4 clusters
+    reason: InProgress
+    status: "False"
+    type: BackupSuceeded
+  - message: Cluster backup is in progress
+    reason: NotStarted
+    status: "False"
+    type: Progressing
+  copiedPolicies:
+  - cgu-policy3-common-ptp-sub-policy-kuttl
+  - cgu-policy4-common-sriov-sub-policy-kuttl
+  managedPoliciesCompliantBeforeUpgrade:
+  - policy0-common-config-policy
+  - policy2-common-pao-sub-policy
+  managedPoliciesContent:
+    policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
+    policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
+  managedPoliciesForUpgrade:
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy3-common-ptp-sub-policy: default
+    policy4-common-sriov-sub-policy: default
+  placementBindings:
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  placementRules:
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  remediationPlan:
+  - - spoke6
+    - spoke2
+    - spoke1
+    - spoke5
+  safeResourceNames:
+    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+    cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+---
+# MCVs
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke1
+spec:
+  scope:
+    name: backup-agent
+    namespace: openshift-talo-backup
+    resource: jobs
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke2
+spec:
+  scope:
+    name: backup-agent
+    namespace: openshift-talo-backup
+    resource: jobs
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke5
+spec:
+  scope:
+    name: backup-agent
+    namespace: openshift-talo-backup
+    resource: jobs
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke6
+spec:
+  scope:
+    name: backup-agent
+    namespace: openshift-talo-backup
+    resource: jobs
+---
+# MCA
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-job-create
+  namespace: spoke1
+spec:
+  actionType: Create
+  kube:
+    namespace: openshift-talo-backup
+    resource: job
+    template:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: backup-agent
+        namespace: openshift-talo-backup
+      spec:
+        activeDeadlineSeconds: 480
+        backoffLimit: 0
+        template:
+          metadata:
+            name: backup-agent
+          spec:
+            containers:
+            - args:
+              - launchBackup
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              name: container-image
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              tty: true
+              volumeMounts:
+              - mountPath: /host
+                name: backup
+            hostNetwork: true
+            restartPolicy: Never
+            serviceAccountName: backup-agent
+            volumes:
+            - hostPath:
+                path: /
+                type: Directory
+              name: backup
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-job-create
+  namespace: spoke2
+spec:
+  actionType: Create
+  kube:
+    namespace: openshift-talo-backup
+    resource: job
+    template:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: backup-agent
+        namespace: openshift-talo-backup
+      spec:
+        activeDeadlineSeconds: 480
+        backoffLimit: 0
+        template:
+          metadata:
+            name: backup-agent
+          spec:
+            containers:
+            - args:
+              - launchBackup
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              name: container-image
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              tty: true
+              volumeMounts:
+              - mountPath: /host
+                name: backup
+            hostNetwork: true
+            restartPolicy: Never
+            serviceAccountName: backup-agent
+            volumes:
+            - hostPath:
+                path: /
+                type: Directory
+              name: backup
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-job-create
+  namespace: spoke5
+spec:
+  actionType: Create
+  kube:
+    namespace: openshift-talo-backup
+    resource: job
+    template:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: backup-agent
+        namespace: openshift-talo-backup
+      spec:
+        activeDeadlineSeconds: 480
+        backoffLimit: 0
+        template:
+          metadata:
+            name: backup-agent
+          spec:
+            containers:
+            - args:
+              - launchBackup
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              name: container-image
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              tty: true
+              volumeMounts:
+              - mountPath: /host
+                name: backup
+            hostNetwork: true
+            restartPolicy: Never
+            serviceAccountName: backup-agent
+            volumes:
+            - hostPath:
+                path: /
+                type: Directory
+              name: backup
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-job-create
+  namespace: spoke6
+spec:
+  actionType: Create
+  kube:
+    namespace: openshift-talo-backup
+    resource: job
+    template:
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: backup-agent
+        namespace: openshift-talo-backup
+      spec:
+        activeDeadlineSeconds: 480
+        backoffLimit: 0
+        template:
+          metadata:
+            name: backup-agent
+          spec:
+            containers:
+            - args:
+              - launchBackup
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              name: container-image
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              tty: true
+              volumeMounts:
+              - mountPath: /host
+                name: backup
+            hostNetwork: true
+            restartPolicy: Never
+            serviceAccountName: backup-agent
+            volumes:
+            - hostPath:
+                path: /
+                type: Directory
+              name: backup
+---
+
+
+
