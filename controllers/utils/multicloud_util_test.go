@@ -315,11 +315,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -336,7 +331,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -358,15 +353,52 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 		},
 		{
+			name: "ManagedClusterView has long name",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "cgu",
+					Namespace: "defaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefault",
+				},
+			},
+			subscription: operatorsv1alpha1.Subscription{
+				Status: operatorsv1alpha1.SubscriptionStatus{
+					InstallPlanRef: &corev1.ObjectReference{
+						Kind:      "InstallPlan",
+						Name:      "install-xyz56",
+						Namespace: "installPlan-xyz-namespace",
+					},
+					Install: &operatorsv1alpha1.InstallPlanReference{
+						Kind: "InstallPlan",
+						Name: "install-xyz56",
+					},
+				},
+			},
+			mcvForInstallPlan: nil,
+			clusterName:       "spoke1",
+			validateFunc: func(t *testing.T, runtimeClient client.Client, cgu *ranv1alpha1.ClusterGroupUpgrade,
+				subscription operatorsv1alpha1.Subscription, clusterName string, mcvForInstallPlan *viewv1beta1.ManagedClusterView) {
+				result, err := EnsureInstallPlanIsApproved(context.TODO(), runtimeClient, cgu, subscription, clusterName)
+				if err != nil {
+					t.Errorf("Error occurred and it wasn't expected")
+				}
+				assert.Equal(t, result, MultiCloudPendingStatus)
+
+				createdMCV := &viewv1beta1.ManagedClusterView{}
+				if err := runtimeClient.Get(context.TODO(), types.NamespacedName{
+					Name:      "cgu-defaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaul-installplan-install-xyz56",
+					Namespace: "spoke1"}, createdMCV); err != nil {
+					if errors.IsNotFound(err) {
+						t.Errorf("Expected Managed Cluster View with truncated name, but failed")
+					}
+					t.Errorf("Unexpected error: %v", err.Error())
+				}
+			},
+		},
+		{
 			name: "ManagedClusterView has condition type different than Processing",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
-				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
 				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
@@ -384,7 +416,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -418,11 +450,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -439,7 +466,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -473,11 +500,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -494,7 +516,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -529,11 +551,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -550,7 +567,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -591,11 +608,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -612,7 +624,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -653,11 +665,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				ObjectMeta: v1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
-				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-					SafeResourceNames: map[string]string{
-						"cgu-default-installplan-installplan-xyz": "cgu-default-installplan-installplan-xyz-abcde",
-					},
-				},
 			},
 			subscription: operatorsv1alpha1.Subscription{
 				Status: operatorsv1alpha1.SubscriptionStatus{
@@ -674,7 +681,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz-abcde", Namespace: "spoke1",
+					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{

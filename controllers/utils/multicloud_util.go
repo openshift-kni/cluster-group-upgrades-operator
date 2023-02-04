@@ -95,11 +95,16 @@ var EnsureInstallPlanIsApproved = func(
 	// Create a ManagedClusterView for the InstallPlan so that we can access its latest resourceVersion.
 	mcvForInstallPlanName := GetMultiCloudObjectName(
 		clusterGroupUpgrade, subscription.Status.Install.Kind, subscription.Status.Install.Name)
+	if len(mcvForInstallPlanName) > MaxObjectNameLength {
+		// example name: cguName-cguNamespace-installplan-install-kw2bs
+		// truncate before "-installplan-install-kw2bs"
+		// len("-installplan-install-kw2bs") = 26
+		mcvForInstallPlanName = mcvForInstallPlanName[:MaxObjectNameLength-26] + mcvForInstallPlanName[len(mcvForInstallPlanName)-26:]
+	}
 	multiCloudLog.Info("[EnsureInstallPlanIsApproved] Create MCV for InstallPlan", "InstallPlan",
 		subscription.Status.Install.Name, "ns", clusterName)
-	safeName := GetSafeResourceName(mcvForInstallPlanName, clusterGroupUpgrade, MaxObjectNameLength, 0)
 	mcvForInstallPlan, err := EnsureManagedClusterView(
-		ctx, c, safeName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.Install.Name,
+		ctx, c, mcvForInstallPlanName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.Install.Name,
 		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
