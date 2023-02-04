@@ -49,16 +49,6 @@ status:
   - - spoke5
   safeResourceNames:
     cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
-    cgu-default-installplan-install-aaaa1: cgu-default-installplan-install-aaaa1-kuttl
-    cgu-default-installplan-install-aaaa2: cgu-default-installplan-install-aaaa2-kuttl
-    cgu-default-installplan-install-aaaa3: cgu-default-installplan-install-aaaa3-kuttl
-    cgu-default-installplan-install-aaaa4: cgu-default-installplan-install-aaaa4-kuttl
-    cgu-default-installplan-install-aaaa5: cgu-default-installplan-install-aaaa5-kuttl
-    cgu-default-installplan-install-bbbb1: cgu-default-installplan-install-bbbb1-kuttl
-    cgu-default-installplan-install-bbbb2: cgu-default-installplan-install-bbbb2-kuttl
-    cgu-default-installplan-install-bbbb3: cgu-default-installplan-install-bbbb3-kuttl
-    cgu-default-installplan-install-bbbb4: cgu-default-installplan-install-bbbb4-kuttl
-    cgu-default-installplan-install-bbbb5: cgu-default-installplan-install-bbbb5-kuttl
     cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
     cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
     cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
@@ -83,7 +73,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa1-kuttl
+  name: cgu-default-installplan-install-aaaa1
   namespace: spoke1
 spec:
   scope:
@@ -96,7 +86,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa2-kuttl
+  name: cgu-default-installplan-install-aaaa2
   namespace: spoke1
 spec:
   scope:
@@ -109,7 +99,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa3-kuttl
+  name: cgu-default-installplan-install-aaaa3
   namespace: spoke1
 spec:
   scope:
@@ -122,7 +112,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa4-kuttl
+  name: cgu-default-installplan-install-aaaa4
   namespace: spoke1
 spec:
   scope:
@@ -135,7 +125,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa5-kuttl
+  name: cgu-default-installplan-install-aaaa5
   namespace: spoke1
 spec:
   scope:
@@ -149,7 +139,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb1-kuttl
+  name: cgu-default-installplan-install-bbbb1
   namespace: spoke2
 spec:
   scope:
@@ -162,7 +152,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb2-kuttl
+  name: cgu-default-installplan-install-bbbb2
   namespace: spoke2
 spec:
   scope:
@@ -175,7 +165,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb3-kuttl
+  name: cgu-default-installplan-install-bbbb3
   namespace: spoke2
 spec:
   scope:
@@ -188,7 +178,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb4-kuttl
+  name: cgu-default-installplan-install-bbbb4
   namespace: spoke2
 spec:
   scope:
@@ -201,7 +191,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb5-kuttl
+  name: cgu-default-installplan-install-bbbb5
   namespace: spoke2
 spec:
   scope:
