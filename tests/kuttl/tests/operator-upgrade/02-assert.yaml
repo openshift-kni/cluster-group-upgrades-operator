@@ -73,7 +73,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa1
+  name: install-aaaa1
   namespace: spoke1
 spec:
   scope:
@@ -86,7 +86,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa2
+  name: install-aaaa2
   namespace: spoke1
 spec:
   scope:
@@ -99,7 +99,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa3
+  name: install-aaaa3
   namespace: spoke1
 spec:
   scope:
@@ -112,7 +112,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa4
+  name: install-aaaa4
   namespace: spoke1
 spec:
   scope:
@@ -125,7 +125,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-aaaa5
+  name: install-aaaa5
   namespace: spoke1
 spec:
   scope:
@@ -139,7 +139,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb1
+  name: install-bbbb1
   namespace: spoke2
 spec:
   scope:
@@ -152,7 +152,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb2
+  name: install-bbbb2
   namespace: spoke2
 spec:
   scope:
@@ -165,7 +165,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb3
+  name: install-bbbb3
   namespace: spoke2
 spec:
   scope:
@@ -178,7 +178,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb4
+  name: install-bbbb4
   namespace: spoke2
 spec:
   scope:
@@ -191,7 +191,7 @@ kind: ManagedClusterView
 metadata:
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
-  name: cgu-default-installplan-install-bbbb5
+  name: install-bbbb5
   namespace: spoke2
 spec:
   scope:

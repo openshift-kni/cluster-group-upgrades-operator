@@ -106,17 +106,13 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 	testcases := []struct {
 		name         string
 		mca          *actionv1beta1.ManagedClusterAction
-		mcaName      string
-		safeMcaName  string
 		mcaNamespace string
 		installPlan  operatorsv1alpha1.InstallPlan
-		validateFunc func(t *testing.T, runtimeClient client.Client, safeMcaName, mcaName, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan)
+		validateFunc func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan)
 	}{
 		{
 			name:         "ManagedClusterAction is successfully created",
 			mca:          nil,
-			mcaName:      "mcaName",
-			safeMcaName:  "mcaName-abcde",
 			mcaNamespace: "mcaNamespace",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
@@ -128,14 +124,14 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, safeMcaName, mcaName, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, safeMcaName, mcaName, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
-				assert.Equal(t, mca.ObjectMeta.Name, safeMcaName)
+				assert.Equal(t, mca.ObjectMeta.Name, installPlan.Name)
 				assert.Equal(t, mca.ObjectMeta.Namespace, mcaNamespace)
-				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], mcaName)
+				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], installPlan.Name)
 				assert.Equal(t, mca.Spec.ActionType, actionv1beta1.UpdateActionType)
 				assert.Equal(t, mca.Spec.KubeWork.Resource, "installplan")
 				assert.Equal(t, mca.Spec.KubeWork.Namespace, "installPlan-abcd-namespace")
@@ -155,8 +151,6 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					},
 				},
 			},
-			mcaName:      "mcaName",
-			safeMcaName:  "mcaName-abcde",
 			mcaNamespace: "mcaNamespace",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
@@ -168,14 +162,14 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, safeMcaName, mcaName, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, safeMcaName, mcaName, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
-				assert.Equal(t, mca.ObjectMeta.Name, safeMcaName)
+				assert.Equal(t, mca.ObjectMeta.Name, installPlan.Name)
 				assert.Equal(t, mca.ObjectMeta.Namespace, mcaNamespace)
-				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], mcaName)
+				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], installPlan.Name)
 				assert.Equal(t, mca.Spec.ActionType, actionv1beta1.UpdateActionType)
 				assert.Equal(t, mca.Spec.KubeWork.Resource, "installplan")
 				assert.Equal(t, mca.Spec.KubeWork.Namespace, "installPlan-abcd-namespace")
@@ -196,7 +190,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				t.Errorf("error in creating fake client")
 			}
 
-			tc.validateFunc(t, fakeClient, tc.safeMcaName, tc.mcaName, tc.mcaNamespace, tc.installPlan)
+			tc.validateFunc(t, fakeClient, tc.mcaNamespace, tc.installPlan)
 		})
 	}
 }
@@ -331,7 +325,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -350,48 +344,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				}
 				assert.Equal(t, mcvForInstallPlan.Status.Conditions, []v1.Condition([]v1.Condition(nil)))
 				assert.Equal(t, result, MultiCloudPendingStatus)
-			},
-		},
-		{
-			name: "ManagedClusterView has long name",
-			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      "cgu",
-					Namespace: "defaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefault",
-				},
-			},
-			subscription: operatorsv1alpha1.Subscription{
-				Status: operatorsv1alpha1.SubscriptionStatus{
-					InstallPlanRef: &corev1.ObjectReference{
-						Kind:      "InstallPlan",
-						Name:      "install-xyz56",
-						Namespace: "installPlan-xyz-namespace",
-					},
-					Install: &operatorsv1alpha1.InstallPlanReference{
-						Kind: "InstallPlan",
-						Name: "install-xyz56",
-					},
-				},
-			},
-			mcvForInstallPlan: nil,
-			clusterName:       "spoke1",
-			validateFunc: func(t *testing.T, runtimeClient client.Client, cgu *ranv1alpha1.ClusterGroupUpgrade,
-				subscription operatorsv1alpha1.Subscription, clusterName string, mcvForInstallPlan *viewv1beta1.ManagedClusterView) {
-				result, err := EnsureInstallPlanIsApproved(context.TODO(), runtimeClient, cgu, subscription, clusterName)
-				if err != nil {
-					t.Errorf("Error occurred and it wasn't expected")
-				}
-				assert.Equal(t, result, MultiCloudPendingStatus)
-
-				createdMCV := &viewv1beta1.ManagedClusterView{}
-				if err := runtimeClient.Get(context.TODO(), types.NamespacedName{
-					Name:      "cgu-defaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaultdefaul-installplan-install-xyz56",
-					Namespace: "spoke1"}, createdMCV); err != nil {
-					if errors.IsNotFound(err) {
-						t.Errorf("Expected Managed Cluster View with truncated name, but failed")
-					}
-					t.Errorf("Unexpected error: %v", err.Error())
-				}
 			},
 		},
 		{
@@ -416,7 +368,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -466,7 +418,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -516,7 +468,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -567,7 +519,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -624,7 +576,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -681,7 +633,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
 				ObjectMeta: v1.ObjectMeta{
-					Name: "cgu-default-installplan-installplan-xyz", Namespace: "spoke1",
+					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
 					Scope: viewv1beta1.ViewScope{
@@ -715,14 +667,11 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				}
 				assert.Equal(t, result, InstallPlanWasApproved)
 
-				mcaName := GetMultiCloudObjectName(cgu, "InstallPlan", mcvForInstallPlan.Spec.Scope.Name)
-				safeName, ok := cgu.Status.SafeResourceNames[mcaName]
-				assert.True(t, ok)
 				mcaForInstallPlan := &actionv1beta1.ManagedClusterAction{}
-				if err := runtimeClient.Get(context.TODO(), types.NamespacedName{Name: safeName, Namespace: clusterName}, mcaForInstallPlan); err != nil {
+				if err := runtimeClient.Get(context.TODO(), types.NamespacedName{Name: "installPlan-xyz", Namespace: clusterName}, mcaForInstallPlan); err != nil {
 					if errors.IsNotFound(err) {
-						t.Errorf("Expected Managed Cluster Action %s to have been created in namespace %s, but failed",
-							mcaName, clusterName)
+						t.Errorf("Expected Managed Cluster Action installPlan-xyz to have been created in namespace %s, but failed",
+							clusterName)
 					}
 					t.Errorf("Unexpected error: %v", err.Error())
 				}
@@ -730,9 +679,9 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				assert.Equal(t, mcaForInstallPlan.Spec.ActionType, actionv1beta1.UpdateActionType)
 				assert.Equal(t, mcaForInstallPlan.Spec.KubeWork.Resource, "installplan")
 				assert.Equal(t, mcaForInstallPlan.Spec.KubeWork.Namespace, "installPlan-xyz-namespace")
-				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Name, safeName)
+				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Name, "installPlan-xyz")
 				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Namespace, clusterName)
-				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Annotations[DesiredResourceName], mcaName)
+				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Annotations[DesiredResourceName], "installPlan-xyz")
 			},
 		},
 	}
