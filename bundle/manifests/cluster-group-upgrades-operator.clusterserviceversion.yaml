@@ -361,6 +361,8 @@ spec:
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
                 - name: RECOVERY_IMG
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+                - name: SKIP_INSECURE_GRAPH_CALL
+                  value: "false
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.13.0
                 livenessProbe:
                   httpGet:

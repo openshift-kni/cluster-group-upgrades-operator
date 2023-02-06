@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strconv"
@@ -68,8 +68,9 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 	upstream string, channel string, version string) (string, error) {
 	updateGraphURL := upstream + "?channel=" + channel
 
+	insecureSkipVerify := os.Getenv("SKIP_INSECURE_GRAPH_CALL") == "true"
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
 	}
 	client := &http.Client{Transport: tr}
 	req, _ := http.NewRequest("GET", updateGraphURL, nil)
@@ -85,7 +86,7 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil && len(body) > 0 {
 		return "", fmt.Errorf("unable to read body from response: %w", err)
 	}
