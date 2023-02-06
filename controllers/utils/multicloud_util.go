@@ -93,18 +93,11 @@ var EnsureInstallPlanIsApproved = func(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	subscription operatorsv1alpha1.Subscription, clusterName string) (int, error) {
 	// Create a ManagedClusterView for the InstallPlan so that we can access its latest resourceVersion.
-	mcvForInstallPlanName := GetMultiCloudObjectName(
-		clusterGroupUpgrade, subscription.Status.Install.Kind, subscription.Status.Install.Name)
-	if len(mcvForInstallPlanName) > MaxObjectNameLength {
-		// example name: cguName-cguNamespace-installplan-install-kw2bs
-		// truncate before "-installplan-install-kw2bs"
-		// len("-installplan-install-kw2bs") = 26
-		mcvForInstallPlanName = mcvForInstallPlanName[:MaxObjectNameLength-26] + mcvForInstallPlanName[len(mcvForInstallPlanName)-26:]
-	}
 	multiCloudLog.Info("[EnsureInstallPlanIsApproved] Create MCV for InstallPlan", "InstallPlan",
 		subscription.Status.Install.Name, "ns", clusterName)
 	mcvForInstallPlan, err := EnsureManagedClusterView(
-		ctx, c, mcvForInstallPlanName, mcvForInstallPlanName, clusterName, "InstallPlan", subscription.Status.Install.Name,
+		ctx, c, subscription.Status.Install.Name, subscription.Status.Install.Name,
+		clusterName, "InstallPlan", subscription.Status.Install.Name,
 		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
@@ -147,9 +140,7 @@ var EnsureInstallPlanIsApproved = func(
 		multiCloudLog.Info("Create ManagedClusterAction for InstallPlan", "InstallPlan",
 			installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
 		// Create or update the managedClusterAction to approve the install plan.
-		mcaName := GetMultiCloudObjectName(clusterGroupUpgrade, "InstallPlan", installPlan.Name)
-		safeName := GetSafeResourceName(mcaName, clusterGroupUpgrade, MaxObjectNameLength, 0)
-		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, safeName, mcaName, clusterName, installPlan)
+		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, clusterName, installPlan)
 		if err != nil {
 			return InstallPlanCannotBeApproved, err
 		}
@@ -229,20 +220,20 @@ func EnsureManagedClusterView(
 
 // EnsureManagedClusterActionForInstallPlan creates or updates an action for an InstallPlan.
 func EnsureManagedClusterActionForInstallPlan(
-	ctx context.Context, c client.Client, safeName, name, namespace string,
+	ctx context.Context, c client.Client, namespace string,
 	installPlan operatorsv1alpha1.InstallPlan) (*actionv1beta1.ManagedClusterAction, error) {
 
 	mcaForInstallPlan := &actionv1beta1.ManagedClusterAction{}
-	if err := c.Get(ctx, types.NamespacedName{Name: safeName, Namespace: namespace}, mcaForInstallPlan); err != nil {
+	if err := c.Get(ctx, types.NamespacedName{Name: installPlan.Name, Namespace: namespace}, mcaForInstallPlan); err != nil {
 		// If the specific managedClusterAction was not found, create it.
 		if errors.IsNotFound(err) {
 			multiCloudLog.Info("[EnsureManagedClusterActionForInstallPlan] MCA doesn't exist, create it",
-				"name", safeName, "namespace", namespace)
+				"name", installPlan.Name, "namespace", namespace)
 			actionMeta := metav1.ObjectMeta{
-				Name:      safeName,
+				Name:      installPlan.Name,
 				Namespace: namespace,
 				Annotations: map[string]string{
-					DesiredResourceName: name,
+					DesiredResourceName: installPlan.Name,
 				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
@@ -263,7 +254,7 @@ func EnsureManagedClusterActionForInstallPlan(
 	} else {
 		// If the specific managedClusterAction was found, don't do anything.
 		multiCloudLog.Info("[EnsureManagedClusterActionForInstallPlan] MCA already exists, continue",
-			"name", safeName, "namespace", namespace)
+			"name", installPlan.Name, "namespace", namespace)
 	}
 
 	return mcaForInstallPlan, nil
