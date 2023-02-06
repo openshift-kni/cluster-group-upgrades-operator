@@ -73,6 +73,8 @@ github.com/go-openapi/spec
 # github.com/go-openapi/swag v0.19.9
 ## explicit; go 1.13
 github.com/go-openapi/swag
+# github.com/go-task/slim-sprig v0.0.0-20210107165309-348f09dbbbc0
+## explicit; go 1.13
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
