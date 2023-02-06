@@ -12,9 +12,10 @@ import (
 )
 
 // getOverrides: reads user overrides to operator configuration
-//		An example for such an override would be the pre-cache
-//      workload image. It's usually taken from the operator CSV,
-//      but a user might need to override it in some cases
+//
+//			An example for such an override would be the pre-cache
+//	     workload image. It's usually taken from the operator CSV,
+//	     but a user might need to override it in some cases
 func (r *ClusterGroupUpgradeReconciler) getOverrides(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
 	map[string]string, error) {
