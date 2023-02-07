@@ -678,7 +678,6 @@ spec:
 				PlatformImage:                "",
 				OperatorsIndexes:             []string(nil),
 				OperatorsPackagesAndChannels: []string{"performance-addon-operator:4.9"},
-				ExcludePrecachePatterns:      []string(nil)},
 			wantErr: assert.NoError,
 		},
 		{
@@ -689,7 +688,6 @@ spec:
 				PlatformImage:                "quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b",
 				OperatorsIndexes:             []string(nil),
 				OperatorsPackagesAndChannels: []string(nil),
-				ExcludePrecachePatterns:      []string(nil)},
 			wantErr: assert.NoError,
 		},
 		{
@@ -700,7 +698,6 @@ spec:
 				PlatformImage:                "",
 				OperatorsIndexes:             []string(nil),
 				OperatorsPackagesAndChannels: []string(nil),
-				ExcludePrecachePatterns:      []string(nil)},
 			wantErr: assert.NoError,
 		},
 		{
@@ -711,7 +708,6 @@ spec:
 				PlatformImage:                "",
 				OperatorsIndexes:             []string{"e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11"},
 				OperatorsPackagesAndChannels: []string(nil),
-				ExcludePrecachePatterns:      []string(nil)},
 			wantErr: assert.NoError,
 		},
 		{
@@ -724,7 +720,6 @@ spec:
 				OperatorsPackagesAndChannels: []string{
 					"sriov-network-operator:4.9", "ptp-operator:4.9", "performance-addon-operator:4.9", "cluster-logging:stable", "local-storage-operator:4.9",
 				},
-				ExcludePrecachePatterns: []string(nil)},
 			wantErr: assert.NoError,
 		},
 	}
