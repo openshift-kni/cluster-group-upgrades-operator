@@ -232,9 +232,6 @@ func EnsureManagedClusterActionForInstallPlan(
 			actionMeta := metav1.ObjectMeta{
 				Name:      installPlan.Name,
 				Namespace: namespace,
-				Annotations: map[string]string{
-					DesiredResourceName: installPlan.Name,
-				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
 			if err != nil {

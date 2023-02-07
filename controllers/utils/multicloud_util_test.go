@@ -131,7 +131,6 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				}
 				assert.Equal(t, mca.ObjectMeta.Name, installPlan.Name)
 				assert.Equal(t, mca.ObjectMeta.Namespace, mcaNamespace)
-				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], installPlan.Name)
 				assert.Equal(t, mca.Spec.ActionType, actionv1beta1.UpdateActionType)
 				assert.Equal(t, mca.Spec.KubeWork.Resource, "installplan")
 				assert.Equal(t, mca.Spec.KubeWork.Namespace, "installPlan-abcd-namespace")
@@ -169,7 +168,6 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				}
 				assert.Equal(t, mca.ObjectMeta.Name, installPlan.Name)
 				assert.Equal(t, mca.ObjectMeta.Namespace, mcaNamespace)
-				assert.Equal(t, mca.ObjectMeta.Annotations[DesiredResourceName], installPlan.Name)
 				assert.Equal(t, mca.Spec.ActionType, actionv1beta1.UpdateActionType)
 				assert.Equal(t, mca.Spec.KubeWork.Resource, "installplan")
 				assert.Equal(t, mca.Spec.KubeWork.Namespace, "installPlan-abcd-namespace")
@@ -227,7 +225,6 @@ func TestEnsureManagedClusterView(t *testing.T) {
 				}
 				assert.Equal(t, mcv.ObjectMeta.Name, safeMcvName)
 				assert.Equal(t, mcv.ObjectMeta.Namespace, mcvNamespace)
-				assert.Equal(t, mcv.ObjectMeta.Annotations[DesiredResourceName], mcvName)
 				assert.Equal(t, mcv.ObjectMeta.Labels,
 					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": label})
 				assert.Equal(t, mcv.Spec.Scope.Resource, resourceType)
@@ -265,7 +262,6 @@ func TestEnsureManagedClusterView(t *testing.T) {
 				}
 				assert.Equal(t, mcv.ObjectMeta.Name, safeMcvName)
 				assert.Equal(t, mcv.ObjectMeta.Namespace, mcvNamespace)
-				assert.Equal(t, mcv.ObjectMeta.Annotations[DesiredResourceName], mcvName)
 				assert.Equal(t, mcv.ObjectMeta.Labels,
 					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": label})
 				assert.Equal(t, mcv.Spec.Scope.Resource, resourceType)
@@ -681,7 +677,6 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				assert.Equal(t, mcaForInstallPlan.Spec.KubeWork.Namespace, "installPlan-xyz-namespace")
 				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Name, "installPlan-xyz")
 				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Namespace, clusterName)
-				assert.Equal(t, mcaForInstallPlan.ObjectMeta.Annotations[DesiredResourceName], "installPlan-xyz")
 			},
 		},
 	}
