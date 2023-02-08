@@ -188,8 +188,12 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 				// err convert from string to int
 				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, cPolicy.GetName(), err)
 			}
-			policyName := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())[1]
-			policyWaveMap[policyName] = deployWaveInt
+			policyName, err := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())
+			if err != nil {
+				r.Log.Info("Ignoring policy " + cPolicy.Name + " with invalid name")
+				continue
+			}
+			policyWaveMap[policyName[1]] = deployWaveInt
 		}
 	}
 
