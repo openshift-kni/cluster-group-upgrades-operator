@@ -1,6 +1,6 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
-go 1.17
+go 1.19
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
