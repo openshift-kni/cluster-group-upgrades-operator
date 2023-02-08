@@ -162,12 +162,12 @@ function display_current_status {
 
 function get_container_id {
     local name=$1
-    crictl ps 2>/dev/null | awk -v name="${name}" '{if ($(NF-2) == name) {print $1; exit 0}}'
+    crictl ps -o json 2>/dev/null | jq -r --arg name "${name}" '.containers[] | select(.metadata.name==$name).id'
 }
 
 function get_container_state {
     local name=$1
-    crictl ps 2>/dev/null | awk -v name="${name}" '{if ($(NF-2) == name) {print $(NF-3); exit 0}}'
+    crictl ps -o json 2>/dev/null | jq -r --arg name "${name}" '.containers[] | select(.metadata.name==$name).state'
 }
 
 function get_current_revision {
@@ -201,14 +201,14 @@ function wait_for_container_restart {
         cur_state=$(get_container_state "${name}")
         if [ -n "${cur_id}" ] && \
                 [ "${cur_id}" != "${orig_id}" ] && \
-                [ "${cur_state}" = "Running" ]; then
+                [ "${cur_state}" = "CONTAINER_RUNNING" ]; then
             break
         fi
         echo -n "." && sleep 10
     done
     echo
 
-    if [ "$(get_container_state ${name})" != "Running" ]; then
+    if [ "$(get_container_state ${name})" != "CONTAINER_RUNNING" ]; then
         fatal "${name} container is not Running. Please investigate"
     fi
 
