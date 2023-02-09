@@ -23,6 +23,10 @@ spec:
 status:
   computedMaxConcurrency: 4
   conditions:
+  - message: Precaching spec is valid and consistent
+    reason: PrecacheSpecIsWellFormed
+    status: "True"
+    type: PrecacheSpecValid
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
     status: "True"
@@ -35,10 +39,6 @@ status:
     reason: PrecachingCompleted
     status: "True"
     type: PrecachingSuceeded
-  - message: Precaching spec is valid and consistent
-    reason: PrecacheSpecIsWellFormed
-    status: "True"
-    type: PrecacheSpecValid
   - message: Not enabled
     reason: NotEnabled
     status: "False"

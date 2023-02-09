@@ -23,6 +23,10 @@ spec:
 status:
   computedMaxConcurrency: 4
   conditions:
+  - message: Precaching spec is valid and consistent
+    reason: PrecacheSpecIsWellFormed
+    status: "True"
+    type: PrecacheSpecValid
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
     status: "True"
@@ -35,10 +39,6 @@ status:
     reason: InProgress
     status: "False"
     type: PrecachingSuceeded
-  - message: Precaching spec is valid and consistent
-    reason: PrecacheSpecIsWellFormed
-    status: "True"
-    type: PrecacheSpecValid
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
   - cgu-policy4-common-sriov-sub-policy-kuttl
