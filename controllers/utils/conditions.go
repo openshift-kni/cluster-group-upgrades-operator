@@ -73,6 +73,13 @@ var ConditionReasons = struct {
 
 // SetStatusCondition is a convenience wrapper for meta.SetStatusCondition that takes in the types defined here and converts them to strings
 func SetStatusCondition(existingConditions *[]metav1.Condition, conditionType ConditionType, conditionReason ConditionReason, conditionStatus metav1.ConditionStatus, message string) {
+	conditions := *existingConditions
+	condition := meta.FindStatusCondition(*existingConditions, string(conditionType))
+	if condition != nil &&
+		condition.Status != conditionStatus &&
+		conditions[len(conditions)-1].Type != string(conditionType) {
+		meta.RemoveStatusCondition(existingConditions, string(conditionType))
+	}
 	meta.SetStatusCondition(
 		existingConditions,
 		metav1.Condition{
