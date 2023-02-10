@@ -7,7 +7,6 @@ require (
 	github.com/go-logr/logr v0.4.0
 	github.com/onsi/ginkgo v1.16.5
 	github.com/onsi/gomega v1.17.0
-	github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-10-13-16-11-44
 	github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
 	github.com/operator-framework/api v0.10.4
@@ -20,6 +19,7 @@ require (
 	k8s.io/klog v1.0.0
 	kubevirt.io/qe-tools v0.1.7
 	open-cluster-management.io/api v0.5.0
+	open-cluster-management.io/governance-policy-propagator v0.6.0
 	sigs.k8s.io/controller-runtime v0.9.3-0.20210709165254-650ea59f19cc
 )
 
@@ -119,5 +119,3 @@ replace (
 	sigs.k8s.io/cluster-api-provider-openstack => github.com/openshift/cluster-api-provider-openstack v0.0.0-20201116051540-155384b859c5
 
 )
-
-replace github.com/open-cluster-management/governance-policy-propagator v0.0.0-20211209191640-b399eb8a0bf2 => open-cluster-management.io/governance-policy-propagator v0.6.0

@@ -21,12 +21,12 @@ import (
 	"fmt"
 	"testing"
 
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 
 	corev1 "k8s.io/api/core/v1"
 
