@@ -36,9 +36,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
-	actionv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/action/v1beta1"
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
+	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 )
 
 var (

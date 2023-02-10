@@ -116,7 +116,7 @@ func (c *FakeClusterGroupUpgrades) UpdateStatus(ctx context.Context, clusterGrou
 // Delete takes name of the clusterGroupUpgrade and deletes it. Returns an error if one occurs.
 func (c *FakeClusterGroupUpgrades) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
 	_, err := c.Fake.
-		Invokes(testing.NewDeleteAction(clustergroupupgradesResource, c.ns, name), &v1alpha1.ClusterGroupUpgrade{})
+		Invokes(testing.NewDeleteActionWithOptions(clustergroupupgradesResource, c.ns, name, opts), &v1alpha1.ClusterGroupUpgrade{})
 
 	return err
 }
