@@ -7,7 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Subject reference
+// Subject defines the resource that can be used as PlacementBinding subject
 type Subject struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -15,14 +15,14 @@ type Subject struct {
 	APIGroup string `json:"apiGroup"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:Enum=Policy
+	// +kubebuilder:validation:Enum=Policy;PolicySet
 	Kind string `json:"kind"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 }
 
-// PlacementSubject reference
+// PlacementSubject defines the resource that can be used as PlacementBinding placementRef
 type PlacementSubject struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -52,7 +52,6 @@ type PlacementBinding struct {
 	// +kubebuilder:validation:Required
 	PlacementRef PlacementSubject `json:"placementRef"`
 	// +kubebuilder:validation:Required
-	// +kubebuilder:validation:MaxItems=1
 	// +kubebuilder:validation:MinItems=1
 	Subjects []Subject              `json:"subjects"`
 	Status   PlacementBindingStatus `json:"status,omitempty"`

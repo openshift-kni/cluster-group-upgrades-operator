@@ -2,8 +2,8 @@
 // Copyright Contributors to the Open Cluster Management project
 
 // Package v1 contains API Schema definitions for the policy v1 API group
-//+kubebuilder:object:generate=true
-//+groupName=policy.open-cluster-management.io
+// +kubebuilder:object:generate=true
+// +groupName=policy.open-cluster-management.io
 package v1
 
 import (
@@ -25,3 +25,6 @@ var (
 
 // Kind Policy
 const Kind = "Policy"
+
+// PolicySetKind Policy
+const PolicySetKind = "PolicySet"
