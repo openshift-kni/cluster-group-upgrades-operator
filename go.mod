@@ -10,7 +10,7 @@ require (
 	github.com/open-cluster-management/multicloud-operators-foundation v1.0.0-2021-10-13-16-11-44
 	github.com/openshift/build-machinery-go v0.0.0-20210806203541-4ea9b6da3a37
 	github.com/operator-framework/api v0.10.4
-	github.com/sirupsen/logrus v1.8.1
+	github.com/sirupsen/logrus v1.9.0
 	github.com/spf13/cobra v1.1.3
 	github.com/stretchr/testify v1.7.1
 	k8s.io/api v0.21.3
@@ -24,7 +24,7 @@ require (
 )
 
 require (
-	golang.org/x/sys v0.0.0-20220128215802-99c3d69c2c27
+	golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b
 	k8s.io/code-generator v0.21.3
 )
