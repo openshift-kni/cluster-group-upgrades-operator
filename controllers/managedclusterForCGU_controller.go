@@ -38,10 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 const (
