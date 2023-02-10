@@ -8,7 +8,9 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
@@ -468,6 +470,79 @@ func TestMCR_createResourcesFromTemplates(t *testing.T) {
 					Namespace: tc.data.Cluster,
 				}, obj)
 				assert.Equal(t, err, nil)
+			}
+		})
+	}
+}
+
+func Test_checkViewProcessing(t *testing.T) {
+	type args struct {
+		viewConditions []interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		{
+			name: "Processing true",
+			args: args{
+				viewConditions: []interface{}{
+					map[string]interface{}{
+						"type":    viewv1beta1.ConditionViewProcessing,
+						"status":  string(metav1.ConditionTrue),
+						"message": "Watching resources successfully",
+					},
+				},
+			},
+			want:    true,
+			wantErr: false,
+		},
+		{
+			name: "Processing false - object not found",
+			args: args{
+				viewConditions: []interface{}{
+					map[string]interface{}{
+						"type":    viewv1beta1.ConditionViewProcessing,
+						"status":  string(metav1.ConditionFalse),
+						"message": `failed to get resource with err: subscriptionstatuses.apps.open-cluster-management.io "acm-policies-sub" not found`,
+					},
+				},
+			},
+			want:    false,
+			wantErr: false,
+		},
+		{
+			name: "Processing false - cluster unreachable",
+			args: args{
+				viewConditions: []interface{}{
+					map[string]interface{}{
+						"type":   viewv1beta1.ConditionViewProcessing,
+						"status": string(metav1.ConditionFalse),
+						"message": `failed to get resource with err: 
+						Get "https://[fd02::1]:443/api/v1/namespaces/openshift-talo-pre-cache/configmaps/pre-cache-spec": dial tcp [fd02::1]:443: connect: connection refused`,
+					},
+				},
+			},
+			want:    false,
+			wantErr: true,
+		},
+		{
+			name:    "Processing condition not found",
+			want:    false,
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := checkViewProcessing(tt.args.viewConditions)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("checkViewProcessing() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("checkViewProcessing() = %v, want %v", got, tt.want)
 			}
 		})
 	}
