@@ -22,12 +22,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 
+	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -263,17 +265,24 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResources(ctx contex
 
 // checkViewProcessing checks whether managedclusterview is processing
 // returns: 	processing bool
-func (r *ClusterGroupUpgradeReconciler) checkViewProcessing(viewConditions []interface{}) bool {
-	var status string
+func checkViewProcessing(viewConditions []interface{}) (bool, error) {
+	var status, message string
 	for _, condition := range viewConditions {
-		if condition.(map[string]interface{})["type"] == "Processing" {
+		if condition.(map[string]interface{})["type"] == viewv1beta1.ConditionViewProcessing {
 			status = condition.(map[string]interface{})["status"].(string)
-			message := condition.(map[string]interface{})["message"].(string)
-			r.Log.Info("[checkViewProcessing]", "viewStatus", message)
-			break
+			message = condition.(map[string]interface{})["message"].(string)
 		}
 	}
-	return status == "True"
+	if status == "True" {
+		return true, nil
+	}
+	if strings.HasSuffix(message, "not found") {
+		return false, nil
+	}
+	if message == "" {
+		message = "Processing condition not found in MCV status"
+	}
+	return false, fmt.Errorf("MCV processing error: " + message)
 }
 
 // renderYamlTemplate renders a single yaml template
@@ -382,7 +391,11 @@ func (r *ClusterGroupUpgradeReconciler) getPreparingConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if processing {
 		return NsFoundOnSpoke, nil
 	}
 	return NoNsFoundOnSpoke, nil
@@ -478,7 +491,11 @@ func (r *ClusterGroupUpgradeReconciler) getStartingConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if !r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if !processing {
 		return NoJobFoundOnSpoke, nil
 	}
 	return r.getJobStatus(jobView)
@@ -508,7 +525,11 @@ func (r *ClusterGroupUpgradeReconciler) getActiveConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if !r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if !processing {
 		return NoJobFoundOnSpoke, nil
 	}
 	return r.getJobStatus(jobView)
@@ -571,7 +592,10 @@ func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 		if err != nil {
 			return false, err
 		}
-		present := r.checkViewProcessing(viewConditions)
+		present, err := checkViewProcessing(viewConditions)
+		if err != nil {
+			return false, err
+		}
 		if !present {
 			return false, nil
 		}
