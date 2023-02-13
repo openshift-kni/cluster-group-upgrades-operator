@@ -57,6 +57,7 @@ type Placement struct {
 	PlacementRule    string                     `json:"placementRule,omitempty"`
 	Placement        string                     `json:"placement,omitempty"`
 	Decisions        []appsv1.PlacementDecision `json:"decisions,omitempty"`
+	PolicySet        string                     `json:"policySet,omitempty"`
 }
 
 // CompliancePerClusterStatus defines compliance per cluster status

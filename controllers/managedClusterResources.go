@@ -29,7 +29,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
