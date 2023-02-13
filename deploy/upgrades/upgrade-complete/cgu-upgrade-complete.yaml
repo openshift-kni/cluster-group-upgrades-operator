@@ -6,6 +6,16 @@ metadata:
   annotations:
     cluster-group-upgrades-operator/name-suffix: kuttl      
 spec:
+  actions:
+    afterCompletion:
+      addClusterLabels:
+        ztp-done: ''
+      deleteClusterLabels:
+        ztp-running: ''
+      deleteObjects: true
+    beforeEnable:
+      addClusterLabels:
+        ztp-running: ''
   managedPolicies:
     - policy1-common-cluster-version-policy
     - policy2-common-pao-sub-policy
@@ -13,5 +23,6 @@ spec:
   clusters:
   - spoke1
   - spoke4
+  - spoke6
   remediationStrategy:
     maxConcurrency: 1
