@@ -291,28 +291,41 @@ func NewManagedClusterActionForInstallPlanSpec(installPlan operatorsv1alpha1.Ins
 	return &actionSpec, nil
 }
 
-// DeleteMultiCloudObjects cleans up views associated to an UOCR.
+// DeleteMultiCloudObjects cleans up views associated to a cluster.
 func DeleteMultiCloudObjects(
+	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
+	// Only need to delete ManagedClusterView as ManagedClusterActions get deleted automatically.
+
+	var mcvLabels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
+	opts := []client.ListOption{
+		client.InNamespace(clusterName),
+		client.MatchingLabels(mcvLabels),
+	}
+
+	mcvList := &viewv1beta1.ManagedClusterViewList{}
+	if err := c.List(ctx, mcvList, opts...); err != nil {
+		return err
+	}
+
+	for _, mcv := range mcvList.Items {
+		multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "name", mcv.Name)
+		if err := c.Delete(ctx, &mcv); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// DeleteAllMultiCloudObjects cleans up views associated to all clusters in the list.
+func DeleteAllMultiCloudObjects(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, allClustersForUpgrade []string) error {
 	// Only need to delete ManagedClusterView as ManagedClusterActions get deleted automatically.
 	for _, clusterName := range allClustersForUpgrade {
-		var mcvLabels = map[string]string{
-			"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
-		opts := []client.ListOption{
-			client.InNamespace(clusterName),
-			client.MatchingLabels(mcvLabels),
-		}
-
-		mcvList := &viewv1beta1.ManagedClusterViewList{}
-		if err := c.List(ctx, mcvList, opts...); err != nil {
+		err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
+		if err != nil {
 			return err
-		}
-
-		for _, mcv := range mcvList.Items {
-			multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "name", mcv.Name)
-			if err := c.Delete(ctx, &mcv); err != nil {
-				return err
-			}
 		}
 	}
 
