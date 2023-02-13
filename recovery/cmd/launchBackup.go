@@ -49,6 +49,7 @@ func RecoveryInProgress(backupPath string) bool {
 
 // LaunchBackup triggers the backup procedure
 // returns:			error
+//
 //nolint:gocritic
 func LaunchBackup() error {
 
