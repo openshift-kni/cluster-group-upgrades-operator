@@ -4,18 +4,14 @@ import (
 	"context"
 	"flag"
 	//"log"
-	"path"
 	"testing"
 
-	. "github.com/onsi/ginkgo"
-	"github.com/onsi/ginkgo/reporters"
+	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	ginkgo_reporters "kubevirt.io/qe-tools/pkg/ginkgo-reporters"
 
 	testclient "github.com/openshift-kni/cluster-group-upgrades-operator/tests/pkg/client"
 	testutils "github.com/openshift-kni/cluster-group-upgrades-operator/tests/pkg/utils"
@@ -31,18 +27,7 @@ func init() {
 
 func TestTest(t *testing.T) {
 	RegisterFailHandler(Fail)
-
-	rr := []Reporter{}
-	if ginkgo_reporters.Polarion.Run {
-		rr = append(rr, &ginkgo_reporters.Polarion)
-	}
-
-	if *junitPath != "" {
-		junitFile := path.Join(*junitPath, "validation_junit.xml")
-		rr = append(rr, reporters.NewJUnitReporter(junitFile))
-	}
-
-	RunSpecsWithDefaultAndCustomReporters(t, "Upgrades Operator unit tests", rr)
+	RunSpecs(t, "Upgrades Operator unit tests")
 }
 
 var _ = BeforeSuite(func() {
