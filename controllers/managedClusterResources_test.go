@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	viewv1beta1 "github.com/open-cluster-management/multicloud-operators-foundation/pkg/apis/view/v1beta1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"

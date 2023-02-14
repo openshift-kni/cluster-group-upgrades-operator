@@ -38,10 +38,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 const (
@@ -65,12 +65,12 @@ type ManagedClusterForCguReconciler struct {
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile the managed cluster auto create ClusterGroupUpgrade
-// - Controller watches for create event of managed cluster object. Reconciliation
-//   is triggered when a new managed cluster is created
-// - When a new managed cluster is created, create ClusterGroupUpgrade CR for the
-//   cluster only when it's ready and its child policies are available
-// - As created ClusterGroupUpgrade has ownReference set to its managed cluster,
-//   when the managed cluster is deleted, the ClusterGroupUpgrade will be auto-deleted
+//   - Controller watches for create event of managed cluster object. Reconciliation
+//     is triggered when a new managed cluster is created
+//   - When a new managed cluster is created, create ClusterGroupUpgrade CR for the
+//     cluster only when it's ready and its child policies are available
+//   - As created ClusterGroupUpgrade has ownReference set to its managed cluster,
+//     when the managed cluster is deleted, the ClusterGroupUpgrade will be auto-deleted
 //
 // Note: The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.

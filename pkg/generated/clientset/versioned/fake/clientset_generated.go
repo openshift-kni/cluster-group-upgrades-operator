@@ -73,7 +73,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // ClustergroupupgradesoperatorV1alpha1 retrieves the ClustergroupupgradesoperatorV1alpha1Client
 func (c *Clientset) ClustergroupupgradesoperatorV1alpha1() clustergroupupgradesoperatorv1alpha1.ClustergroupupgradesoperatorV1alpha1Interface {
