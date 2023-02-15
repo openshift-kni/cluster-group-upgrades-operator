@@ -778,7 +778,11 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	policyEnforce := make(map[string]bool)
 	policyInvalidHubTmpl := make(map[string]bool)
 	for _, childPolicy := range childPoliciesList {
-		policyNameArr := utils.GetParentPolicyNameAndNamespace(childPolicy.Name)
+		policyNameArr, err := utils.GetParentPolicyNameAndNamespace(childPolicy.Name)
+		if err != nil {
+			r.Log.Info("[doManagedPoliciesExist] Ignoring child policy " + childPolicy.Name + "with invalid name")
+			continue
+		}
 
 		// Identify policies with remediationAction enforce to ignore
 		if strings.EqualFold(string(childPolicy.Spec.RemediationAction), "enforce") {
