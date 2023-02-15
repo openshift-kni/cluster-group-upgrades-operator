@@ -1,4 +1,4 @@
-FROM registry.hub.docker.com/library/golang:1.19 as builder
+FROM registry.ci.openshift.org/openshift/release:golang-1.19 AS builder
 
 WORKDIR /workspace
 
@@ -11,6 +11,6 @@ COPY recovery/ recovery/
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go
 
-FROM gcr.io/distroless/static:nonroot
+FROM registry.access.redhat.com/ubi9:latest
 COPY --from=builder /workspace/upgrade-recovery /usr/bin/
 ENTRYPOINT ["/usr/bin/upgrade-recovery"]
