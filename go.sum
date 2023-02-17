@@ -654,8 +654,8 @@ k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 h1:KTgPnR10d5zhztWptI952TNtt/4u5
 k8s.io/utils v0.0.0-20221128185143-99ec85e7a448/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
 open-cluster-management.io/api v0.10.0 h1:B6/nwKO7cXDuKV5uJLjF/JUuPuiKsep08gfmAAWaKKc=
 open-cluster-management.io/api v0.10.0/go.mod h1:6BB/Y6r3hXlPjpJgDwIs6Ubxyx/kXXOg6D9Cntg1I9E=
-open-cluster-management.io/governance-policy-propagator v0.9.0 h1:85JxyaUaZb39ZAVBoWQil5nKyIOycqVnQhrZ8gvwaZo=
-open-cluster-management.io/governance-policy-propagator v0.9.0/go.mod h1:qANM1Ww0i7fN90ZDsN9CmPWyRq5kL5ZhuFpBG4MzzDY=
+open-cluster-management.io/governance-policy-propagator v0.10.0 h1:OJx7hWJPl1aCh+DGs8QKnvRte75KglmWXZJsBRjXQ6c=
+open-cluster-management.io/governance-policy-propagator v0.10.0/go.mod h1:5FV0Wd7QztYtb96a6GLxcNxVZoLdeOhyQ/DCzRs2w7A=
 open-cluster-management.io/multicloud-operators-subscription v0.8.0 h1:0YRrUErVU6K6xwExGNaCMF//FOfJT6XyeHAvSbZNEiY=
 open-cluster-management.io/multicloud-operators-subscription v0.8.0/go.mod h1:R83lMSoaMfs3T1Z3ApRjfioA9AgPMzam+CS6XbO5FjU=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
