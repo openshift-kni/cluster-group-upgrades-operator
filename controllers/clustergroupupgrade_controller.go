@@ -2003,7 +2003,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 				return utils.StopReconciling, err
 			}
 
-			err = r.jobAndViewCleanup(ctx, clusterGroupUpgrade)
+			err = r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return utils.StopReconciling, err
 			}

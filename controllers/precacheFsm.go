@@ -148,6 +148,15 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		if currentState != nextState {
 			r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 		}
+		if nextState == PrecacheStateSucceeded {
+			// cleanup for succeeded clusters
+			if r.jobAndViewCleanup(ctx, cluster, backupViews, precacheDeleteTemplates) != nil {
+				r.Log.Error(err, "[precachingFsm] failed to cleanup for", "cluster", cluster)
+				// skip cluster status transition if cleanup not successful
+				continue
+			}
+		}
+		clusterGroupUpgrade.Status.Precaching.Status[cluster] = nextState
 	}
 	r.checkAllPrecachingDone(clusterGroupUpgrade)
 	return nil

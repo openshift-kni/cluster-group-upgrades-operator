@@ -104,11 +104,18 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 			nextState = BackupStateTimeout
 		}
 
-		clusterGroupUpgrade.Status.Backup.Status[cluster] = nextState
-
 		if currentState != nextState {
 			r.Log.Info("[triggerBackup]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 		}
+		if nextState == BackupStateSucceeded {
+			// cleanup for succeeded clusters
+			if r.jobAndViewCleanup(ctx, cluster, backupViews, backupDeleteTemplates) != nil {
+				r.Log.Error(err, "[triggerBackup] failed to cleanup for", "cluster", cluster)
+				// skip cluster status transition if cleanup not successful
+				continue
+			}
+		}
+		clusterGroupUpgrade.Status.Backup.Status[cluster] = nextState
 	}
 	r.checkAllBackupDone(clusterGroupUpgrade)
 	return nil
@@ -123,7 +130,7 @@ func (r *ClusterGroupUpgradeReconciler) backupPreparing(ctx context.Context, clu
 		"cluster", cluster, "nextState", nextState)
 
 	// delete managedclusterview objects if present
-	err := r.deleteManagedClusterResources(ctx, cluster, append(backupView, backupMCAs...))
+	err := r.deleteManagedClusterResources(ctx, cluster, append(backupViews, backupMCAs...))
 	if err != nil {
 		return currentState, err
 	}
