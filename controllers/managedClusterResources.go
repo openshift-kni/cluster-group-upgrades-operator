@@ -133,7 +133,7 @@ var backupDeleteTemplates = []resourceTemplate{
 	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
 }
 
-var backupView = []resourceTemplate{
+var backupViews = []resourceTemplate{
 	{"view-backup-job", utils.ManagedClusterViewPrefix},
 	{"view-backup-namespace", utils.ManagedClusterViewPrefix},
 }
@@ -313,55 +313,44 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	return w, nil
 }
 
-// jobAndViewCleanup deletes all precaching/backup objects. Called when upgrade is done
+// jobAndViewCleanup deletes the precaching/backup resources on hub and spoke
+func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(ctx context.Context,
+	cluster string, hubResourceTemplates []resourceTemplate, spokeResourceTemplates []resourceTemplate) error {
+
+	err := r.deleteManagedClusterResources(ctx, cluster, hubResourceTemplates)
+	if err != nil {
+		return err
+	}
+	data := templateData{
+		Cluster: cluster,
+	}
+	return r.createResourcesFromTemplates(ctx, &data, spokeResourceTemplates)
+}
+
+// jobAndViewFinalCleanup deletes all remaining precaching/backup objects. Called when upgrade is done or CR is deleted
 // returns: 			error
-func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
+func (r *ClusterGroupUpgradeReconciler) jobAndViewFinalCleanup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
-			var resourceTemplates []resourceTemplate
-			if status == PrecacheStateSucceeded {
-				resourceTemplates = precacheAllViews
-			} else {
-				resourceTemplates = append(precacheAllViews, precacheMCAs...)
-			}
-			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
-
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
-			if err != nil {
-				return err
+			if status != PrecacheStateSucceeded {
+				err := r.jobAndViewCleanup(ctx, cluster, append(precacheAllViews, precacheMCAs...), precacheDeleteTemplates)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	if clusterGroupUpgrade.Status.Backup != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
-			var resourceTemplates []resourceTemplate
-			if status == BackupStateSucceeded {
-				resourceTemplates = backupView
-			} else {
-				resourceTemplates = append(backupView, backupMCAs...)
-			}
-
-			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
-
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
-			if err != nil {
-				return err
+			if status != BackupStateSucceeded {
+				err := r.jobAndViewCleanup(ctx, cluster, append(backupViews, backupMCAs...), backupDeleteTemplates)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
