@@ -4,9 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
@@ -181,4 +184,24 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		}
 	}
 	return containsStatus, nil
+}
+
+// ShouldSoak returns whether the reconciler should wait for some time before moving on from a policy after it is compliant
+func ShouldSoak(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+	soak, ok := policy.GetAnnotations()[SoakAnnotation]
+	if !ok {
+		return false, nil
+	}
+	soakSeconds, err := strconv.Atoi(soak)
+	if err != nil || soakSeconds < 0 {
+		return false, errors.New("soak annotation value " + soak + " is invalid, value should be an integer equal or greater than 0")
+	}
+
+	if firstCompliantAt.IsZero() {
+		return true, nil
+	}
+	if time.Since(firstCompliantAt.Time) > time.Duration(soakSeconds)*time.Second {
+		return false, nil
+	}
+	return true, nil
 }

@@ -219,4 +219,3 @@ spec:
                             sourceNamespace: openshift-marketplace
                         status:
                             state: AtLatestKnown
-

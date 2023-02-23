@@ -114,7 +114,6 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 //
 //nolint:gocyclo // TODO: simplify this function
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
-
 	r.Log.Info("Start reconciling CGU", "name", req.NamespacedName)
 	defer func() {
 		if nextReconcile.RequeueAfter > 0 {
@@ -503,8 +502,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			nextReconcile = requeueImmediately()
 		} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 			// Check if current policies have become compliant and if new policies have to be applied.
-			var isBatchComplete bool
-			isBatchComplete, err = r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
+			var isBatchComplete, isSoaking bool
+			isBatchComplete, isSoaking, err = r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
 			if err != nil {
 				return
 			}
@@ -518,7 +517,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				nextReconcile = requeueImmediately()
 			} else {
 				// Add the needed cluster names to upgrade to the appropriate placement rule.
-				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
+				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile, isSoaking)
 				if err != nil {
 					return
 				}
@@ -590,8 +589,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		} else {
 			// On last batch, check all batches
-			var isUpgradeComplete bool
-			isUpgradeComplete, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
+			var isUpgradeComplete, isSoaking bool
+			isUpgradeComplete, isSoaking, err = r.isUpgradeComplete(ctx, clusterGroupUpgrade)
 			if err != nil {
 				return
 			}
@@ -612,7 +611,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				)
 				nextReconcile = requeueImmediately()
 			} else {
-				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile)
+				err = r.remediateCurrentBatch(ctx, clusterGroupUpgrade, &nextReconcile, isSoaking)
 				if err != nil {
 					return
 				}
@@ -713,10 +712,11 @@ returns: bool     : true if the batch is done upgrading; false if not
 	error/nil: in case any error happens
 */
 func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
-	ctx context.Context, client client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+	ctx context.Context, client client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, bool, error) {
 	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
 	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	isBatchComplete := true
+	isSoaking := false
 
 	for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		// nil check to avoid panic in edge cases
@@ -738,9 +738,12 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex
 
 		// Get the index of the next policy for which the cluster is NonCompliant.
-		currentPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, currentPolicyIndex)
+		currentPolicyIndex, soak, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, currentPolicyIndex)
+		if soak {
+			isSoaking = true
+		}
 		if err != nil {
-			return false, err
+			return false, isSoaking, err
 		}
 
 		if currentPolicyIndex >= numberOfPolicies {
@@ -748,11 +751,11 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.Completed
 			err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, clusterName)
 			if err != nil {
-				return false, err
+				return false, isSoaking, err
 			}
 			err = utils.DeleteMultiCloudObjects(ctx, client, clusterGroupUpgrade, clusterName)
 			if err != nil {
-				return false, err
+				return false, isSoaking, err
 			}
 		} else {
 			isBatchComplete = false
@@ -761,7 +764,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 	}
 
 	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)
-	return isBatchComplete, nil
+	return isBatchComplete, isSoaking, nil
 }
 
 /*
@@ -773,7 +776,7 @@ placement rules in order so that at the end of a batch upgrade, all the copied p
 returns: error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, nextReconcile *ctrl.Result) error {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, nextReconcile *ctrl.Result, isSoaking bool) error {
 
 	err := r.updatePlacementRules(ctx, clusterGroupUpgrade)
 	if err != nil {
@@ -781,7 +784,7 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 	}
 	// Approve needed InstallPlans.
 	reconcileSooner, err := r.processMonitoredObjects(ctx, clusterGroupUpgrade)
-	if reconcileSooner {
+	if reconcileSooner || isSoaking {
 		*nextReconcile = requeueWithShortInterval()
 	}
 	return err
@@ -1285,7 +1288,8 @@ getNextNonCompliantPolicyForCluster goes through all the policies in the managed
 	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, error) {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, bool, error) {
+	isSoaking := false
 	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	currentPolicyIndex := startIndex
 	for ; currentPolicyIndex < numberOfPolicies; currentPolicyIndex++ {
@@ -1293,7 +1297,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 		currentManagedPolicyInfo := utils.GetManagedPolicyForUpgradeByIndex(currentPolicyIndex, clusterGroupUpgrade)
 		currentManagedPolicy, err := r.getPolicyByName(ctx, currentManagedPolicyInfo.Name, currentManagedPolicyInfo.Namespace)
 		if err != nil {
-			return currentPolicyIndex, err
+			return currentPolicyIndex, isSoaking, err
 		}
 
 		// Check if current cluster is compliant or not for its current managed policy.
@@ -1301,8 +1305,30 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 
 		// If the cluster is compliant for the policy or if the cluster is not matched with the policy,
 		// move to the next policy index.
-		if clusterStatus == utils.ClusterStatusCompliant || clusterStatus == utils.ClusterNotMatchedWithPolicy {
+		if clusterStatus == utils.ClusterNotMatchedWithPolicy {
 			continue
+		}
+
+		if clusterStatus == utils.ClusterStatusCompliant {
+			_, ok := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName]
+			if !ok {
+				continue
+			}
+			shouldSoak, err := utils.ShouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
+			if err != nil {
+				r.Log.Info(err.Error())
+				continue
+			}
+			if !shouldSoak {
+				continue
+			}
+
+			if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt.IsZero() {
+				clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Now()
+			}
+			isSoaking = true
+			r.Log.Info("Policy is compliant but should be soaked", "cluster name", clusterName, "policyName", currentManagedPolicy.GetName())
+			break
 		}
 
 		if clusterStatus == utils.ClusterStatusNonCompliant {
@@ -1310,7 +1336,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 		}
 	}
 
-	return currentPolicyIndex, nil
+	return currentPolicyIndex, isSoaking, nil
 }
 
 /*
@@ -1321,10 +1347,10 @@ isUpgradeComplete checks if there is at least one managed policy left for which 
 	returns: true/false if the upgrade is complete
 	         error/nil
 */
-func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
-	isBatchComplete, err := r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
+func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, bool, error) {
+	isBatchComplete, isSoaking, err := r.getNextRemediationPoliciesForBatch(ctx, r.Client, clusterGroupUpgrade)
 	if err != nil {
-		return false, err
+		return false, false, err
 	}
 
 	if isBatchComplete {
@@ -1332,16 +1358,16 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 		for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 			for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
 				// Start with policy index 0 as we don't keep progress info from previous batches
-				nextNonCompliantPolicyIndex, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0)
+				nextNonCompliantPolicyIndex, isSoaking, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0)
 				if err != nil || nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
-					return false, err
+					return false, isSoaking, err
 				}
 			}
 		}
 	} else {
-		return false, nil
+		return false, isSoaking, nil
 	}
-	return true, nil
+	return true, isSoaking, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(

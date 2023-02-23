@@ -437,6 +437,9 @@ spec:
                       description: ClusterRemediationProgress stores the remediation
                         progress of a cluster
                       properties:
+                        firstComplaintAt:
+                          format: date-time
+                          type: string
                         policyIndex:
                           type: integer
                         state:
