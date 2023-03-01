@@ -11,4 +11,5 @@ size=$(df /var/lib/ | awk '{ print $2 }' | sed -n '2p')
 used=$(df /var/lib/ | awk '{ print $3 }' | sed -n '2p')
 echo "highThresholdPercent: $high diskSize:$size used:$used"
 rc=$(awk "BEGIN {avail=${size}/100.0*${high}-${used} ; print avail<${SPACE_REQUIRED}*1024*1024}")
+[ $rc -ne 0 ] && echo "ERROR: not enough space for precaching"
 exit $rc
