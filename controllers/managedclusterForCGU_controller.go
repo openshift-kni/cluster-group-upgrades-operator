@@ -45,7 +45,7 @@ import (
 )
 
 const (
-	clusterStatusCheckRetryDelay = time.Minute * 5
+	clusterStatusCheckRetryDelay = time.Minute * 1
 	ztpInstallNS                 = "ztp-install"
 	ztpDeployWaveAnnotation      = "ran.openshift.io/ztp-deploy-wave"
 	ztpRunningLabel              = "ztp-running"
