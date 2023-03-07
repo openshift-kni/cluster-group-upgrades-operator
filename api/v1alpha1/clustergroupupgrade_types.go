@@ -165,8 +165,9 @@ type ClusterGroupUpgradeSpec struct {
 // ClusterRemediationProgress stores the remediation progress of a cluster
 type ClusterRemediationProgress struct {
 	// State should be one of the following: NotStarted, InProgress, Completed
-	State       string `json:"state,omitempty"`
-	PolicyIndex *int   `json:"policyIndex,omitempty"`
+	State            string      `json:"state,omitempty"`
+	PolicyIndex      *int        `json:"policyIndex,omitempty"`
+	FirstCompliantAt metav1.Time `json:"firstComplaintAt,omitempty"`
 }
 
 // ClusterRemediationProgress possible states
