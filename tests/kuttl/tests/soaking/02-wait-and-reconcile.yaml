@@ -2,6 +2,6 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  # Wait for the soakSeconds and trigger reconcilation
+  # Wait for 'ran.openshift.io/soak-seconds' and trigger reconcilation
   - command: sleep 5
   - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-soaking --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
