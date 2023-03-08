@@ -22,12 +22,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strings"
 	"text/template"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -131,7 +133,7 @@ var backupDeleteTemplates = []resourceTemplate{
 	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
 }
 
-var backupView = []resourceTemplate{
+var backupViews = []resourceTemplate{
 	{"view-backup-job", utils.ManagedClusterViewPrefix},
 	{"view-backup-namespace", utils.ManagedClusterViewPrefix},
 }
@@ -265,17 +267,24 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResources(ctx contex
 
 // checkViewProcessing checks whether managedclusterview is processing
 // returns: 	processing bool
-func (r *ClusterGroupUpgradeReconciler) checkViewProcessing(viewConditions []interface{}) bool {
-	var status string
+func checkViewProcessing(viewConditions []interface{}) (bool, error) {
+	var status, message string
 	for _, condition := range viewConditions {
-		if condition.(map[string]interface{})["type"] == "Processing" {
+		if condition.(map[string]interface{})["type"] == viewv1beta1.ConditionViewProcessing {
 			status = condition.(map[string]interface{})["status"].(string)
-			message := condition.(map[string]interface{})["message"].(string)
-			r.Log.Info("[checkViewProcessing]", "viewStatus", message)
-			break
+			message = condition.(map[string]interface{})["message"].(string)
 		}
 	}
-	return status == "True"
+	if status == "True" {
+		return true, nil
+	}
+	if strings.HasSuffix(message, "not found") {
+		return false, nil
+	}
+	if message == "" {
+		message = "Processing condition not found in MCV status"
+	}
+	return false, fmt.Errorf("MCV processing error: " + message)
 }
 
 // renderYamlTemplate renders a single yaml template
@@ -304,55 +313,44 @@ func (r *ClusterGroupUpgradeReconciler) renderYamlTemplate(
 	return w, nil
 }
 
-// jobAndViewCleanup deletes all precaching/backup objects. Called when upgrade is done
+// jobAndViewCleanup deletes the precaching/backup resources on hub and spoke
+func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(ctx context.Context,
+	cluster string, hubResourceTemplates []resourceTemplate, spokeResourceTemplates []resourceTemplate) error {
+
+	err := r.deleteManagedClusterResources(ctx, cluster, hubResourceTemplates)
+	if err != nil {
+		return err
+	}
+	data := templateData{
+		Cluster: cluster,
+	}
+	return r.createResourcesFromTemplates(ctx, &data, spokeResourceTemplates)
+}
+
+// jobAndViewFinalCleanup deletes all remaining precaching/backup objects. Called when upgrade is done or CR is deleted
 // returns: 			error
-func (r *ClusterGroupUpgradeReconciler) jobAndViewCleanup(
+func (r *ClusterGroupUpgradeReconciler) jobAndViewFinalCleanup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	if clusterGroupUpgrade.Status.Precaching != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Precaching.Status {
-			var resourceTemplates []resourceTemplate
-			if status == PrecacheStateSucceeded {
-				resourceTemplates = precacheAllViews
-			} else {
-				resourceTemplates = append(precacheAllViews, precacheMCAs...)
-			}
-			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
-
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, precacheDeleteTemplates)
-			if err != nil {
-				return err
+			if status != PrecacheStateSucceeded {
+				err := r.jobAndViewCleanup(ctx, cluster, append(precacheAllViews, precacheMCAs...), precacheDeleteTemplates)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
 
 	if clusterGroupUpgrade.Status.Backup != nil {
 		for cluster, status := range clusterGroupUpgrade.Status.Backup.Status {
-			var resourceTemplates []resourceTemplate
-			if status == BackupStateSucceeded {
-				resourceTemplates = backupView
-			} else {
-				resourceTemplates = append(backupView, backupMCAs...)
-			}
-
-			err := r.deleteManagedClusterResources(ctx, cluster, resourceTemplates)
-
-			if err != nil {
-				return err
-			}
-			data := templateData{
-				Cluster: cluster,
-			}
-			err = r.createResourcesFromTemplates(ctx, &data, backupDeleteTemplates)
-			if err != nil {
-				return err
+			if status != BackupStateSucceeded {
+				err := r.jobAndViewCleanup(ctx, cluster, append(backupViews, backupMCAs...), backupDeleteTemplates)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -384,7 +382,11 @@ func (r *ClusterGroupUpgradeReconciler) getPreparingConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if processing {
 		return NsFoundOnSpoke, nil
 	}
 	return NoNsFoundOnSpoke, nil
@@ -480,7 +482,11 @@ func (r *ClusterGroupUpgradeReconciler) getStartingConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if !r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if !processing {
 		return NoJobFoundOnSpoke, nil
 	}
 	return r.getJobStatus(jobView)
@@ -510,7 +516,11 @@ func (r *ClusterGroupUpgradeReconciler) getActiveConditions(
 	if err != nil {
 		return UnforeseenCondition, err
 	}
-	if !r.checkViewProcessing(viewConditions) {
+	processing, err := checkViewProcessing(viewConditions)
+	if err != nil {
+		return UnforeseenCondition, err
+	}
+	if !processing {
 		return NoJobFoundOnSpoke, nil
 	}
 	return r.getJobStatus(jobView)
@@ -573,7 +583,10 @@ func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 		if err != nil {
 			return false, err
 		}
-		present := r.checkViewProcessing(viewConditions)
+		present, err := checkViewProcessing(viewConditions)
+		if err != nil {
+			return false, err
+		}
 		if !present {
 			return false, nil
 		}

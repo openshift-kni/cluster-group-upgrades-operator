@@ -31,14 +31,14 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: Precaching failed for 1 clusters
-    status: "True"
-    reason: PartiallyDone    
-    type: PrecachingSuceeded
   - message: Precaching spec is valid and consistent
     reason: PrecacheSpecIsWellFormed
     status: "True"
     type: PrecacheSpecValid
+  - message: Precaching failed for 1 clusters 
+    reason: PartiallyDone
+    status: "True"
+    type: PrecachingSuceeded
   - message: Remediating non-compliant policies
     reason: InProgress
     status: "True"

@@ -2,13 +2,17 @@ package utils
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strconv"
 	"strings"
+	"time"
 
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -120,11 +124,15 @@ func GetResourceName(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, initi
 
 // GetParentPolicyNameAndNamespace gets the parent policy name and namespace from a given child policy
 // returns: []string       a two-element slice which the first element is policy namespace and the second one is policy name
-func GetParentPolicyNameAndNamespace(childPolicyName string) []string {
+func GetParentPolicyNameAndNamespace(childPolicyName string) ([]string, error) {
 	// The format of a child policy name is parent_policy_namespace.parent_policy_name.
 	// Extract the parent policy name and namespace by splitting the child policy name into two substrings separated by "."
 	// and we are safe to split with the separator "." as the namespace is disallowed to contain "."
-	return strings.SplitN(childPolicyName, ".", 2)
+	res := strings.SplitN(childPolicyName, ".", 2)
+	if len(res) != 2 {
+		return nil, errors.New("child policy name " + childPolicyName + " is not valid.")
+	}
+	return res, nil
 }
 
 // InspectPolicyObjects validates the policy objects, checks if it contains a status section in any object templates
@@ -176,4 +184,24 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		}
 	}
 	return containsStatus, nil
+}
+
+// ShouldSoak returns whether the reconciler should wait for some time before moving on from a policy after it is compliant
+func ShouldSoak(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+	soak, ok := policy.GetAnnotations()[SoakAnnotation]
+	if !ok {
+		return false, nil
+	}
+	soakSeconds, err := strconv.Atoi(soak)
+	if err != nil || soakSeconds < 0 {
+		return false, errors.New("soak annotation value " + soak + " is invalid, value should be an integer equal or greater than 0")
+	}
+
+	if firstCompliantAt.IsZero() {
+		return true, nil
+	}
+	if time.Since(firstCompliantAt.Time) > time.Duration(soakSeconds)*time.Second {
+		return false, nil
+	}
+	return true, nil
 }

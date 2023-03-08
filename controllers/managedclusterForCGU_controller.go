@@ -37,19 +37,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 const (
-	clusterStatusCheckRetryDelay = time.Minute * 5
-	ztpInstallNS                 = "ztp-install"
-	ztpDeployWaveAnnotation      = "ran.openshift.io/ztp-deploy-wave"
-	ztpRunningLabel              = "ztp-running"
-	ztpDoneLabel                 = "ztp-done"
+	ztpInstallNS            = "ztp-install"
+	ztpDeployWaveAnnotation = "ran.openshift.io/ztp-deploy-wave"
+	ztpRunningLabel         = "ztp-running"
+	ztpDoneLabel            = "ztp-done"
 )
 
 // ManagedClusterForCguReconciler reconciles a ManagedCluster object to auto create the ClusterGroupUpgrade
@@ -65,18 +65,16 @@ type ManagedClusterForCguReconciler struct {
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
 
 // Reconcile the managed cluster auto create ClusterGroupUpgrade
-// - Controller watches for create event of managed cluster object. Reconciliation
-//   is triggered when a new managed cluster is created
-// - When a new managed cluster is created, create ClusterGroupUpgrade CR for the
-//   cluster only when it's ready and its child policies are available
-// - As created ClusterGroupUpgrade has ownReference set to its managed cluster,
-//   when the managed cluster is deleted, the ClusterGroupUpgrade will be auto-deleted
+//   - Controller watches for create event of managed cluster object. Reconciliation
+//     is triggered when a new managed cluster is created
+//   - When a new managed cluster is created, create ClusterGroupUpgrade CR for the
+//     cluster only when it's ready and its child policies are available
+//   - As created ClusterGroupUpgrade has ownReference set to its managed cluster,
+//     when the managed cluster is deleted, the ClusterGroupUpgrade will be auto-deleted
 //
 // Note: The Controller will requeue the Request to be processed again if the returned error is non-nil or
 // Result.Requeue is true, otherwise upon completion it will remove the work from the queue.
 func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	reqLogger := r.Log.WithValues("Request.Name", req.Name)
-	reqLogger.Info("Reconciling managedCluster to create clusterGroupUpgrade")
 
 	managedCluster := &clusterv1.ManagedCluster{}
 	if err := r.Get(ctx, types.NamespacedName{Name: req.Name}, managedCluster); err != nil {
@@ -109,8 +107,7 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 	// clusterGroupUpgrade CR doesn't exist
 	availableCondition := meta.FindStatusCondition(managedCluster.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
 	if availableCondition == nil {
-		r.Log.Info("cluster has no status yet", "Name", managedCluster.Name, "RequeueAfter:", clusterStatusCheckRetryDelay)
-		return ctrl.Result{RequeueAfter: clusterStatusCheckRetryDelay}, nil
+		return requeueNotReadyCluster(managedCluster), nil
 	} else if availableCondition.Status == metav1.ConditionTrue {
 		// cluster is ready
 		r.Log.Info("cluster is ready", "Name", managedCluster.Name)
@@ -134,11 +131,17 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		}
 	} else {
 		// availableCondition is false or unknown, cluster is not ready
-		r.Log.Info("cluster is not ready", "RequeueAfter:", clusterStatusCheckRetryDelay)
-		return ctrl.Result{RequeueAfter: clusterStatusCheckRetryDelay}, nil
+		return requeueNotReadyCluster(managedCluster), nil
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func requeueNotReadyCluster(managedCluster *clusterv1.ManagedCluster) reconcile.Result {
+	if time.Since(managedCluster.CreationTimestamp.Time) > 2*time.Hour {
+		return requeueWithLongInterval()
+	}
+	return requeueWithMediumInterval()
 }
 
 // sort map[string]int by value in ascending order, return sorted keys
@@ -187,8 +190,12 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 				// err convert from string to int
 				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, cPolicy.GetName(), err)
 			}
-			policyName := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())[1]
-			policyWaveMap[policyName] = deployWaveInt
+			policyName, err := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())
+			if err != nil {
+				r.Log.Info("Ignoring policy " + cPolicy.Name + " with invalid name")
+				continue
+			}
+			policyWaveMap[policyName[1]] = deployWaveInt
 		}
 	}
 

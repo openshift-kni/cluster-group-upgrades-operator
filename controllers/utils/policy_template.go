@@ -26,7 +26,9 @@ type TemplateResolver struct {
 // ResolveObjectHubTemplates searches from the configuration policy object template for all string values
 // that contain hub templates and triggers template resource replication for each finding.
 // returns: the updated policy object template
-//          error/nil
+//
+//	error/nil
+//
 //nolint:gocritic
 func (r *TemplateResolver) ResolveObjectHubTemplates(objectDef interface{}) (interface{}, error) {
 
@@ -60,7 +62,8 @@ func (r *TemplateResolver) ResolveObjectHubTemplates(objectDef interface{}) (int
 // template resource, then copies the template resource to the CGU namespace and updates the hub templates
 // with replicated resource if conditions are met.
 // returns:  the updated template string
-//           error/nil
+//
+//	error/nil
 func (r *TemplateResolver) replicateHubTemplateResource(templates string) (string, error) {
 	// This regular expression is to extract all hub templates from a string.
 	re1 := regexp.MustCompile(`{{hub\s+.*?\s+hub}}`)

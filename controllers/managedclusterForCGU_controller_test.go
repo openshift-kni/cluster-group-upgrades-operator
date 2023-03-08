@@ -22,16 +22,17 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	policiesv1 "github.com/open-cluster-management/governance-policy-propagator/api/v1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -92,17 +93,18 @@ func TestControllerReconciler(t *testing.T) {
 				},
 			},
 			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
-				if result.IsZero() || result.RequeueAfter != clusterStatusCheckRetryDelay {
-					t.Errorf("expect to reconcile after %v, but failed", clusterStatusCheckRetryDelay)
+				if result.IsZero() || result.RequeueAfter != requeueWithLongInterval().RequeueAfter {
+					t.Errorf("expect to reconcile after %v, but failed", requeueWithLongInterval().RequeueAfter)
 				}
 			},
 		},
 		{
-			name: "managed cluster is not ready",
+			name: "new managed cluster is not ready",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
 					ObjectMeta: v1.ObjectMeta{
-						Name: "testSpoke",
+						Name:              "testSpoke",
+						CreationTimestamp: metav1.Now(),
 					},
 					Status: clusterv1.ManagedClusterStatus{
 						Conditions: []v1.Condition{
@@ -120,8 +122,8 @@ func TestControllerReconciler(t *testing.T) {
 				},
 			},
 			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
-				if result.IsZero() || result.RequeueAfter != clusterStatusCheckRetryDelay {
-					t.Errorf("expect to reconcile after %v, but failed", clusterStatusCheckRetryDelay)
+				if result.IsZero() || result.RequeueAfter != requeueWithMediumInterval().RequeueAfter {
+					t.Errorf("expect to reconcile after %v, but failed", requeueWithMediumInterval().RequeueAfter)
 				}
 			},
 		},

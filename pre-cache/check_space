@@ -3,13 +3,13 @@ set -e
 
 APISERVER=https://kubernetes.default.svc
 SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
-NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace)
 TOKEN=$(cat ${SERVICEACCOUNT}/token)
 CACERT=${SERVICEACCOUNT}/ca.crt
-let high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
+high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
             chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
-let size=$(df -h /var/lib/ | awk '{ print $2 }' | sed -n '2p' | sed  's/G//')
-let used=$(df -h /var/lib/ | awk '{ print $3 }' | sed -n '2p' | sed  's/G//')
+size=$(df /var/lib/ | awk '{ print $2 }' | sed -n '2p')
+used=$(df /var/lib/ | awk '{ print $3 }' | sed -n '2p')
 echo "highThresholdPercent: $high diskSize:$size used:$used"
-rc=$(awk "BEGIN {avail=${size}/100.0*${high}-${used} ; print avail<${SPACE_REQUIRED}}")
+rc=$(awk "BEGIN {avail=${size}/100.0*${high}-${used} ; print avail<${SPACE_REQUIRED}*1024*1024}")
+[ $rc -ne 0 ] && echo "ERROR: not enough space for precaching"
 exit $rc

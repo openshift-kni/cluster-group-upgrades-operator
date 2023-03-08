@@ -31,14 +31,14 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: Precaching in progress for 4 clusters
-    reason: InProgress
-    status: "False"
-    type: PrecachingSuceeded
   - message: Precaching spec is valid and consistent
     reason: PrecacheSpecIsWellFormed
     status: "True"
     type: PrecacheSpecValid
+  - message: Precaching in progress for 4 clusters
+    reason: InProgress
+    status: "False"
+    type: PrecachingSuceeded
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
   - cgu-policy4-common-sriov-sub-policy-kuttl
@@ -131,7 +131,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName                
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -203,7 +203,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName                
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -275,7 +275,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName                
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -347,7 +347,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName                
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
               name: pre-cache-container
               resources: {}
               securityContext:

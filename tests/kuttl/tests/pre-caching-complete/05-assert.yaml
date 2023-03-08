@@ -31,14 +31,14 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - message: Precaching is completed for all clusters
-    reason: PrecachingCompleted
-    status: "True"
-    type: PrecachingSuceeded
   - message: Precaching spec is valid and consistent
     reason: PrecacheSpecIsWellFormed
     status: "True"
     type: PrecacheSpecValid
+  - message: Precaching is completed for all clusters
+    reason: PrecachingCompleted
+    status: "True"
+    type: PrecachingSuceeded
   - message: Not enabled
     reason: NotEnabled
     status: "False"

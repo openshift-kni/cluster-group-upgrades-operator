@@ -13,3 +13,5 @@ spec:
             value: $PRECACHE_IMG
           - name: RECOVERY_IMG
             value: $RECOVERY_IMG
+          - name: INSECURE_GRAPH_CALL
+            value: "false"

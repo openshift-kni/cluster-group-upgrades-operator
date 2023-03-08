@@ -60,7 +60,6 @@ const (
 func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, policies []*unstructured.Unstructured) error {
 
-	r.setPrecachingStartedCondition(clusterGroupUpgrade)
 	specCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, utils.PrecacheSpecValidCondition)
 	if specCondition == nil || specCondition.Status == metav1.ConditionFalse {
 		spec, err := r.extractPrecachingSpecFromPolicies(policies)
@@ -93,6 +92,13 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 
 		clusterGroupUpgrade.Status.Precaching.Spec = &spec
 	}
+	utils.SetStatusCondition(
+		&clusterGroupUpgrade.Status.Conditions,
+		utils.ConditionTypes.PrecachingSuceeded,
+		utils.ConditionReasons.InProgress,
+		metav1.ConditionFalse,
+		"Precaching is required and not done",
+	)
 
 	for _, cluster := range clusters {
 		var currentState string
@@ -140,6 +146,15 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		if currentState != nextState {
 			r.Log.Info("[precachingFsm]", "previousState", currentState, "nextState", nextState, "cluster", cluster)
 		}
+		if nextState == PrecacheStateSucceeded {
+			// cleanup for succeeded clusters
+			if r.jobAndViewCleanup(ctx, cluster, backupViews, precacheDeleteTemplates) != nil {
+				r.Log.Error(err, "[precachingFsm] failed to cleanup for", "cluster", cluster)
+				// skip cluster status transition if cleanup not successful
+				continue
+			}
+		}
+		clusterGroupUpgrade.Status.Precaching.Status[cluster] = nextState
 	}
 	r.checkAllPrecachingDone(clusterGroupUpgrade)
 	return nil
@@ -312,18 +327,6 @@ func (r *ClusterGroupUpgradeReconciler) handleActive(ctx context.Context,
 			condition, currentState)
 	}
 	return nextState, nil
-}
-
-// setPrecachingStartedCondition sets conditions of precaching required
-func (r *ClusterGroupUpgradeReconciler) setPrecachingStartedCondition(
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
-	utils.SetStatusCondition(
-		&clusterGroupUpgrade.Status.Conditions,
-		utils.ConditionTypes.PrecachingSuceeded,
-		utils.ConditionReasons.InProgress,
-		metav1.ConditionFalse,
-		"Precaching is required and not done",
-	)
 }
 
 // checkAllPrecachingDone handles alleviation of PrecachingDone==False condition

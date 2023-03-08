@@ -137,7 +137,7 @@ spec:
 	commonFields := fields{
 		// currently this object is not used anywhere but keeping in case there's change in the future
 		Client:   nil,
-		Log:      nil,
+		Log:      logr.Discard(),
 		Scheme:   nil,
 		Recorder: nil,
 	}

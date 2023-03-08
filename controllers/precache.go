@@ -68,7 +68,7 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 	upstream string, channel string, version string) (string, error) {
 	updateGraphURL := upstream + "?channel=" + channel
 
-	insecureSkipVerify := os.Getenv("SKIP_INSECURE_GRAPH_CALL") == "true"
+	insecureSkipVerify := os.Getenv("INSECURE_GRAPH_CALL") == "true"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
 	}

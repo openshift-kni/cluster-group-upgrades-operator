@@ -49,5 +49,5 @@ else
 fi
 
 echo "Installing ginkgo and gomega..."
-go get github.com/onsi/ginkgo/ginkgo@v1.16.5
-go get github.com/onsi/gomega/...@v1.17.0
+go get github.com/onsi/ginkgo/v2
+go get github.com/onsi/gomega/...
