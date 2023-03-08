@@ -31,7 +31,7 @@ func TestShouldSoak(t *testing.T) {
 	// annotation present and soak duration is not over
 	policy := &unstructured.Unstructured{}
 	policy.SetAnnotations(map[string]string{
-		"soakSeconds": "10",
+		SoakAnnotation: "10",
 	})
 	res, err = ShouldSoak(policy, v1.Now())
 	assert.Equal(t, true, res)
@@ -50,7 +50,7 @@ func TestShouldSoak(t *testing.T) {
 
 	// annotation present, soak duration is invalid
 	policy.SetAnnotations(map[string]string{
-		"soakSeconds": "-1",
+		SoakAnnotation: "-1",
 	})
 	_, err = ShouldSoak(policy, v1.Now())
 	assert.Error(t, err)
