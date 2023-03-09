@@ -1,0 +1,40 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-soaking
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+  placementBindings:
+  - cgu-soaking-policy1-common-cluster-version-policy-placement-kuttl
+  placementRules:
+  - cgu-soaking-policy1-common-cluster-version-policy-placement-kuttl
+  remediationPlan:
+  - - spoke1
+  status: {}

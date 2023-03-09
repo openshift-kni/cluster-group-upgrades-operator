@@ -137,3 +137,7 @@ const (
 	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
 	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
 )
+
+// SoakAnnotation is the annotation that can be set on policies, which indicates the least number number of seconds
+// which policies should be compliant before the cgu moves on from that policy
+const SoakAnnotation = "ran.openshift.io/soak-seconds"
