@@ -10,4 +10,8 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
- 
+    ignore:
+      - dependency-name: "ginkgo"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: "gomega"
+        update-types: ["version-update:semver-patch"]  
