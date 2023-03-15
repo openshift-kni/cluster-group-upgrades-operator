@@ -14,7 +14,7 @@ There are two methods related to partition creation is described here:
 
 The recovery partition can be created at install time by defining a node level property called `diskPartition` in the SiteConfig CR. The configuration for the partition must be defined by `start` parameter which must indicate, in mebibytes, the end of the `/sysroot` RHCOS partition and the start for the newly requested recovery partition.
 
-Additionally, a spare disk can be used for recovery partition as well and can be configured at provisioning time or at day 2 operation. A recovery partition of 50GB with mountpoint at `/var/recovery` can be created by following the below example. Notice that the deviceName can be referenced by its path, label or id as well, e.g. `/dev/disk/by-id/scsi-355cd2e404b7c23f3`
+Additionally, a spare disk can be used for recovery partition as well and can be configured at provisioning time or at day 2 operation. A recovery partition of 50GB with mountpoint at `/var/recovery` can be created by following the below example. Notice that the device under diskPartition must be referenced by a persistent path, such as those under /dev/disk/by-path or /dev/disk/by-id (where the by-path name would be recommended, as it is not hardware-specific and would not change in the case of disk replacement)
 
 ```yaml
 nodes:
@@ -27,7 +27,7 @@ nodes:
         ........
         #Disk /dev/sda: 893.3 GiB, 959119884288 bytes, 1873281024 sectors
         diskPartition:
-          - device: /dev/sda
+          - device: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0
             partitions:
               - mount_point: /var/recovery
                 size: 51200
