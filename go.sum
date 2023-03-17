@@ -657,8 +657,8 @@ k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280 h1:+70TFaan3hfJzs+7VK2o+O
 k8s.io/kube-openapi v0.0.0-20221012153701-172d655c2280/go.mod h1:+Axhij7bCpeqhklhUTe3xmOn6bWxolyZEeyaFpjGtl4=
 k8s.io/utils v0.0.0-20221128185143-99ec85e7a448 h1:KTgPnR10d5zhztWptI952TNtt/4u5h3IzDXkdIMuo2Y=
 k8s.io/utils v0.0.0-20221128185143-99ec85e7a448/go.mod h1:OLgZIPagt7ERELqWJFomSt595RzquPNLL48iOWgYOg0=
-open-cluster-management.io/api v0.10.0 h1:B6/nwKO7cXDuKV5uJLjF/JUuPuiKsep08gfmAAWaKKc=
-open-cluster-management.io/api v0.10.0/go.mod h1:6BB/Y6r3hXlPjpJgDwIs6Ubxyx/kXXOg6D9Cntg1I9E=
+open-cluster-management.io/api v0.10.1 h1:/qv1qfIkAVSz6RQmKGehSv6zYI34Xmb8hK7sIUVmduM=
+open-cluster-management.io/api v0.10.1/go.mod h1:6BB/Y6r3hXlPjpJgDwIs6Ubxyx/kXXOg6D9Cntg1I9E=
 open-cluster-management.io/governance-policy-propagator v0.8.0 h1:rWDHz4JglAq3/5cLHtN6mSYmOuvPo0fq5DDCzJW73zQ=
 open-cluster-management.io/governance-policy-propagator v0.8.0/go.mod h1:cHcn2tv8bUUFDIY0KcZmx5MskEFn2RoAm90oQAIPFMA=
 open-cluster-management.io/multicloud-operators-subscription v0.6.0 h1:0WKplR0cLBXy+qkqt/Scd3eTcEOno0OvzAXzAhe9nLQ=
