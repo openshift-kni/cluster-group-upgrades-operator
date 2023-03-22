@@ -220,6 +220,11 @@ function trigger_redeployment {
 function take_backup {
     log_info "Taking backup"
 
+    setenforce 0
+    if [ $? -ne 0 ]; then
+        fatal "Failed to enter permissive mode"
+    fi
+
     log_info "Wiping previous deployments and pinning active"
     while :; do
         ostree admin undeploy 1 || break
@@ -261,6 +266,8 @@ function take_backup {
         fatal "Failed to backup additional managed files"
     fi
 
+    setenforce 1
+
     log_info "Backup complete"
 }
 
@@ -296,6 +303,11 @@ function check_active_deployment {
 
 function restore_files {
     display_current_status
+
+    setenforce 0
+    if [ $? -ne 0 ]; then
+        fatal "Failed to enter permissive mode"
+    fi
 
     #
     # Wipe current containers by shutting down kubelet, deleting containers and pods,
@@ -349,11 +361,18 @@ function restore_files {
 
     record_progress "restore_files"
 
+    setenforce 1
+
     echo "Please reboot now with 'systemctl reboot', then run '${PROG} --resume'" >&2
     exit 0
 }
 
 function restore_cluster {
+    setenforce 0
+    if [ $? -ne 0 ]; then
+        fatal "Failed to enter permissive mode"
+    fi
+
     #
     # Restore /var/lib/kubelet content
     #
@@ -411,6 +430,8 @@ function restore_cluster {
     log_info "Required containers have restarted"
 
     record_progress "restore_cluster"
+
+    setenforce 1
 }
 
 function post_restore_steps {
