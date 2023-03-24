@@ -220,11 +220,6 @@ function trigger_redeployment {
 function take_backup {
     log_info "Taking backup"
 
-    setenforce 0
-    if [ $? -ne 0 ]; then
-        fatal "Failed to enter permissive mode"
-    fi
-
     log_info "Wiping previous deployments and pinning active"
     while :; do
         ostree admin undeploy 1 || break
@@ -244,17 +239,17 @@ function take_backup {
     cat /etc/tmpfiles.d/* | sed 's/#.*//' | awk '{print $2}' | grep '^/etc/' | sed 's#^/etc/##' > ${BACKUP_DIR}/etc.exclude.list
     echo '.updated' >> ${BACKUP_DIR}/etc.exclude.list
     echo 'kubernetes/manifests' >> ${BACKUP_DIR}/etc.exclude.list
-    with_retries 3 1 rsync -a /etc/ ${BACKUP_DIR}/etc/
+    with_retries 3 1 cp -Ra /etc/ ${BACKUP_DIR}/etc/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /etc"
     fi
 
-    with_retries 3 1 rsync -a /usr/local/ ${BACKUP_DIR}/usrlocal/
+    with_retries 3 1 cp -Ra /usr/local/ ${BACKUP_DIR}/usrlocal/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /usr/local"
     fi
 
-    with_retries 3 1 rsync -a /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
+    with_retries 3 1 cp -Ra /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /var/lib/kubelet"
     fi
@@ -265,8 +260,6 @@ function take_backup {
     if [ $? -ne 0 ]; then
         fatal "Failed to backup additional managed files"
     fi
-
-    setenforce 1
 
     log_info "Backup complete"
 }
@@ -324,7 +317,7 @@ function restore_files {
     # Restore /usr/local content
     #
     log_info "Restoring /usr/local content"
-    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
+    time with_retries 3 1 rsync -aAXvc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
     if [ $? -ne 0 ]; then
         fatal "Failed to restore /usr/local content"
     fi
@@ -334,7 +327,7 @@ function restore_files {
     # Restore /etc content
     #
     log_info "Restoring /etc content"
-    time with_retries 3 1 rsync -avc --delete --no-t --exclude-from ${BACKUP_DIR}/etc.exclude.list ${BACKUP_DIR}/etc/ /etc/
+    time with_retries 3 1 rsync -aAXvc --delete --no-t --exclude-from ${BACKUP_DIR}/etc.exclude.list ${BACKUP_DIR}/etc/ /etc/
     if [ $? -ne 0 ]; then
         fatal "Failed to restore /etc content"
     fi
@@ -377,7 +370,7 @@ function restore_cluster {
     # Restore /var/lib/kubelet content
     #
     log_info "Restoring /var/lib/kubelet content"
-    time with_retries 3 1 rsync -avc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
+    time with_retries 3 1 rsync -aAXvc --delete --no-t ${BACKUP_DIR}/kubelet/ /var/lib/kubelet/
     if [ $? -ne 0 ]; then
         fatal "Failed to restore /var/lib/kubelet content"
     fi
