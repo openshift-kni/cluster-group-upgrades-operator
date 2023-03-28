@@ -287,7 +287,13 @@ function take_backup {
 
     log_info "Backing up container cluster and required files"
 
-    /usr/local/bin/cluster-backup.sh ${BACKUP_DIR}/cluster
+    # WARNING:
+    # passing a --force option will skip checks for the state of
+    # operators: kube-apiserver, kube-scheduler, etcd, kube-controller-manager
+    # As a result the "__POSSIBLY_DIRTY__" suffix will be added to the saved db name
+    # which is required when the pod can't reach to k8s api server due to 
+    # the hostnetwork being false in the pod.
+    /usr/local/bin/cluster-backup.sh --force ${BACKUP_DIR}/cluster
     if [ $? -ne 0 ]; then
         fatal "Cluster backup failed"
     fi
@@ -310,7 +316,7 @@ function take_backup {
         fatal "Failed to backup /var/lib/kubelet"
     fi
 
-    oc get mc -o=jsonpath='{range .items[*]}{range .spec.config.storage.files[*]}{.path}{"\n"}' | sort -u \
+    jq -r '.spec.config.storage.files[].path' < /etc/machine-config-daemon/currentconfig  \
         | grep -v -e '^/etc/' -e '^/usr/local/' -e '/var/lib/kubelet/' -e '^$' \
         | xargs --no-run-if-empty tar czf ${BACKUP_DIR}/extras.tgz
     if [ $? -ne 0 ]; then

@@ -105,7 +105,6 @@ spec:
                     mountPath: /host
                     name: backup
             restartPolicy: Never
-            hostNetwork: true
             serviceAccountName: backup-agent
             volumes:
               -
