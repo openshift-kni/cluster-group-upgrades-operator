@@ -17,7 +17,7 @@ require (
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.10.1
 	open-cluster-management.io/governance-policy-propagator v0.8.0
-	sigs.k8s.io/controller-runtime v0.14.5
+	sigs.k8s.io/controller-runtime v0.14.6
 )
 
 require (
