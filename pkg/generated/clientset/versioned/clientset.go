@@ -32,8 +32,7 @@ type Interface interface {
 	ClustergroupupgradesoperatorV1alpha1() clustergroupupgradesoperatorv1alpha1.ClustergroupupgradesoperatorV1alpha1Interface
 }
 
-// Clientset contains the clients for groups. Each group has exactly one
-// version included in a Clientset.
+// Clientset contains the clients for groups.
 type Clientset struct {
 	*discovery.DiscoveryClient
 	clustergroupupgradesoperatorV1alpha1 *clustergroupupgradesoperatorv1alpha1.ClustergroupupgradesoperatorV1alpha1Client
@@ -59,6 +58,10 @@ func (c *Clientset) Discovery() discovery.DiscoveryInterface {
 // where httpClient was generated with rest.HTTPClientFor(c).
 func NewForConfig(c *rest.Config) (*Clientset, error) {
 	configShallowCopy := *c
+
+	if configShallowCopy.UserAgent == "" {
+		configShallowCopy.UserAgent = rest.DefaultKubernetesUserAgent()
+	}
 
 	// share the transport between all clients
 	httpClient, err := rest.HTTPClientFor(&configShallowCopy)
