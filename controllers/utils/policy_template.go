@@ -2,14 +2,16 @@ package utils
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"strings"
 
-	"github.com/go-logr/logr"
+	"gopkg.in/yaml.v3"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -17,59 +19,20 @@ import (
 type TemplateResolver struct {
 	client.Client
 	Ctx             context.Context
-	Log             logr.Logger
 	TargetNamespace string
 	PolicyName      string
 	PolicyNamespace string
 }
 
-// ResolveObjectHubTemplates searches from the configuration policy object template for all string values
-// that contain hub templates and triggers template resource replication for each finding.
-// returns: the updated policy object template
-//
-//	error/nil
-//
-//nolint:gocritic
-func (r *TemplateResolver) ResolveObjectHubTemplates(objectDef interface{}) (interface{}, error) {
+var (
+	hubTmplLog = ctrl.Log.WithName("utils.policy_template")
 
-	var err error
-	if objMap, isMap := objectDef.(map[string]interface{}); isMap {
-		for key, value := range objMap {
-			if objMap[key], err = r.ResolveObjectHubTemplates(value); err != nil {
-				return objectDef, err
-			}
-		}
-	} else if objSlice, isSlice := objectDef.([]interface{}); isSlice {
-		for key, value := range objSlice {
-			if objSlice[key], err = r.ResolveObjectHubTemplates(value); err != nil {
-				return objectDef, err
-			}
-		}
-	} else if objString, isString := objectDef.(string); isString {
-		if strings.Contains(objString, "{{hub") {
-			r.Log.Info("Found hub template in policy", "policy", r.PolicyName, "template", objString)
-			if objectDef, err = r.replicateHubTemplateResource(objString); err != nil {
-				r.Log.Error(err, "Failed to resolve hub template")
-				return objectDef, err
-			}
-		}
-	}
-
-	return objectDef, nil
-}
-
-// ReplicateHubTemplateResource processes the hub templates string to identify the template function and
-// template resource, then copies the template resource to the CGU namespace and updates the hub templates
-// with replicated resource if conditions are met.
-// returns:  the updated template string
-//
-//	error/nil
-func (r *TemplateResolver) replicateHubTemplateResource(templates string) (string, error) {
-	// This regular expression is to extract all hub templates from a string.
-	re1 := regexp.MustCompile(`{{hub\s+.*?\s+hub}}`)
+	// This regular expression is to extract all hub template functions from a string.
+	regexpHubTmplFunc = regexp.MustCompile(`{{hub.*?(fromConfigMap|fromSecret|lookup).*?hub}}`)
 
 	// This regular expression is to get the function name, resource name and namespace referenced in the function from a hub template.
 	// The following captured groups represent for:
+	//      $0: hub template
 	// 		$1: any characters before the template function
 	// 		$2: template function
 	// 		$3: resource namespace field
@@ -79,63 +42,121 @@ func (r *TemplateResolver) replicateHubTemplateResource(templates string) (strin
 	// 		$7: resource name with printf variable
 	// 		$8: resource name with a fixed string
 	// 		$9: any characters after the resource name field
-	re2 := regexp.MustCompile(`({{hub.*)(fromConfigMap|fromSecret|lookup)\s+((\(\s*printf\s.+?\s*\))|"(.*?)")\s+((\(\s*printf\s.+?\s*\))|"(.*?)")(.*hub}})`)
+	regexpFromConfigMap = regexp.MustCompile(`({{hub.*?)(fromConfigMap)\s+((\(\s*printf\s.+?\s*\))|"(.*?)")\s+((\(\s*printf\s.+?\s*\))|"(.*?)")(.*?hub}})`)
+)
 
-	var resolvedTemplates = templates
-	// Get all hub templates appeared in a string
-	discoveredTemplates := re1.FindAllString(templates, -1)
-	// Process each hub template
-	for _, template := range discoveredTemplates {
-		matches := re2.FindAllStringSubmatch(template, -1)
+func stringToYaml(s string) (interface{}, error) {
+	var yamlObj interface{}
+	if err := yaml.Unmarshal([]byte(s), &yamlObj); err != nil {
+		return yamlObj, fmt.Errorf("Could not unmarshal data: %s", err)
+	}
+	return yamlObj, nil
+}
 
-		// Hub template doesn't match the regular expression
-		if len(matches) == 0 {
-			return "", &PolicyErr{template, PlcHubTmplFmtErr}
-		}
+func yamlToString(y interface{}) (string, error) {
+	b, err := yaml.Marshal(y)
+	if err != nil {
+		return "", fmt.Errorf("Could not marshal data: %s", err)
+	}
+	return string(b), nil
+}
 
-		for _, match := range matches {
-			function := match[2]
-			if function != "fromConfigMap" {
-				return "", &PolicyErr{function, PlcHubTmplFuncErr}
+// VerifyHubTemplateFunctions validates any hub template function discovered in the object and
+// return error if the template is not supported
+func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
+	tmplStr, err := yamlToString(tmpl)
+	if err != nil {
+		return err
+	}
+
+	hubTmplMatches := regexpHubTmplFunc.FindAllStringSubmatch(tmplStr, -1)
+	if len(hubTmplMatches) == 0 {
+		// No hub template functions found, return
+		return nil
+	}
+
+	for _, hubTmplMatch := range hubTmplMatches {
+		hubTmpl := hubTmplMatch[0]
+		hubTmplFunc := hubTmplMatch[1]
+
+		hubTmplLog.Info("Validating hub template in policy", "policy", policyName, "template", hubTmpl)
+		if hubTmplFunc == "fromConfigMap" {
+			matches := regexpFromConfigMap.FindStringSubmatch(hubTmpl)
+
+			// Hub template doesn't match the regular expression
+			if len(matches) == 0 {
+				return &PolicyErr{hubTmpl, PlcHubTmplFmtErr}
 			}
 
-			if match[4] != "" {
-				return "", &PolicyErr{match[4], PlcHubTmplPrinfInNsErr}
-			}
-			namespace := match[5]
-
-			if match[7] != "" {
-				return "", &PolicyErr{match[7], PlcHubTmplPrinfInNameErr}
-			}
-			name := match[8]
-
-			fromNamespace := namespace
-			if namespace == "" {
-				// namespace is empty
-				fromNamespace = r.PolicyNamespace
+			if matches[4] != "" {
+				return &PolicyErr{matches[4], PlcHubTmplPrinfInNsErr}
 			}
 
-			fromResource := types.NamespacedName{
-				Name:      name,
-				Namespace: fromNamespace,
+			if matches[7] != "" {
+				return &PolicyErr{matches[7], PlcHubTmplPrinfInNameErr}
 			}
-
-			toResource := types.NamespacedName{
-				Name:      r.PolicyNamespace + "." + name,
-				Namespace: r.TargetNamespace,
-			}
-
-			if err := r.copyConfigmap(r.Ctx, fromResource, toResource); err != nil {
-				return "", err
-			}
-
-			// Update the hub templating with the replicated configmap name and namespace
-			updatedTemplate := re2.ReplaceAllString(template, `$1$2`+` "`+toResource.Namespace+`"`+` "`+toResource.Name+`"`+`$9`)
-			resolvedTemplates = strings.ReplaceAll(resolvedTemplates, template, updatedTemplate)
+		} else {
+			return &PolicyErr{hubTmplFunc, PlcHubTmplFuncErr}
 		}
 	}
 
-	return resolvedTemplates, nil
+	return nil
+}
+
+// ProcessHubTemplateFunctions replicates any supported hub template resources discovered in the object
+// to the CGU namespace and return the resolved template object
+func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interface{}, error) {
+	tmplStr, err := yamlToString(tmpl)
+	if err != nil {
+		return tmpl, err
+	}
+
+	hubTmplMatches := regexpFromConfigMap.FindAllStringSubmatch(tmplStr, -1)
+	if len(hubTmplMatches) == 0 {
+		// No fromConfigMap hub functions found, skip processing
+		return tmpl, nil
+	}
+
+	resolvedTmplStr := tmplStr
+	for _, hubTmplMatch := range hubTmplMatches {
+		hubTmpl := hubTmplMatch[0]
+		namespace := hubTmplMatch[5]
+		name := hubTmplMatch[8]
+
+		hubTmplLog.Info("Processing hub template in policy", "policy", r.PolicyName, "template", hubTmpl)
+		fromNamespace := namespace
+		if namespace == "" {
+			// namespace is empty
+			fromNamespace = r.PolicyNamespace
+		}
+
+		fromResource := types.NamespacedName{
+			Name:      name,
+			Namespace: fromNamespace,
+		}
+
+		toResource := types.NamespacedName{
+			Name:      r.PolicyNamespace + "." + name,
+			Namespace: r.TargetNamespace,
+		}
+
+		if err := r.copyConfigmap(r.Ctx, fromResource, toResource); err != nil {
+			return tmpl, err
+		}
+
+		// Update the hub templating with the replicated configmap name and namespace
+		updatedHubTmpl := regexpFromConfigMap.ReplaceAllString(hubTmpl, `$1$2`+` "`+toResource.Namespace+`"`+` "`+toResource.Name+`"`+`$9`)
+		resolvedTmplStr = strings.ReplaceAll(resolvedTmplStr, hubTmpl, updatedHubTmpl)
+		hubTmplLog.Info("Processed hub template in policy", "policy", r.PolicyName, "template", updatedHubTmpl)
+	}
+
+	var resolvedTmpl interface{}
+	resolvedTmpl, err = stringToYaml(resolvedTmplStr)
+	if err != nil {
+		return resolvedTmpl, err
+	}
+
+	return resolvedTmpl, nil
 }
 
 //nolint:gocritic
@@ -173,14 +194,14 @@ func (r *TemplateResolver) copyConfigmap(ctx context.Context, fromResource, toRe
 
 		if err := r.Create(ctx, copiedCM); err != nil {
 			if !errors.IsAlreadyExists(err) {
-				r.Log.Error(err, "Fail to create config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
+				hubTmplLog.Error(err, "Fail to create config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
 				return err
 			}
 		}
 	} else {
 		err = r.Update(ctx, copiedCM)
 		if err != nil {
-			r.Log.Error(err, "Fail to update config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
+			hubTmplLog.Error(err, "Fail to update config map", "name", copiedCM.Name, "namespace", copiedCM.Namespace)
 			return err
 		}
 	}
