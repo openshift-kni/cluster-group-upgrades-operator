@@ -139,9 +139,9 @@ const (
 )
 
 // SpaceRequiredForPrecache is an env variable for precaching job that indicates the amount of space required
-// for precaching job. This is a rough estimate. 10 GB for OCP images and 5 GB as a buffer for operator images
+// for precaching job. This is a rough estimate. 30 GB for OCP images and 5 GB as a buffer for operator images
 // and other disk allocations that can happen between the job and the actual upgrade kicked off by the CGU.
-const SpaceRequiredForPrecache = "15" // Gigabytes
+const SpaceRequiredForPrecache = "35" // Gigabytes
 
 // SoakAnnotation is the annotation that can be set on policies, which indicates the least number number of seconds
 // which policies should be compliant before the cgu moves on from that policy
