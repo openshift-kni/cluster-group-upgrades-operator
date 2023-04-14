@@ -43,6 +43,14 @@ var (
 	// 		$8: resource name with a fixed string
 	// 		$9: any characters after the resource name field
 	regexpFromConfigMap = regexp.MustCompile(`({{hub.*?)(fromConfigMap)\s+((\(\s*printf\s.+?\s*\))|"(.*?)")\s+((\(\s*printf\s.+?\s*\))|"(.*?)")(.*?hub}})`)
+
+	// This regular expression is to capture the lookup hub template function.
+	// The following captured groups represent for:
+	//      $0: hub template
+	//      $1: resource api version
+	//      $2: resource kind
+	//      $3: resource namespace
+	regexpLookup = regexp.MustCompile(`{{hub.*lookup\s+"(.*?)"\s+"(.*?)"\s+"(.*?)".*hub}}`)
 )
 
 func stringToYaml(s string) (interface{}, error) {
@@ -94,6 +102,17 @@ func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 
 			if matches[7] != "" {
 				return &PolicyErr{matches[7], PlcHubTmplPrinfInNameErr}
+			}
+		} else if hubTmplFunc == "lookup" {
+			matches := regexpLookup.FindStringSubmatch(hubTmpl)
+
+			// Hub template doesn't match the regular expression
+			if len(matches) == 0 {
+				return &PolicyErr{hubTmpl, PlcHubTmplFmtErr}
+			}
+
+			if !strings.HasPrefix(matches[1], "cluster.open-cluster-management.io/") || matches[2] != "ManagedCluster" || matches[3] != "" {
+				return &PolicyErr{hubTmplFunc, PlcLookupFuncResErr}
 			}
 		} else {
 			return &PolicyErr{hubTmplFunc, PlcHubTmplFuncErr}
