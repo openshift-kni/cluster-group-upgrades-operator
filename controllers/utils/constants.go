@@ -136,6 +136,7 @@ const (
 	PlcHubTmplFuncErr        = "template function is not supported in TALM"
 	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
 	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
+	PlcLookupFuncResErr      = "this template function only allows the resource with apiVersion in 'cluster.open-cluster-management.io', kind 'ManagedCluster' and empty namespace"
 )
 
 // SpaceRequiredForPrecache is an env variable for precaching job that indicates the amount of space required
