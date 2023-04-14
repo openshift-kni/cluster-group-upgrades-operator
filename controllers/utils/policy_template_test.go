@@ -52,6 +52,9 @@ spec:
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-common" "common-cm") | base64enc hub}}'
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-common" "common-cm") | toInt hub}}-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" | toInt hub}}'
     test13: '{{hub .ManagedClusterName hub}}'
+    test14: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName).metadata.labels.sites hub}}'
+    test15: '{{hub index ( lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName ).metadata.labels "sites" hub}}'
+    test16: '{{hub range $_, $element := (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" "cluster1").status.clusterClaims hub}} {{hub if eq $element.name "id.openshift.io" hub}} {{hub $element.value hub}} {{hub end hub}} {{hub end hub}}'
 `,
 			expected: nil,
 		},
@@ -93,6 +96,45 @@ spec:
     test1: '{{hub fromConfigMap ( printf "%s-data" .ManagedClusterName ) "ztp-common"  "common-key" hub}}'
 `,
 			expected: fmt.Errorf(PlcHubTmplPrinfInNsErr),
+		},
+		{
+			name: "Non-empty namespace in lookup function",
+			input: `
+apiVersion: test.openshift.io/v1
+kind: TestResource
+metadata:
+    name: resource-sample
+    namespace: resource-namespace
+spec:
+    test1: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "test-namespace" .ManagedClusterName).metadata.labels.sites hub}}'
+`,
+			expected: fmt.Errorf(PlcLookupFuncResErr),
+		},
+		{
+			name: "Unsupported apiVersion in lookup function",
+			input: `
+apiVersion: test.openshift.io/v1
+kind: TestResource
+metadata:
+    name: resource-sample
+    namespace: resource-namespace
+spec:
+    test1: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedClusterSetBinding" "" .ManagedClusterName).metadata.labels.sites hub}}'
+`,
+			expected: fmt.Errorf(PlcLookupFuncResErr),
+		},
+		{
+			name: "Unsupported kind in lookup function 2",
+			input: `
+apiVersion: test.openshift.io/v1
+kind: TestResource
+metadata:
+    name: resource-sample
+    namespace: resource-namespace
+spec:
+    test1: '{{hub (lookup "v1" "ManagedCluster" "" .ManagedClusterName).metadata.labels.sites hub}}'
+`,
+			expected: fmt.Errorf(PlcLookupFuncResErr),
 		},
 	}
 
