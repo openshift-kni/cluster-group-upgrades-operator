@@ -19,11 +19,13 @@ package fake
 
 import (
 	"context"
+	json "encoding/json"
+	"fmt"
 
 	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	clustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgradesoperator/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
-	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
 	testing "k8s.io/client-go/testing"
@@ -35,9 +37,9 @@ type FakeClusterGroupUpgrades struct {
 	ns   string
 }
 
-var clustergroupupgradesResource = schema.GroupVersionResource{Group: "clustergroupupgradesoperator", Version: "v1alpha1", Resource: "clustergroupupgrades"}
+var clustergroupupgradesResource = v1alpha1.SchemeGroupVersion.WithResource("clustergroupupgrades")
 
-var clustergroupupgradesKind = schema.GroupVersionKind{Group: "clustergroupupgradesoperator", Version: "v1alpha1", Kind: "ClusterGroupUpgrade"}
+var clustergroupupgradesKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgrade")
 
 // Get takes name of the clusterGroupUpgrade, and returns the corresponding clusterGroupUpgrade object, and an error if there is any.
 func (c *FakeClusterGroupUpgrades) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
@@ -133,6 +135,51 @@ func (c *FakeClusterGroupUpgrades) DeleteCollection(ctx context.Context, opts v1
 func (c *FakeClusterGroupUpgrades) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterGroupUpgrade, err error) {
 	obj, err := c.Fake.
 		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, name, pt, data, subresources...), &v1alpha1.ClusterGroupUpgrade{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.ClusterGroupUpgrade), err
+}
+
+// Apply takes the given apply declarative configuration, applies it and returns the applied clusterGroupUpgrade.
+func (c *FakeClusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
+	if clusterGroupUpgrade == nil {
+		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
+	}
+	data, err := json.Marshal(clusterGroupUpgrade)
+	if err != nil {
+		return nil, err
+	}
+	name := clusterGroupUpgrade.Name
+	if name == nil {
+		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
+	}
+	obj, err := c.Fake.
+		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, *name, types.ApplyPatchType, data), &v1alpha1.ClusterGroupUpgrade{})
+
+	if obj == nil {
+		return nil, err
+	}
+	return obj.(*v1alpha1.ClusterGroupUpgrade), err
+}
+
+// ApplyStatus was generated because the type contains a Status member.
+// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+func (c *FakeClusterGroupUpgrades) ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
+	if clusterGroupUpgrade == nil {
+		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
+	}
+	data, err := json.Marshal(clusterGroupUpgrade)
+	if err != nil {
+		return nil, err
+	}
+	name := clusterGroupUpgrade.Name
+	if name == nil {
+		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
+	}
+	obj, err := c.Fake.
+		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, *name, types.ApplyPatchType, data, "status"), &v1alpha1.ClusterGroupUpgrade{})
 
 	if obj == nil {
 		return nil, err
