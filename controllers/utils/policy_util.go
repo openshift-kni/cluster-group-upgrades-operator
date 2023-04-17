@@ -182,6 +182,12 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 				containsStatus = true
 			}
 		}
+
+		// Make sure hub template functions are valid if exist
+		err := VerifyHubTemplateFunctions(configPlcTmpls, policyName)
+		if err != nil {
+			return containsStatus, err
+		}
 	}
 	return containsStatus, nil
 }
