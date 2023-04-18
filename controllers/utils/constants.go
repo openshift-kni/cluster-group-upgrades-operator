@@ -136,6 +136,7 @@ const (
 	PlcHubTmplFuncErr        = "template function is not supported in TALM"
 	PlcHubTmplPrinfInNameErr = "printf variable is not supported in the template function Name field"
 	PlcHubTmplPrinfInNsErr   = "printf variable is not supported in the template function Namespace field"
+	PlcLookupFuncResErr      = "this template function only allows the resource with apiVersion in 'cluster.open-cluster-management.io', kind 'ManagedCluster' and empty namespace"
 )
 
 // SoakAnnotation is the annotation that can be set on policies, which indicates the least number number of seconds
