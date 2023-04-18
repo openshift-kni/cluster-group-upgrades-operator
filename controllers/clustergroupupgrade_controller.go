@@ -1614,7 +1614,9 @@ func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 		if clusterName == crtSubStatusMap["clustername"].(string) {
 			if crtSubStatusMap["compliant"] == utils.ClusterStatusCompliant {
 				return utils.ClusterStatusCompliant
-			} else if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant {
+			} else if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant ||
+				crtSubStatusMap["compliant"] == utils.ClusterStatusPending {
+				// Treat pending as non-compliant
 				return utils.ClusterStatusNonCompliant
 			} else if crtSubStatusMap["compliant"] == nil {
 				r.Log.Info(
