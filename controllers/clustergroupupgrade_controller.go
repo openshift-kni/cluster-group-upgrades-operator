@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -1100,50 +1099,41 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyForCopiedPolicy
 		metadata := plcTmplDef["metadata"]
 		r.updateConfigurationPolicyName(clusterGroupUpgrade, metadata)
 
-		// Go through the object-templates of the ConfigurationPolicy.
+		// Ensure the resources referenced in the hub template policy exist if applicable
 		plcTmplDefSpec := plcTmplDef["spec"].(map[string]interface{})
-		configPlcTmpls := plcTmplDefSpec["object-templates"].([]interface{})
-		for _, configPlcObjTmpl := range configPlcTmpls {
-			configPlcObjTmplDef := configPlcObjTmpl.(map[string]interface{})["objectDefinition"]
-			// Ensure the resources referenced in the hub template policy exist if applicable
-			err := r.updateConfigurationPolicyHubTemplate(ctx, configPlcObjTmplDef, clusterGroupUpgrade.GetNamespace(), managedPolicyName, managedPolicyNamespace)
-			if err != nil {
-				return err
-			}
+		configPlcTmpls := plcTmplDefSpec["object-templates"]
+		resolvedconfigPlcTmpls, err := r.updateConfigurationPolicyHubTemplate(
+			ctx, configPlcTmpls, clusterGroupUpgrade.GetNamespace(), managedPolicyName, managedPolicyNamespace)
+		if err != nil {
+			return err
 		}
+		plcTmplDefSpec["object-templates"] = resolvedconfigPlcTmpls
 	}
 
 	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyHubTemplate(
-	ctx context.Context, objectDef interface{}, cguNamespace, managedPolicyName, managedPolicyNamespace string) error {
+	ctx context.Context, objectTmpl interface{}, cguNamespace, managedPolicyName, managedPolicyNamespace string) (interface{}, error) {
 	// Process only if the managed policy is not created in the CGU namespace
 	if managedPolicyNamespace == cguNamespace {
-		return nil
+		return objectTmpl, nil
 	}
 
-	objectDefJSON, err := json.Marshal(objectDef)
+	tmplResolver := &utils.TemplateResolver{
+		Client:          r.Client,
+		Ctx:             ctx,
+		TargetNamespace: cguNamespace,
+		PolicyName:      managedPolicyName,
+		PolicyNamespace: managedPolicyNamespace,
+	}
+
+	resolvedObjectTmpl, err := tmplResolver.ProcessHubTemplateFunctions(objectTmpl)
 	if err != nil {
-		return fmt.Errorf("Could not marshal data: %s", err)
+		return resolvedObjectTmpl, err
 	}
 
-	// Check if the object definition has a hub template and process only if there's a template pattern "{{hub" in it.
-	if strings.Contains(string(objectDefJSON), "{{hub") {
-		tmplResolver := &utils.TemplateResolver{
-			Client:          r.Client,
-			Log:             r.Log,
-			Ctx:             ctx,
-			TargetNamespace: cguNamespace,
-			PolicyName:      managedPolicyName,
-			PolicyNamespace: managedPolicyNamespace,
-		}
-
-		if _, err = tmplResolver.ResolveObjectHubTemplates(objectDef); err != nil {
-			return err
-		}
-	}
-	return nil
+	return resolvedObjectTmpl, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyName(
