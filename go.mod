@@ -23,7 +23,7 @@ require (
 require (
 	github.com/onsi/ginkgo/v2 v2.9.4
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
-	golang.org/x/sys v0.7.0
+	golang.org/x/sys v0.8.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.27.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.3
