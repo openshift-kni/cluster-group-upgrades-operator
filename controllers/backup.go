@@ -32,7 +32,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	clusters []string) error {
 
-	if clusterGroupUpgrade.Spec.Backup {
+	if clusterGroupUpgrade.Spec.Backup && len(clusters) > 0 {
 		// Backup is required
 		if clusterGroupUpgrade.Status.Backup == nil {
 			clusterGroupUpgrade.Status.Backup = &ranv1alpha1.BackupStatus{
