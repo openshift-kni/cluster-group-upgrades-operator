@@ -211,3 +211,22 @@ func ShouldSoak(policy *unstructured.Unstructured, firstCompliantAt metav1.Time)
 	}
 	return true, nil
 }
+
+// UpdateManagedPolicyNamespaceList updates policyNs with the corresponding namespaces of a managed policy
+// as contained in the policyNameArr parameter.
+func UpdateManagedPolicyNamespaceList(policyNs map[string][]string, policyNameArr []string) {
+	crtPolicyName := policyNameArr[1]
+	crtPolicyNs := policyNameArr[0]
+
+	// If the current managed policy namespace doesn't exist in the namespace list, add it.
+	nsFound := false
+	for _, nsEntry := range policyNs[crtPolicyName] {
+		if crtPolicyNs == nsEntry {
+			nsFound = true
+			break
+		}
+	}
+	if nsFound == false {
+		policyNs[crtPolicyName] = append(policyNs[crtPolicyName], crtPolicyNs)
+	}
+}
