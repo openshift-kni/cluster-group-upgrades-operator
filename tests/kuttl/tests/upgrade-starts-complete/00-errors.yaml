@@ -1,0 +1,13 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-starts-complete
+  namespace: default
+status:
+  precaching:
+    spec:
+      excludePrecachePatterns:
+      - ""
+      operatorsPackagesAndChannels:
+      - performance-addon-operator:4.9
+      platformImage: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
