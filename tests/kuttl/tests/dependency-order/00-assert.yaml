@@ -1,0 +1,28 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  enable: false
+  managedPolicies:
+  - policy0-common-config-policy
+  - policy1-common-cluster-version-policy
+  remediationStrategy:
+    maxConcurrency: 4
+    timeout: 240
+status:
+  computedMaxConcurrency: 1
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Invalid Dependecy Order, Managed Policy policy0-common-config-policy
+        is dependent on policy1-common-cluster-version-policy, but the dependency
+        comes earlier than the managed policy in ManagedPolicies list
+    reason: InvalidDependencyOrder
+    status: "False"
+    type: Validated

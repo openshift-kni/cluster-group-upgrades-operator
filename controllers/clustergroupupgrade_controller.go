@@ -219,6 +219,13 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return
 			}
 
+			err = r.validatePoliciesDependenciesOrder(clusterGroupUpgrade, managedPoliciesInfo.presentPolicies)
+			if err != nil {
+				nextReconcile = requeueWithLongInterval()
+				err = r.updateStatus(ctx, clusterGroupUpgrade)
+				return
+			}
+
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.Validated,

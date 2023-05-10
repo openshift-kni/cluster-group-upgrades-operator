@@ -12,9 +12,77 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
+
+func TestOverrides_validateDependencyOrder(t *testing.T) {
+	const noDependency = `---
+kind: Policy
+metadata:
+  name: a
+  namespace: ns
+spec:
+  templates: ""
+`
+	const policyWithDependency = `---
+kind: Policy
+metadata:
+  name: b
+  namespace: ns
+spec:
+  dependencies:
+  - name: a
+    namespace: ns
+  templates: ""
+`
+	testcases := []struct {
+		name                      string
+		policies                  []*unstructured.Unstructured
+		managedPolicies           []string
+		managedPoliciesForUpgrade []ranv1alpha1.ManagedPolicyForUpgrade
+		wantErr                   assert.ErrorAssertionFunc
+	}{
+		{
+			name:                      "No Dependency",
+			policies:                  []*unstructured.Unstructured{mustConvertYamlStrToUnstructured(noDependency)},
+			managedPolicies:           []string{"a"},
+			managedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{{Name: "a", Namespace: "ns"}},
+			wantErr:                   assert.NoError,
+		},
+		{
+			name:                      "correct order",
+			policies:                  []*unstructured.Unstructured{mustConvertYamlStrToUnstructured(noDependency), mustConvertYamlStrToUnstructured(policyWithDependency)},
+			managedPolicies:           []string{"a", "b"},
+			managedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{{Name: "a", Namespace: "ns"}, {Name: "b", Namespace: "ns"}},
+			wantErr:                   assert.NoError,
+		},
+		{
+			name:                      "bad order",
+			policies:                  []*unstructured.Unstructured{mustConvertYamlStrToUnstructured(noDependency), mustConvertYamlStrToUnstructured(policyWithDependency)},
+			managedPolicies:           []string{"b", "a"},
+			managedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{{Name: "b", Namespace: "ns"}, {Name: "a", Namespace: "ns"}},
+			wantErr:                   assert.Error,
+		},
+	}
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &ClusterGroupUpgradeReconciler{
+				Client: fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects().Build(),
+				Log:    logr.Discard(),
+				Scheme: scheme.Scheme,
+			}
+
+			var cgu ranv1alpha1.ClusterGroupUpgrade
+			cgu.Spec.ManagedPolicies = tc.managedPolicies
+			cgu.Status.ManagedPoliciesForUpgrade = tc.managedPoliciesForUpgrade
+			err := r.validatePoliciesDependenciesOrder(&cgu, tc.policies)
+			tc.wantErr(t, err)
+		})
+	}
+}
 
 func TestClusterGroupUpgradeReconciler_extractOpenshiftImagePlatformFromPolicies(t *testing.T) {
 

@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"errors"
+	"fmt"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -119,5 +120,48 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 		return err
 	}
 
+	return nil
+}
+
+func indexOf(element ranv1alpha1.ManagedPolicyForUpgrade, data []ranv1alpha1.ManagedPolicyForUpgrade) (int, error) {
+	for k, v := range data {
+		if element.Name == v.Name && element.Namespace == v.Namespace {
+			return k, nil
+		}
+	}
+	return -1, errors.New("element not found in data")
+}
+
+func (r *ClusterGroupUpgradeReconciler) validatePoliciesDependenciesOrder(
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, managedPoliciesForUpgrade []*unstructured.Unstructured) error {
+	for _, managedPolicy := range managedPoliciesForUpgrade {
+		managedPolicyIndex, _ := indexOf(
+			ranv1alpha1.ManagedPolicyForUpgrade{Name: managedPolicy.GetName(), Namespace: managedPolicy.GetNamespace()},
+			clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
+		specObject := managedPolicy.Object["spec"].(map[string]interface{})
+		dependencies := specObject["dependencies"]
+		if dependencies == nil {
+			continue
+		}
+		dependenciesArr := dependencies.([]interface{})
+
+		for _, d := range dependenciesArr {
+			name := d.(map[string]interface{})["name"]
+			namespace := d.(map[string]interface{})["namespace"]
+			dependecyIndex, err := indexOf(
+				ranv1alpha1.ManagedPolicyForUpgrade{Name: name.(string), Namespace: namespace.(string)},
+				clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
+			if err == nil && dependecyIndex > managedPolicyIndex {
+				utils.SetStatusCondition(
+					&clusterGroupUpgrade.Status.Conditions,
+					utils.ConditionTypes.Validated,
+					utils.ConditionReasons.InvalidDependencyOrder,
+					metav1.ConditionFalse,
+					fmt.Sprintf("Invalid Dependecy Order, Managed Policy %s is dependent on %s, but the dependency comes earlier than the managed policy in ManagedPolicies list", managedPolicy.GetName(), name),
+				)
+				return errors.New("invalid dependency order")
+			}
+		}
+	}
 	return nil
 }
