@@ -1,0 +1,26 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Remove all the conflicting managed and child policies.
+  - command: oc delete --namespace=bbb -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=aaa -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=default -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge

@@ -41,6 +41,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | |False | ClusterNotFound | Unable to select clusters: error message |
   `Validated` | True | ValidationCompleted| Completed validation |
   | | False | NotAllManagedPoliciesExist| Missing managed policies: policyList,  invalid managed policies: policyList |
+  | | False | AmbiguousManagedPoliciesNames | Managed policy name should be unique, but was found in multiple namespaces: {"policy":["namespace1","namespace2"]} |
   | | False | InvalidPlatformImage | Error related to platform image |
   `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
   | | False | InvalidPlatformImage| Precaching spec is incomplete |

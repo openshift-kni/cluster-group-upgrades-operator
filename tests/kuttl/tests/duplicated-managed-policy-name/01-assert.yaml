@@ -1,0 +1,39 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  actions:
+    afterCompletion:
+      deleteObjects: true
+    beforeEnable: {}
+  backup: false
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
+  preCaching: false
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  computedMaxConcurrency: 2
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: 'Managed policy name should be unique, but was found in multiple namespaces: {"policy2-common-pao-sub-policy":["aaa","bbb"],"policy3-common-ptp-sub-policy":["aaa","bbb","default"]} '
+    reason: AmbiguousManagedPoliciesNames
+    status: "False"
+    type: Validated
+  status: {}
+

@@ -1,0 +1,44 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Delete the two namespaces created to hold the managed policies.
+  - command: oc delete namespace aaa
+  - command: oc delete namespace bbb
+
+  # Remove all the managed inform policies
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Remove all the child policies.
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Delete the CGU.
+  - command: oc delete -f ../../../../deploy/upgrades/duplicated-managed-policy-name/cgu-duplicated-managed-policy-name.yaml
+    namespaced: true

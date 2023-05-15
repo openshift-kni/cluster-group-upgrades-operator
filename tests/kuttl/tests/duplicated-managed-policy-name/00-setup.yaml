@@ -1,0 +1,74 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Create the two namespaces to hold the managed policies with the same name.
+  - command: oc create namespace aaa
+    namespaced: true
+  - command: oc create namespace bbb
+    namespaced: true
+
+  # Create all the managed inform policies
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=aaa -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=bbb -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=aaa -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=bbb -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=default -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Patch the inform policies to reflect the compliance status.
+  - command: ../../../../deploy/acm/policies/patch-policies-status.sh default "" default default
+    ignoreFailure: false
+  - command: ../../../../deploy/acm/policies/patch-policies-status.sh "" aaa aaa ""
+    ignoreFailure: false
+  - command: ../../../../deploy/acm/policies/patch-policies-status.sh "" bbb bbb ""
+    ignoreFailure: false
+
+  # Create all the child policies to map the inform policies above.
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Apply the CGU.
+  - command: oc apply -f ../../../../deploy/upgrades/duplicated-managed-policy-name/cgu-duplicated-managed-policy-name.yaml
+    namespaced: true
