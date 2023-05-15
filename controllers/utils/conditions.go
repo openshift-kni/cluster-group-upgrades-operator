@@ -32,45 +32,47 @@ type ConditionReason string
 
 // ConditionReasons define the different reasons that conditions will be set for
 var ConditionReasons = struct {
-	Completed                  ConditionReason
-	ClusterSelectionCompleted  ConditionReason
-	ValidationCompleted        ConditionReason
-	BackupCompleted            ConditionReason
-	PrecachingCompleted        ConditionReason
-	Failed                     ConditionReason
-	IncompleteBlockingCR       ConditionReason
-	InProgress                 ConditionReason
-	InvalidPlatformImage       ConditionReason
-	MissingBlockingCR          ConditionReason
-	NotAllManagedPoliciesExist ConditionReason
-	NotEnabled                 ConditionReason
-	NotStarted                 ConditionReason
-	ClusterNotFound            ConditionReason
-	NotPresent                 ConditionReason
-	PartiallyDone              ConditionReason
-	PrecacheSpecIncomplete     ConditionReason
-	PrecacheSpecIsWellFormed   ConditionReason
-	TimedOut                   ConditionReason
+	Completed                     ConditionReason
+	ClusterSelectionCompleted     ConditionReason
+	ValidationCompleted           ConditionReason
+	BackupCompleted               ConditionReason
+	PrecachingCompleted           ConditionReason
+	Failed                        ConditionReason
+	IncompleteBlockingCR          ConditionReason
+	InProgress                    ConditionReason
+	InvalidPlatformImage          ConditionReason
+	MissingBlockingCR             ConditionReason
+	NotAllManagedPoliciesExist    ConditionReason
+	AmbiguousManagedPoliciesNames ConditionReason
+	NotEnabled                    ConditionReason
+	NotStarted                    ConditionReason
+	ClusterNotFound               ConditionReason
+	NotPresent                    ConditionReason
+	PartiallyDone                 ConditionReason
+	PrecacheSpecIncomplete        ConditionReason
+	PrecacheSpecIsWellFormed      ConditionReason
+	TimedOut                      ConditionReason
 }{
-	Completed:                  "Completed",
-	ClusterSelectionCompleted:  "ClusterSelectionCompleted",
-	ValidationCompleted:        "ValidationCompleted",
-	BackupCompleted:            "BackupCompleted",
-	PrecachingCompleted:        "PrecachingCompleted",
-	Failed:                     "Failed",
-	IncompleteBlockingCR:       "IncompleteBlockingCR",
-	InProgress:                 "InProgress",
-	InvalidPlatformImage:       "InvalidPlatformImage",
-	MissingBlockingCR:          "MissingBlockingCR",
-	NotAllManagedPoliciesExist: "NotAllManagedPoliciesExist",
-	NotEnabled:                 "NotEnabled",
-	NotStarted:                 "NotStarted",
-	ClusterNotFound:            "ClusterNotFound",
-	NotPresent:                 "NotPresent",
-	PartiallyDone:              "PartiallyDone",
-	PrecacheSpecIncomplete:     "PrecacheSpecIncomplete",
-	PrecacheSpecIsWellFormed:   "PrecacheSpecIsWellFormed",
-	TimedOut:                   "TimedOut",
+	Completed:                     "Completed",
+	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
+	ValidationCompleted:           "ValidationCompleted",
+	BackupCompleted:               "BackupCompleted",
+	PrecachingCompleted:           "PrecachingCompleted",
+	Failed:                        "Failed",
+	IncompleteBlockingCR:          "IncompleteBlockingCR",
+	InProgress:                    "InProgress",
+	InvalidPlatformImage:          "InvalidPlatformImage",
+	MissingBlockingCR:             "MissingBlockingCR",
+	NotAllManagedPoliciesExist:    "NotAllManagedPoliciesExist",
+	AmbiguousManagedPoliciesNames: "AmbiguousManagedPoliciesNames",
+	NotEnabled:                    "NotEnabled",
+	NotStarted:                    "NotStarted",
+	ClusterNotFound:               "ClusterNotFound",
+	NotPresent:                    "NotPresent",
+	PartiallyDone:                 "PartiallyDone",
+	PrecacheSpecIncomplete:        "PrecacheSpecIncomplete",
+	PrecacheSpecIsWellFormed:      "PrecacheSpecIsWellFormed",
+	TimedOut:                      "TimedOut",
 }
 
 // SetStatusCondition is a convenience wrapper for meta.SetStatusCondition that takes in the types defined here and converts them to strings
