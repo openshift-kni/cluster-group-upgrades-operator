@@ -2,14 +2,67 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  - command: oc delete -f ../../../../deploy/acm/policies/blocking_mechanisms/policy1-common-cluster-version-policy.yaml
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
     namespaced: true
-  - command: oc delete -f ../../../../deploy/acm/policies/blocking_mechanisms/policy2-common-pao-sub-policy.yaml
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
     namespaced: true
-  - command: oc delete -f ../../../../deploy/acm/policies/blocking_mechanisms/policy3-common-ptp-sub-policy.yaml
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
     namespaced: true
-  - command: oc delete -f ../../../../deploy/acm/policies/blocking_mechanisms/policy4-common-sriov-sub-policy.yaml
+  - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
     namespaced: true
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke3 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke3 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke3 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
+    namespaced: true
+
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke3 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy4-common-sriov-sub-policy.yaml
+    namespaced: true
+
+  # Create the UOCRs.
   - command: oc delete -f ../../../../deploy/upgrades/blocking-mechanisms/cgu-a.yaml
     namespaced: true
   - command: oc delete -f ../../../../deploy/upgrades/blocking-mechanisms/cgu-b.yaml

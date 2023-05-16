@@ -21,3 +21,6 @@ commands:
     namespaced: true
   - command: oc delete --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy3-common-ptp-sub-policy.yaml
     namespaced: true
+
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
