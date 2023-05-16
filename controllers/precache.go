@@ -25,7 +25,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, policies []*unstructured.Unstructured) error {
 
-	if clusterGroupUpgrade.Spec.PreCaching {
+	if clusterGroupUpgrade.Spec.PreCaching && len(clusters) > 0 {
 		// Pre-caching is required
 		if clusterGroupUpgrade.Status.Precaching == nil {
 			clusterGroupUpgrade.Status.Precaching = &ranv1alpha1.PrecachingStatus{
