@@ -4,9 +4,8 @@ kind: TestStep
 commands:
   # Delete the two namespaces created to hold the managed policies.
   - command: oc delete namespace aaa
-    namespaced: true
   - command: oc delete namespace bbb
-    namespaced: true
+
   # Remove all the managed inform policies
   - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
     namespaced: true

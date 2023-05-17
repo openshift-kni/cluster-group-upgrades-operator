@@ -40,7 +40,7 @@ commands:
     namespaced: true
 
   # Delete the UOCR.
-  - command: oc delete -f ../../../../deploy/upgrades/skip-compliant-policies/skip-compliant-policies.yaml
+  - command: oc delete -f ../../../../deploy/upgrades/backup/backup.yaml
     namespaced: true
 
   - command: ../../../../deploy/upgrades/backup/cleanup.sh 
