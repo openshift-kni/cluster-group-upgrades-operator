@@ -20,9 +20,7 @@ status:
     reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
-  - message: Invalid Dependecy Order, Managed Policy policy0-common-config-policy
-        is dependent on policy1-common-cluster-version-policy, but the dependency
-        comes earlier than the managed policy in ManagedPolicies list
-    reason: InvalidDependencyOrder
+  - message: Managed Policy policy0-common-config-policy depends on policy1-common-cluster-version-policy, which is to be remediated later
+    reason: UnresolvableDenpendency
     status: "False"
     type: Validated

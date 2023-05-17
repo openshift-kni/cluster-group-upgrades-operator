@@ -1,28 +1,21 @@
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
-  name: cgu-upgrade-starts-complete
+  name: cgu
   namespace: default
   annotations:
     cluster-group-upgrades-operator/name-suffix: kuttl      
 spec:
-  actions:
-    afterCompletion:
-      addClusterLabels:
-        ztp-done: ''
-      deleteClusterLabels:
-        ztp-running: ''
-      deleteObjects: true
-    beforeEnable:
-      addClusterLabels:
-        ztp-running: ''
   managedPolicies:
     - policy1-common-cluster-version-policy
     - policy2-common-pao-sub-policy
+    - policy3-common-ptp-sub-policy
+    - policy4-common-sriov-sub-policy
   enable: false
-  backup: true
-  preCaching: true
   clusters:
   - spoke1
+  - spoke2
+  - spoke4
+  - spoke6
   remediationStrategy:
-    maxConcurrency: 1
+    maxConcurrency: 2

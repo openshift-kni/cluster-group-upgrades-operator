@@ -155,9 +155,9 @@ func (r *ClusterGroupUpgradeReconciler) validatePoliciesDependenciesOrder(
 				utils.SetStatusCondition(
 					&clusterGroupUpgrade.Status.Conditions,
 					utils.ConditionTypes.Validated,
-					utils.ConditionReasons.InvalidDependencyOrder,
+					utils.ConditionReasons.UnresolvableDenpendency,
 					metav1.ConditionFalse,
-					fmt.Sprintf("Invalid Dependecy Order, Managed Policy %s is dependent on %s, but the dependency comes earlier than the managed policy in ManagedPolicies list", managedPolicy.GetName(), name),
+					fmt.Sprintf("Managed Policy %s depends on %s, which is to be remediated later", managedPolicy.GetName(), name),
 				)
 				return errors.New("invalid dependency order")
 			}
