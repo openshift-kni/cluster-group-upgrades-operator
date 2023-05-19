@@ -11,7 +11,9 @@ updates:
       interval: "daily"
     open-pull-requests-limit: 5
     ignore:
-      - dependency-name: "ginkgo"
+      - dependency-name: "github.com/onsi/ginkgo/v2"
         update-types: ["version-update:semver-patch"]
-      - dependency-name: "gomega"
-        update-types: ["version-update:semver-patch"]  
+      - dependency-name: "github.com/onsi/gomega"
+        update-types: ["version-update:semver-patch"]
+      - dependency-name: "github.com/stretchr/testify"  
+        update-types: ["version-update:semver-patch"]
