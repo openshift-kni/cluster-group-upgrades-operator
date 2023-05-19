@@ -30,6 +30,10 @@ spec:
               desiredUpdate:
                 version: 4.9.4
               upstream: https://api.openshift.com/api/upgrades_info/v1/graph
+            status:
+              history:
+                - state: Completed
+                  version: 4.9.4
         remediationAction: inform
         severity: low
   remediationAction: inform

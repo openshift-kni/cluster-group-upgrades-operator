@@ -18,11 +18,10 @@ A ClusterGroupUpgrade CR defines a desired upgrade to a group clusters.
 The spec allows you to define:
 * Clusters belonging to group
 * Number of concurrent upgrades
-* Canaries
-* Desired OpenShift version
-* Desired operators versions
+* Canary clusters
+* Policies to be enforced
 
-A set of **clustergroupupgrade** example CRs can be found in the **samples** folder.
+A set of **clustergroupupgrade** example CRs and **policy** CRs for OCP upgrade can be found in the **samples** folder.
 
 ## How it works
 
