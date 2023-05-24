@@ -1,0 +1,69 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke5
+  enable: true
+  managedPolicies:
+  - policy5-subscriptions
+  preCaching: false
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  clusters:
+    - name: spoke1
+      state: complete      
+    - name: spoke2
+      state: complete
+  computedMaxConcurrency: 2
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  copiedPolicies:
+  - cgu-policy5-subscriptions-kuttl
+  managedPoliciesContent:
+    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-local-storage"}]'
+  managedPoliciesForUpgrade:
+  - name: policy5-subscriptions
+    namespace: default
+  managedPoliciesNs:
+    policy5-subscriptions: default
+  placementBindings:
+  - cgu-policy5-subscriptions-placement-kuttl
+  placementRules:
+  - cgu-policy5-subscriptions-placement-kuttl
+  remediationPlan:
+  - - spoke1
+    - spoke2
+  - - spoke5
+  safeResourceNames:
+    cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
+    cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
+    cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
+    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
+    cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
+  status:
+    currentBatch: 2
+    currentBatchRemediationProgress:
+      spoke5:
+        policyIndex: 0
+        state: InProgress
