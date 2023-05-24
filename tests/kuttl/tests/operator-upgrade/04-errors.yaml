@@ -1,0 +1,248 @@
+# Check that all the ManagedClusterViews are cleaned up in all the spoke namespaces.
+# Check for the cluster logging operator subscription.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-cluster-logging-kuttl
+  namespace: spoke1
+spec:
+  scope:
+    name: cluster-logging
+    namespace: openshift-logging
+    resource: Subscription.operators.coreos.com
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-cluster-logging-kuttl
+  namespace: spoke2
+spec:
+  scope:
+    name: cluster-logging
+    namespace: openshift-logging
+    resource: Subscription.operators.coreos.com
+---
+# Check for the local storage operator subscription.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-local-storage-operator-kuttl
+  namespace: spoke1
+spec:
+  scope:
+    name: local-storage-operator
+    namespace: openshift-local-storage
+    resource: Subscription.operators.coreos.com
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-local-storage-operator-kuttl
+  namespace: spoke2
+spec:
+  scope:
+    name: local-storage-operator
+    namespace: openshift-local-storage
+    resource: Subscription.operators.coreos.com
+---
+# Check for the PAO operator subscription.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-performance-addon-operator-kuttl
+  namespace: spoke1
+spec:
+  scope:
+    name: performance-addon-operator
+    namespace: openshift-performance-addon-operator
+    resource: Subscription.operators.coreos.com
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-performance-addon-operator-kuttl
+  namespace: spoke2
+spec:
+  scope:
+    name: performance-addon-operator
+    namespace: openshift-performance-addon-operator
+    resource: Subscription.operators.coreos.com
+---
+# Check for the PTP operator subscription.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-ptp-operator-subscription-kuttl
+  namespace: spoke1
+spec:
+  scope:
+    name: ptp-operator-subscription
+    namespace: openshift-ptp
+    resource: Subscription.operators.coreos.com
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-ptp-operator-subscription-kuttl
+  namespace: spoke2
+spec:
+  scope:
+    name: ptp-operator-subscription
+    namespace: openshift-ptp
+    resource: Subscription.operators.coreos.com
+---
+# Check for the SRIOV operator subscription.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+  namespace: spoke1
+spec:
+  scope:
+    name: sriov-network-operator-subscription
+    namespace: openshift-sriov-network-operator
+    resource: Subscription.operators.coreos.com
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+  namespace: spoke2
+spec:
+  scope:
+    name: sriov-network-operator-subscription
+    namespace: openshift-sriov-network-operator
+    resource: Subscription.operators.coreos.com
+---
+# Check the ManagedClusterActions for approving the install plans have been cleaned up
+# Check spoke1.
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-aaaa1
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa1
+    namespace: openshift-logging
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-aaaa2
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa2
+    namespace: openshift-local-storage
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-aaaa3
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa3
+    namespace: openshift-performance-addon-operator
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-aaaa4
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa4
+    namespace: openshift-ptp
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-aaaa5
+  namespace: spoke1
+spec:
+  scope:
+    name: install-aaaa5
+    namespace: openshift-sriov-network-operator
+    resource: InstallPlan
+---
+# Check spoke2
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-bbbb1
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb1
+    namespace: openshift-logging
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-bbbb2
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb2
+    namespace: openshift-local-storage
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-bbbb3
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb3
+    namespace: openshift-performance-addon-operator
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-bbbb4
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb4
+    namespace: openshift-ptp
+    resource: InstallPlan
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+  name: install-bbbb5
+  namespace: spoke2
+spec:
+  scope:
+    name: install-bbbb5
+    namespace: openshift-sriov-network-operator
+    resource: InstallPlan
