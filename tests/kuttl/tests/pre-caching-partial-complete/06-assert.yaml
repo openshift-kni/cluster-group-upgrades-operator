@@ -10,7 +10,7 @@ spec:
   - spoke2
   - spoke1
   - spoke5
-  enable: true
+  enable: false
   managedPolicies:
   - policy0-common-config-policy
   - policy2-common-pao-sub-policy
@@ -19,7 +19,7 @@ spec:
   preCaching: true
   remediationStrategy:
     maxConcurrency: 4
-    timeout: 240
+    timeout: 241
 status:
   computedMaxConcurrency: 4
   conditions:
@@ -35,14 +35,10 @@ status:
     reason: PrecacheSpecIsWellFormed
     status: "True"
     type: PrecacheSpecValid
-  - message: Precaching failed for 1 clusters 
-    reason: PartiallyDone
-    status: "True"
-    type: PrecachingSuceeded
-  - message: Remediating non-compliant policies
+  - message: Precaching in progress for 1 clusters
     reason: InProgress
-    status: "True"
-    type: Progressing
+    status: "False"
+    type: PrecachingSuceeded
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
   - cgu-policy4-common-sriov-sub-policy-kuttl
@@ -77,10 +73,11 @@ status:
     status:
       spoke1: Succeeded
       spoke2: PrecacheTimeout
-      spoke5: Succeeded
+      spoke5: Active
       spoke6: Succeeded
   remediationPlan:
   - - spoke6
+    - spoke2
     - spoke1
     - spoke5
   safeResourceNames:

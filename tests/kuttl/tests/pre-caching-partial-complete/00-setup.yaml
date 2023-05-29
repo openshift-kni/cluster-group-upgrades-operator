@@ -16,6 +16,10 @@ commands:
   - command: ../../../../deploy/upgrades/pre-caching/patch-policies-status.sh default default default default
     ignoreFailure: false
 
+  # Patch all clusters to be available
+  - command: ../../../../deploy/upgrades/pre-caching/patch-all-spokes-available.sh
+    ignoreFailure: false
+
   # Create all the child policies to map the inform policies above.
   - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true

@@ -10,7 +10,7 @@ spec:
   - spoke2
   - spoke1
   - spoke5
-  enable: false
+  enable: true
   managedPolicies:
   - policy0-common-config-policy
   - policy2-common-pao-sub-policy
@@ -19,7 +19,7 @@ spec:
   preCaching: true
   remediationStrategy:
     maxConcurrency: 4
-    timeout: 240
+    timeout: 241
 status:
   computedMaxConcurrency: 4
   conditions:
@@ -35,10 +35,14 @@ status:
     reason: PrecacheSpecIsWellFormed
     status: "True"
     type: PrecacheSpecValid
-  - message: Precaching in progress for 1 clusters
-    reason: InProgress
-    status: "False"
+  - message: Precaching failed for 2 clusters 
+    reason: PartiallyDone
+    status: "True"
     type: PrecachingSuceeded
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: "True"
+    type: Progressing
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
   - cgu-policy4-common-sriov-sub-policy-kuttl
@@ -73,17 +77,27 @@ status:
     status:
       spoke1: Succeeded
       spoke2: PrecacheTimeout
-      spoke5: Active
+      spoke5: UnrecoverableError
       spoke6: Succeeded
   remediationPlan:
   - - spoke6
-    - spoke2
     - spoke1
-    - spoke5
   safeResourceNames:
     cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
     cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
     cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
     cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
     cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
     cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
+      spoke6:
+        policyIndex: 1
+        state: InProgress
+
