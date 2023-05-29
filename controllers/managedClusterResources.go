@@ -28,13 +28,17 @@ import (
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	v1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
+	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -523,7 +527,24 @@ func (r *ClusterGroupUpgradeReconciler) getActiveConditions(
 	if !processing {
 		return NoJobFoundOnSpoke, nil
 	}
-	return r.getJobStatus(jobView)
+	jobStatus, err := r.getJobStatus(jobView)
+
+	if jobStatus == JobActive {
+		// In this state, we need to check the managed cluster availability first before
+		// proceeding based on the job status in the view. The view can contain stale
+		// results if the cluster stops updating it.
+		managedCluster := &clusterv1.ManagedCluster{}
+		if err := r.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster); err != nil {
+			// Error reading managed cluster
+			return UnforeseenCondition, err
+		}
+
+		availableCondition := meta.FindStatusCondition(managedCluster.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+		if availableCondition == nil || availableCondition.Status != metav1.ConditionTrue {
+			return UnforeseenCondition, fmt.Errorf("[getActiveConditions] Cluster %s is unavailable", cluster)
+		}
+	}
+	return jobStatus, err
 }
 
 // checkDependenciesViews check all precache job dependencies views
