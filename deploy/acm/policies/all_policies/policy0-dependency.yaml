@@ -1,0 +1,46 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  annotations:
+    policy.open-cluster-management.io/categories: CM Configuration Management
+    policy.open-cluster-management.io/controls: CM-2 Baseline ghozimiy
+    policy.open-cluster-management.io/standards: NIST SP 800-53
+  name: policy0-common-config-policy
+spec:
+  dependencies: 
+  - apiVersion: policy.open-cluster-management.io/v1
+    kind: Policy
+    name: policy1-common-cluster-version-policy
+    namespace: default
+    compliance: Compliant
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: common-config-policy-config
+      spec:
+        namespaceselector:
+          exclude:
+          - kube-*
+          include:
+          - '*'
+        object-templates:
+        - complianceType: musthave
+          objectDefinition:
+            apiVersion: operators.coreos.com/v1alpha1
+            kind: CatalogSource
+            metadata:
+              annotations:
+                target.workload.openshift.io/management: '{"effect": "PreferredDuringScheduling"}'
+              name: rh-du-operators
+              namespace: openshift-marketplace
+            spec:
+              displayName: disconnected-redhat-operators
+              image: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+              publisher: Red Hat
+              sourceType: grpc
+        remediationAction: inform
+        severity: low
+  remediationAction: inform
