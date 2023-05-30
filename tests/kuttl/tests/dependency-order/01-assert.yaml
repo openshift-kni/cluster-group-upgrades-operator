@@ -1,0 +1,30 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  enable: false
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy0-common-config-policy
+  remediationStrategy:
+    maxConcurrency: 4
+    timeout: 240
+status:
+  computedMaxConcurrency: 1
+  conditions:
+    - message: All selected clusters are valid
+      reason: ClusterSelectionCompleted
+      status: "True"
+      type: ClustersSelected
+    - message: Completed validation
+      reason: ValidationCompleted
+      status: "True"
+      type: Validated
+    - message: Not enabled
+      reason: NotEnabled
+      status: "False"
+      type: Progressing

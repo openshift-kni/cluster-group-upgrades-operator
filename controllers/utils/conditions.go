@@ -52,6 +52,7 @@ var ConditionReasons = struct {
 	PrecacheSpecIncomplete        ConditionReason
 	PrecacheSpecIsWellFormed      ConditionReason
 	TimedOut                      ConditionReason
+	UnresolvableDenpendency       ConditionReason
 }{
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
@@ -73,6 +74,7 @@ var ConditionReasons = struct {
 	PrecacheSpecIncomplete:        "PrecacheSpecIncomplete",
 	PrecacheSpecIsWellFormed:      "PrecacheSpecIsWellFormed",
 	TimedOut:                      "TimedOut",
+	UnresolvableDenpendency:       "UnresolvableDenpendency",
 }
 
 // SetStatusCondition is a convenience wrapper for meta.SetStatusCondition that takes in the types defined here and converts them to strings
