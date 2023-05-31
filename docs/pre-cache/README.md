@@ -23,7 +23,7 @@ Maintenance windows configuration is not provisioned by TALO. A user applies TAL
     - A set of clusters to be upgraded
     - References to the policies containing the required release and operator versions for this set
     - The need for image pre-caching
-- User applies the TALO CR to the hub cluster at the beginning of the maintenance window
+- User applies the ClusterGroupUpgrade CR to the hub cluster at the beginning of the maintenance window
 - Optionally, the user can create an override ConfigMap to filter out the images that are not necessary for the cluster version update.
 - TALO checks the pre-caching requirement in the TALO CR. If required, then for each cluster defined or matched by selectors: 
     - Cleans up possible remainders from the previous pre-caching attempts
