@@ -70,6 +70,7 @@ status:
       - ptp-operator:4.9
       - sriov-network-operator:4.9
       - performance-addon-operator:4.9
+      spaceRequired: "35"
     status:
       spoke1: Starting
       spoke2: Starting
@@ -162,6 +163,7 @@ spec:
         operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11 \n"
         operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9  \nperformance-addon-operator:4.9 \n"
         platform.image: null
+        spaceRequired: 35
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -240,6 +242,7 @@ spec:
         operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11 \n"
         operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9  \nperformance-addon-operator:4.9 \n"
         platform.image: null
+        spaceRequired: 35
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -318,6 +321,7 @@ spec:
         operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11 \n"
         operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9  \nperformance-addon-operator:4.9 \n"
         platform.image: null
+        spaceRequired: 35
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -396,6 +400,7 @@ spec:
         operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11 \n"
         operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9  \nperformance-addon-operator:4.9 \n"
         platform.image: null
+        spaceRequired: 35
       kind: ConfigMap
       metadata:
         name: pre-cache-spec

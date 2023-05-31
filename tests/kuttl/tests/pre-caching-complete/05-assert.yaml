@@ -73,7 +73,8 @@ status:
       operatorsPackagesAndChannels:
       - ptp-operator:4.9
       - sriov-network-operator:4.9
-      - performance-addon-operator:4.9      
+      - performance-addon-operator:4.9
+      spaceRequired: "35"
     status:
       spoke1: Succeeded
       spoke2: Succeeded

@@ -64,8 +64,13 @@ spec:
                       type: string
                     type: array
                   platformImage:
-                    description: Override the pre-cached OCP release image derived
-                      by TALM
+                    description: Override the pre-cached OpenShift platform image
+                      derived by TALM
+                    type: string
+                  preCacheImage:
+                    description: Override the pre-caching workload image pull spec
+                      - typically derived by TALM from the operator ClusterServiceVersion
+                      (csv) object.
                     type: string
                 type: object
               spaceRequired:

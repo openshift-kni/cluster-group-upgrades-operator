@@ -33,11 +33,17 @@ type RemediationStrategySpec struct {
 	Timeout int `json:"timeout,omitempty"`
 }
 
-// BlockingCR defines the Upgrade CRs that block the current CR from running if not completed
-type BlockingCR struct {
+// NamespacedCR defines the name and namespace of a custom resource
+type NamespacedCR struct {
 	Name      string `json:"name,omitempty"`
 	Namespace string `json:"namespace,omitempty"`
 }
+
+// BlockingCR defines the Upgrade CRs that block the current CR from running if not completed
+type BlockingCR NamespacedCR
+
+// PreCachingConfigCR defines the reference to the pre-caching config CR
+type PreCachingConfigCR NamespacedCR
 
 // Actions defines the actions to be done either before or after the managedPolicies are remediated
 type Actions struct {
@@ -104,6 +110,10 @@ type ClusterGroupUpgradeSpec struct {
 	//+kubebuilder:default=false
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PreCaching",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
 	PreCaching bool `json:"preCaching,omitempty"`
+	// This field specifies a reference to a pre-caching config custom resource that contains the additional
+	// pre-caching configurations.
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PreCachingConfigRef",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	PreCachingConfigRef PreCachingConfigCR `json:"preCachingConfigRef,omitempty"`
 	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
 	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
 	// Once set to true, the clusters start being upgraded, one batch at a time.
@@ -212,6 +222,8 @@ type PrecachingSpec struct {
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`
 	OperatorsPackagesAndChannels []string `json:"operatorsPackagesAndChannels,omitempty"`
 	ExcludePrecachePatterns      []string `json:"excludePrecachePatterns,omitempty"`
+	SpaceRequired                string   `json:"spaceRequired,omitempty"`
+	AdditionalImages             []string `json:"additionalImages,omitempty"`
 }
 
 // PrecachingStatus defines the observed pre-caching status

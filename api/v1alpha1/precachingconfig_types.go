@@ -24,12 +24,15 @@ import (
 
 // PlatformPreCachingSpec modify the default pre-caching behavior and values derived by TALM.
 type PlatformPreCachingSpec struct {
-	// Override the pre-cached OCP release image derived by TALM
+	// Override the pre-cached OpenShift platform image derived by TALM
 	PlatformImage string `json:"platformImage,omitempty"`
 	// Override the pre-cached OLM index images derived by TALM (list of image pull specs)
 	OperatorsIndexes []string `json:"operatorsIndexes,omitempty"`
 	// Override the pre-cached operator packages and channels derived by TALM (list of <package:channel> string entries)
 	OperatorsPackagesAndChannels []string `json:"operatorsPackagesAndChannels,omitempty"`
+	// Override the pre-caching workload image pull spec - typically derived by TALM from the operator
+	// ClusterServiceVersion (csv) object.
+	PreCacheImage string `json:"preCacheImage,omitempty"`
 }
 
 // PreCachingConfigSpec defines the desired state of PreCachingConfig

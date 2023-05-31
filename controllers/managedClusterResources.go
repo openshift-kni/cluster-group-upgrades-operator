@@ -53,6 +53,7 @@ type templateData struct {
 	JobTimeout              uint64
 	ViewUpdateIntervalSec   int
 	ExcludePrecachePatterns []string
+	AdditionalImages        []string
 }
 
 // operatorsData provides operators data for template rendering
@@ -629,7 +630,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	rv.Cluster = clusterName
 	rv.JobTimeout = uint64(
 		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) * 60
-	image, err := r.getPrecacheimagePullSpec(ctx, clusterGroupUpgrade)
+	image, err := r.getPrecacheImagePullSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return rv, err
 	}

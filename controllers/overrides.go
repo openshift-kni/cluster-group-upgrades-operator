@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -10,6 +11,14 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
+
+// getDeprecationMessage: generates a deprecation message to the user guiding them to use
+// the PreCachingConfig CR instead of the ConfigMap to override the specified field
+func getDeprecationMessage(field string) string {
+	msg := fmt.Sprintf("Deprecation warning: using cluster-group-upgrade-overrides ConfigMap to override "+
+		"the default value for %s is deprecated. Please use PreCachingConfig CR.", field)
+	return msg
+}
 
 // getOverrides: reads user overrides to operator configuration
 //

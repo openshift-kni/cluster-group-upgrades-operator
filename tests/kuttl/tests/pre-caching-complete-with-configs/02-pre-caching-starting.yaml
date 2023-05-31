@@ -1,0 +1,15 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the inform policies to reflect the compliance status Compliant for spoke1.
+  - command: ../../../../deploy/upgrades/pre-caching/patch-ns-mcv-status-processing-false.sh
+    ignoreFailure: false
+  # Force two quick reconcile calls
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge

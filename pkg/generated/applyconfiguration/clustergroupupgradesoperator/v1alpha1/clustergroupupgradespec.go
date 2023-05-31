@@ -26,6 +26,7 @@ import (
 type ClusterGroupUpgradeSpecApplyConfiguration struct {
 	Backup                *bool                                      `json:"backup,omitempty"`
 	PreCaching            *bool                                      `json:"preCaching,omitempty"`
+	PreCachingConfigRef   *PreCachingConfigCRApplyConfiguration      `json:"preCachingConfigRef,omitempty"`
 	Enable                *bool                                      `json:"enable,omitempty"`
 	Clusters              []string                                   `json:"clusters,omitempty"`
 	ClusterSelector       []string                                   `json:"clusterSelector,omitempty"`
@@ -56,6 +57,14 @@ func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithBackup(value bool) *Clus
 // If called multiple times, the PreCaching field is set to the value of the last call.
 func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithPreCaching(value bool) *ClusterGroupUpgradeSpecApplyConfiguration {
 	b.PreCaching = &value
+	return b
+}
+
+// WithPreCachingConfigRef sets the PreCachingConfigRef field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the PreCachingConfigRef field is set to the value of the last call.
+func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithPreCachingConfigRef(value *PreCachingConfigCRApplyConfiguration) *ClusterGroupUpgradeSpecApplyConfiguration {
+	b.PreCachingConfigRef = value
 	return b
 }
 

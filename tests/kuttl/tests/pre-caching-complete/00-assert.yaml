@@ -69,6 +69,7 @@ status:
       - ptp-operator:4.9
       - sriov-network-operator:4.9
       - performance-addon-operator:4.9
+      spaceRequired: "35"
     status:
       spoke1: PreparingToStart
       spoke2: PreparingToStart

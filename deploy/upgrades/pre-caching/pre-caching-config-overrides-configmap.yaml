@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: cluster-group-upgrade-overrides
+data:
+ platform.image: this/should/be/ignored:latest
+ operators.packagesAndChannels: |
+   performance-addon-operator:stable
+   ptp-operator:stable
+   sriov-network-operator:stable
+ excludePrecachePatterns: |
+   aws
+   azure
+---

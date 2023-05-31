@@ -1,0 +1,20 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Apply the PreCachingConfig CR
+  - command: oc apply -f ../../../../deploy/upgrades/pre-caching/pre-caching-config-cr.yaml
+    namespaced: true
+
+  # Apply the cluster-group-upgrade-overrides ConfigMap
+  - command: oc apply -f ../../../../deploy/upgrades/pre-caching/pre-caching-config-overrides-configmap.yaml
+    namespaced: true
+
+  # Force two quick reconcile calls
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu
+        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu
+        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge

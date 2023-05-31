@@ -210,6 +210,15 @@ spec:
                   the pre-caching process starts immediately on all clusters irrespectively
                   of the value of the "enable" flag
                 type: boolean
+              preCachingConfigRef:
+                description: This field specifies a reference to a pre-caching config
+                  custom resource that contains the additional pre-caching configurations.
+                properties:
+                  name:
+                    type: string
+                  namespace:
+                    type: string
+                type: object
               remediationStrategy:
                 description: RemediationStrategySpec defines the remediation policy
                 properties:
@@ -394,6 +403,10 @@ spec:
                     description: PrecachingSpec defines the pre-caching software spec
                       derived from policies
                     properties:
+                      additionalImages:
+                        items:
+                          type: string
+                        type: array
                       excludePrecachePatterns:
                         items:
                           type: string
@@ -407,6 +420,8 @@ spec:
                           type: string
                         type: array
                       platformImage:
+                        type: string
+                      spaceRequired:
                         type: string
                     type: object
                   status:

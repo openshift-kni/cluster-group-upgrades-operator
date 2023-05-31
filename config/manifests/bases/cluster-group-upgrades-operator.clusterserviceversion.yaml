@@ -91,6 +91,12 @@ spec:
         path: preCaching
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
+      - description: This field specifies a reference to a pre-caching config custom
+          resource that contains the additional pre-caching configurations.
+        displayName: PreCachingConfigRef
+        path: preCachingConfigRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - displayName: Remediation Strategy
         path: remediationStrategy
         x-descriptors:

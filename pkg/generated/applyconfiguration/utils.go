@@ -52,6 +52,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &clustergroupupgradesoperatorv1alpha1.ManagedPolicyForUpgradeApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PolicyStatus"):
 		return &clustergroupupgradesoperatorv1alpha1.PolicyStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("PreCachingConfigCR"):
+		return &clustergroupupgradesoperatorv1alpha1.PreCachingConfigCRApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PrecachingSpec"):
 		return &clustergroupupgradesoperatorv1alpha1.PrecachingSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PrecachingStatus"):
