@@ -6,7 +6,7 @@ require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-logr/logr v1.2.4
 	github.com/onsi/gomega v1.27.6
-	github.com/openshift/build-machinery-go v0.0.0-20220429084610-baff9f8d23b3
+	github.com/openshift/build-machinery-go v0.0.0-20230306181456-d321ffa04533
 	github.com/operator-framework/api v0.17.4
 	github.com/sirupsen/logrus v1.9.2
 	github.com/spf13/cobra v1.7.0
@@ -15,7 +15,7 @@ require (
 	k8s.io/apimachinery v0.27.1
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
-	open-cluster-management.io/api v0.10.1
+	open-cluster-management.io/api v0.11.0
 	open-cluster-management.io/governance-policy-propagator v0.8.0
 	sigs.k8s.io/controller-runtime v0.14.6
 )
