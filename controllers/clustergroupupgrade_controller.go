@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"sort"
 	"strings"
@@ -55,10 +56,11 @@ type ClusterGroupUpgradeReconciler struct {
 }
 
 type policiesInfo struct {
-	invalidPolicies   []string
-	missingPolicies   []string
-	presentPolicies   []*unstructured.Unstructured
-	compliantPolicies []*unstructured.Unstructured
+	invalidPolicies      []string
+	missingPolicies      []string
+	presentPolicies      []*unstructured.Unstructured
+	compliantPolicies    []*unstructured.Unstructured
+	duplicatedPoliciesNs map[string][]string
 }
 
 const statusUpdateWaitInMilliSeconds = 100
@@ -250,6 +252,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 			// If not all managedPolicies exist or invalid, update the Status accordingly.
 			var statusMessage string
+			var conditionReason utils.ConditionReason
+
+			conditionReason = utils.ConditionReasons.NotAllManagedPoliciesExist
 			if len(managedPoliciesInfo.missingPolicies) != 0 {
 				statusMessage = fmt.Sprintf("Missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
 			}
@@ -258,11 +263,17 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				statusMessage = fmt.Sprintf("Invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
 			}
 
-			// If not all managedPolicies exist, update the Status accordingly.
+			if len(managedPoliciesInfo.duplicatedPoliciesNs) != 0 {
+				jsonData, _ := json.Marshal(managedPoliciesInfo.duplicatedPoliciesNs)
+				statusMessage = fmt.Sprintf(
+					"Managed policy name should be unique, but was found in multiple namespaces: %s ", jsonData)
+				conditionReason = utils.ConditionReasons.AmbiguousManagedPoliciesNames
+			}
+			// If there are errors regarding the managedPolicies, update the Status accordingly.
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.Validated,
-				utils.ConditionReasons.NotAllManagedPoliciesExist,
+				conditionReason,
 				metav1.ConditionFalse,
 				statusMessage,
 			)
@@ -911,6 +922,16 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	return foundPolicy, r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
 }
 
+func updateDuplicatedManagedPoliciesInfo(managedPoliciesInfo *policiesInfo, policiesNs map[string][]string) {
+	managedPoliciesInfo.duplicatedPoliciesNs = make(map[string][]string)
+	for crtPolicy, crtNs := range policiesNs {
+		if len(crtNs) > 1 {
+			managedPoliciesInfo.duplicatedPoliciesNs[crtPolicy] = crtNs
+			sort.Strings(managedPoliciesInfo.duplicatedPoliciesNs[crtPolicy])
+		}
+	}
+}
+
 /*
 	 doManagedPoliciesExist checks that all the managedPolicies specified in the CR exist.
 	   returns: true/false                   if all the policies exist or not
@@ -927,10 +948,14 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 		return false, policiesInfo{}, err
 	}
 
+	var managedPoliciesInfo policiesInfo
 	// Go through all the child policies and split the namespace from the policy name.
 	// A child policy name has the name format parent_policy_namespace.parent_policy_name
 	// The policy map we are creating will be of format {"policy_name": "policy_namespace"}
 	policyMap := make(map[string]string)
+	// Keep inventory of all the namespaces a managed policy appears in with policyNs which
+	// is of format {"policy_name": []string of policy namespaces}
+	policiesNs := make(map[string][]string)
 	policyEnforce := make(map[string]bool)
 	policyInvalidHubTmpl := make(map[string]bool)
 	for _, childPolicy := range childPoliciesList {
@@ -956,12 +981,18 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 		}
 
 		policyMap[policyNameArr[1]] = policyNameArr[0]
+		utils.UpdateManagedPolicyNamespaceList(policiesNs, policyNameArr)
 	}
-	r.Log.Info("[doManagedPoliciesExist]", "policyMap", policyMap)
+
+	// If a managed policy is present in more than one namespace, raise an error and advice user to
+	// fix the duplicated name.
+	updateDuplicatedManagedPoliciesInfo(&managedPoliciesInfo, policiesNs)
+	if len(managedPoliciesInfo.duplicatedPoliciesNs) != 0 {
+		return false, managedPoliciesInfo, nil
+	}
 
 	// Go through the managedPolicies in the CR, make sure they exist and save them to the upgrade's status together with
 	// their namespace.
-	var managedPoliciesInfo policiesInfo
 	var managedPoliciesForUpgrade []ranv1alpha1.ManagedPolicyForUpgrade
 	var managedPoliciesCompliantBeforeUpgrade []string
 	clusterGroupUpgrade.Status.ManagedPoliciesNs = make(map[string]string)
