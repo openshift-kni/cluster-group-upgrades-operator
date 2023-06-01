@@ -44,3 +44,7 @@ commands:
     namespaced: true
 
   - command: ../../../../deploy/upgrades/pre-caching/cleanup.sh 
+
+    # Patch all clusters to be available
+  - command: ../../../../deploy/upgrades/pre-caching/patch-all-spokes-available.sh
+    ignoreFailure: false
