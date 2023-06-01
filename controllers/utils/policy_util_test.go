@@ -55,3 +55,46 @@ func TestShouldSoak(t *testing.T) {
 	_, err = ShouldSoak(policy, v1.Now())
 	assert.Error(t, err)
 }
+
+func TestUpdateManagedPolicyNamespaceList(t *testing.T) {
+	testcases := []struct {
+		policiesNs     map[string][]string
+		policyNameArr  []string
+		expectedResult map[string][]string
+	}{
+		{
+			policiesNs: map[string][]string{
+				"policy1": {"aaa", "bbb"},
+				"policy2": {"aaa"},
+			},
+			policyNameArr: []string{"bbb", "policy2"},
+			expectedResult: map[string][]string{
+				"policy1": {"aaa", "bbb"},
+				"policy2": {"aaa", "bbb"},
+			},
+		},
+		{
+			policiesNs:    map[string][]string{},
+			policyNameArr: []string{"bbb", "policy2"},
+			expectedResult: map[string][]string{
+				"policy2": {"bbb"},
+			},
+		},
+		{
+			policiesNs: map[string][]string{
+				"policy1": {"aaa", "bbb"},
+				"policy2": {"aaa"},
+			},
+			policyNameArr: []string{"aaa", "policy1"},
+			expectedResult: map[string][]string{
+				"policy1": {"aaa", "bbb"},
+				"policy2": {"aaa"},
+			},
+		},
+	}
+
+	for _, tc := range testcases {
+		UpdateManagedPolicyNamespaceList(tc.policiesNs, tc.policyNameArr)
+		assert.Equal(t, tc.policiesNs, tc.expectedResult)
+	}
+}
