@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the InstallPlan ManagedClusterViews.
+  - command: ../../../../deploy/upgrades/operator-upgrade/patch-policies-status-compliant.sh default default
+    ignoreFailure: false
+
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
