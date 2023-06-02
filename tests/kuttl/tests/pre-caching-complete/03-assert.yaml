@@ -142,10 +142,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /host
-                name: host
               - mountPath: /etc/config
                 name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr
+                subPath: bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr
+                subPath: lib
+                readOnly: true
+              - mountPath: /host/usr/lib64/python3.6
+                name: host-usr
+                subPath: lib64/python3.6
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr
+                subPath: share/containers
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr
+                subPath: libexec
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var
+                subPath: lib/containers
+              - mountPath: /host/var/lib/cni
+                name: host-var
+                subPath: lib/cni
+                readOnly: true
+              - mountPath: /host/var/lib/kubelet
+                name: host-var
+                subPath: lib/kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var
+                subPath: tmp
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
+              - mountPath: /host/etc/containers
+                name: host-etc
+                subPath: containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc
+                subPath: pki/ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc
+                subPath: resolv.conf
                 readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
@@ -154,14 +213,44 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
+            - name: host
+              emptyDir: {}
             - configMap:
                 defaultMode: 420
                 name: pre-cache-spec
               name: config-volume
             - hostPath:
-                path: /
+                path: /usr
                 type: Directory
-              name: host
+              name: host-usr
+            - hostPath:
+                path: /var
+                type: Directory
+              name: host-var
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -214,10 +303,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /host
-                name: host
               - mountPath: /etc/config
                 name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr
+                subPath: bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr
+                subPath: lib
+                readOnly: true
+              - mountPath: /host/usr/lib64/python3.6
+                name: host-usr
+                subPath: lib64/python3.6
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr
+                subPath: share/containers
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr
+                subPath: libexec
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var
+                subPath: lib/containers
+              - mountPath: /host/var/lib/cni
+                name: host-var
+                subPath: lib/cni
+                readOnly: true
+              - mountPath: /host/var/lib/kubelet
+                name: host-var
+                subPath: lib/kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var
+                subPath: tmp
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
+              - mountPath: /host/etc/containers
+                name: host-etc
+                subPath: containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc
+                subPath: pki/ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc
+                subPath: resolv.conf
                 readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
@@ -226,14 +374,44 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
+            - name: host
+              emptyDir: {}
             - configMap:
                 defaultMode: 420
                 name: pre-cache-spec
               name: config-volume
             - hostPath:
-                path: /
+                path: /usr
                 type: Directory
-              name: host
+              name: host-usr
+            - hostPath:
+                path: /var
+                type: Directory
+              name: host-var
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -286,10 +464,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /host
-                name: host
               - mountPath: /etc/config
                 name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr
+                subPath: bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr
+                subPath: lib
+                readOnly: true
+              - mountPath: /host/usr/lib64/python3.6
+                name: host-usr
+                subPath: lib64/python3.6
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr
+                subPath: share/containers
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr
+                subPath: libexec
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var
+                subPath: lib/containers
+              - mountPath: /host/var/lib/cni
+                name: host-var
+                subPath: lib/cni
+                readOnly: true
+              - mountPath: /host/var/lib/kubelet
+                name: host-var
+                subPath: lib/kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var
+                subPath: tmp
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
+              - mountPath: /host/etc/containers
+                name: host-etc
+                subPath: containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc
+                subPath: pki/ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc
+                subPath: resolv.conf
                 readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
@@ -298,14 +535,44 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
+            - name: host
+              emptyDir: {}
             - configMap:
                 defaultMode: 420
                 name: pre-cache-spec
               name: config-volume
             - hostPath:
-                path: /
+                path: /usr
                 type: Directory
-              name: host
+              name: host-usr
+            - hostPath:
+                path: /var
+                type: Directory
+              name: host-var
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -358,10 +625,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /host
-                name: host
               - mountPath: /etc/config
                 name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr
+                subPath: bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr
+                subPath: lib
+                readOnly: true
+              - mountPath: /host/usr/lib64/python3.6
+                name: host-usr
+                subPath: lib64/python3.6
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr
+                subPath: share/containers
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr
+                subPath: libexec
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var
+                subPath: lib/containers
+              - mountPath: /host/var/lib/cni
+                name: host-var
+                subPath: lib/cni
+                readOnly: true
+              - mountPath: /host/var/lib/kubelet
+                name: host-var
+                subPath: lib/kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var
+                subPath: tmp
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
+              - mountPath: /host/etc/containers
+                name: host-etc
+                subPath: containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc
+                subPath: pki/ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc
+                subPath: resolv.conf
                 readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
@@ -370,12 +696,42 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
+            - name: host
+              emptyDir: {}
             - configMap:
                 defaultMode: 420
                 name: pre-cache-spec
               name: config-volume
             - hostPath:
-                path: /
+                path: /usr
                 type: Directory
-              name: host
+              name: host-usr
+            - hostPath:
+                path: /var
+                type: Directory
+              name: host-var
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
 
