@@ -4,14 +4,16 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"os"
 	"strconv"
 
 	"strings"
+
+	"github.com/docker/go-units"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -225,34 +227,71 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	return true, nil
 }
 
-// getPrecacheimagePullSpec gets the precaching workload image pull spec.
+// getPrecacheImagePullSpec gets the precaching workload image pull spec.
 // returns: image - pull spec string
 //
 //	error
-func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
+func (r *ClusterGroupUpgradeReconciler) getPrecacheImagePullSpec(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
 	string, error) {
 
-	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
+	preCachingConfigSpec, err := r.getPreCachingConfigSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
-		r.Log.Error(err, "getOverrides failed ")
+		r.Log.Error(err, "getPreCachingConfigSpec failed ")
 		return "", err
 	}
-	image := overrides["precache.image"]
-	if image == "" {
-		image = os.Getenv("PRECACHE_IMG")
-		r.Log.Info("[getPrecacheimagePullSpec]", "workload image", image)
-		if image == "" {
-			return "", fmt.Errorf(
-				"can't find pre-caching image pull spec in environment or overrides")
+
+	preCacheImage := preCachingConfigSpec.Overrides.PreCacheImage
+	if preCacheImage == "" {
+		overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
+		if err != nil {
+			r.Log.Error(err, "getOverrides failed ")
+			return "", err
+		}
+		preCacheImage = overrides["precache.image"]
+		if preCacheImage == "" {
+			preCacheImage = os.Getenv("PRECACHE_IMG")
+			r.Log.Info("[getPrecacheImagePullSpec]", "workload image", preCacheImage)
+			if preCacheImage == "" {
+				return "", fmt.Errorf(
+					"can't find pre-caching image pull spec in environment or overrides")
+			}
+		} else {
+			r.Log.Info(getDeprecationMessage("precache.image"))
 		}
 	}
-	return image, nil
+	return preCacheImage, nil
+}
+
+// parseSpaceRequired parses the spaceRequired string value (can be a floating-point value) and converts it to
+// an integer string value representing the space required on the managed cluster in Gibibytes.
+// Note that the parsed value is rounded up to the nearest integer via the math.Ceil function.
+func parseSpaceRequired(spaceRequired string) (string, error) {
+	var result int64
+	var err error
+	// Check if the spaceRequired is specified in base-2 (KiB, MiB, GiB, TiB, PiB) or base-10 (KB, MB, GB, TB, PB)
+	if strings.Contains(spaceRequired, "i") {
+		result, err = units.RAMInBytes(spaceRequired)
+	} else {
+		result, err = units.FromHumanSize(spaceRequired)
+	}
+
+	// Verify that no parsing errors occurred
+	if err != nil {
+		return "", err
+	}
+	if result < 0 {
+		return "", fmt.Errorf("invalid value for spaceRequired, must be a number greater than 0")
+	}
+
+	// Convert to base-2 format in Gibibytes (result is rounded-up to the next integer value)
+	resultGiB := int(math.Ceil(float64(result) / math.Pow(1024, 3)))
+	return strconv.Itoa(resultGiB), nil
 }
 
 // getPrecacheSpaceRequiredSpec gets the precaching space required spec.
-// returns: spaceRequired - space required string
+// returns: spaceRequired (string) - space required in Gibibytes
 //
 //	error
 func (r *ClusterGroupUpgradeReconciler) getPrecacheSpaceRequiredSpec(
@@ -260,22 +299,26 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpaceRequiredSpec(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
 	string, error) {
 
-	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
+	preCachingConfigSpec, err := r.getPreCachingConfigSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
-		r.Log.Error(err, "getOverrides failed ")
+		r.Log.Error(err, "getPreCachingConfigSpec failed ")
 		return "", err
 	}
-	spaceRequired := overrides["precache.spaceRequired"]
+	spaceRequired := preCachingConfigSpec.SpaceRequired
 	if spaceRequired == "" {
-		spaceRequired = utils.SpaceRequiredForPrecache
-	} else {
-		spaceRequiredInt, err := strconv.Atoi(spaceRequired)
-
-		if spaceRequiredInt < 0 || err != nil {
-			return "", errors.New("invalid value for precache.spaceRequired, must be integer greater than 0")
+		overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
+		if err != nil {
+			r.Log.Error(err, "getOverrides failed ")
+			return "", err
+		}
+		spaceRequired = overrides["precache.spaceRequired"]
+		if spaceRequired == "" {
+			spaceRequired = utils.SpaceRequiredForPrecache
+		} else {
+			r.Log.Info(getDeprecationMessage("precache.spaceRequired"))
 		}
 	}
-	return spaceRequired, nil
+	return parseSpaceRequired(spaceRequired)
 }
 
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
@@ -291,62 +334,90 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 	rv.Operators.Indexes = spec.OperatorsIndexes
 	rv.Operators.PackagesAndChannels = spec.OperatorsPackagesAndChannels
 	rv.ExcludePrecachePatterns = spec.ExcludePrecachePatterns
+	rv.AdditionalImages = spec.AdditionalImages
+	rv.SpaceRequired = spec.SpaceRequired
 	return rv
 }
 
-// includeSoftwareSpecOverrides includes software spec overrides if present
-// Overrides can be used to force a specific pre-cache workload or payload
-//
-//	irrespective of the configured policies or the operator csv. This can be done
-//	by creating a Configmap object named "cluster-group-upgrade-overrides"
-//	in the CGU namespace with zero or more of the following "data" entries:
-//	1. "precache.image" - pre-caching workload image pull spec. Normally derived
-//		from the operator ClusterServiceVersion object.
-//	2. "platform.image" - OCP release image pull URI
-//	3. "operators.indexes" - OLM index images (list of index image URIs)
-//	4. "operators.packagesAndChannels" - operator packages and channels
-//		(list of  <package:channel> string entries)
-//	5. "excludePrecachePatterns" - list of patterns to exclude from precaching
-//	If overrides are used, the configmap must be created before the CGU
-//
+// includePreCachingConfigs retrieves the PreCachingConfigCR associated to the CGU
 // returns: *ranv1alpha1.PrecachingSpec, error
-func (r *ClusterGroupUpgradeReconciler) includeSoftwareSpecOverrides(
+func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, spec *ranv1alpha1.PrecachingSpec) (
 	ranv1alpha1.PrecachingSpec, error) {
 
 	rv := new(ranv1alpha1.PrecachingSpec)
 
+	preCachingConfigSpec, err := r.getPreCachingConfigSpec(ctx, clusterGroupUpgrade)
+	if err != nil {
+		return *rv, err
+	}
+
+	// Support specifying overrides via ConfigMap (if PreCachingConfig fields are not specified)
 	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return *rv, err
 	}
 
-	platformImage := overrides["platform.image"]
-	operatorsIndexes := strings.Split(overrides["operators.indexes"], "\n")
-	operatorsPackagesAndChannels := strings.Split(overrides["operators.packagesAndChannels"], "\n")
+	// Check the OpenShift platform image
+	platformImage := preCachingConfigSpec.Overrides.PlatformImage
 	if platformImage == "" {
-		platformImage = spec.PlatformImage
+		overrideField := "platform.image"
+		platformImage = overrides[overrideField]
+		if platformImage == "" {
+			platformImage = spec.PlatformImage
+		} else {
+			r.Log.Info(getDeprecationMessage(overrideField))
+		}
 	}
 	rv.PlatformImage = platformImage
 
-	if overrides["operators.indexes"] == "" {
-		operatorsIndexes = spec.OperatorsIndexes
+	// Define re-usable function to extract pre-caching config from the following sources (in order of precedence):
+	// 1) PreCachingConfig CR,
+	// 2) cluster-group-upgrade-overrides ConfigMap (log deprecation message if this source is used),
+	// 3) spec.<field> (value derived by TALM)
+	extractConfig := func(preCachingConfigCRValue []string, overrideField string, talmDerivedValue []string) []string {
+		if len(preCachingConfigCRValue) == 0 {
+			extractedOverrides := strings.Split(overrides[overrideField], "\n")
+			if overrides[overrideField] == "" {
+				return talmDerivedValue
+			}
+			r.Log.Info(getDeprecationMessage(overrideField))
+			// Remove empty strings as a consequence of strings.Split
+			var filteredResult []string
+			for _, value := range extractedOverrides {
+				if value != "" {
+					filteredResult = append(filteredResult, strings.TrimSpace(value))
+				}
+			}
+			return filteredResult
+		}
+		return preCachingConfigCRValue
 	}
 
-	rv.OperatorsIndexes = operatorsIndexes
+	// Extract the operator indexes
+	rv.OperatorsIndexes = extractConfig(preCachingConfigSpec.Overrides.OperatorsIndexes,
+		"operators.indexes", spec.OperatorsIndexes)
 
-	if overrides["operators.packagesAndChannels"] == "" {
-		operatorsPackagesAndChannels = spec.OperatorsPackagesAndChannels
-	}
-	rv.OperatorsPackagesAndChannels = operatorsPackagesAndChannels
+	// Extract the operator packages and channels
+	rv.OperatorsPackagesAndChannels = extractConfig(preCachingConfigSpec.Overrides.OperatorsPackagesAndChannels,
+		"operators.packagesAndChannels", spec.OperatorsPackagesAndChannels)
 
-	rv.ExcludePrecachePatterns = strings.Split(overrides["excludePrecachePatterns"], "\n")
+	// Extract the pre-cache exclusion patterns
+	rv.ExcludePrecachePatterns = extractConfig(preCachingConfigSpec.ExcludePrecachePatterns,
+		"excludePrecachePatterns", []string{})
 
+	// Retrieve additional user images
+	rv.AdditionalImages = preCachingConfigSpec.AdditionalImages
+
+	// Extract the space required for pre-caching
+	spaceRequired, err := r.getPrecacheSpaceRequiredSpec(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return *rv, err
 	}
-	return *rv, err
+	rv.SpaceRequired = spaceRequired
+
+	return *rv, nil
 }
 
 // checkPreCacheSpecConsistency checks software spec can be precached

@@ -24,6 +24,8 @@ type PrecachingSpecApplyConfiguration struct {
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`
 	OperatorsPackagesAndChannels []string `json:"operatorsPackagesAndChannels,omitempty"`
 	ExcludePrecachePatterns      []string `json:"excludePrecachePatterns,omitempty"`
+	SpaceRequired                *string  `json:"spaceRequired,omitempty"`
+	AdditionalImages             []string `json:"additionalImages,omitempty"`
 }
 
 // PrecachingSpecApplyConfiguration constructs an declarative configuration of the PrecachingSpec type for use with
@@ -66,6 +68,24 @@ func (b *PrecachingSpecApplyConfiguration) WithOperatorsPackagesAndChannels(valu
 func (b *PrecachingSpecApplyConfiguration) WithExcludePrecachePatterns(values ...string) *PrecachingSpecApplyConfiguration {
 	for i := range values {
 		b.ExcludePrecachePatterns = append(b.ExcludePrecachePatterns, values[i])
+	}
+	return b
+}
+
+// WithSpaceRequired sets the SpaceRequired field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the SpaceRequired field is set to the value of the last call.
+func (b *PrecachingSpecApplyConfiguration) WithSpaceRequired(value string) *PrecachingSpecApplyConfiguration {
+	b.SpaceRequired = &value
+	return b
+}
+
+// WithAdditionalImages adds the given value to the AdditionalImages field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the AdditionalImages field.
+func (b *PrecachingSpecApplyConfiguration) WithAdditionalImages(values ...string) *PrecachingSpecApplyConfiguration {
+	for i := range values {
+		b.AdditionalImages = append(b.AdditionalImages, values[i])
 	}
 	return b
 }

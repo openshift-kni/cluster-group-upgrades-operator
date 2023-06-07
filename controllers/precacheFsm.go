@@ -67,9 +67,16 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			return err
 		}
 		r.Log.Info("[precachingFsm]", "PrecacheSpecFromPolicies", spec)
-		spec, err = r.includeSoftwareSpecOverrides(ctx, clusterGroupUpgrade, &spec)
+		spec, err = r.includePreCachingConfigs(ctx, clusterGroupUpgrade, &spec)
 		if err != nil {
-			return err
+			utils.SetStatusCondition(
+				&clusterGroupUpgrade.Status.Conditions,
+				utils.ConditionTypes.PrecacheSpecValid,
+				utils.ConditionReasons.PrecacheSpecIncomplete,
+				metav1.ConditionFalse,
+				fmt.Sprintf("Precaching spec is incomplete: failed to get PreCachingConfig resource due to %s", err.Error()),
+			)
+			return nil
 		}
 		ok, msg := r.checkPreCacheSpecConsistency(spec)
 		if !ok {

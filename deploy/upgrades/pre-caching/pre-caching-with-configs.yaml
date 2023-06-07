@@ -1,0 +1,26 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl      
+spec:
+  managedPolicies:
+    - policy0-common-config-policy
+    - policy2-common-pao-sub-policy
+    - policy3-common-ptp-sub-policy
+    - policy4-common-sriov-sub-policy
+  enable: false
+  preCaching: true
+  preCachingConfigRef:
+    name: pre-caching-config
+    namespace: default
+  clusters:
+  - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
+  remediationStrategy:
+    maxConcurrency: 4
+

@@ -152,6 +152,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - ran.openshift.io
+  resources:
+  - precachingconfigs
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - precachingconfigs/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - ran.openshift.io
+  resources:
+  - precachingconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - view.open-cluster-management.io
   resources:
   - managedclusterviews

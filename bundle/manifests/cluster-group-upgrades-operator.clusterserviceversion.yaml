@@ -105,6 +105,12 @@ spec:
         path: preCaching
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
+      - description: This field specifies a reference to a pre-caching config custom
+          resource that contains the additional pre-caching configurations.
+        displayName: PreCachingConfigRef
+        path: preCachingConfigRef
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - displayName: Remediation Strategy
         path: remediationStrategy
         x-descriptors:
@@ -144,6 +150,9 @@ spec:
         path: safeResourceNames
       - displayName: Status
         path: status
+      version: v1alpha1
+    - kind: PreCachingConfig
+      name: precachingconfigs.ran.openshift.io
       version: v1alpha1
   description: cluster-group-upgrades-operator is an operator that facilitates platform
     upgrades of group of clusters
@@ -296,6 +305,32 @@ spec:
           - ran.openshift.io
           resources:
           - clustergroupupgrades/status
+          verbs:
+          - get
+          - patch
+          - update
+        - apiGroups:
+          - ran.openshift.io
+          resources:
+          - precachingconfigs
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - ran.openshift.io
+          resources:
+          - precachingconfigs/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - ran.openshift.io
+          resources:
+          - precachingconfigs/status
           verbs:
           - get
           - patch

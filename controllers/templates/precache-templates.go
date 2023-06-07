@@ -57,7 +57,10 @@ spec:
           {{ . }} {{ end }}
         excludePrecachePatterns: |{{ range .ExcludePrecachePatterns }} 
           {{ . }} {{ end }}
+        additionalImages: |{{ range .AdditionalImages }}
+          {{ . }} {{ end }}
         platform.image: {{ .PlatformImage }}
+        spaceRequired: {{ .SpaceRequired }}
       kind: ConfigMap
       metadata:
         name: pre-cache-spec

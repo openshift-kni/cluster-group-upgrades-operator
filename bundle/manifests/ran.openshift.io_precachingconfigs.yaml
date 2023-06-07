@@ -1,0 +1,86 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.4.1
+  creationTimestamp: null
+  name: precachingconfigs.ran.openshift.io
+spec:
+  group: ran.openshift.io
+  names:
+    kind: PreCachingConfig
+    listKind: PreCachingConfigList
+    plural: precachingconfigs
+    singular: precachingconfig
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: PreCachingConfig is the Schema for the precachingconfigs API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: PreCachingConfigSpec defines the desired state of PreCachingConfig
+            properties:
+              additionalImages:
+                description: List of additional image pull specs for the pre-caching
+                  job
+                items:
+                  type: string
+                type: array
+              excludePrecachePatterns:
+                description: List of patterns to exclude from pre-caching
+                items:
+                  type: string
+                type: array
+              overrides:
+                description: Overrides modify the default pre-caching behaviour and
+                  values derived by TALM.
+                properties:
+                  operatorsIndexes:
+                    description: Override the pre-cached OLM index images derived
+                      by TALM (list of image pull specs)
+                    items:
+                      type: string
+                    type: array
+                  operatorsPackagesAndChannels:
+                    description: Override the pre-cached operator packages and channels
+                      derived by TALM (list of <package:channel> string entries)
+                    items:
+                      type: string
+                    type: array
+                  platformImage:
+                    description: Override the pre-cached OpenShift platform image
+                      derived by TALM
+                    type: string
+                  preCacheImage:
+                    description: Override the pre-caching workload image pull spec
+                      - typically derived by TALM from the operator ClusterServiceVersion
+                      (csv) object.
+                    type: string
+                type: object
+              spaceRequired:
+                description: Amount of space required for the pre-caching job
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []

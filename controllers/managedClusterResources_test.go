@@ -36,6 +36,8 @@ func TestMCR_renderYamlTemplates(t *testing.T) {
 				Cluster:                 "test",
 				ResourceName:            "precache-spec",
 				ExcludePrecachePatterns: []string{"aws", "thanos"},
+				AdditionalImages:        []string{"image1:tag", "image2:tag"},
+				SpaceRequired:           "45",
 			},
 			template: templates.MngClusterActCreatePrecachingSpecCM,
 			result: `
@@ -54,9 +56,13 @@ spec:
         excludePrecachePatterns: |
           aws  
           thanos 
+        additionalImages: |
+          image1:tag 
+          image2:tag 
         operators.indexes: ""
         operators.packagesAndChannels: ""
-        platform.image: 
+        platform.image:
+        spaceRequired: 45
       kind: ConfigMap
       metadata:
         name: pre-cache-spec

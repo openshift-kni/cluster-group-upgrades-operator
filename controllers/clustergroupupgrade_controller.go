@@ -92,6 +92,9 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades/finalizers,verbs=update
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs/status,verbs=get;update;patch
+//+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs/finalizers,verbs=update
 //+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
