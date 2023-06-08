@@ -16,12 +16,6 @@ render_index(){
     packages=$2
     image_mount=$3
     
-    capath="/host/etc/docker/certs.d/${index%/*}/ca.crt"
-    # opm doesn't accept cacert as an arg
-    if [[ -f "$capath" ]]; then
-        cp $capath /etc/pki/ca-trust/source/anchors/ 
-        update-ca-trust
-    fi
     if [[ -h "$image_mount/bin/opm" ]]; then
         opm_bin=$image_mount$(readlink "$image_mount/bin/opm")
     else
@@ -66,17 +60,20 @@ olm_main(){
           return 1
         fi
         log_debug "$index image ID is $image_id"
+
         image_mount=$(mount_index $image_id)
         if [[ $? -ne 0 ]]; then
           log_debug "mount_index failed for index $index"
           return 1
         fi
         log_debug "Image mount: $image_mount"
+
         packages=$(extract_packages)
         if ! [[ -n $packages ]]; then
           log_debug "operators index is set, but no packages provided - inconsistent configuration"
           return 1
         fi
+
         render_index $index $packages $image_mount
         if [[ $? -ne 0 ]]; then
           log_debug "render_index failed: OLM index render failed for index $index, package(s) $packages"

@@ -7,8 +7,8 @@ TOKEN=$(cat ${SERVICEACCOUNT}/token)
 CACERT=${SERVICEACCOUNT}/ca.crt
 high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
             chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
-size=$(df /var/lib/ | awk '{ print $2 }' | sed -n '2p')
-used=$(df /var/lib/ | awk '{ print $3 }' | sed -n '2p')
+size=$(df /host/var/lib/ | awk '{ print $2 }' | sed -n '2p')
+used=$(df /host/var/lib/ | awk '{ print $3 }' | sed -n '2p')
 echo "highThresholdPercent: $high diskSize:$size used:$used"
 rc=$(awk "BEGIN {avail=${size}/100.0*${high}-${used} ; print avail<${SPACE_REQUIRED}*1024*1024}")
 [ $rc -ne 0 ] && echo "ERROR: not enough space for precaching"
