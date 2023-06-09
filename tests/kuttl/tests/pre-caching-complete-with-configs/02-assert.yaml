@@ -175,7 +175,7 @@ spec:
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
         excludePrecachePatterns: "aws  \nazure \n"
         additionalImages: "image1:latest \nimage2:latest \n"
-        spaceRequired: 40
+        spaceRequired: "40"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -256,7 +256,7 @@ spec:
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
         excludePrecachePatterns: "aws  \nazure \n"
         additionalImages: "image1:latest \nimage2:latest \n"
-        spaceRequired: 40
+        spaceRequired: "40"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -337,7 +337,7 @@ spec:
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
         excludePrecachePatterns: "aws  \nazure \n"
         additionalImages: "image1:latest \nimage2:latest \n"
-        spaceRequired: 40
+        spaceRequired: "40"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -418,7 +418,7 @@ spec:
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
         excludePrecachePatterns: "aws  \nazure \n"
         additionalImages: "image1:latest \nimage2:latest \n"
-        spaceRequired: 40
+        spaceRequired: "40"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec

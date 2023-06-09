@@ -60,7 +60,7 @@ spec:
         additionalImages: |{{ range .AdditionalImages }}
           {{ . }} {{ end }}
         platform.image: {{ .PlatformImage }}
-        spaceRequired: {{ .SpaceRequired }}
+        spaceRequired: "{{ .SpaceRequired }}"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
