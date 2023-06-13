@@ -23,7 +23,8 @@ Maintenance windows configuration is not provisioned by TALO. A user applies TAL
     - A set of clusters to be upgraded
     - References to the policies containing the required release and operator versions for this set
     - The need for image pre-caching
-- User applies the TALO CR to the hub cluster at the beginning of the maintenance window
+- User applies the ClusterGroupUpgrade CR to the hub cluster at the beginning of the maintenance window
+- Optionally, the user can create an override ConfigMap to filter out the images that are not necessary for the cluster version update.
 - TALO checks the pre-caching requirement in the TALO CR. If required, then for each cluster defined or matched by selectors: 
     - Cleans up possible remainders from the previous pre-caching attempts
     - Determines the required software version specification
@@ -63,5 +64,8 @@ The pre-caching workload generates a list of images and the correspondent pull s
 - Success (“Completed”)
 - Failure due to timeout (“DeadlineExceeded”) 
     - the procedure did not complete due to a timeout and can be continued
-    - Unrecoverable error (“BackoffLimitExceeded”) - user intervention is desired to determine the failure reason
+- Unrecoverable error (“BackoffLimitExceeded”)
+    - user intervention is desired to determine the failure reason
+    - if the node does not have enough space for pre-caching, it will be reflected in the pre-caching pod log.
+
 
