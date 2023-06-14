@@ -62,7 +62,7 @@ spec:
         operators.indexes: ""
         operators.packagesAndChannels: ""
         platform.image:
-        spaceRequired: 45
+        spaceRequired: "45"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec

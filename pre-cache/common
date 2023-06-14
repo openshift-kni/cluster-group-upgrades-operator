@@ -5,11 +5,30 @@ pull_secret_path="${pull_secret_path:-/var/lib/kubelet/config.json}"
 pull_spec_file="${pull_spec_file:-/tmp/images.txt}"
 config_volume_path="${config_volume_path:-/tmp/precache/config}"
 rendered_index_path="${rendered_index_path:-/tmp/index.json}"
+additional_images_spec_file="${additional_images_spec_file:-${config_volume_path}/additionalImages}"
 
 max_pull_threads="${MAX_PULL_THREADS:-10}" # number of simultaneous pulls executed can be modified by setting MAX_PULL_THREADS environment variable
 
+# LOGLEVELS: [0]ERROR, [1]INFO, [2]DEBUG
+LOGLEVEL=${PRE_CACHE_LOG_LEVEL:-2} # set default log level to DEBUG
+
+_log() {
+    local level=$1; shift
+    if [[ $level -le $LOGLEVEL ]]; then
+        echo "upgrades.pre-cache $(date -Iseconds) $*" >&2
+    fi
+}
+
+log_error() {
+    _log 0 "[ERROR]: $*"
+}
+
+log_info() {
+    _log 1 "[INFO]: $*"
+}
+
 log_debug() {
-  echo "upgrades.pre-cache $(date -Iseconds) DEBUG $@"
+    _log 2 "[DEBUG]: $*"
 }
 
 pull_index(){
