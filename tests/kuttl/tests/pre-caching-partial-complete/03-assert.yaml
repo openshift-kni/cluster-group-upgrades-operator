@@ -125,7 +125,7 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.12.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -191,7 +191,7 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.12.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -257,7 +257,7 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.12.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -323,7 +323,7 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.12.0
               name: pre-cache-container
               resources: {}
               securityContext:

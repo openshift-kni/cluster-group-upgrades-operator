@@ -151,7 +151,7 @@ spec:
             containers:
             - args:
               - launchBackup
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.12.0
               name: container-image
               securityContext:
                 privileged: true
@@ -195,7 +195,7 @@ spec:
             containers:
             - args:
               - launchBackup
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.12.0
               name: container-image
               securityContext:
                 privileged: true
@@ -239,7 +239,7 @@ spec:
             containers:
             - args:
               - launchBackup
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.12.0
               name: container-image
               securityContext:
                 privileged: true
@@ -283,7 +283,7 @@ spec:
             containers:
             - args:
               - launchBackup
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.13.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.12.0
               name: container-image
               securityContext:
                 privileged: true
