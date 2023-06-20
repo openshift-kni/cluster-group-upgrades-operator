@@ -37,6 +37,8 @@ func (r *ClusterGroupUpgradeReconciler) reconcilePrecaching(
 				Status:   make(map[string]string),
 				Clusters: []string{},
 			}
+		} else if clusterGroupUpgrade.Status.Precaching.Status == nil {
+			clusterGroupUpgrade.Status.Precaching.Status = make(map[string]string)
 		}
 
 		precachingCondition := meta.FindStatusCondition(
@@ -212,7 +214,7 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	if err != nil {
 		return false, err
 	}
-	spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Clusters))
+	spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Status))
 	err = r.createResourcesFromTemplates(ctx, spec, precacheDependenciesViewTemplates)
 	if err != nil {
 		return false, err

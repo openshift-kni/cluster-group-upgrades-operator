@@ -1,0 +1,52 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
+  enable: false
+  preCaching: true
+  managedPolicies:
+  - policy0-common-config-policy
+  remediationStrategy:
+    maxConcurrency: 4
+    timeout: 240
+status:
+  computedMaxConcurrency: 4
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: "Precaching spec is incomplete: inconsistent precaching configuration: olm index provided, but no packages"
+    reason: PrecacheSpecIncomplete
+    status: "False"
+    type: PrecacheSpecValid
+  copiedPolicies:
+    - cgu-policy0-common-config-policy-kuttl
+  managedPoliciesForUpgrade:
+  - name: policy0-common-config-policy
+    namespace: default
+  managedPoliciesNs:
+    policy0-common-config-policy: default
+  placementBindings:
+  - cgu-policy0-common-config-policy-placement-kuttl
+  placementRules:
+  - cgu-policy0-common-config-policy-placement-kuttl
+  precaching:
+    spec: {}
+  safeResourceNames:
+    cgu-common-config-policy-config: cgu-common-config-policy-config-kuttl
+    cgu-policy0-common-config-policy: cgu-policy0-common-config-policy-kuttl
+    cgu-policy0-common-config-policy-placement: cgu-policy0-common-config-policy-placement-kuttl
+  remediationPlan:
+  - - spoke1

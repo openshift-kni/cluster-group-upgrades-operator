@@ -76,7 +76,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.PrecacheSpecValid,
-				utils.ConditionReasons.InvalidPlatformImage,
+				utils.ConditionReasons.PrecacheSpecIncomplete,
 				metav1.ConditionFalse,
 				fmt.Sprintf("Precaching spec is incomplete: %s", msg),
 			)
@@ -99,8 +99,6 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		metav1.ConditionFalse,
 		"Precaching is required and not done",
 	)
-
-	clusterGroupUpgrade.Status.Precaching.Clusters = clusters
 
 	for _, cluster := range clusters {
 		var currentState string
@@ -240,7 +238,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	case NoJobView:
 		data := templateData{
 			Cluster:               cluster,
-			ViewUpdateIntervalSec: utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Clusters)),
+			ViewUpdateIntervalSec: utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Status)),
 		}
 		err = r.createResourcesFromTemplates(ctx, &data, precacheJobView)
 		if err != nil {
