@@ -204,8 +204,6 @@ spec:
                     env:
                     - name: config_volume_path
                       value: /tmp/precache/config
-                    - name: SPACE_REQUIRED
-                      value: "15"
                     - name: NODE_NAME
                       valueFrom:
                         fieldRef:

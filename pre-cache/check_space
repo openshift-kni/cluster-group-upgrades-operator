@@ -1,15 +1,34 @@
-#!/bin/bash
-set -e
+./#!/bin/bash
 
-APISERVER=https://kubernetes.default.svc
-SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
-TOKEN=$(cat ${SERVICEACCOUNT}/token)
-CACERT=${SERVICEACCOUNT}/ca.crt
-high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
-            chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
-size=$(df /host/var/lib/ | awk '{ print $2 }' | sed -n '2p')
-used=$(df /host/var/lib/ | awk '{ print $3 }' | sed -n '2p')
-echo "highThresholdPercent: $high diskSize:$size used:$used"
-rc=$(awk "BEGIN {avail=${size}/100.0*${high}-${used} ; print avail<${SPACE_REQUIRED}*1024*1024}")
-[ $rc -ne 0 ] && echo "ERROR: not enough space for precaching"
-exit $rc
+cwd=$(dirname "$0")
+. $cwd/common
+
+validate_disk_space() {
+    local space_required=${1:-0}
+    local rv=1
+
+    APISERVER=https://kubernetes.default.svc
+    SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
+    TOKEN=$(cat ${SERVICEACCOUNT}/token)
+    CACERT=${SERVICEACCOUNT}/ca.crt
+    high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
+                chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
+    size=$(df /host/var/lib/ | awk '{ print $2 }' | sed -n '2p')
+    used=$(df /host/var/lib/ | awk '{ print $3 }' | sed -n '2p')
+
+    log_debug "highThresholdPercent: $high diskSize:$size used:$used"
+    log_debug "spaceRequired: ${space_required} GiB"
+
+    if [[ $space_required -gt 0 ]]; then
+        rv=$(awk "BEGIN {avail=${high}/100.0*${size}-${used} ; print (avail<${space_required}*1024*1024)}")
+    else
+        rv=$(awk "BEGIN {avail=${high}/100.0*${size}-${used} ; print (avail<=0)}")
+    fi
+    [ $rv -ne 0 ] && log_error "not enough space for precaching"
+    return $rv
+}
+
+if [[ "${BASH_SOURCE[0]}" = "${0}" ]]; then
+    validate_disk_space ${1:-0}
+    exit $?
+fi

@@ -126,9 +126,6 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-
-              - name: SPACE_REQUIRED
-                value: "35"
               - name: NODE_NAME
                 valueFrom:
                   fieldRef:
@@ -288,8 +285,6 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              - name: SPACE_REQUIRED
-                value: "35"
               - name: NODE_NAME
                 valueFrom:
                   fieldRef:
@@ -449,8 +444,6 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              - name: SPACE_REQUIRED
-                value: "35"
               - name: NODE_NAME
                 valueFrom:
                   fieldRef:
@@ -610,8 +603,6 @@ spec:
               env:
               - name: config_volume_path
                 value: /tmp/precache/config
-              - name: SPACE_REQUIRED
-                value: "35"
               - name: NODE_NAME
                 valueFrom:
                   fieldRef:

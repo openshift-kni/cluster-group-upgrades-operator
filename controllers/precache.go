@@ -290,37 +290,6 @@ func parseSpaceRequired(spaceRequired string) (string, error) {
 	return strconv.Itoa(resultGiB), nil
 }
 
-// getPrecacheSpaceRequiredSpec gets the precaching space required spec.
-// returns: spaceRequired (string) - space required in Gibibytes
-//
-//	error
-func (r *ClusterGroupUpgradeReconciler) getPrecacheSpaceRequiredSpec(
-	ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
-	string, error) {
-
-	preCachingConfigSpec, err := r.getPreCachingConfigSpec(ctx, clusterGroupUpgrade)
-	if err != nil {
-		r.Log.Error(err, "getPreCachingConfigSpec failed ")
-		return "", err
-	}
-	spaceRequired := preCachingConfigSpec.SpaceRequired
-	if spaceRequired == "" {
-		overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
-		if err != nil {
-			r.Log.Error(err, "getOverrides failed ")
-			return "", err
-		}
-		spaceRequired = overrides["precache.spaceRequired"]
-		if spaceRequired == "" {
-			spaceRequired = utils.SpaceRequiredForPrecache
-		} else {
-			r.Log.Info(getDeprecationMessage("precache.spaceRequired"))
-		}
-	}
-	return parseSpaceRequired(spaceRequired)
-}
-
 // getPrecacheSpecTemplateData: Converts precaching payload spec to template data
 // returns: precacheTemplateData (softwareSpec)
 //
@@ -411,7 +380,17 @@ func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 	rv.AdditionalImages = preCachingConfigSpec.AdditionalImages
 
 	// Extract the space required for pre-caching
-	spaceRequired, err := r.getPrecacheSpaceRequiredSpec(ctx, clusterGroupUpgrade)
+	spaceRequired := preCachingConfigSpec.SpaceRequired
+	if spaceRequired == "" {
+		overrideField := "precache.spaceRequired"
+		spaceRequired = overrides[overrideField]
+		if spaceRequired == "" {
+			spaceRequired = utils.SpaceRequiredForPrecache
+		} else {
+			r.Log.Info(getDeprecationMessage(overrideField))
+		}
+	}
+	spaceRequired, err = parseSpaceRequired(spaceRequired)
 	if err != nil {
 		return *rv, err
 	}
