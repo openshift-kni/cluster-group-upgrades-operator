@@ -232,9 +232,9 @@ spec:
                       name: host-usr
                       subPath: lib
                       readOnly: true
-                    - mountPath: /host/usr/lib64/python3.6
+                    - mountPath: /host/usr/lib64
                       name: host-usr
-                      subPath: lib64/python3.6
+                      subPath: lib64
                       readOnly: true
                     - mountPath: /host/usr/share/containers
                       name: host-usr
