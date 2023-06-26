@@ -6,7 +6,7 @@ set -e
 mkdir /host/dev
 mknod -m 0666 /host/dev/null c 1 3
 mkdir /host/dev/shm
-/host/usr/bin/mount -t tmpfs -o rw,nosuid,nodev,noexec,relatime tmpfs /host/dev/shm
+chroot /host /usr/bin/mount -t tmpfs -o rw,nosuid,nodev,noexec,relatime tmpfs /dev/shm
 
 ln -s usr/bin /host/bin
 
