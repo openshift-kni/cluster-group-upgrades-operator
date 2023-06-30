@@ -1,0 +1,11 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Patch the inform policies to make spoke1, spoke5 and spoke6 fully compliant
+  - command: ../../../../deploy/upgrades/backup/patch-policies-status-compliant.sh default default default default
+    ignoreFailure: false
+  # Force a quick reconcile
+  - command: >
+      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
+        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
