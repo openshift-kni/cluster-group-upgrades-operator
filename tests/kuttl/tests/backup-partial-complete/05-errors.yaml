@@ -1,0 +1,30 @@
+# MCVs and MCAs for failed clusters should be cleaned up after CGU completes
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-namespace
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-crb-create
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-ns-create
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-sa-create
+  namespace: spoke2
