@@ -1,0 +1,36 @@
+# MCVs for succeeded clusters should be cleaned up
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-namespace
+  namespace: spoke1
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-namespace
+  namespace: spoke5
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-namespace
+  namespace: spoke6
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke1
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke5
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-backup-job
+  namespace: spoke6
