@@ -26,6 +26,12 @@ metadata:
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
+  name: view-precache-job
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
   name: view-precache-cluster-role-binding
   namespace: spoke5
 ---
@@ -46,12 +52,6 @@ kind: ManagedClusterView
 metadata:
   name: view-precache-spec-configmap
   namespace: spoke5
----
-apiVersion: view.open-cluster-management.io/v1beta1
-kind: ManagedClusterView
-metadata:
-  name: view-precache-job
-  namespace: spoke2
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
