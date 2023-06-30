@@ -12,7 +12,7 @@ commands:
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy4-common-sriov-sub-policy.yaml
     namespaced: true
 
-  # Patch the inform policies to reflect the compliance status. Make policy 3 compliant with all the clusters.
+  # Patch the inform policies to reflect the compliance status. Make policy 1 and 2 compliant with all the clusters.
   - command: ../../../../deploy/upgrades/backup/patch-policies-status.sh default default default default
     ignoreFailure: false
 
