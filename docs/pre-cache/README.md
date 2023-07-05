@@ -17,14 +17,58 @@ Pre-caching workload is a one-shot task created on each of the spoke cluster nod
 Maintenance windows configuration is not provisioned by TALO. A user applies TALO CR at the maintenance window beginning, timing it manually or using external automation. The procedure starts as soon as TALO CR is created, and ends upon expiration of the procedure timer defined in the TALO CR.\
 ![Maintenance window timing](assets/timing.png)
 
+## PreCachingConfig CR ##
+A user can specify additional images to be pre-cached by creating a **PreCachingConfig** CR and referencing it in the TALO CR. 
+The **PreCachingConfig** CR also provides an opportunity to the user to specify overrides for platform-related images which are 
+automatically derived by TALO. 
+
+An example PreCachingConfig CR is presented below.
+
+```yaml
+apiVersion: ran.openshift.io/v1alpha1
+kind: PreCachingConfig
+metadata:
+name: exampleconfig
+namespace: default
+spec:
+overrides: <1>
+  platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+  operatorsIndexes:
+  - registry.example.com:5000/custom-redhat-operators:1.0.0
+  operatorsPackagesAndChannels:
+  - local-storage-operator: stable
+  - ptp-operator: stable
+  - sriov-network-operator: stable
+spaceRequired: 30Gi <2>
+excludePrecachePatterns: <3>
+- aws
+- vsphere
+additionalImages: <4>
+- quay.io/exampleconfig/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+- quay.io/exampleconfig/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adfaef
+- quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
+```
+**Note**
+  * `<1>` The following fields can be configured to override the default TALO derived values: `platformImage`, `operatorsIndexes`, and the `operatorsPackagesAndChannels`. These fields are automatically populated from the policies of the managed clusters if left unspecified.
+  * `<2>` Specifies the minimum required disk space on the managed cluster in Gibibytes. If unspecified, TALO applies a default value which pertains to the platform images.
+  * `<3>` Specifies the list of patterns to filter out images that are not necessary for the cluster version update.
+  * `<4>` Specifies the list of additional images to be pre-cached.
+
+
 ## Procedure ##
 ### On the hub ###
 - User creates a TALO CR that defines:
     - A set of clusters to be upgraded
     - References to the policies containing the required release and operator versions for this set
     - The need for image pre-caching
+    - A reference to a PreCachingConfig resource should the user desire to pre-cache additional images or override TALO derived images
+- If image pre-caching is required, user creates and applies an optional PreCachingConfig CR that defines:
+  - Overrides for TALO derived platform related images
+  - Platform related images to be excluded from the cluster version update
+  - Additional images to be pre-cached
+  - Minimum disk space required for the pre-cached images
+  **Note** The PreCachingConfig CR is optional and does not need to be created if the user solely desires to pre-cache platform related images. However, it is important that the PreCachingConfig CR is applied prior to referencing it in the TALO CR.
 - User applies the ClusterGroupUpgrade CR to the hub cluster at the beginning of the maintenance window
-- Optionally, the user can create an override ConfigMap to filter out the images that are not necessary for the cluster version update.
 - TALO checks the pre-caching requirement in the TALO CR. If required, then for each cluster defined or matched by selectors: 
     - Cleans up possible remainders from the previous pre-caching attempts
     - Determines the required software version specification
