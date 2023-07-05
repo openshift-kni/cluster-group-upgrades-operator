@@ -6,6 +6,7 @@ Cluster Group Upgrades operator is a Kubernetes operator that facilitates softwa
 Cluster Group Upgrades operator uses the following CRDs:
 
 * **ClusterGroupUpgrade**
+* **PreCachingConfig**
 
 and it contains the following controllers:
 
@@ -44,6 +45,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | InvalidPlatformImage | Error related to platform image |
   `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
   | | False | PrecacheSpecIncomplete| Precaching spec is incomplete |
+  | | False | PrecacheSpecIncomplete| Precaching spec is incomplete: failed to get PreCachingConfig resource due to PreCachingConfig.ran.openshift.io "xxx" not found |
   `PrecachingSucceeded` | True | PrecachingCompleted | Precaching is completed for all clusters|
   | | True | PartiallyDone | Precaching failed for x clusters | 
   | | False | InProgress | Precaching is not completed | 
@@ -70,6 +72,11 @@ A few important ones to consider are:
   * The cluster list will be generated in a set order which may later be divided into batches if necessary. The order is:
     * All the clusters explicitly specified using the *cluster* option on the *ClusterGroupUpgrade* configuration (This subset will be processed in the order defined in the configuration)
     * All the clusters that match the *clusterLabelSelectors* and *clusterSelector* options on the *ClusterGroupUpgrade* configuration (This subset will be sorted in alphabetical order)
+* **PrecacheSpecValid**
+  * In this state, the pre-caching specification that will be considered for the **ClusterGroupUpgrade** will be validated if pre-caching is enabled.
+  * If a **PreCachingConfig** resource is referenced in the **ClusterGroupUpgrade**, it will be retrieved. If the **PreCachingConfig** resource cannot be retrieved or accessed, the validation will fail with a **PrecacheSpecIncomplete** reason and a corresponding message.
+  * The validation can also fail if certain pre-caching config(s) overrides are not adequately set.
+  * Successful validation will result in the **PrecacheSpecValid** set to **True** with the reason **PrecacheSpecIsWellFormed**.
 * **NotEnabled**
   * In this state, the **ClusterGroupUpgrade** CR has just been created and the *enable* field is set to *false*
   * The controller will build a remediation plan based on the *clusters* list and with *enable* fields like:
