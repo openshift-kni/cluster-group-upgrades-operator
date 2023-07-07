@@ -1,0 +1,86 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke5
+  enable: true
+  managedPolicies:
+  - policy5-subscriptions
+  preCaching: false
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 0
+status:
+  clusters:
+    - name: spoke1
+      state: complete
+    - currentPolicy:
+        name: policy5-subscriptions
+        status: NonCompliant
+      name: spoke2
+      state: timedout        
+  computedMaxConcurrency: 2
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Progressing
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Succeeded
+  managedPoliciesContent:
+    policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-local-storage"}]'
+  managedPoliciesForUpgrade:
+  - name: policy5-subscriptions
+    namespace: default
+  managedPoliciesNs:
+    policy5-subscriptions: default
+  remediationPlan:
+  - - spoke1
+    - spoke2
+  - - spoke5
+---
+# MCAs should be there for spoke1 in this simulated ACM test env
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa1
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa2
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa3
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa4
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa5
+  namespace: spoke1
