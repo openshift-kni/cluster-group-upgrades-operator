@@ -2,8 +2,8 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  # Patch the InstallPlan ManagedClusterViews.
-  - command: ../../../../deploy/upgrades/operator-upgrade/patch-policies-status-compliant.sh default default
+  # Complete spoke1
+  - command: ../../../../deploy/upgrades/operator-upgrade/patch-policies-status-spoke1-compliant.sh default default
     ignoreFailure: false
 
   # Just to wake up the controller sooner

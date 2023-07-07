@@ -2,6 +2,8 @@ package utils
 
 import (
 	"time"
+
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 )
 
 // CalculateBatchTimeout calculates the current batch timeout for the running cgu
@@ -26,4 +28,13 @@ func CalculateBatchTimeout(timeoutMinutes, numBatches, currentBatch int, current
 	currentBatchTimeout := time.Duration(remainingTime / float64(remainingBatches))
 
 	return currentBatchTimeout
+}
+
+// GetClustersListFromRemediationPlan gets the list of clusters from the remediation plan
+func GetClustersListFromRemediationPlan(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) []string {
+	var clusters []string
+	for _, clusterBatch := range clusterGroupUpgrade.Status.RemediationPlan {
+		clusters = append(clusters, clusterBatch...)
+	}
+	return clusters
 }
