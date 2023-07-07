@@ -5,6 +5,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-aaaa1
   namespace: spoke1
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -25,6 +27,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-aaaa2
   namespace: spoke1
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -45,6 +49,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-aaaa3
   namespace: spoke1
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -65,6 +71,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-aaaa4
   namespace: spoke1
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -85,6 +93,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-aaaa5
   namespace: spoke1
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -106,6 +116,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-bbbb1
   namespace: spoke2
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -126,6 +138,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-bbbb2
   namespace: spoke2
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -146,6 +160,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-bbbb3
   namespace: spoke2
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -166,6 +182,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-bbbb4
   namespace: spoke2
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:
@@ -186,6 +204,8 @@ kind: ManagedClusterAction
 metadata:
   name: install-bbbb5
   namespace: spoke2
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
 spec:
   actionType: Update
   kube:

@@ -107,13 +107,15 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 		name         string
 		mca          *actionv1beta1.ManagedClusterAction
 		mcaNamespace string
+		cguLabel     string
 		installPlan  operatorsv1alpha1.InstallPlan
-		validateFunc func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan)
+		validateFunc func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan)
 	}{
 		{
 			name:         "ManagedClusterAction is successfully created",
 			mca:          nil,
 			mcaNamespace: "mcaNamespace",
+			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
@@ -124,8 +126,8 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, cguLabel, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
@@ -151,6 +153,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				},
 			},
 			mcaNamespace: "mcaNamespace",
+			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
@@ -161,8 +164,8 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, cguLabel, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
@@ -188,7 +191,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				t.Errorf("error in creating fake client")
 			}
 
-			tc.validateFunc(t, fakeClient, tc.mcaNamespace, tc.installPlan)
+			tc.validateFunc(t, fakeClient, tc.mcaNamespace, tc.cguLabel, tc.installPlan)
 		})
 	}
 }

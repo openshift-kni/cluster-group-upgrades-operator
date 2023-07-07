@@ -19,7 +19,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 	actionsBeforeEnable := clusterGroupUpgrade.Spec.Actions.BeforeEnable
 	// Add/delete cluster labels
 	if actionsBeforeEnable.AddClusterLabels != nil || actionsBeforeEnable.DeleteClusterLabels != nil {
-		clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
+		clusters := utils.GetClustersListFromRemediationPlan(clusterGroupUpgrade)
 		r.Log.Info("[actions]", "clusterList", clusters)
 		labels := map[string]map[string]string{
 			"add":    actionsBeforeEnable.AddClusterLabels,
@@ -153,13 +153,6 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	}
 	clusterGroupUpgrade.Status.CopiedPolicies = nil
 
-	clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
-	r.Log.Info("[actions]", "clusterList", clusters)
-
-	err = utils.DeleteAllMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
-	if err != nil {
-		return fmt.Errorf("failed to delete MultiCloud objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
-	}
 	err = r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)

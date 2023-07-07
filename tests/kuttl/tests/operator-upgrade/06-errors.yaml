@@ -1,0 +1,30 @@
+# MCAs should be cleaned up for spoke1 as well by the finalizer
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa1
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa2
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa3
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa4
+  namespace: spoke1
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-aaaa5
+  namespace: spoke1
