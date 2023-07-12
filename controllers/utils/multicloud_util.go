@@ -353,7 +353,8 @@ func DeleteManagedClusterActions(
 	return nil
 }
 
-// FinalMultiCloudObjectCleanup cleans up views associated to all unsuccessful clusters from the current batch, if known.
+// FinalMultiCloudObjectCleanup cleans up views and actions associated to all clusters from the current batch that haven't completed
+// If current batch is not set yet, clean up for the first batch
 func FinalMultiCloudObjectCleanup(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
