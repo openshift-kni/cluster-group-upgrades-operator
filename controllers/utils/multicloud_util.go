@@ -318,7 +318,7 @@ func DeleteManagedClusterViews(
 	}
 
 	for _, mcv := range mcvList.Items {
-		multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "ns", mcv.Namespace, "name", mcv.Name)
+		multiCloudLog.Info("[DeleteManagedClusterViews] Delete ManagedClusterView", "ns", mcv.Namespace, "name", mcv.Name)
 		if err := c.Delete(ctx, &mcv); err != nil {
 			return err
 		}
@@ -326,7 +326,9 @@ func DeleteManagedClusterViews(
 	return nil
 }
 
-// DeleteManagedClusterActions cleans up actions associated to a cluster.
+// DeleteManagedClusterActions cleans up actions associated to a cluster. This needs to be done explicitly when the action
+// can't be executed, e.g. cluster offline. Leaving actions behind may cause unexpected behavior if the cluster comes back
+// online later after the CGU times out, i.e. outside of the maintenance window.
 func DeleteManagedClusterActions(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
 
@@ -343,7 +345,7 @@ func DeleteManagedClusterActions(
 	}
 
 	for _, mca := range mcaList.Items {
-		multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterAction", "ns", mca.Namespace, "name", mca.Name)
+		multiCloudLog.Info("[DeleteManagedClusterActions] Delete ManagedClusterAction", "ns", mca.Namespace, "name", mca.Name)
 		if err := c.Delete(ctx, &mca); err != nil {
 			return err
 		}
@@ -351,22 +353,22 @@ func DeleteManagedClusterActions(
 	return nil
 }
 
-// FinalMultiCloudObjectCleanup cleans up views associated to all unsuccessful clusters from the current batch if known
+// FinalMultiCloudObjectCleanup cleans up views associated to all unsuccessful clusters from the current batch, if known.
 func FinalMultiCloudObjectCleanup(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
-	// Only need to cleanup for clusters that are not completed
-	succeededClusters := make(map[string]bool)
-	for _, clusterState := range clusterGroupUpgrade.Status.Clusters {
-		if clusterState.State == ClusterRemediationComplete {
-			succeededClusters[clusterState.Name] = true
-		}
+
+	if !*clusterGroupUpgrade.Spec.Enable {
+		return nil
 	}
 
-	// No current batch, clean up all just in case
+	if !clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+		return nil
+	}
+
 	if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
-		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] No current batch, clean all")
-		clusters := GetClustersListFromRemediationPlan(clusterGroupUpgrade)
-		for _, clusterName := range clusters {
+		// No current batch, first batch might be in progress
+		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] No current batch, clean the first batch")
+		for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[0] {
 			err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
 			if err != nil {
 				return err
@@ -374,11 +376,10 @@ func FinalMultiCloudObjectCleanup(
 		}
 	} else {
 		// Cleanup current batch
-		batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
-		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] Clean current batch", "index", batchIndex)
-		// Cleanup current batch
-		for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-			if _, exists := succeededClusters[clusterName]; !exists {
+		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] Clean up for the current batch", "batchNumber", clusterGroupUpgrade.Status.Status.CurrentBatch)
+		for clusterName, progress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
+			// Only need to cleanup for clusters that are not completed
+			if progress.State != ranv1alpha1.Completed {
 				err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
 				if err != nil {
 					return err
