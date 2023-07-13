@@ -22,23 +22,20 @@ import (
 	"testing"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
-	"github.com/stretchr/testify/assert"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
-	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
-
-	corev1 "k8s.io/api/core/v1"
-
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	"k8s.io/client-go/kubernetes/scheme"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
 	actionv1beta1 "github.com/stolostron/cluster-lifecycle-api/action/v1beta1"
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
+	"github.com/stretchr/testify/assert"
+	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes/scheme"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var (
@@ -51,7 +48,9 @@ func init() {
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.Policy{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PolicyList{})
 	testscheme.AddKnownTypes(actionv1beta1.GroupVersion, &actionv1beta1.ManagedClusterAction{})
+	testscheme.AddKnownTypes(actionv1beta1.GroupVersion, &actionv1beta1.ManagedClusterActionList{})
 	testscheme.AddKnownTypes(viewv1beta1.GroupVersion, &viewv1beta1.ManagedClusterView{})
+	testscheme.AddKnownTypes(viewv1beta1.GroupVersion, &viewv1beta1.ManagedClusterViewList{})
 	testscheme.AddKnownTypes(operatorsv1alpha1.SchemeGroupVersion, &operatorsv1alpha1.Subscription{})
 	testscheme.AddKnownTypes(operatorsv1alpha1.SchemeGroupVersion, &operatorsv1alpha1.InstallPlan{})
 }
@@ -107,13 +106,15 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 		name         string
 		mca          *actionv1beta1.ManagedClusterAction
 		mcaNamespace string
+		cguLabel     string
 		installPlan  operatorsv1alpha1.InstallPlan
-		validateFunc func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan)
+		validateFunc func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan)
 	}{
 		{
 			name:         "ManagedClusterAction is successfully created",
 			mca:          nil,
 			mcaNamespace: "mcaNamespace",
+			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
@@ -124,8 +125,8 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, cguLabel, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
@@ -151,6 +152,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				},
 			},
 			mcaNamespace: "mcaNamespace",
+			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
 				ObjectMeta: v1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
@@ -161,8 +163,8 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 					ClusterServiceVersionNames: []string{"ptp-operator.4.9.0-202201210133"},
 				},
 			},
-			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace string, installPlan operatorsv1alpha1.InstallPlan) {
-				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, installPlan)
+			validateFunc: func(t *testing.T, runtimeClient client.Client, mcaNamespace, cguLabel string, installPlan operatorsv1alpha1.InstallPlan) {
+				mca, err := EnsureManagedClusterActionForInstallPlan(context.TODO(), runtimeClient, mcaNamespace, cguLabel, installPlan)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
@@ -188,7 +190,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 				t.Errorf("error in creating fake client")
 			}
 
-			tc.validateFunc(t, fakeClient, tc.mcaNamespace, tc.installPlan)
+			tc.validateFunc(t, fakeClient, tc.mcaNamespace, tc.cguLabel, tc.installPlan)
 		})
 	}
 }
@@ -1040,4 +1042,195 @@ func TestMultiCloudUtilGetMultiCloudObjectName(t *testing.T) {
 	}
 	result := GetMultiCloudObjectName(&testcase.cgu, testcase.kind, testcase.objectName)
 	assert.Equal(t, result, testcase.expectedResult)
+}
+
+func TestFinalMultiCloudObjectCleanup(t *testing.T) {
+	boolTrue := true
+	boolFalse := false
+	allClusters := []string{"spoke1", "spoke2", "spoke3"}
+	mcvExists := func(t *testing.T, ctx context.Context, client client.Client, cluster string) bool {
+		mcv := &viewv1beta1.ManagedClusterView{}
+		if err := client.Get(ctx, types.NamespacedName{Name: "view", Namespace: cluster}, mcv); err != nil {
+			if errors.IsNotFound(err) {
+				return false
+			}
+			t.Fatal("Error occurred and it wasn't expected", err)
+		}
+		return true
+	}
+
+	mcaExists := func(t *testing.T, ctx context.Context, client client.Client, cluster string) bool {
+		mca := &actionv1beta1.ManagedClusterAction{}
+		if err := client.Get(ctx, types.NamespacedName{Name: "action", Namespace: cluster}, mca); err != nil {
+			if errors.IsNotFound(err) {
+				return false
+			}
+			t.Fatal("Error occurred and it wasn't expected", err)
+		}
+		return true
+	}
+
+	testcases := []struct {
+		name              string
+		cgu               *ranv1alpha1.ClusterGroupUpgrade
+		clustersToCleanup []string
+		clustersToIgnore  []string
+	}{
+		{
+			name: "not enabled CGU",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolFalse,
+				},
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					RemediationPlan: [][]string{{"spoke1", "spoke2"}, {"spoke3"}},
+				},
+			},
+			clustersToCleanup: []string{},
+			clustersToIgnore:  allClusters,
+		},
+		{
+			name: "completed CGU",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolTrue,
+				},
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					RemediationPlan: [][]string{{"spoke1", "spoke2"}, {"spoke3"}},
+					Status: ranv1alpha1.UpgradeStatus{
+						CompletedAt: metav1.Now(),
+					},
+				},
+			},
+			clustersToCleanup: []string{},
+			clustersToIgnore:  allClusters,
+		},
+		{
+			name: "in progress CGU - batch 1",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolTrue,
+				},
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					Clusters: []ranv1alpha1.ClusterState{
+						{Name: "spoke1", State: ClusterRemediationComplete},
+					},
+					RemediationPlan: [][]string{{"spoke1", "spoke2"}, {"spoke3"}},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatch: 1,
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"spoke1": {State: ranv1alpha1.Completed},
+							"spoke2": {State: ranv1alpha1.InProgress},
+						},
+					},
+				},
+			},
+			clustersToCleanup: []string{"spoke2"},
+			clustersToIgnore:  []string{"spoke1", "spoke3"},
+		},
+		{
+			name: "in progress CGU - batch 2",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolTrue,
+				},
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					Clusters: []ranv1alpha1.ClusterState{
+						{Name: "spoke1", State: ClusterRemediationComplete},
+						{Name: "spoke2", State: ClusterRemediationTimedout},
+					},
+					RemediationPlan: [][]string{{"spoke1", "spoke2"}, {"spoke3"}},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatch: 2,
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"spoke3": {State: ranv1alpha1.InProgress},
+						},
+					},
+				},
+			},
+			clustersToCleanup: []string{"spoke3"},
+			clustersToIgnore:  []string{"spoke1", "spoke2"},
+		},
+		{
+			// This is an edge case where CGU is deleted while it's starting the first batch
+			name: "CGU with no current batch",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolTrue,
+				},
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					RemediationPlan: [][]string{{"spoke1", "spoke2"}, {"spoke3"}},
+				},
+			},
+			clustersToCleanup: []string{"spoke1", "spoke2"},
+			clustersToIgnore:  []string{"spoke3"},
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			var objs []client.Object
+			for _, cluster := range allClusters {
+				objs = append(objs, &viewv1beta1.ManagedClusterView{
+
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "view",
+						Namespace: cluster,
+						Labels: map[string]string{
+							"openshift-cluster-group-upgrades/clusterGroupUpgrade": tc.cgu.Namespace + "-" + tc.cgu.Name,
+						},
+					},
+				})
+				objs = append(objs, &actionv1beta1.ManagedClusterAction{
+
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "action",
+						Namespace: cluster,
+						Labels: map[string]string{
+							"openshift-cluster-group-upgrades/clusterGroupUpgrade": tc.cgu.Namespace + "-" + tc.cgu.Name,
+						},
+					},
+				})
+			}
+			if tc.cgu != nil {
+				objs = append(objs, tc.cgu)
+			}
+
+			client, err := getFakeClientFromObjects(objs...)
+
+			if err != nil {
+				t.Errorf("error in creating fake client: %v", err)
+			}
+			ctx := context.TODO()
+			err = FinalMultiCloudObjectCleanup(ctx, client, tc.cgu)
+			if err != nil {
+				t.Fatal("Error occurred and it wasn't expected:", err)
+			}
+
+			for _, cluster := range tc.clustersToIgnore {
+				assert.True(t, mcvExists(t, ctx, client, cluster))
+				assert.True(t, mcaExists(t, ctx, client, cluster))
+			}
+
+			for _, cluster := range tc.clustersToCleanup {
+				assert.False(t, mcvExists(t, ctx, client, cluster))
+				assert.False(t, mcaExists(t, ctx, client, cluster))
+			}
+		})
+	}
 }

@@ -243,7 +243,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			r.buildRemediationPlan(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 
 			// Recheck clusters list for any changes to the plan
-			clusters = r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
+			clusters = utils.GetClustersListFromRemediationPlan(clusterGroupUpgrade)
 
 			// Create the needed resources for starting the upgrade.
 			var isPolicyErr bool
@@ -773,7 +773,8 @@ func (r *ClusterGroupUpgradeReconciler) getNextRemediationPoliciesForBatch(
 			if err != nil {
 				return false, isSoaking, err
 			}
-			err = utils.DeleteMultiCloudObjects(ctx, client, clusterGroupUpgrade, clusterName)
+			// Clean up ManagedClusterView only as ManagedClusterActions get deleted automatically when executed successfully.
+			err = utils.DeleteManagedClusterViews(ctx, client, clusterGroupUpgrade, clusterName)
 			if err != nil {
 				return false, isSoaking, err
 			}
@@ -1836,15 +1837,6 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-// Get the list of clusters from the remediation plan
-func (r *ClusterGroupUpgradeReconciler) getClustersListFromRemediationPlan(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) []string {
-	var clusters []string
-	for _, clusterBatch := range clusterGroupUpgrade.Status.RemediationPlan {
-		clusters = append(clusters, clusterBatch...)
-	}
-	return clusters
-}
-
 // filterFailedPrecachingClusters filters the input cluster list by removing any clusters which failed to perform their backup.
 func (r *ClusterGroupUpgradeReconciler) filterFailedPrecachingClusters(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) []string {
 	var clustersList []string
@@ -2062,10 +2054,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 		if controllerutil.ContainsFinalizer(clusterGroupUpgrade, utils.CleanupFinalizer) {
 			// Run finalization logic for cguFinalizer. If the finalization logic fails, don't remove the finalizer so
 			// that we can retry during the next reconciliation.
-
-			clusters := r.getClustersListFromRemediationPlan(clusterGroupUpgrade)
-
-			err := utils.DeleteAllMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, clusters)
+			err := utils.FinalMultiCloudObjectCleanup(ctx, r.Client, clusterGroupUpgrade)
 			if err != nil {
 				return utils.StopReconciling, err
 			}

@@ -140,7 +140,7 @@ var EnsureInstallPlanIsApproved = func(
 		multiCloudLog.Info("Create ManagedClusterAction for InstallPlan", "InstallPlan",
 			installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
 		// Create or update the managedClusterAction to approve the install plan.
-		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, clusterName, installPlan)
+		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, clusterName, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name, installPlan)
 		if err != nil {
 			return InstallPlanCannotBeApproved, err
 		}
@@ -220,7 +220,7 @@ func EnsureManagedClusterView(
 
 // EnsureManagedClusterActionForInstallPlan creates or updates an action for an InstallPlan.
 func EnsureManagedClusterActionForInstallPlan(
-	ctx context.Context, c client.Client, namespace string,
+	ctx context.Context, c client.Client, namespace, cguLabel string,
 	installPlan operatorsv1alpha1.InstallPlan) (*actionv1beta1.ManagedClusterAction, error) {
 
 	mcaForInstallPlan := &actionv1beta1.ManagedClusterAction{}
@@ -232,6 +232,9 @@ func EnsureManagedClusterActionForInstallPlan(
 			actionMeta := metav1.ObjectMeta{
 				Name:      installPlan.Name,
 				Namespace: namespace,
+				Labels: map[string]string{
+					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
+				},
 			}
 			actionSpec, err := NewManagedClusterActionForInstallPlanSpec(installPlan)
 			if err != nil {
@@ -284,16 +287,29 @@ func NewManagedClusterActionForInstallPlanSpec(installPlan operatorsv1alpha1.Ins
 	return &actionSpec, nil
 }
 
-// DeleteMultiCloudObjects cleans up views associated to a cluster.
+// DeleteMultiCloudObjects cleans up views and actions associated to a cluster.
 func DeleteMultiCloudObjects(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
-	// Only need to delete ManagedClusterView as ManagedClusterActions get deleted automatically.
 
-	var mcvLabels = map[string]string{
+	if err := DeleteManagedClusterViews(ctx, c, clusterGroupUpgrade, clusterName); err != nil {
+		return err
+	}
+
+	if err := DeleteManagedClusterActions(ctx, c, clusterGroupUpgrade, clusterName); err != nil {
+		return err
+	}
+	return nil
+}
+
+// DeleteManagedClusterViews cleans up views associated to a cluster.
+func DeleteManagedClusterViews(
+	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
+
+	var labels = map[string]string{
 		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
 	opts := []client.ListOption{
 		client.InNamespace(clusterName),
-		client.MatchingLabels(mcvLabels),
+		client.MatchingLabels(labels),
 	}
 
 	mcvList := &viewv1beta1.ManagedClusterViewList{}
@@ -302,23 +318,74 @@ func DeleteMultiCloudObjects(
 	}
 
 	for _, mcv := range mcvList.Items {
-		multiCloudLog.Info("[DeleteMultiClusterObjects] Delete ManagedClusterView", "name", mcv.Name)
+		multiCloudLog.Info("[DeleteManagedClusterViews] Delete ManagedClusterView", "ns", mcv.Namespace, "name", mcv.Name)
 		if err := c.Delete(ctx, &mcv); err != nil {
 			return err
 		}
 	}
-
 	return nil
 }
 
-// DeleteAllMultiCloudObjects cleans up views associated to all clusters in the list.
-func DeleteAllMultiCloudObjects(
-	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, allClustersForUpgrade []string) error {
-	// Only need to delete ManagedClusterView as ManagedClusterActions get deleted automatically.
-	for _, clusterName := range allClustersForUpgrade {
-		err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
-		if err != nil {
+// DeleteManagedClusterActions cleans up actions associated to a cluster. This needs to be done explicitly when the action
+// can't be executed, e.g. cluster offline. Leaving actions behind may cause unexpected behavior if the cluster comes back
+// online later after the CGU times out, i.e. outside of the maintenance window.
+func DeleteManagedClusterActions(
+	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
+
+	var labels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
+	opts := []client.ListOption{
+		client.InNamespace(clusterName),
+		client.MatchingLabels(labels),
+	}
+
+	mcaList := &actionv1beta1.ManagedClusterActionList{}
+	if err := c.List(ctx, mcaList, opts...); err != nil {
+		return err
+	}
+
+	for _, mca := range mcaList.Items {
+		multiCloudLog.Info("[DeleteManagedClusterActions] Delete ManagedClusterAction", "ns", mca.Namespace, "name", mca.Name)
+		if err := c.Delete(ctx, &mca); err != nil {
 			return err
+		}
+	}
+	return nil
+}
+
+// FinalMultiCloudObjectCleanup cleans up views and actions associated to all clusters from the current batch that haven't completed
+// If current batch is not set yet, clean up for the first batch
+func FinalMultiCloudObjectCleanup(
+	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+
+	if !*clusterGroupUpgrade.Spec.Enable {
+		return nil
+	}
+
+	if !clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
+		return nil
+	}
+
+	if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
+		// No current batch, first batch might be in progress
+		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] No current batch, clean the first batch")
+		for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[0] {
+			err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
+			if err != nil {
+				return err
+			}
+		}
+	} else {
+		// Cleanup current batch
+		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] Clean up for the current batch", "batchNumber", clusterGroupUpgrade.Status.Status.CurrentBatch)
+		for clusterName, progress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
+			// Only need to cleanup for clusters that are not completed
+			if progress.State != ranv1alpha1.Completed {
+				err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
+				if err != nil {
+					return err
+				}
+			}
 		}
 	}
 
