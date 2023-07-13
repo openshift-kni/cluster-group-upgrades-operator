@@ -19,7 +19,7 @@ spec:
   preCaching: true
   remediationStrategy:
     maxConcurrency: 4
-    timeout: 241
+    timeout: 240
 status:
   computedMaxConcurrency: 4
   conditions:

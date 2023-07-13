@@ -8,4 +8,4 @@ commands:
   # Force a quick reconcile
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu
-        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+        --patch '{"spec":{"actions":{"beforeEnable":{"addClusterLabels":{"dummy1":""}}}}}' --type=merge
