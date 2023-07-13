@@ -1,4 +1,4 @@
-# MCAs should be cleaned up for spoke1 as well by the finalizer
+# Final clean up should ignore completed spokes
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
 metadata:
