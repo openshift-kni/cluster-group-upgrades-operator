@@ -27,7 +27,7 @@ require (
 	golang.org/x/sys v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.27.0
-	sigs.k8s.io/structured-merge-diff/v4 v4.2.3
+	sigs.k8s.io/structured-merge-diff/v4 v4.3.0
 )
 
 require (
