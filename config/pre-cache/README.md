@@ -1,14 +1,16 @@
 # OCP upgrade image pre-cache #
-This directory contains image pre-caching sample overrides configurations.
+This directory contains image pre-caching example reference-configurations.
 Overrides may be required to force pre-cache workload or payload image configurations.
-Supported  overrides:
-1. `precache.image` - pre-caching workload image pull spec. Normally derived from the operator csv.
-2. `platform.image` - OCP release image 
-3. `operators.indexes` - OLM index images (list of image pull specs)
-4. `operators.packagesAndChannels` - operator packages and channels (list of  <package:channel> string entries)
+Supported  pre-caching configurations:
+1. `overrides.preCacheImage` - pre-caching workload image pull spec. Normally derived from the operator csv.
+2. `overrides.platformImage` - OCP release image 
+3. `overrides.operatorsIndexes` - OLM index images (list of image pull specs)
+4. `overrides.operatorsPackagesAndChannels` - operator packages and channels (list of  <package:channel> string entries)
 5. `excludePrecachePatterns` - list of patterns to exclude from precaching (using this command: grep -vG -f)
+6. `additionalImages` - list of additional images to be pre-cached
+7. `spaceRequired` - disk space required for the pre-cached images
 
-:warning: We need to set the precache.image value as a container image digest. This value is going to be used by the pre-cache task to pull all the required container images and for the upgrade operator to replace the Clusterversion spec.desiredUpdate.image field. The cluster-version operator of the managed cluster requires this format to continue automatically with the upgrade since container image digest uniquely and immutably identifies a container image
+:warning: We need to set the `overrides.platformImage` value as a container image digest. This value is going to be used by the pre-cache task to pull all the required container images and for the upgrade operator to replace the Clusterversion `spec.desiredUpdate.image` field. The cluster-version operator of the managed cluster requires this format to continue automatically with the upgrade since container image digest uniquely and immutably identifies a container image
 
 An example how to extract the container image digest from an ocp-release image using the oc binary:
 
@@ -27,22 +29,28 @@ Pull From: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d
 Example:
 
 ```yaml
-apiVersion: v1
-kind: ConfigMap
+apiVersion: ran.openshift.io/v1alpha1
+kind: PreCachingConfig
 metadata:
-  name: cluster-group-upgrade-overrides
-data:
-  precache.image: quay.io/test_images/pre-cache:latest
-  platform.image: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-  operators.indexes: |
-    registry.example.com:5000/custom-redhat-operators:1.0.0
-  operators.packagesAndChannels: |
-    local-storage-operator: stable
-    performance-addon-operator: 4.9
-    ptp-operator: stable
-    sriov-network-operator: stable
-  excludePrecachePatterns: |
-    aws
-    thanos
+  name: example-config
+  namespace: example-ns
+spec:
+  overrides:
+    preCacheImage: quay.io/test_images/pre-cache:latest
+    platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e
+    operatorsIndexes:
+      - registry.example.com:5000/custom-redhat-operators:1.0.0
+    operatorsPackagesAndChannels:
+      - local-storage-operator: stable
+      - ptp-operator: stable
+      - sriov-network-operator: stable
+  excludePrecachePatterns:
+    - aws
+    - vsphere
+  additionalImages:
+    - quay.io/foobar/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e
+    - quay.io/foobar/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adf
+    - quay.io/foobar/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfs
+  spaceRequired: 45 GiB
 ```
 
