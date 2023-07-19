@@ -2090,6 +2090,21 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 	return utils.DontReconcile, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) getCGUControllerWorkerCount() (count int) {
+	maxConcurrency, isSet := os.LookupEnv(utils.CGUControllerWorkerCountEnv)
+	var err error
+	if isSet {
+		count, err = strconv.Atoi(maxConcurrency)
+		if err != nil || count < 1 {
+			r.Log.Info("Invalid value '%s' for %s, using the default: %i", maxConcurrency, utils.CGUControllerWorkerCountEnv, utils.DefaultCGUControllerWorkerCount)
+			count = utils.DefaultCGUControllerWorkerCount
+		}
+	} else {
+		count = utils.DefaultCGUControllerWorkerCount
+	}
+	return
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade")
