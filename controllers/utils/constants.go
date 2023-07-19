@@ -2,6 +2,8 @@ package utils
 
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
+const DefaultCGUControllerWorkerCount = 5
+
 // RemediationActionEnforce - Policy remediation for policies.
 const (
 	RemediationActionEnforce = "enforce"
