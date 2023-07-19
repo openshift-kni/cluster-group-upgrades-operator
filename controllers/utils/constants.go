@@ -3,7 +3,12 @@ package utils
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
 // DefaultCGUControllerWorkerCount default number of worker threads for the CGU controller
-const DefaultCGUControllerWorkerCount = 5
+// CGUController constants
+const (
+	CGUCtrllWorkerCountEnv          = "TALM_CGU_CTRL_WORKER_COUNT"
+	DefaultCGUControllerWorkerCount = 5
+)
+
 
 // RemediationActionEnforce - Policy remediation for policies.
 const (
