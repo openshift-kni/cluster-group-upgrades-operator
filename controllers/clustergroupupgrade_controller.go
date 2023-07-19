@@ -2127,19 +2127,6 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Version: "v1",
 	})
 
-	maxConcurrency, set := os.LookupEnv(utils.CGUControllerWorkerCountEnv)
-	var maxConcurrentReconciles int
-	var err error
-	if set {
-		maxConcurrentReconciles, err = strconv.Atoi(maxConcurrency)
-		if err != nil {
-			r.Log.Info("Invalid value %s for %s, using the default: %i", maxConcurrency, utils.CGUControllerWorkerCountEnv, utils.DefaultCGUControllerWorkerCount)
-			maxConcurrentReconciles = utils.DefaultCGUControllerWorkerCount
-		}
-	} else {
-		maxConcurrentReconciles = utils.DefaultCGUControllerWorkerCount
-	}
-
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
@@ -2167,6 +2154,6 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			GenericFunc: func(ge event.GenericEvent) bool { return false },
 			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
 		})).
-		WithOptions(controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.getCGUControllerWorkerCount()}).
 		Complete(r)
 }
