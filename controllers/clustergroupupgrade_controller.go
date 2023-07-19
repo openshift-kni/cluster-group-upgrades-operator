@@ -2115,13 +2115,13 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Version: "v1",
 	})
 
-	maxConcurrency, set := os.LookupEnv("TALM_CGU_CTRL_WORKER_COUNT")
+	maxConcurrency, set := os.LookupEnv(utils.CGUCtrllWorkerCountEnv)
 	var maxConcurrentReconciles int
 	var err error
 	if set {
 		maxConcurrentReconciles, err = strconv.Atoi(maxConcurrency)
 		if err != nil {
-			r.Log.Info("Invalid value %s for TALM_CGU_CTRL_WORKER_COUNT, using the default: %i", maxConcurrency, utils.DefaultCGUControllerWorkerCount)
+			r.Log.Info("Invalid value %s for %s, using the default: %i", maxConcurrency, utils.CGUCtrllWorkerCountEnv, utils.DefaultCGUControllerWorkerCount)
 			maxConcurrentReconciles = utils.DefaultCGUControllerWorkerCount
 		}
 	} else {
