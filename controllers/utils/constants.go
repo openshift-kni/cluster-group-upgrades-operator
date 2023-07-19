@@ -2,6 +2,7 @@ package utils
 
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
+// DefaultCGUControllerWorkerCount default number of worker threads for the CGU controller
 const DefaultCGUControllerWorkerCount = 5
 
 // RemediationActionEnforce - Policy remediation for policies.
