@@ -9,7 +9,6 @@ const (
 	DefaultCGUControllerWorkerCount = 5
 )
 
-
 // RemediationActionEnforce - Policy remediation for policies.
 const (
 	RemediationActionEnforce = "enforce"
