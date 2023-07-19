@@ -17,6 +17,7 @@ limitations under the License.
 package controllers
 
 import (
+	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -151,6 +152,48 @@ func TestClusterGroupUpgradeReconciler_getClusterComplianceWithPolicy(t *testing
 			}
 			if got := r.getClusterComplianceWithPolicy(tt.args.clusterName, tt.args.policy); got != tt.want {
 				t.Errorf("ClusterGroupUpgradeReconciler.getClusterComplianceWithPolicy() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestClusterGroupUpgradeReconciler_getCGUControllerWorkerCount(t *testing.T) {
+	tests := []struct {
+		name        string
+		envVarValue string
+		wantCount   int
+	}{
+		{
+			name:        "good value",
+			envVarValue: "10",
+			wantCount:   10,
+		},
+		{
+			name:        "negative value",
+			envVarValue: "-1",
+			wantCount:   5,
+		},
+		{
+			name:        "zero",
+			envVarValue: "0",
+			wantCount:   5,
+		},
+		{
+			name:        "non numeric",
+			envVarValue: "abc",
+			wantCount:   5,
+		},
+	}
+
+	r := &ClusterGroupUpgradeReconciler{
+		Log: logr.Discard(),
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			os.Setenv(utils.CGUControllerWorkerCountEnv, tt.envVarValue)
+			if gotCount := r.getCGUControllerWorkerCount(); gotCount != tt.wantCount {
+				t.Errorf("ClusterGroupUpgradeReconciler.getCGUControllerWorkerCount() = %v, want %v", gotCount, tt.wantCount)
 			}
 		})
 	}
