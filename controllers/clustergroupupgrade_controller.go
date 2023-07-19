@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +40,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -2112,6 +2115,19 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 		Version: "v1",
 	})
 
+	maxConcurrency, set := os.LookupEnv("TALM_CGU_CTRL_WORKER_COUNT")
+	var maxConcurrentReconciles int
+	var err error
+	if set {
+		maxConcurrentReconciles, err = strconv.Atoi(maxConcurrency)
+		if err != nil {
+			r.Log.Info("Invalid value %s for TALM_CGU_CTRL_WORKER_COUNT, using the default: %i", maxConcurrency, utils.DefaultCGUControllerWorkerCount)
+			maxConcurrentReconciles = utils.DefaultCGUControllerWorkerCount
+		}
+	} else {
+		maxConcurrentReconciles = utils.DefaultCGUControllerWorkerCount
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
@@ -2138,5 +2154,7 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			CreateFunc:  func(ce event.CreateEvent) bool { return false },
 			GenericFunc: func(ge event.GenericEvent) bool { return false },
 			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
-		})).Complete(r)
+		})).
+		WithOptions(controller.Options{MaxConcurrentReconciles: maxConcurrentReconciles}).
+		Complete(r)
 }
