@@ -17,7 +17,3 @@ commands:
   # Delete all the created ManagedClusterView and ManagedClusterAction objects.
   - command: ../../../../deploy/upgrades/operator-upgrade/cleanup.sh
     ignoreFailure: false
-
-  # Delete the UOCR.
-  - command: oc delete -f ../../../../deploy/upgrades/operator-upgrade/cgu-operator-upgrade.yaml
-    namespaced: true

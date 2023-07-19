@@ -1,68 +1,91 @@
-# Check that all the ManagedClusterViews are cleaned up in all the spoke namespaces.
-# Check for the cluster logging operator subscription.
+# Spoke2 mcv/mca should be cleaned up
+---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   name: cgu-default-subscription-cluster-logging-kuttl
-  namespace: spoke1
+  namespace: spoke2
 ---
-# Check for the local storage operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   name: cgu-default-subscription-local-storage-operator-kuttl
-  namespace: spoke1
+  namespace: spoke2
 ---
-# Check for the PAO operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   name: cgu-default-subscription-performance-addon-operator-kuttl
-  namespace: spoke1
+  namespace: spoke2
 ---
-# Check for the PTP operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   name: cgu-default-subscription-ptp-operator-subscription-kuttl
-  namespace: spoke1
+  namespace: spoke2
 ---
-# Check for the SRIOV operator subscription.
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   name: cgu-default-subscription-sriov-network-operator-subscription-kuttl
-  namespace: spoke1
----
-# Check the ManagedClusterActions for approving the install plans have been cleaned up
-# Check spoke1.
-apiVersion: view.open-cluster-management.io/v1beta1
-kind: ManagedClusterView
-metadata:
-  name: install-aaaa1
-  namespace: spoke1
+  namespace: spoke2
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: install-aaaa2
-  namespace: spoke1
+  name: install-bbbb1
+  namespace: spoke2
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: install-aaaa3
-  namespace: spoke1
+  name: install-bbbb2
+  namespace: spoke2
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: install-aaaa4
-  namespace: spoke1
+  name: install-bbbb3
+  namespace: spoke2
 ---
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
-  name: install-aaaa5
-  namespace: spoke1
-
+  name: install-bbbb4
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: install-bbbb5
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-bbbb1
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-bbbb2
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-bbbb3
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-bbbb4
+  namespace: spoke2
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: install-bbbb5
+  namespace: spoke2
