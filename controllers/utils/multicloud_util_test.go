@@ -1112,6 +1112,19 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 			clustersToIgnore:  allClusters,
 		},
 		{
+			name: "enabled but blocked CGU with no remediation plan",
+			cgu: &ranv1alpha1.ClusterGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name: "cgu", Namespace: "default",
+				},
+				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
+					Enable: &boolTrue,
+				},
+			},
+			clustersToCleanup: []string{},
+			clustersToIgnore:  []string{"spoke1", "spoke2", "spoke3"},
+		},
+		{
 			name: "in progress CGU - batch 1",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
 				ObjectMeta: v1.ObjectMeta{

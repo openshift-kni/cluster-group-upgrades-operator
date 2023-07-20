@@ -368,11 +368,13 @@ func FinalMultiCloudObjectCleanup(
 
 	if clusterGroupUpgrade.Status.Status.CurrentBatch == 0 {
 		// No current batch, first batch might be in progress
-		multiCloudLog.Info("[FinalMultiCloudObjectCleanup] No current batch, clean the first batch")
-		for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[0] {
-			err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
-			if err != nil {
-				return err
+		if len(clusterGroupUpgrade.Status.RemediationPlan) > 0 {
+			multiCloudLog.Info("[FinalMultiCloudObjectCleanup] No current batch, clean the first batch")
+			for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[0] {
+				err := DeleteMultiCloudObjects(ctx, c, clusterGroupUpgrade, clusterName)
+				if err != nil {
+					return err
+				}
 			}
 		}
 	} else {
