@@ -26,7 +26,7 @@ require (
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
 	golang.org/x/sys v0.10.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/code-generator v0.27.0
+	k8s.io/code-generator v0.27.4
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0
 )
 
