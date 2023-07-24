@@ -245,17 +245,17 @@ function take_backup {
     cat /etc/tmpfiles.d/* | sed 's/#.*//' | awk '{print $2}' | grep '^/etc/' | sed 's#^/etc/##' > ${BACKUP_DIR}/etc.exclude.list
     echo '.updated' >> ${BACKUP_DIR}/etc.exclude.list
     echo 'kubernetes/manifests' >> ${BACKUP_DIR}/etc.exclude.list
-    with_retries 3 1 cp -Ra /etc/ ${BACKUP_DIR}/etc/
+    with_retries 3 1 cp -Ra /etc/ ${BACKUP_DIR}/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /etc"
     fi
 
-    with_retries 3 1 cp -Ra /usr/local/ ${BACKUP_DIR}/usrlocal/
+    with_retries 3 1 cp -Ra /usr/local/ ${BACKUP_DIR}/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /usr/local"
     fi
 
-    with_retries 3 1 cp -Ra /var/lib/kubelet/ ${BACKUP_DIR}/kubelet/
+    with_retries 3 1 cp -Ra /var/lib/kubelet/ ${BACKUP_DIR}/
     if [ $? -ne 0 ]; then
         fatal "Failed to backup /var/lib/kubelet"
     fi
@@ -323,7 +323,7 @@ function restore_files {
     # Restore /usr/local content
     #
     log_info "Restoring /usr/local content"
-    time with_retries 3 1 rsync -aAXvc --delete --no-t ${BACKUP_DIR}/usrlocal/ /usr/local/
+    time with_retries 3 1 rsync -aAXvc --delete --no-t ${BACKUP_DIR}/local/ /usr/local/
     if [ $? -ne 0 ]; then
         fatal "Failed to restore /usr/local content"
     fi
@@ -533,7 +533,7 @@ fi
 #
 if [ ! -d "${BACKUP_DIR}/cluster" ] || \
         [ ! -d "${BACKUP_DIR}/etc" ] || \
-        [ ! -d "${BACKUP_DIR}/usrlocal" ] || \
+        [ ! -d "${BACKUP_DIR}/local" ] || \
         [ ! -d "${BACKUP_DIR}/kubelet" ]; then
     echo "Required backup content not found in ${BACKUP_DIR}" >&2
     exit 1
