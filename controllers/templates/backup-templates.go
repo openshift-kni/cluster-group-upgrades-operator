@@ -125,6 +125,17 @@ spec:
     resource: namespace
 `
 
+// MngClusterActDeleteBackupCRB deletes namespace
+const MngClusterActDeleteBackupCRB string = `
+{{ template "actionGVK"}}
+{{ template "metadata" . }}
+spec: 
+  actionType: Delete
+  kube: 
+    name: backup-agent
+    resource: clusterrolebinding
+`
+
 // MngClusterViewBackupJob creates mcv to monitor k8s job
 const MngClusterViewBackupJob string = `
 {{ template "viewGVK"}}

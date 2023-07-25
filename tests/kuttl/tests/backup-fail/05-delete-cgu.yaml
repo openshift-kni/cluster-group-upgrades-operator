@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Delete the UOCR.
+  - command: oc delete -f ../../../../deploy/upgrades/backup/backup.yaml
+    namespaced: true
