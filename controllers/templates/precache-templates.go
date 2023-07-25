@@ -99,7 +99,7 @@ spec:
       roleRef:
         apiGroup: rbac.authorization.k8s.io
         kind: ClusterRole
-        name: system:basic-user
+        name: cluster-admin
       subjects:
         - kind: ServiceAccount
           name: pre-cache-agent
