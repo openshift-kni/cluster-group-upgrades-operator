@@ -1,0 +1,44 @@
+#MCAs for clean up failed clusters
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: precache-ns-delete
+  namespace: spoke2
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-pre-cache
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: precache-crb-delete
+  namespace: spoke2
+spec:
+  actionType: Delete
+  kube:
+    name: pre-cache-crb
+    resource: clusterrolebinding
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: precache-ns-delete
+  namespace: spoke5
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-pre-cache
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: precache-crb-delete
+  namespace: spoke5
+spec:
+  actionType: Delete
+  kube:
+    name: pre-cache-crb
+    resource: clusterrolebinding

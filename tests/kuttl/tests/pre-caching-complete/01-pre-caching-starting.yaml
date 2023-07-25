@@ -5,6 +5,11 @@ commands:
   # Patch the inform policies to reflect the compliance status Compliant for spoke1.
   - command: ../../../../deploy/upgrades/pre-caching/patch-ns-mcv-status-processing-false.sh
     ignoreFailure: false
+
+  # Remove MCAs from pre cleanup so they can be verified as part of post cleanup
+  - command: ../../../../deploy/upgrades/pre-caching/mca-cleanup.sh
+    ignoreFailure: false
+        
   # Force two quick reconcile calls
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
