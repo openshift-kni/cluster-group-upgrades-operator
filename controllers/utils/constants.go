@@ -2,6 +2,12 @@ package utils
 
 import "k8s.io/apimachinery/pkg/runtime/schema"
 
+// CGU controller constants
+const (
+	CGUControllerWorkerCountEnv     = "TALM_CGU_CTRL_WORKER_COUNT"
+	DefaultCGUControllerWorkerCount = 5
+)
+
 // RemediationActionEnforce - Policy remediation for policies.
 const (
 	RemediationActionEnforce = "enforce"

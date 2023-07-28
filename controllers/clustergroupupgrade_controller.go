@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -38,6 +40,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -2084,6 +2087,21 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 	return utils.DontReconcile, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) getCGUControllerWorkerCount() (count int) {
+	maxConcurrency, isSet := os.LookupEnv(utils.CGUControllerWorkerCountEnv)
+	var err error
+	if isSet {
+		count, err = strconv.Atoi(maxConcurrency)
+		if err != nil || count < 1 {
+			r.Log.Info("Invalid value '%s' for %s, using the default: %i", maxConcurrency, utils.CGUControllerWorkerCountEnv, utils.DefaultCGUControllerWorkerCount)
+			count = utils.DefaultCGUControllerWorkerCount
+		}
+	} else {
+		count = utils.DefaultCGUControllerWorkerCount
+	}
+	return
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade")
@@ -2135,5 +2153,7 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			CreateFunc:  func(ce event.CreateEvent) bool { return false },
 			GenericFunc: func(ge event.GenericEvent) bool { return false },
 			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
-		})).Complete(r)
+		})).
+		WithOptions(controller.Options{MaxConcurrentReconciles: r.getCGUControllerWorkerCount()}).
+		Complete(r)
 }
