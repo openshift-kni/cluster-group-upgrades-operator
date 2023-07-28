@@ -92,6 +92,7 @@ var precacheJobView = []resourceTemplate{
 }
 var precacheDeleteTemplates = []resourceTemplate{
 	{"precache-ns-delete", templates.MngClusterActDeletePrecachingNS},
+	{"precache-crb-delete", templates.MngClusterActDeletePrecachingCRB},
 }
 
 var precacheNSViewTemplates = []resourceTemplate{
@@ -136,6 +137,7 @@ var backupNSView = []resourceTemplate{
 
 var backupDeleteTemplates = []resourceTemplate{
 	{"backup-ns-delete", templates.MngClusterActDeleteBackupNS},
+	{"backup-crb-delete", templates.MngClusterActDeleteBackupCRB},
 }
 
 var backupViews = []resourceTemplate{
@@ -200,7 +202,7 @@ func (r *ClusterGroupUpgradeReconciler) createResourcesFromTemplates(
 			if errors.IsAlreadyExists(err) {
 				r.Log.Info("[createResourcesFromTemplates] Already exists",
 					"cluster", data.Cluster, "template", item.resourceName)
-				return nil
+				continue
 			}
 			return err
 		}
