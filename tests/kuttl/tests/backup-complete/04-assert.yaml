@@ -78,3 +78,92 @@ status:
     cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
     cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
     cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+---
+#MCAs
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-ns-delete
+  namespace: spoke1
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-backup
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-crb-delete
+  namespace: spoke1
+spec:
+  actionType: Delete
+  kube:
+    name: backup-agent
+    resource: clusterrolebinding
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-ns-delete
+  namespace: spoke2
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-backup
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-crb-delete
+  namespace: spoke2
+spec:
+  actionType: Delete
+  kube:
+    name: backup-agent
+    resource: clusterrolebinding    
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-ns-delete
+  namespace: spoke5
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-backup
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-crb-delete
+  namespace: spoke5
+spec:
+  actionType: Delete
+  kube:
+    name: backup-agent
+    resource: clusterrolebinding    
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-ns-delete
+  namespace: spoke6
+spec:
+  actionType: Delete
+  kube:
+    name: openshift-talo-backup
+    resource: namespace
+---
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: backup-crb-delete
+  namespace: spoke6
+spec:
+  actionType: Delete
+  kube:
+    name: backup-agent
+    resource: clusterrolebinding

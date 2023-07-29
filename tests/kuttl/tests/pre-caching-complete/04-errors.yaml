@@ -1,0 +1,72 @@
+# MCVs
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-cluster-role-binding
+  namespace: spoke1
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-service-acct
+  namespace: spoke1
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-spec-configmap
+  namespace: spoke1
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-cluster-role-binding
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-service-acct
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-spec-configmap
+  namespace: spoke2
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-cluster-role-binding
+  namespace: spoke5
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-service-acct
+  namespace: spoke5
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-spec-configmap
+  namespace: spoke5
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-cluster-role-binding
+  namespace: spoke6
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-service-acct
+  namespace: spoke6
+---
+apiVersion: view.open-cluster-management.io/v1beta1
+kind: ManagedClusterView
+metadata:
+  name: view-precache-spec-configmap
+  namespace: spoke6

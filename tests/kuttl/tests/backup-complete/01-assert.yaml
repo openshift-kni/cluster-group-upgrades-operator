@@ -18,7 +18,7 @@ spec:
   - policy4-common-sriov-sub-policy
   remediationStrategy:
     maxConcurrency: 4
-    timeout: 240
+    timeout: 242
 status:
   backup:
     status:

@@ -244,3 +244,14 @@ spec:
     resource: namespace
     name: openshift-talo-pre-cache
 `
+
+// MngClusterActDeletePrecachingCRB deletes prechaching CRB
+const MngClusterActDeletePrecachingCRB string = `
+{{ template "actionGVK"}}
+{{ template "metadata" . }}
+spec:
+  actionType: Delete
+  kube:
+    resource: clusterrolebinding
+    name: pre-cache-crb
+`
