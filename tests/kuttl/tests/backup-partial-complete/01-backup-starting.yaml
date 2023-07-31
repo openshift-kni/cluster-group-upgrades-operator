@@ -4,11 +4,11 @@ kind: TestStep
 commands:
   - command: ../../../../deploy/upgrades/backup/patch-ns-mcv-status-processing-false.sh
     ignoreFailure: false
-  # Force two quick reconcile calls
-  - command: >
-      oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
-        --patch '{"spec":{"remediationStrategy":{"timeout":241}}}' --type=merge
+
+  #Remove MCAs from pre cleanup so they can be verified as part of post cleanup
+  - command: ../../../../deploy/upgrades/backup/mca-cleanup.sh
+    ignoreFailure: false
 
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
-        --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge
+        --patch '{"spec":{"remediationStrategy":{"timeout":242}}}' --type=merge

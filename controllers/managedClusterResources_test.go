@@ -323,6 +323,26 @@ spec:
     name: openshift-talo-pre-cache
 `,
 		},
+		{
+			name:         "delete crb",
+			resourceName: "delete-crb-action",
+			data: templateData{
+				Cluster: "test",
+			},
+			template: templates.MngClusterActDeletePrecachingCRB,
+			result: `
+apiVersion: action.open-cluster-management.io/v1beta1
+kind: ManagedClusterAction
+metadata:
+  name: delete-crb-action
+  namespace: test
+spec:
+  actionType: Delete
+  kube:
+    resource: clusterrolebinding
+    name: pre-cache-crb
+`,
+		},
 	}
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
