@@ -122,7 +122,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 
 	var spec ranv1alpha1.PrecachingSpec
 	for _, policy := range policies {
-		objects, err := r.stripPolicy(policy.Object)
+		objects, err := stripPolicy(policy.Object)
 		if err != nil {
 			return spec, err
 		}
@@ -147,7 +147,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	}
 
 	// Get the platform image spec from the policies
-	image, err := r.extractOpenshiftImagePlatformFromPolicies(policies)
+	image, err := r.extractOCPImageFromPolicies(policies)
 	if err != nil {
 		return *new(ranv1alpha1.PrecachingSpec), err
 	}
@@ -162,7 +162,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 // returns: []interface{} - list of the underlying objects in the policy
 //
 //	error
-func (r *ClusterGroupUpgradeReconciler) stripPolicy(
+func stripPolicy(
 	policyObject map[string]interface{}) ([]map[string]interface{}, error) {
 
 	var objects []map[string]interface{}

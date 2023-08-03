@@ -10,23 +10,23 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// extractOpenshiftImagePlatformFromPolicies validates that there's ClusterVersion policy, validates the content of ClusterVersion and extracts Image if needed
-func (r *ClusterGroupUpgradeReconciler) extractOpenshiftImagePlatformFromPolicies(
-	policies []*unstructured.Unstructured) (string, error) {
+type ocpVersionInfo struct {
+	upstream              string
+	channel               string
+	version               string
+	image                 string
+	clusterVersionCRFound bool
+}
 
-	var (
-		upstream                        string
-		channel                         string
-		version                         string
-		image                           string
-		foundClusterVersionGroupVersion bool
-	)
+func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (ocpVersionInfo, error) {
+
+	result := ocpVersionInfo{}
 
 	// validate ClusterVersionGroupVersionKind and keep track to upstream, channel, version, image
 	for _, policy := range policies {
-		objects, err := r.stripPolicy(policy.Object)
+		objects, err := stripPolicy(policy.Object)
 		if err != nil {
-			return "", err
+			return result, err
 		}
 		for _, object := range objects {
 			kind := object["kind"]
@@ -39,62 +39,70 @@ func (r *ClusterGroupUpgradeReconciler) extractOpenshiftImagePlatformFromPolicie
 
 				if object["spec"].(map[string]interface{})["upstream"] != nil {
 					nextUpstream := object["spec"].(map[string]interface{})["upstream"].(string)
-					if upstream == "" {
-						upstream = nextUpstream
-					} else if upstream != nextUpstream {
-						return "", errors.New("platform image defined more then once with conflicting upstream values")
+					if result.upstream == "" {
+						result.upstream = nextUpstream
+					} else if result.upstream != nextUpstream {
+						return result, errors.New("platform image defined more then once with conflicting upstream values")
 					}
 				}
 
 				if object["spec"].(map[string]interface{})["channel"] != nil {
 					nextChannel := object["spec"].(map[string]interface{})["channel"].(string)
-					if channel == "" {
-						channel = nextChannel
-					} else if channel != nextChannel {
-						return "", errors.New("platform image defined more then once with conflicting channel values")
+					if result.channel == "" {
+						result.channel = nextChannel
+					} else if result.channel != nextChannel {
+						return result, errors.New("platform image defined more then once with conflicting channel values")
 					}
 				}
 
 				if object["spec"].(map[string]interface{})["desiredUpdate"] != nil {
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"] != nil {
 						nextVersion := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"].(string)
-						if version == "" {
-							version = nextVersion
-						} else if version != nextVersion {
-							return "", errors.New("platform image defined more then once with conflicting version values")
+						if result.version == "" {
+							result.version = nextVersion
+						} else if result.version != nextVersion {
+							return result, errors.New("platform image defined more then once with conflicting version values")
 						}
 					}
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"] != nil {
 						nextImage := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"].(string)
-						if image == "" {
-							image = nextImage
-						} else if image != nextImage {
-							return "", errors.New("platform image defined more then once with conflicting image values")
+						if result.image == "" {
+							result.image = nextImage
+						} else if result.image != nextImage {
+							return result, errors.New("platform image defined more then once with conflicting image values")
 						}
 					}
 				}
 
-				foundClusterVersionGroupVersion = true
+				result.clusterVersionCRFound = true
 			default:
 				continue
 			}
 		}
 	}
+	return result, nil
+}
 
-	if !foundClusterVersionGroupVersion {
+// extractOCPImageFromPolicies validates that there's ClusterVersion policy, validates the content of ClusterVersion and extracts Image if needed
+func (r *ClusterGroupUpgradeReconciler) extractOCPImageFromPolicies(
+	policies []*unstructured.Unstructured) (string, error) {
+
+	versionInfo, err := extractOCPVersionInfoFromPolicies(policies)
+
+	if err != nil {
+		return "", err
+	}
+
+	if !versionInfo.clusterVersionCRFound {
 		return "", nil
 	}
 
 	// return early if policy is valid and user provided .Spec.DesiredUpdate.image in ClusterVersion
-	if image != "" {
-		return image, nil
+	if versionInfo.image != "" {
+		return versionInfo.image, nil
 	}
 
-	// check for all the required variables needed to make http call and retrieve image
-	if upstream == "" || channel == "" || version == "" {
-		return "", errors.New("policy with ClusterVersion must have upstream, channel, and version when image is not provided")
-	}
-	image, err := r.getImageForVersionFromUpdateGraph(upstream, channel, version)
+	image, err := r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
 	if err != nil {
 		return "", err
 	}
@@ -108,7 +116,30 @@ func (r *ClusterGroupUpgradeReconciler) extractOpenshiftImagePlatformFromPolicie
 func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policies []*unstructured.Unstructured) error {
 
-	_, err := r.extractOpenshiftImagePlatformFromPolicies(policies)
+	versionInfo, err := extractOCPVersionInfoFromPolicies(policies)
+
+	if err == nil {
+		if !versionInfo.clusterVersionCRFound || versionInfo.image != "" {
+			return nil
+		}
+		// check for all the required variables needed to make http call and retrieve image
+		if versionInfo.upstream == "" || versionInfo.channel == "" || versionInfo.version == "" {
+			err = errors.New("policy with ClusterVersion must have upstream, channel, and version when image is not provided")
+		} else if utils.ContainsTemplates(versionInfo.upstream) || utils.ContainsTemplates(versionInfo.channel) || utils.ContainsTemplates(versionInfo.version) {
+			if clusterGroupUpgrade.Spec.PreCaching {
+				// return error if the fields contain templates
+				err = errors.New("templatized ClusterVersion fields not supported with precaching")
+			}
+		} else {
+			var image string
+			image, err = r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
+
+			if image == "" {
+				err = errors.New("unable to find platform image for specified upstream, channel, and version")
+			}
+		}
+	}
+
 	if err != nil {
 		utils.SetStatusCondition(
 			&clusterGroupUpgrade.Status.Conditions,
@@ -117,10 +148,9 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 			metav1.ConditionFalse,
 			err.Error(),
 		)
-		return err
 	}
 
-	return nil
+	return err
 }
 
 func indexOf(element ranv1alpha1.ManagedPolicyForUpgrade, data []ranv1alpha1.ManagedPolicyForUpgrade) (int, error) {
