@@ -132,7 +132,6 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 			}
 		} else {
 			_, err = r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
-			}
 		}
 	}
 
