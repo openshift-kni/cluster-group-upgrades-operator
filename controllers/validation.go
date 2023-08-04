@@ -122,7 +122,7 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 		if !versionInfo.clusterVersionCRFound || versionInfo.image != "" {
 			return nil
 		}
-		// check for all the required variables needed to make http call and retrieve image
+		// Check for all the required parameters needed to make the update graph HTTP call and retrieve the image
 		if versionInfo.upstream == "" || versionInfo.channel == "" || versionInfo.version == "" {
 			err = errors.New("policy with ClusterVersion must have upstream, channel, and version when image is not provided")
 		} else if utils.ContainsTemplates(versionInfo.upstream) || utils.ContainsTemplates(versionInfo.channel) || utils.ContainsTemplates(versionInfo.version) {
