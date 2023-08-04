@@ -51,7 +51,15 @@ var (
 	//      $2: resource kind
 	//      $3: resource namespace
 	regexpLookup = regexp.MustCompile(`{{hub.*lookup\s+"(.*?)"\s+"(.*?)"\s+"(.*?)".*hub}}`)
+
+	// This expression matches all template types
+	regexpAllTemplates = regexp.MustCompile(`{{.*}}`)
 )
+
+// ContainsTemplates checks if the string contains some templatized parts
+func ContainsTemplates(s string) bool {
+	return regexpAllTemplates.MatchString(s)
+}
 
 func stringToYaml(s string) (interface{}, error) {
 	var yamlObj interface{}
