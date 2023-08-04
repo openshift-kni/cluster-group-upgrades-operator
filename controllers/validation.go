@@ -131,11 +131,7 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 				err = errors.New("templatized ClusterVersion fields not supported with precaching")
 			}
 		} else {
-			var image string
-			image, err = r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
-
-			if image == "" {
-				err = errors.New("unable to find platform image for specified upstream, channel, and version")
+			_, err = r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
 			}
 		}
 	}
