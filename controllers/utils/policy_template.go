@@ -52,7 +52,7 @@ var (
 	//      $3: resource namespace
 	regexpLookup = regexp.MustCompile(`{{hub.*lookup\s+"(.*?)"\s+"(.*?)"\s+"(.*?)".*hub}}`)
 
-	// This expression matches all types templates
+	// This expression matches all template types
 	regexpAllTemplates = regexp.MustCompile(`{{.*}}`)
 )
 
