@@ -189,8 +189,7 @@ spec:
                 subPath: lib/cni
                 readOnly: true
               - mountPath: /host/var/lib/kubelet
-                name: host-var
-                subPath: lib/kubelet
+                name: host-var-lib-kubelet
                 readOnly: true
               - mountPath: /host/var/tmp
                 name: host-var
@@ -239,6 +238,10 @@ spec:
                 path: /var
                 type: Directory
               name: host-var
+            - hostPath:
+                path: /var/lib/kubelet
+                type: Directory
+              name: host-var-lib-kubelet
             - hostPath:
                 path: /tmp
                 type: Directory
