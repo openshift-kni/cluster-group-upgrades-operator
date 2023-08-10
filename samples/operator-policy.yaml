@@ -1,0 +1,102 @@
+apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: common-cnfdf22-subscriptions-policy
+  namespace: ztp-common-cnfdf22
+spec:
+  disabled: false
+  policy-templates:
+    - objectDefinition:
+        apiVersion: policy.open-cluster-management.io/v1
+        kind: ConfigurationPolicy
+        metadata:
+          name: common-cnfdf22-subscriptions-policy-config
+        spec:
+          evaluationInterval:
+            compliant: 10m
+            noncompliant: 10s
+          namespaceselector:
+            exclude:
+              - kube-*
+            include:
+              - "*"
+          object-templates:
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1alpha1
+                kind: Subscription
+                metadata:
+                  name: sriov-network-operator-subscription
+                  namespace: openshift-sriov-network-operator
+                spec:
+                  name: sriov-network-operator
+                  channel: stable
+                  installPlanApproval: Manual
+                  source: redhat-operators-disconnected
+                  sourceNamespace: openshift-marketplace
+                status:
+                  state: AtLatestKnown
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: openshift-sriov-network-operator
+                  annotations:
+                    workload.openshift.io/allowed: management
+            - complianceType: musthave
+              objectDefinition:
+                apiVersion: operators.coreos.com/v1
+                kind: OperatorGroup
+                metadata:
+                  name: sriov-network-operators
+                  namespace: openshift-sriov-network-operator
+                spec:
+                  targetNamespaces:
+                    - openshift-sriov-network-operator
+          remediationAction: inform
+          severity: low
+  remediationAction: inform
+status:
+  compliant: Compliant
+  placement:
+    - placementBinding: common-cnfdf22-placementbinding
+      placementRule: common-cnfdf22-placementrules
+  status:
+    - clustername: cnfdf22
+      clusternamespace: cnfdf22
+      compliant: Compliant
+---
+apiVersion: apps.open-cluster-management.io/v1
+kind: PlacementRule
+metadata:
+  name: common-cnfdf22-placementrules
+  namespace: ztp-common-cnfdf22
+spec:
+  clusterSelector:
+    matchExpressions:
+      - key: common-cnfdf22
+        operator: In
+        values:
+          - "true"
+status:
+  decisions:
+    - clusterName: cnfdf22
+      clusterNamespace: cnfdf22
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: common-cnfdf22-placementbinding
+  namespace: ztp-common-cnfdf22
+placementRef:
+  name: common-cnfdf22-placementrules
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+subjects:
+  - name: common-cnfdf22-subscriptions-policy
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy
+  - name: common-cnfdf22-config-policy
+    apiGroup: policy.open-cluster-management.io
+    kind: Policy
