@@ -3,7 +3,7 @@ kind: Service
 metadata:
   labels:
     app.kubernetes.io/name: talm-operator
-    app.kuberenetes.io/component: talm
+    app.kubernetes.io/component: talm
     control-plane: controller-manager
   name: controller-manager-metrics-service
   namespace: system
@@ -14,5 +14,5 @@ spec:
     targetPort: https
   selector:
     app.kubernetes.io/name: talm-operator
-    app.kuberenetes.io/component: talm
+    app.kubernetes.io/component: talm
     control-plane: controller-manager
