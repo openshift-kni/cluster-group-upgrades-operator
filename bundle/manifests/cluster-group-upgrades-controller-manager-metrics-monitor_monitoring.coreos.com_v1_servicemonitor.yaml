@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    app.kuberenetes.io/component: talm
+    app.kubernetes.io/component: talm
     app.kubernetes.io/name: talm-operator
     control-plane: controller-manager
   name: cluster-group-upgrades-controller-manager-metrics-monitor
@@ -16,6 +16,6 @@ spec:
       insecureSkipVerify: true
   selector:
     matchLabels:
-      app.kuberenetes.io/component: talm
+      app.kubernetes.io/component: talm
       app.kubernetes.io/name: talm-operator
       control-plane: controller-manager
