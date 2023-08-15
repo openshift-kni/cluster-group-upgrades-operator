@@ -294,7 +294,14 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 				GenericFunc: func(e event.GenericEvent) bool { return false },
 				CreateFunc:  func(e event.CreateEvent) bool { return true },
 				DeleteFunc:  func(e event.DeleteEvent) bool { return false },
-				UpdateFunc:  func(e event.UpdateEvent) bool { return false },
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					// Check if the event was deleting the label "ztp-done"
+					// We want to return true for that event only, and false for everything else
+					_, labelExistsInOld := e.ObjectOld.GetLabels()[ztpDoneLabel]
+					_, labelExistsInNew := e.ObjectNew.GetLabels()[ztpDoneLabel]
+
+					return labelExistsInOld && !labelExistsInNew
+				},
 			})).
 		Owns(&ranv1alpha1.ClusterGroupUpgrade{},
 			// watch for delete event for owned ClusterGroupUpgrade
