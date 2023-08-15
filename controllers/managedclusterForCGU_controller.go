@@ -291,9 +291,8 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					// Check if the event was deleting the label "ztp-done"
 					// We want to return true for that event only, and false for everything else
-					const labelName = "ztp-done"
-					_, labelExistsInOld := e.ObjectOld.GetLabels()[labelName]
-					_, labelExistsInNew := e.ObjectNew.GetLabels()[labelName]
+					_, labelExistsInOld := e.ObjectOld.GetLabels()[ztpDoneLabel]
+					_, labelExistsInNew := e.ObjectNew.GetLabels()[ztpDoneLabel]
 
 					return labelExistsInOld && !labelExistsInNew
 				},
