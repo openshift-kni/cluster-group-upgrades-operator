@@ -3,6 +3,8 @@ kind: Service
 metadata:
   creationTimestamp: null
   labels:
+    app.kubernetes.io/name: talm-operator
+    app.kubernetes.io/component: talm
     control-plane: controller-manager
   name: cluster-group-upgrades-operator-controller-manager-metrics-svc
 spec:
@@ -11,6 +13,8 @@ spec:
     port: 8443
     targetPort: https
   selector:
+    app.kubernetes.io/name: talm-operator
+    app.kubernetes.io/component: talm
     control-plane: controller-manager
 status:
   loadBalancer: {}
