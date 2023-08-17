@@ -123,7 +123,6 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		if len(policies) == 0 {
 			// likely no policies were created, so no child policies found
 			r.Log.Info("WARN: No child policies found for cluster", "Name", managedCluster.Name)
-			return ctrl.Result{}, nil
 		}
 
 		// create clusterGroupUpgrade
@@ -198,11 +197,6 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 			}
 			policyWaveMap[policyName[1]] = deployWaveInt
 		}
-	}
-
-	if len(policyWaveMap) == 0 {
-		r.Log.Info("No policies need to be managed by ClusterGroupUpgrade operator")
-		return nil
 	}
 
 	sortedManagedPolicies := sortMapByValue(policyWaveMap)
