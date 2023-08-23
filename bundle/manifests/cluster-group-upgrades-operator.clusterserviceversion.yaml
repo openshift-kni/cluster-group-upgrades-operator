@@ -361,7 +361,7 @@ spec:
           - create
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - name: cluster-group-upgrades-controller-manager
+      - name: cluster-group-upgrades-controller-manager-v2
         spec:
           replicas: 1
           selector:
