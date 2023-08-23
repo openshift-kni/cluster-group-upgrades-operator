@@ -118,6 +118,12 @@ Depending on how the ClusterGroupUpgrade CR is defined, the operator may create 
 1. Run **RECOVERY_IMG=*your_recovery_repo_image* make docker-build-recovery docker-push-recovery**
 1. Run **make deploy IMG=*your_repo_image* RECOVERY_IMG=*your_recovery_repo_image***
 
+### How to deploy bundle
+The operator sdk can be used to run, upgrade, or remove a bundle on a cluster.
+1. To deploy the bundle run **make bundle-build bundle-push bundle-run IMG=*your_repo_image***
+2. To upgrade previously deployed bundle run **make bundle-build bundle-push bundle-upgrade IMG=*your_repo_image***
+3. To clean deployed bundle run **make bundle-clean**
+
 ## How to test
 Found [here](/tests)
 
