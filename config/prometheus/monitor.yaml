@@ -4,8 +4,6 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   labels:
-    app.kubernetes.io/name: talm-operator
-    app.kubernetes.io/component: talm
     control-plane: controller-manager
   name: controller-manager-metrics-monitor
   namespace: system
@@ -19,8 +17,6 @@ spec:
         insecureSkipVerify: true
   selector:
     matchLabels:
-      app.kubernetes.io/name: talm-operator
-      app.kubernetes.io/component: talm
       control-plane: controller-manager
 ---
 apiVersion: rbac.authorization.k8s.io/v1
