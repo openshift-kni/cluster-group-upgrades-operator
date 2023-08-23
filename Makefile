@@ -277,6 +277,18 @@ bundle-push: ## Push the bundle image.
 bundle-check: bundle
 	hack/check-git-tree.sh
 
+.PHONY: bundle-run
+bundle-run: # Install bundle on cluster using operator sdk. Index image is require due to upstream issue: https://github.com/operator-framework/operator-registry/issues/984
+	$(OPERATOR_SDK) --index-image=quay.io/operator-framework/opm:v1.23.0 run bundle $(BUNDLE_IMG)
+
+.PHONY: bundle-upgrade
+bundle-upgrade: # Upgrade bundle on cluster using operator sdk.
+	$(OPERATOR_SDK) run bundle-upgrade $(BUNDLE_IMG)
+
+.PHONY: bundle-clean
+bundle-clean: # Uninstall bundle on cluster using operator sdk.
+	$(OPERATOR_SDK) cleanup cluster-group-upgrades-operator
+
 .PHONY: opm
 OPM = ./bin/opm
 opm: ## Download opm locally if necessary.
