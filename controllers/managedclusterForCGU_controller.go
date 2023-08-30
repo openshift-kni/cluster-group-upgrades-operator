@@ -142,7 +142,7 @@ func requeueNotReadyCluster(managedCluster *clusterv1.ManagedCluster) reconcile.
 	if time.Since(managedCluster.CreationTimestamp.Time) > 2*time.Hour {
 		return requeueWithLongInterval()
 	}
-	return requeueWithMediumInterval()
+	return requeueWithLongInterval()
 }
 
 // sort map[string]int by value in ascending order, return sorted keys
@@ -292,10 +292,21 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					// Check if the event was deleting the label "ztp-done"
 					// We want to return true for that event only, and false for everything else
-					_, labelExistsInOld := e.ObjectOld.GetLabels()[ztpDoneLabel]
-					_, labelExistsInNew := e.ObjectNew.GetLabels()[ztpDoneLabel]
+					_, doneLabelExistsInOld := e.ObjectOld.GetLabels()[ztpDoneLabel]
+					_, doneLabelExistsInNew := e.ObjectNew.GetLabels()[ztpDoneLabel]
 
-					return labelExistsInOld && !labelExistsInNew
+					doneLabelRemoved := doneLabelExistsInOld && !doneLabelExistsInNew
+
+					var availableInNew, availableInOld bool
+					availableCondition := meta.FindStatusCondition(e.ObjectOld.(*clusterv1.ManagedCluster).Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+					if availableCondition != nil && availableCondition.Status == metav1.ConditionTrue {
+						availableInOld = true
+					}
+					availableCondition = meta.FindStatusCondition(e.ObjectNew.(*clusterv1.ManagedCluster).Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
+					if availableCondition != nil && availableCondition.Status == metav1.ConditionTrue {
+						availableInNew = true
+					}
+					return (doneLabelRemoved && availableInNew) || (!availableInOld && availableInNew && !doneLabelExistsInNew)
 				},
 			})).
 		Owns(&ranv1alpha1.ClusterGroupUpgrade{},
