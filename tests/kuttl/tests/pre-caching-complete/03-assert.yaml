@@ -130,7 +130,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.15.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -292,7 +292,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.15.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -454,7 +454,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.15.0
               name: pre-cache-container
               resources: {}
               securityContext:
@@ -616,7 +616,7 @@ spec:
                 valueFrom:
                   fieldRef:
                     fieldPath: spec.nodeName
-              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.14.0
+              image: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.15.0
               name: pre-cache-container
               resources: {}
               securityContext:
