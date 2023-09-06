@@ -61,12 +61,12 @@ spec:
           namespace: openshift-talo-backup
 `
 
-// TODO: image must use var {{ .WorkloadImage }} rather than hard coded image
-// during template initialization, this var must be recovered from csv
-
 // MngClusterActCreateBackupJob creates k8s job
+// Security practices recommend only those directories which are essential to the job should be explicitly mounted.
+// Thus, the host filesystem is mounted on a need-to-have basis with most volumes configured to have read-only privilege.
+// The sysroot directory and log device are the exception in which these volumes are configured with read-write access.
 const MngClusterActCreateBackupJob string = `
-{{ template "actionGVK"}}
+{{ template "actionGVK" }}
 {{ template "metadata" . }}
 spec:
   actionType: Create
@@ -91,8 +91,7 @@ spec:
               target.workload.openshift.io/management: '{"effect":"PreferredDuringScheduling"}'
           spec:
             containers:
-              -
-                args:
+              - args:
                   - launchBackup
                 image: {{ .WorkloadImage }} 
                 name: container-image
@@ -101,17 +100,94 @@ spec:
                   runAsUser: 0
                 tty: true
                 volumeMounts:
-                  -
-                    mountPath: /host
-                    name: backup
+                  - mountPath: /host
+                    name: host
+                  - mountPath: /host/usr/bin
+                    name: host-usr
+                    subPath: bin
+                    readOnly: true
+                  - mountPath: /host/usr/lib
+                    name: host-usr
+                    subPath: lib
+                    readOnly: true
+                  - mountPath: /host/usr/lib64
+                    name: host-usr
+                    subPath: lib64
+                    readOnly: true
+                  - mountPath: /host/usr/libexec
+                    name: host-usr
+                    subPath: libexec
+                    readOnly: true
+                  - mountPath: /host/usr/local
+                    name: host-usrlocal
+                    readOnly: true
+                  - mountPath: /host/proc
+                    name: host-proc
+                    readOnly: true
+                  - mountPath: /host/etc
+                    name: host-etc
+                    readOnly: true
+                  - mountPath: /host/var/recovery
+                    name: host-var-recovery
+                  - mountPath: /host/var/lib/kubelet
+                    name: host-var-lib-kubelet
+                    readOnly: true
+                  - mountPath: /host/var/lib/etcd
+                    name: host-var-lib
+                    subPath: etcd
+                    readOnly: true
+                  - mountPath: /host/boot
+                    name: host-boot
+                    readOnly: true
+                  - mountPath: /host/sysroot
+                    name: host-sysroot
+                  - mountPath: /host/dev/log
+                    name: host-dev-log
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
-              -
-                hostPath:
-                  path: /
+              - emptyDir: {}
+                name: host
+              - hostPath:
+                  path: /usr
                   type: Directory
-                name: backup
+                name: host-usr
+              - hostPath:
+                  path: /usr/local
+                  type: Directory
+                name: host-usrlocal
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /var/recovery
+                  type: Directory
+                name: host-var-recovery
+              - hostPath:
+                  path: /var/lib/
+                  type: Directory
+                name: host-var-lib
+              - hostPath:
+                  path: /var/lib/kubelet
+                  type: Directory
+                name: host-var-lib-kubelet
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /boot
+                  type: Directory
+                name: host-boot
+              - hostPath:
+                  path: /sysroot
+                  type: Directory
+                name: host-sysroot
+              - hostPath:
+                  path: /dev/log
+                  type: Socket
+                name: host-dev-log
 `
 
 // MngClusterActDeleteBackupNS deletes namespace

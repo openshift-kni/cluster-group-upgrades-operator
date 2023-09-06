@@ -21,6 +21,8 @@ import (
 	"os/exec"
 	"syscall"
 
+	"golang.org/x/sys/unix"
+
 	"github.com/spf13/cobra"
 
 	"os"
@@ -52,6 +54,12 @@ func RecoveryInProgress(backupPath string) bool {
 //
 //nolint:gocritic
 func LaunchBackup() error {
+
+	// Prepare the host directory for taking backups
+	if err := InitBackup(); err != nil {
+		log.Error("Failed to initialize the pre-requisite for taking a backup")
+		return err
+	}
 
 	// change root directory to /host
 	if err := syscall.Chroot(host); err != nil {
@@ -124,6 +132,61 @@ func LaunchBackup() error {
 
 	return nil
 
+}
+
+// InitBackup Prepare backup pre-requisites
+// returns: 			error
+func InitBackup() error {
+
+	hostDev := filepath.Join(host, "dev")
+	hostDevNull := filepath.Join(hostDev, "null")
+	hostSysroot := filepath.Join(host, "sysroot")
+
+	// Create null device (/dev/null) on /host
+	if err := os.MkdirAll(hostDev, 0o751); err != nil {
+		log.Errorf("Failed to create %s directory, err: %s\n", hostDev, err)
+		return err
+	}
+	if err := syscall.Mknod(hostDevNull, uint32(os.FileMode(0o666)), int(unix.Mkdev(uint32(1), uint32(3)))); err != nil {
+		log.Errorf("Failed to create device %s, err: %s\n", hostDevNull, err)
+		return err
+	}
+
+	// Remount host/sysroot for read-write access for executing ostree admin <undeploy|pin>
+	if err := syscall.Mount(hostSysroot, hostSysroot, "", syscall.MS_REMOUNT, ""); err != nil {
+		log.Errorf("Failed to remount %s directory, err: %s\n", hostSysroot, err)
+		return err
+	}
+	log.Infof("Successfully remounted %s with r/w permission\n", hostSysroot)
+
+	// Create symbolic links for running ostree commands in jailed root "host"
+	if err := os.Chdir(host); err != nil {
+		log.Error("Failed to chdir to /host/")
+		return err
+	}
+	// Create symbolic link for usr/lib64 to lib64
+	if err := syscall.Symlink("usr/lib64", "lib64"); err != nil {
+		log.Errorf("Failed to create a link from /usr/lib64 to lib64 from chroot %s\n, err: %s", host, err)
+		return err
+	}
+	// Create symbolic links for usr/bin to bin
+	if err := syscall.Symlink("usr/bin", "bin"); err != nil {
+		log.Error("Failed to create a link from /usr/bin to /bin")
+		return err
+	}
+
+	// Create symbolic links for sysroot/ostree to ostree
+	if err := syscall.Symlink("sysroot/ostree", "ostree"); err != nil {
+		log.Error("Failed to create a link from /sysroot/ostree/ to /ostree")
+		return err
+	}
+
+	if err := os.Chdir("/"); err != nil {
+		log.Error("Failed to chdir to /")
+		return err
+	}
+
+	return nil
 }
 
 // Cleanup deletes all old subdirectories and files in the recovery partition
