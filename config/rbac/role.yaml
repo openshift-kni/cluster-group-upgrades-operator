@@ -54,6 +54,7 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
   - get
   - list
   - patch
@@ -106,6 +107,7 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
   - get
   - list
   - patch

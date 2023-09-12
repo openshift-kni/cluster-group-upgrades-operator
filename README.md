@@ -13,6 +13,9 @@ and it contains the following controllers:
 * **clustergroupupgrade** that's doing both preparation steps like pre-caching and the actual cluster upgrade
 * **managedclusterForCGU** used for initially deploying clusters with [Zero Touch Provisioning(ZTP)](https://github.com/openshift-kni/cnf-features-deploy/tree/master/ztp)
 
+## Prerequisites
+* Advanced Cluster Management (ACM) operator version 2.9 installed on the hub cluster
+
 ## The clustergroupupgrade controller
 
 A ClusterGroupUpgrade CR defines a desired upgrade to a group clusters.

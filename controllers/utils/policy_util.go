@@ -77,43 +77,37 @@ func DeletePolicies(ctx context.Context, c client.Client, ns string, labels map[
 
 // DeletePlacementBindings deletes PlacementBindings
 func DeletePlacementBindings(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
-	listOpts := []client.ListOption{
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(ns),
 		client.MatchingLabels(labels),
 	}
-	placementBindingsList := &policiesv1.PlacementBindingList{}
-	if err := c.List(ctx, placementBindingsList, listOpts...); err != nil {
+	placementBinding := &unstructured.Unstructured{}
+	placementBinding.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PlacementBinding",
+		Version: "v1",
+	})
+	if err := c.DeleteAllOf(ctx, placementBinding, deleteAllOpts...); err != nil {
 		return err
-	}
-
-	for _, placementBinding := range placementBindingsList.Items {
-		if err := c.Delete(ctx, &placementBinding); err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
 // DeletePlacementRules deletes PlacementRules
 func DeletePlacementRules(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
-	listOpts := []client.ListOption{
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(ns),
 		client.MatchingLabels(labels),
 	}
-	placementRulesList := &unstructured.UnstructuredList{}
-	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
+
+	placementRule := &unstructured.Unstructured{}
+	placementRule.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
-		Kind:    "PlacementRuleList",
+		Kind:    "PlacementRule",
 		Version: "v1",
 	})
-	if err := c.List(ctx, placementRulesList, listOpts...); err != nil {
+	if err := c.DeleteAllOf(ctx, placementRule, deleteAllOpts...); err != nil {
 		return err
-	}
-
-	for _, policy := range placementRulesList.Items {
-		if err := c.Delete(ctx, &policy); err != nil {
-			return err
-		}
 	}
 	return nil
 }

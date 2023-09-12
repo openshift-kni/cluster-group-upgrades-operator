@@ -133,27 +133,29 @@ func (r *ClusterGroupUpgradeReconciler) deleteClusterLabels(
 
 func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
+	var targetNamespaces []string
+	for _, policy := range clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade {
+		if _, ok := utils.FindStringInSlice(targetNamespaces, policy.Namespace); !ok {
+			targetNamespaces = append(targetNamespaces, policy.Namespace)
+		}
+	}
 
 	labels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
-	err := utils.DeletePlacementRules(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
-	if err != nil {
-		return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
-	}
-	clusterGroupUpgrade.Status.PlacementRules = nil
+	for _, ns := range targetNamespaces {
+		err := utils.DeletePlacementRules(ctx, r.Client, ns, labels)
+		if err != nil {
+			return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		}
+		clusterGroupUpgrade.Status.PlacementRules = nil
 
-	err = utils.DeletePlacementBindings(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
-	if err != nil {
-		return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		err = utils.DeletePlacementBindings(ctx, r.Client, ns, labels)
+		if err != nil {
+			return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		}
+		clusterGroupUpgrade.Status.PlacementBindings = nil
 	}
-	clusterGroupUpgrade.Status.PlacementBindings = nil
 
-	err = utils.DeletePolicies(ctx, r.Client, clusterGroupUpgrade.Namespace, labels)
-	if err != nil {
-		return fmt.Errorf("failed to delete Policies for CGU %s: %v", clusterGroupUpgrade.Name, err)
-	}
-	clusterGroupUpgrade.Status.CopiedPolicies = nil
-
-	err = r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade)
+	err := r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
