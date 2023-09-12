@@ -93,8 +93,8 @@ func TestControllerReconciler(t *testing.T) {
 				},
 			},
 			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
-				if result.IsZero() || result.RequeueAfter != requeueWithLongInterval().RequeueAfter {
-					t.Errorf("expect to reconcile after %v, but failed", requeueWithLongInterval().RequeueAfter)
+				if result != doNotRequeue() {
+					t.Errorf("expect no requeue")
 				}
 			},
 		},
@@ -122,8 +122,8 @@ func TestControllerReconciler(t *testing.T) {
 				},
 			},
 			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
-				if result.IsZero() || result.RequeueAfter != requeueWithMediumInterval().RequeueAfter {
-					t.Errorf("expect to reconcile after %v, but failed", requeueWithMediumInterval().RequeueAfter)
+				if result != doNotRequeue() {
+					t.Errorf("expect no requeue")
 				}
 			},
 		},
