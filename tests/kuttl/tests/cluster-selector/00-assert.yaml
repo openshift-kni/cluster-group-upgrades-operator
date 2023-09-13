@@ -38,11 +38,6 @@ status:
     reason: NotEnabled
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-cluster-selector-policy1-common-cluster-versi-kuttl
-  - cgu-cluster-selector-policy2-common-pao-sub-polic-kuttl
-  - cgu-cluster-selector-policy3-common-ptp-sub-polic-kuttl
-  - cgu-cluster-selector-policy4-common-sriov-sub-pol-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
@@ -78,16 +73,8 @@ status:
     - spoke6
   - - spoke4
   safeResourceNames:
-    /cgu-cluster-selector-common-cluster-version-policy-config: cgu-cluster-selector-common-cluster-version-policy-config-kuttl
-    /cgu-cluster-selector-common-pao-sub-policy-config: cgu-cluster-selector-common-pao-sub-policy-config-kuttl
-    /cgu-cluster-selector-common-ptp-sub-policy-config: cgu-cluster-selector-common-ptp-sub-policy-config-kuttl
-    /cgu-cluster-selector-common-sriov-sub-policy-config: cgu-cluster-selector-common-sriov-sub-policy-config-kuttl
-    default/cgu-cluster-selector-policy1-common-cluster-version-policy: cgu-cluster-selector-policy1-common-cluster-versi-kuttl
     default/cgu-cluster-selector-policy1-common-cluster-version-policy-placement: cgu-cluster-selector-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-cluster-selector-policy2-common-pao-sub-policy: cgu-cluster-selector-policy2-common-pao-sub-polic-kuttl
     default/cgu-cluster-selector-policy2-common-pao-sub-policy-placement: cgu-cluster-selector-policy2-common-pao-sub-policy-placement-kuttl
-    default/cgu-cluster-selector-policy3-common-ptp-sub-policy: cgu-cluster-selector-policy3-common-ptp-sub-polic-kuttl
     default/cgu-cluster-selector-policy3-common-ptp-sub-policy-placement: cgu-cluster-selector-policy3-common-ptp-sub-policy-placement-kuttl
-    default/cgu-cluster-selector-policy4-common-sriov-sub-policy: cgu-cluster-selector-policy4-common-sriov-sub-pol-kuttl
     default/cgu-cluster-selector-policy4-common-sriov-sub-policy-placement: cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
   status: {}

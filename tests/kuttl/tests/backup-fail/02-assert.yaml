@@ -43,9 +43,6 @@ status:
     reason: NotStarted
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-policy3-common-ptp-sub-policy-kuttl
-  - cgu-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
   - policy0-common-config-policy
   - policy2-common-pao-sub-policy
@@ -72,11 +69,7 @@ status:
     - spoke1
     - spoke5
   safeResourceNames:
-    /cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    /cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
-    default/cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
     default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    default/cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
     default/cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
 ---
 apiVersion: view.open-cluster-management.io/v1beta1

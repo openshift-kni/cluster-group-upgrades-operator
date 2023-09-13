@@ -28,9 +28,6 @@ status:
     reason: NotEnabled
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-adjust-max-conc-policy1-common-cluster-versio-kuttl
-  - cgu-adjust-max-conc-policy2-common-pao-sub-policy-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
@@ -50,10 +47,6 @@ status:
   remediationPlan:
   - - spoke1
   safeResourceNames:
-    /cgu-adjust-max-conc-common-cluster-version-policy-config: cgu-adjust-max-conc-common-cluster-version-policy-config-kuttl
-    /cgu-adjust-max-conc-common-pao-sub-policy-config: cgu-adjust-max-conc-common-pao-sub-policy-config-kuttl
-    default/cgu-adjust-max-conc-policy1-common-cluster-version-policy: cgu-adjust-max-conc-policy1-common-cluster-versio-kuttl
     default/cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement: cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-adjust-max-conc-policy2-common-pao-sub-policy: cgu-adjust-max-conc-policy2-common-pao-sub-policy-kuttl
     default/cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement: cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
   status: {}

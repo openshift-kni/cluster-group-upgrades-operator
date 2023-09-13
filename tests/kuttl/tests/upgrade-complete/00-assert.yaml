@@ -29,9 +29,6 @@ status:
     reason: NotEnabled
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
-  - cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
   managedPoliciesForUpgrade:
@@ -52,10 +49,40 @@ status:
   - - spoke1
   - - spoke4
   safeResourceNames:
-    /cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
-    /cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
-    default/cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
     default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
     default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status: {}
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  namespace: default
+subFilter: restricted
+bindingOverrides:
+  remediationAction: enforce
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: policy1-common-cluster-version-policy
+---
+apiVersion: policy.open-cluster-management.io/v1
+kind: PlacementBinding
+metadata:
+  name: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+  namespace: default
+subFilter: restricted
+bindingOverrides:
+  remediationAction: enforce
+placementRef:
+  apiGroup: apps.open-cluster-management.io
+  kind: PlacementRule
+  name: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+subjects:
+- apiGroup: policy.open-cluster-management.io
+  kind: Policy
+  name: policy2-common-pao-sub-policy

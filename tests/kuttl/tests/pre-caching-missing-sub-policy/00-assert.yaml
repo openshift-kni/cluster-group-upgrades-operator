@@ -32,8 +32,6 @@ status:
     reason: PrecacheSpecIncomplete
     status: 'False'
     type: PrecacheSpecValid
-  copiedPolicies:
-  - cgu-policy0-common-config-policy-kuttl
   managedPoliciesForUpgrade:
   - name: policy0-common-config-policy
     namespace: default
@@ -46,8 +44,6 @@ status:
   precaching:
     spec: {}
   safeResourceNames:
-    /cgu-common-config-policy-config: cgu-common-config-policy-config-kuttl
-    default/cgu-policy0-common-config-policy: cgu-policy0-common-config-policy-kuttl
     default/cgu-policy0-common-config-policy-placement: cgu-policy0-common-config-policy-placement-kuttl
   remediationPlan:
   - - spoke1
