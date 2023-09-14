@@ -52,8 +52,7 @@ IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
 RECOVERY_IMG ?= $(IMAGE_TAG_BASE)-recovery:$(VERSION)
 
-# Produce CRDs that work back to Kubernetes 1.11 (no version conversion)
-CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
+CRD_OPTIONS ?= "crd"
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
