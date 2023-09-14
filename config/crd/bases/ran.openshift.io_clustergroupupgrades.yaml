@@ -1,11 +1,9 @@
-
 ---
 apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.4.1
-  creationTimestamp: null
+    controller-gen.kubebuilder.io/version: v0.13.0
   name: clustergroupupgrades.ran.openshift.io
 spec:
   group: ran.openshift.io
@@ -109,7 +107,7 @@ spec:
               batchTimeoutAction:
                 description: 'The Batch Timeout Action can be specified to control
                   what happens when a batch times out. The default value is `Continue`.
-                  The possible values are:   - Continue   - Abort'
+                  The possible values are: - Continue - Abort'
                 type: string
               blockingCRs:
                 items:
@@ -125,11 +123,10 @@ spec:
               clusterLabelSelectors:
                 description: 'This field holds a list of expressions or labels that
                   will be used to determine what clusters to include in the operation.
-                  The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       -
-                  key: label1         operator: In         values:           - value1a           -
-                  value1b   - matchLabels:       label2: value2   - matchExpressions:       -
-                  key: label3         operator: In         values:           - value3     matchLabels:       label4:
-                  value4'
+                  The expected format is as follows: clusterLabelSelectors: - matchExpressions:
+                  - key: label1 operator: In values: - value1a - value1b - matchLabels:
+                  label2: value2 - matchExpressions: - key: label3 operator: In values:
+                  - value3 matchLabels: label4: value4'
                 items:
                   description: A label selector is a label query over a set of resources.
                     The result of matchLabels and matchExpressions are ANDed. An empty
@@ -177,12 +174,13 @@ spec:
                         are ANDed.
                       type: object
                   type: object
+                  x-kubernetes-map-type: atomic
                 type: array
               clusterSelector:
                 description: 'This field holds a label common to multiple clusters
-                  that will be updated. The expected format is as follows: clusterSelector:   -
-                  label1Name=label1Value   - label2Name=label2Value If the value is
-                  empty, then the expected format is: clusterSelector:   - label1Name
+                  that will be updated. The expected format is as follows: clusterSelector:
+                  - label1Name=label1Value - label2Name=label2Value If the value is
+                  empty, then the expected format is: clusterSelector: - label1Name
                   All the clusters matching the labels specified in clusterSelector
                   will be included in the update plan. Deprecated: Use ClusterLabelSelectors
                   instead'
@@ -289,14 +287,12 @@ spec:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
                     use as an array at the field path .status.conditions.  For example,
-                    \n \ttype FooStatus struct{ \t    // Represents the observations
-                    of a foo's current state. \t    // Known .status.conditions.type
-                    are: \"Available\", \"Progressing\", and \"Degraded\" \t    //
-                    +patchMergeKey=type \t    // +patchStrategy=merge \t    // +listType=map
-                    \t    // +listMapKey=type \t    Conditions []metav1.Condition
+                    \n type FooStatus struct{ // Represents the observations of a
+                    foo's current state. // Known .status.conditions.type are: \"Available\",
+                    \"Progressing\", and \"Degraded\" // +patchMergeKey=type // +patchStrategy=merge
+                    // +listType=map // +listMapKey=type Conditions []metav1.Condition
                     `json:\"conditions,omitempty\" patchStrategy:\"merge\" patchMergeKey:\"type\"
-                    protobuf:\"bytes,1,rep,name=conditions\"` \n \t    // other fields
-                    \t}"
+                    protobuf:\"bytes,1,rep,name=conditions\"` \n // other fields }"
                   properties:
                     lastTransitionTime:
                       description: lastTransitionTime is the last time the condition
@@ -478,9 +474,3 @@ spec:
     storage: true
     subresources:
       status: {}
-status:
-  acceptedNames:
-    kind: ""
-    plural: ""
-  conditions: []
-  storedVersions: []
