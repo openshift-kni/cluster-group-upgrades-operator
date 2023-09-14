@@ -11,8 +11,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
-	k8s.io/api v0.28.1
-	k8s.io/apimachinery v0.28.1
+	k8s.io/api v0.28.2
+	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.11.0
@@ -26,7 +26,7 @@ require (
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
 	golang.org/x/sys v0.12.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/code-generator v0.28.1
+	k8s.io/code-generator v0.28.2
 	sigs.k8s.io/structured-merge-diff/v4 v4.3.0
 )
 
@@ -94,4 +94,4 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.28.1
+replace k8s.io/client-go => k8s.io/client-go v0.28.2
