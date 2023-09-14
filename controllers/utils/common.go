@@ -89,3 +89,11 @@ func NewSafeResourceName(name, namespace, suffix string, maxLength int) (safenam
 func PrefixNameWithNamespace(namespace, name string) string {
 	return namespace + "/" + name
 }
+
+// ContainsTemplates checks if the string contains some templatized parts
+func ContainsTemplates(s string) bool {
+	// This expression matches all template types
+	regexpAllTemplates := regexp.MustCompile(`{{.*}}`)
+
+	return regexpAllTemplates.MatchString(s)
+}

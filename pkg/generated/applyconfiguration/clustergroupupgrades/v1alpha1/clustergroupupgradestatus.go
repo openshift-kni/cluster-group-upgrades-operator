@@ -26,7 +26,6 @@ import (
 type ClusterGroupUpgradeStatusApplyConfiguration struct {
 	PlacementBindings                     []string                                    `json:"placementBindings,omitempty"`
 	PlacementRules                        []string                                    `json:"placementRules,omitempty"`
-	CopiedPolicies                        []string                                    `json:"copiedPolicies,omitempty"`
 	Conditions                            []v1.Condition                              `json:"conditions,omitempty"`
 	RemediationPlan                       [][]string                                  `json:"remediationPlan,omitempty"`
 	ManagedPoliciesNs                     map[string]string                           `json:"managedPoliciesNs,omitempty"`
@@ -63,16 +62,6 @@ func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPlacementBindings(valu
 func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPlacementRules(values ...string) *ClusterGroupUpgradeStatusApplyConfiguration {
 	for i := range values {
 		b.PlacementRules = append(b.PlacementRules, values[i])
-	}
-	return b
-}
-
-// WithCopiedPolicies adds the given value to the CopiedPolicies field in the declarative configuration
-// and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the CopiedPolicies field.
-func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithCopiedPolicies(values ...string) *ClusterGroupUpgradeStatusApplyConfiguration {
-	for i := range values {
-		b.CopiedPolicies = append(b.CopiedPolicies, values[i])
 	}
 	return b
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -25,6 +26,15 @@ type PolicyErr struct {
 
 func (e *PolicyErr) Error() string {
 	return fmt.Sprintf("%s: %s", e.ObjName, e.ErrMsg)
+}
+
+// StringToYaml takes a string and attempts to unmarshal it into a YAML
+func StringToYaml(s string) (interface{}, error) {
+	var yamlObj interface{}
+	if err := yaml.Unmarshal([]byte(s), &yamlObj); err != nil {
+		return yamlObj, fmt.Errorf("could not unmarshal data: %s", err)
+	}
+	return yamlObj, nil
 }
 
 // GetChildPolicies gets the child policies for a list of clusters
@@ -197,13 +207,6 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 				containsStatus = true
 			}
 		}
-
-		// Make sure hub template functions are valid if exist
-		err := VerifyHubTemplateFunctions(configPlcTmpls, policyName)
-		if err != nil {
-			return containsStatus, err
-		}
-
 	}
 	return containsStatus, nil
 }

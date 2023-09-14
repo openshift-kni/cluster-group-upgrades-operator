@@ -350,10 +350,6 @@ spec:
                   - type
                   type: object
                 type: array
-              copiedPolicies:
-                items:
-                  type: string
-                type: array
               managedPoliciesCompliantBeforeUpgrade:
                 items:
                   type: string
