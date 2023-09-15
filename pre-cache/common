@@ -56,3 +56,34 @@ unmount_index(){
     echo $result
     return $rv
 }
+
+#
+# with_retries:
+# Helper function to run a command with retries on failure
+#
+function with_retries {
+    local max_attempts=$1
+    local delay=$2
+    local cmd=("${@:3}")
+    local attempt=0
+    local rc=0
+
+    while [[ ${attempt} -lt ${max_attempts} ]]; do
+        attempt=$((attempt+=1))
+        if [[ ${attempt} -gt 1 ]]; then
+            log_debug "Retrying after ${delay} seconds, attempt #${attempt}"
+            sleep "${delay}"
+        fi
+
+        "${cmd[@]}"
+        rc=$?
+        if [ $rc -eq 0 ]; then
+            log_debug "Command succeeded:" "${cmd[@]}"
+            break
+        fi
+
+        log_error "Command failed:" "${cmd[@]}"
+    done
+
+    return ${rc}
+}
