@@ -3,10 +3,10 @@ FROM registry.access.redhat.com/ubi8-minimal:latest
 RUN mkdir /opt/precache
 
 COPY pre-cache/release \
-     pre-cache/common \
-     pre-cache/olm \
+     pre-cache/common.sh \
+     pre-cache/olm.sh \
      pre-cache/parse_index.py \
-     pre-cache/pull \
+     pre-cache/pull.sh \
      pre-cache/precache.sh \
-     pre-cache/check_space \
+     pre-cache/check_space.sh \
      /opt/precache/

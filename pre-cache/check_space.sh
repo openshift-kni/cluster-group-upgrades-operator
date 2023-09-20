@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cwd=$(dirname "$0")
-. $cwd/common
+# shellcheck source=pre-cache/common.sh
+. $cwd/common.sh
 
 validate_disk_space() {
     local space_required=${1:-0}

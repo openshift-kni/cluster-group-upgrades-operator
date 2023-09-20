@@ -1,13 +1,11 @@
 #!/bin/bash
 
-container_tool="${container_tool:-podman}"
-pull_secret_path="${pull_secret_path:-/var/lib/kubelet/config.json}"
-pull_spec_file="${pull_spec_file:-/tmp/images.txt}"
-config_volume_path="${config_volume_path:-/tmp/precache/config}"
-rendered_index_path="${rendered_index_path:-/tmp/index.json}"
-additional_images_spec_file="${additional_images_spec_file:-${config_volume_path}/additionalImages}"
+CONTAINER_TOOL="${container_tool:-podman}"
+PULL_SECRET_PATH="${pull_secret_path:-/var/lib/kubelet/config.json}"
+export PULL_SPEC_FILE="${pull_spec_file:-/tmp/images.txt}"
+CONFIG_VOLUME_PATH="${CONFIG_VOLUME_PATH:-/tmp/precache/config}"
+export ADDITIONAL_IMAGES_SPEC_FILE="${additional_images_spec_file:-${CONFIG_VOLUME_PATH}/additionalImages}"
 
-max_pull_threads="${MAX_PULL_THREADS:-10}" # number of simultaneous pulls executed can be modified by setting MAX_PULL_THREADS environment variable
 
 # LOGLEVELS: [0]ERROR, [1]INFO, [2]DEBUG
 LOGLEVEL=${PRE_CACHE_LOG_LEVEL:-2} # set default log level to DEBUG
@@ -33,9 +31,9 @@ log_debug() {
 
 pull_index(){
     local index_pull_spec=$1
-    local pull_secret_path=$2
+    local PULL_SECRET_PATH=$2
     # Pull the image into the cache directory and attain the image ID
-    release_index_id=$($container_tool pull --quiet  $index_pull_spec --authfile=$pull_secret_path)
+    release_index_id=$($CONTAINER_TOOL pull --quiet  $index_pull_spec --authfile=$PULL_SECRET_PATH)
     [[ $? -eq 0 ]] || return 1
     echo $release_index_id
     return 0
@@ -43,7 +41,8 @@ pull_index(){
 
 mount_index(){
     local image_id=$1
-    local image_mount=$($container_tool image mount $image_id)
+    local image_mount
+    image_mount=$($CONTAINER_TOOL image mount $image_id)
     rv=$?
     echo $image_mount
     return $rv
@@ -51,7 +50,8 @@ mount_index(){
 
 unmount_index(){
     local image_id=$1
-    local result=$($container_tool image unmount $image_id)
+    local result
+    result=$($CONTAINER_TOOL image unmount $image_id)
     rv=$?
     echo $result
     return $rv

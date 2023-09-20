@@ -1,13 +1,16 @@
 #!/bin/bash
 
 cwd=$(dirname "$0")
-. $cwd/common
+# shellcheck source=pre-cache/common.sh
+. $cwd/common.sh
+
+rendered_index_path="${rendered_index_path:-/tmp/index.json}"
 
 extract_pull_spec(){
     rendered_index=$1
     operators_spec_file=$2
-    pull_spec_file=$3
-    /usr/libexec/platform-python "${cwd}/parse_index.py" "${rendered_index}" "${operators_spec_file}" "${pull_spec_file}"
+    PULL_SPEC_FILE=$3
+    /usr/libexec/platform-python "${cwd}/parse_index.py" "${rendered_index}" "${operators_spec_file}" "${PULL_SPEC_FILE}"
     return $?
 }
 
@@ -37,24 +40,25 @@ render_index(){
 
 extract_packages(){
     local packages
-    cat $config_volume_path/operators.packagesAndChannels |tr -d " " > /tmp/packagesAndChannels
-    for item in $(sort -u '/tmp/packagesAndChannels'); do
+    tr -d " " < $CONFIG_VOLUME_PATH/operators.packagesAndChannels > /tmp/packagesAndChannels
+    while IFS= read -r item; do
+    # for item in $(sort -u '/tmp/packagesAndChannels'); do
         pkg=$(echo $item |cut -d ':' -f 1)
         packages="$packages$pkg,"
-    done
+    done < <(sort -u /tmp/packagesAndChannels)
     echo ${packages%,}
     return 0
 }
 
 olm_main(){
-    if ! [[ -n $(sort -u $config_volume_path/operators.indexes) ]]; then
+    if [ -z $(sort -u $CONFIG_VOLUME_PATH/operators.indexes) ]; then
       log_debug "Operators index is not specified. Operators won't be pre-cached"
       return 0
     fi
     # There could be several indexes, hence the loop
-    for index in $(sort -u $config_volume_path/operators.indexes) ; do
-
-        image_id=$(pull_index $index $pull_secret_path)
+    sort -u $CONFIG_VOLUME_PATH/operators.indexes | while IFS= read -r index
+    do
+        image_id=$(pull_index $index $PULL_SECRET_PATH)
         if [[ $? -ne 0 ]]; then
           log_debug "pull_index failed for index $index"
           return 1
@@ -69,7 +73,7 @@ olm_main(){
         log_debug "Image mount: $image_mount"
 
         packages=$(extract_packages)
-        if ! [[ -n $packages ]]; then
+        if [[ -z $packages ]]; then
           log_debug "operators index is set, but no packages provided - inconsistent configuration"
           return 1
         fi
@@ -79,8 +83,8 @@ olm_main(){
           log_debug "render_index failed: OLM index render failed for index $index, package(s) $packages"
           return 1
         fi
-        operators_spec_file="$config_volume_path/operators.packagesAndChannels"
-        extract_pull_spec $rendered_index_path $operators_spec_file $pull_spec_file
+        operators_spec_file="$CONFIG_VOLUME_PATH/operators.packagesAndChannels"
+        extract_pull_spec $rendered_index_path $operators_spec_file $PULL_SPEC_FILE
         if [[ $? -ne 0 ]]; then
           log_debug "extract_pull_spec failed"
           return 1
