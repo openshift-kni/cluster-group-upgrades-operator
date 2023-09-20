@@ -2,7 +2,7 @@ FROM registry.access.redhat.com/ubi8-minimal:latest
 
 RUN mkdir /opt/precache
 
-COPY pre-cache/release \
+COPY pre-cache/release.sh \
      pre-cache/common.sh \
      pre-cache/olm.sh \
      pre-cache/parse_index.py \

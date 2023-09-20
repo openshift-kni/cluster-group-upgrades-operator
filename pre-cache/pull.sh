@@ -50,15 +50,14 @@ mirror_images() {
         #$CONTAINER_TOOL copy docker://${img} --authfile=/var/lib/kubelet/config.json containers-storage:${img} -q & # SKOPEO 
         pids[${img}]=$! # Keeping track of the PID and container image in case the pull fails
         max_bg=$((max_bg - 1)) # Batch size adapted 
-        current_pull=$((current_pull + 1)) 
-        if [[ $max_bg == 0 ]] # If the batch is done, then monitor the status of all pulls before moving to the next batch
-        then
-          for pid in "${!pids[@]}"; do
-            wait_image $pid ${pids[$pid]}
-          done
-          # Once the batch is processed, reset the new batch size and clear the processes hash for the next one
-          max_bg=$max_pull_threads
-          pids=()
+        current_pull=$((current_pull + 1))
+        if [[ $max_bg == 0 ]]; then # If the batch is done, then monitor the status of all pulls before moving to the next batch
+            for pid in "${!pids[@]}"; do
+                wait_image $pid ${pids[$pid]}
+            done
+            # Once the batch is processed, reset the new batch size and clear the processes hash for the next one
+            max_bg=$max_pull_threads
+            pids=()
         fi
     done < $pull_file
 
@@ -75,21 +74,20 @@ retry_images() {
     local rv=0
 
     for failed_pull in "${failed_pulls[@]}"; do
-      success=0
-      iterations=10
-      until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]
-      do
-        log_info "Retrying failed image pull: ${failed_pull}"
-        $CONTAINER_TOOL pull $failed_pull --authfile=$PULL_SECRET_PATH
-        if [[ $? == 0 ]]; then
-          success=1
+        success=0
+        iterations=10
+        until [[ $success -eq 1 ]] || [[ $iterations -eq 0 ]]; do
+            log_info "Retrying failed image pull: ${failed_pull}"
+            $CONTAINER_TOOL pull $failed_pull --authfile=$PULL_SECRET_PATH
+            if [[ $? == 0 ]]; then
+                success=1
+            fi
+            iterations=$((iterations - 1))
+        done
+        if [[ $success == 0 ]]; then
+            log_error "Limit number of retries reached. The image  ${failed_pull} could not be pulled."
+            rv=1
         fi
-          iterations=$((iterations - 1))
-      done
-      if [[ $success == 0 ]]; then
-       log_error "Limit number of retries reached. The image  ${failed_pull} could not be pulled."
-       rv=1
-      fi
     done
     return $rv
 }
