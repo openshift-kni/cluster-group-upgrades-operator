@@ -136,6 +136,10 @@ spec:
                     name: host-var-lib
                     subPath: etcd
                     readOnly: true
+                  - mountPath: /host/var/lib/ovn-ic
+                    name: host-var-lib
+                    subPath: ovn-ic
+                    readOnly: true
                   - mountPath: /host/boot
                     name: host-boot
                     readOnly: true
