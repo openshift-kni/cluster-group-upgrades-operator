@@ -7,6 +7,8 @@ fatal() {
     exit 1
 }
 
+export TEST_ENV=true
+
 for f in common.sh olm.sh release.sh pull.sh; do
     echo "Testing import of $f"
     # shellcheck disable=1090,2154

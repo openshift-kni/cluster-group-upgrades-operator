@@ -54,8 +54,7 @@ olm_main(){
         return 0
     fi
     # There could be several indexes, hence the loop
-    while IFS= read -r index
-    do
+    while IFS= read -r index; do
         image_id=$(pull_index $index $PULL_SECRET_PATH)
         if [[ $? -ne 0 ]]; then
             log_debug "pull_index failed for index $index"

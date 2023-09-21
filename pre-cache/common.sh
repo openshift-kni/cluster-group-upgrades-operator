@@ -6,8 +6,10 @@ export PULL_SPEC_FILE="${pull_spec_file:-/tmp/images.txt}"
 CONFIG_VOLUME_PATH="${CONFIG_VOLUME_PATH:-/tmp/precache/config}"
 export ADDITIONAL_IMAGES_SPEC_FILE="${additional_images_spec_file:-${CONFIG_VOLUME_PATH}/additionalImages}"
 
+if ! [[ $TEST_ENV ]]; then
 # This fixes process substitution issues in chroot
-ln -snf /proc/self/fd /dev/fd
+    ln -snf /proc/self/fd /dev/fd
+fi
 
 # LOGLEVELS: [0]ERROR, [1]INFO, [2]DEBUG
 LOGLEVEL=${PRE_CACHE_LOG_LEVEL:-2} # set default log level to DEBUG
