@@ -1,4 +1,4 @@
-./#!/bin/bash
+#!/bin/bash
 
 cwd=$(dirname "$0")
 . $cwd/common
@@ -11,12 +11,20 @@ validate_disk_space() {
     SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount
     TOKEN=$(cat ${SERVICEACCOUNT}/token)
     CACERT=${SERVICEACCOUNT}/ca.crt
-    high=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz | \
-                chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
-    size=$(df /host/var/lib/ | awk '{ print $2 }' | sed -n '2p')
-    used=$(df /host/var/lib/ | awk '{ print $3 }' | sed -n '2p')
 
-    log_debug "highThresholdPercent: $high diskSize:$size used:$used"
+    high=85 # default value for imageGCHighThresholdPercent
+    kubeletconfig=$(with_retries 3 20 curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz) 
+    if [ $? -eq 0 ]; then
+        val=$(echo $kubeletconfig | chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
+        if [[ $val -gt 0 && $val -lt 100 ]]; then
+           high=$val
+        fi
+    fi
+
+    size=$(df --output=size /host/var/lib/containers | tail -1)
+    used=$(df --output=used /host/var/lib/containers | tail -1)
+
+    log_debug "highThresholdPercent: $high diskSize: $size used: $used"
     log_debug "spaceRequired: ${space_required} GiB"
 
     if [[ $space_required -gt 0 ]]; then
