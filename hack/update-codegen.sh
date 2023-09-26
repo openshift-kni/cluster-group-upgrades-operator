@@ -9,37 +9,36 @@ export GOFLAGS="-mod=vendor"
 
 cleanup() {
     echo "cleaning up..."
-    rm -rf ./pkg/github.com/
-    rm -rf api/clustergroupupgradesoperator
+    rm -rf ./github.com/
 }
 trap "cleanup" EXIT
 
-mkdir -p ./api/clustergroupupgradesoperator
-cd ./api/clustergroupupgradesoperator
-ln -s ../v1alpha1 ./v1alpha1
-cd ../../
+mkdir -p ./github.com/openshift-kni/cluster-group-upgrades-operator/api/clustergroupupgradesoperator
+cp -r api/v1alpha1/ ./github.com/openshift-kni/cluster-group-upgrades-operator/api/clustergroupupgradesoperator/
 
 SCRIPT_ROOT=$(dirname "${BASH_SOURCE[0]}")/..
 CODEGEN_PKG=${CODEGEN_PKG:-$(cd "${SCRIPT_ROOT}"; ls -d -1 ./vendor/k8s.io/code-generator 2>/dev/null || echo ../code-generator)}
 
-# TIP: append '-v 10' with the script call below for logs
-bash ${CODEGEN_PKG}/generate-groups.sh "all" \
-    "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated" \
-    "github.com/openshift-kni/cluster-group-upgrades-operator/api" \
-    clustergroupupgradesoperator:v1alpha1 \
-    --output-base "./pkg" \
-    --go-header-file hack/boilerplate.go.txt
+source "${CODEGEN_PKG}/kube_codegen.sh"
 
-rsync -ac --no-t --no-perms "./pkg/github.com/openshift-kni/cluster-group-upgrades-operator/pkg/" "./pkg/"
+kube::codegen::gen_client \
+    --with-watch \
+    --with-applyconfig \
+    --input-pkg-root "github.com/openshift-kni/cluster-group-upgrades-operator/api" \
+    --output-pkg-root "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated" \
+    --output-base "./" \
+    --boilerplate "./hack/boilerplate.go.txt"
+
+rsync -ac --no-t --no-perms "./github.com/openshift-kni/cluster-group-upgrades-operator/pkg/" "./pkg/"
 
 # linux and macos support
 SED="sed"
 unamestr=$(uname)
 if [[ "$unamestr" == "Darwin" ]] ; then
-    SED="gsed"
-    type $SED >/dev/null 2>&1 || {
-        echo >&2 "$SED it's not installed. Try: brew install gnu-sed" ;
-        exit 1;
-    }
+   SED="gsed"
+   type $SED >/dev/null 2>&1 || {
+       echo >&2 "$SED it's not installed. Try: brew install gnu-sed" ;
+       exit 1;
+   }
 fi
-$SED -i "s|api/clustergroupupgradesoperator/v1alpha1|api/v1alpha1|g" $(find pkg/generated -type f)
+$SED -i "s|github.com/openshift-kni/cluster-group-upgrades-operator/github.com/openshift-kni/cluster-group-upgrades-operator/api/clustergroupupgradesoperator/v1alpha1|github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1|g" $(find pkg/generated -type f)
