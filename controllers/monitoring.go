@@ -152,9 +152,8 @@ func isMonitoredObjectType(kind interface{}) bool {
 }
 
 func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, error) {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	reconcileSooner := false
 	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
 		if clusterProgress.State != ranv1alpha1.InProgress {
 			continue
@@ -171,20 +170,17 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
 		json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &monitoredObjects)
 
 		for _, object := range monitoredObjects {
-			sooner, err := r.processMonitoredObject(ctx, clusterGroupUpgrade, object, clusterName)
+			err := r.processMonitoredObject(ctx, clusterGroupUpgrade, object, clusterName)
 			if err != nil {
-				return reconcileSooner, err
-			}
-			if sooner {
-				reconcileSooner = true
+				return err
 			}
 		}
 	}
-	return reconcileSooner, nil
+	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, object ConfigurationObject, clusterName string) (bool, error) {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, object ConfigurationObject, clusterName string) error {
 
 	// Get the managedClusterView for the monitored object contained in the current managedPolicy.
 	// If missing, then return error.
@@ -192,9 +188,9 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 	safeName := utils.GetSafeResourceName(mcvName, clusterGroupUpgrade, utils.MaxObjectNameLength, 0)
 	mcv, err := utils.EnsureManagedClusterView(
 		ctx, r.Client, safeName, mcvName, clusterName, object.Kind+"."+strings.Split(object.APIVersion, "/")[0],
-		object.Name, *object.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
+		object.Name, *object.Namespace, clusterGroupUpgrade.Name, clusterGroupUpgrade.Namespace)
 	if err != nil {
-		return false, err
+		return err
 	}
 
 	switch object.Kind {
@@ -207,15 +203,15 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 		// If there is an error in trying to approve the install plan, just print the error and continue.
 		if err != nil {
 			r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
-			return false, nil
+			return nil
 		}
 		if installPlanStatus == utils.InstallPlanCannotBeApproved {
 			r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", object.Name)
-			return true, nil
+			return nil
 		} else if installPlanStatus == utils.MultiCloudPendingStatus {
 			r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
 				"retry again later", "subscription name", object.Name)
-			return true, nil
+			return nil
 		} else if installPlanStatus == utils.InstallPlanWasApproved {
 			r.Log.Info("InstallPlan for subscription was approved", "subscription name", object.Name)
 		}
@@ -223,5 +219,5 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 	case utils.ClusterVersionGroupVersionKind().Kind:
 		// TODO gather useful info from CV status and update the cluster/policy status in CGU
 	}
-	return false, nil
+	return nil
 }

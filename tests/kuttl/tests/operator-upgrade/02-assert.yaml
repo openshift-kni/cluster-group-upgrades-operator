@@ -72,7 +72,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-aaaa1
   namespace: spoke1
 spec:
@@ -85,7 +86,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-aaaa2
   namespace: spoke1
 spec:
@@ -98,7 +100,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-aaaa3
   namespace: spoke1
 spec:
@@ -111,7 +114,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-aaaa4
   namespace: spoke1
 spec:
@@ -124,7 +128,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-aaaa5
   namespace: spoke1
 spec:
@@ -138,7 +143,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-bbbb1
   namespace: spoke2
 spec:
@@ -151,7 +157,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-bbbb2
   namespace: spoke2
 spec:
@@ -164,7 +171,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-bbbb3
   namespace: spoke2
 spec:
@@ -177,7 +185,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-bbbb4
   namespace: spoke2
 spec:
@@ -190,7 +199,8 @@ apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
   labels:
-    openshift-cluster-group-upgrades/clusterGroupUpgrade: default-cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: cgu
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
   name: install-bbbb5
   namespace: spoke2
 spec:

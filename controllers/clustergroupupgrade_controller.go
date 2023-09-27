@@ -43,10 +43,13 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
+	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 )
 
@@ -807,8 +810,8 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 		return err
 	}
 	// Approve needed InstallPlans.
-	reconcileSooner, err := r.processMonitoredObjects(ctx, clusterGroupUpgrade)
-	if reconcileSooner || isSoaking {
+	err = r.processMonitoredObjects(ctx, clusterGroupUpgrade)
+	if isSoaking {
 		*nextReconcile = requeueWithShortInterval()
 	}
 	return err
@@ -2105,6 +2108,16 @@ func (r *ClusterGroupUpgradeReconciler) getCGUControllerWorkerCount() (count int
 	return
 }
 
+func (r *ClusterGroupUpgradeReconciler) managedClusterViewMapper(ctx context.Context, managedClusterView client.Object) []reconcile.Request {
+	reqs := make([]reconcile.Request, 0)
+	cguName, nameExists := managedClusterView.GetLabels()["openshift-cluster-group-upgrades/clusterGroupUpgrade"]
+	cguNamespace, namespaceExists := managedClusterView.GetLabels()["openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace"]
+	if nameExists && namespaceExists {
+		reqs = append(reqs, reconcile.Request{NamespacedName: types.NamespacedName{Namespace: cguNamespace, Name: cguName}})
+	}
+	return reqs
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade")
@@ -2157,6 +2170,17 @@ func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error
 			GenericFunc: func(ge event.GenericEvent) bool { return false },
 			DeleteFunc:  func(de event.DeleteEvent) bool { return false },
 		})).
+		Watches(
+			&viewv1beta1.ManagedClusterView{},
+			handler.EnqueueRequestsFromMapFunc(r.managedClusterViewMapper),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return e.ObjectOld.GetGeneration() == e.ObjectNew.GetGeneration()
+				},
+				CreateFunc:  func(ce event.CreateEvent) bool { return false },
+				GenericFunc: func(ge event.GenericEvent) bool { return false },
+				DeleteFunc:  func(de event.DeleteEvent) bool { return false },
+			})).
 		WithOptions(controller.Options{MaxConcurrentReconciles: r.getCGUControllerWorkerCount()}).
 		Complete(r)
 }
