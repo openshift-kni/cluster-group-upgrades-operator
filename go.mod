@@ -7,10 +7,10 @@ require (
 	github.com/go-logr/logr v1.2.4
 	github.com/onsi/gomega v1.27.10
 	github.com/openshift/build-machinery-go v0.0.0-20230306181456-d321ffa04533
-	github.com/operator-framework/api v0.17.6
+	github.com/operator-framework/api v0.17.7
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.3
 	k8s.io/api v0.28.2
 	k8s.io/apimachinery v0.28.2
 	k8s.io/client-go v12.0.0+incompatible
