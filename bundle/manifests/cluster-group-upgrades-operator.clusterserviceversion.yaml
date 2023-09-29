@@ -151,8 +151,14 @@ spec:
       - displayName: Status
         path: status
       version: v1alpha1
-    - kind: PreCachingConfig
+    - description: PreCachingConfig is the Schema for the precachingconfigs API
+      displayName: Pre-caching Config
+      kind: PreCachingConfig
       name: precachingconfigs.ran.openshift.io
+      resources:
+      - kind: Namespace
+        name: “”
+        version: v1
       version: v1alpha1
   description: cluster-group-upgrades-operator is an operator that facilitates platform
     upgrades of group of clusters
