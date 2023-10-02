@@ -158,4 +158,5 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
+  replaces: cluster-group-upgrades-operator.v4.11.0
   version: 0.0.0
