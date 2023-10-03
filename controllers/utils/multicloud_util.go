@@ -98,7 +98,7 @@ var EnsureInstallPlanIsApproved = func(
 	mcvForInstallPlan, err := EnsureManagedClusterView(
 		ctx, c, subscription.Status.Install.Name, subscription.Status.Install.Name,
 		clusterName, "InstallPlan", subscription.Status.Install.Name,
-		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name)
+		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Name, clusterGroupUpgrade.Namespace)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
 	}
@@ -154,7 +154,7 @@ var EnsureInstallPlanIsApproved = func(
 // EnsureManagedClusterView creates or updates a view.
 func EnsureManagedClusterView(
 	ctx context.Context, c client.Client, safeName, name, namespace, resourceType,
-	resourceName, resourceNamespace, cguLabel string) (*viewv1beta1.ManagedClusterView, error) {
+	resourceName, resourceNamespace, cguName, cguNamespace string) (*viewv1beta1.ManagedClusterView, error) {
 
 	mcv := &viewv1beta1.ManagedClusterView{}
 	err := c.Get(ctx, types.NamespacedName{Name: safeName, Namespace: namespace}, mcv)
@@ -167,7 +167,8 @@ func EnsureManagedClusterView(
 				Name:      safeName,
 				Namespace: namespace,
 				Labels: map[string]string{
-					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
+					"openshift-cluster-group-upgrades/clusterGroupUpgrade":          cguName,
+					"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": cguNamespace,
 				},
 				Annotations: map[string]string{
 					DesiredResourceName: name,
@@ -199,7 +200,8 @@ func EnsureManagedClusterView(
 		if labels == nil {
 			labels = make(map[string]string)
 		}
-		labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = cguLabel
+		labels["openshift-cluster-group-upgrades/clusterGroupUpgrade"] = cguName
+		labels["openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace"] = cguNamespace
 		mcv.SetLabels(labels)
 
 		viewSpec := viewv1beta1.ViewSpec{
@@ -306,7 +308,8 @@ func DeleteManagedClusterViews(
 	ctx context.Context, c client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) error {
 
 	var labels = map[string]string{
-		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace}
 	opts := []client.ListOption{
 		client.InNamespace(clusterName),
 		client.MatchingLabels(labels),

@@ -205,9 +205,10 @@ func TestEnsureManagedClusterView(t *testing.T) {
 		resourceType      string
 		resourceName      string
 		resourceNamespace string
-		label             string
+		cguName           string
+		cguNamespace      string
 		validateFunc      func(t *testing.T, runtimeClient client.Client, safeMcvName, mcvName, mcvNamespace,
-			resourceType, resourceName, resourceNamespace, label string)
+			resourceType, resourceName, resourceNamespace, cguName, cguNamespace string)
 	}{
 		{
 			name:              "ManagedClusterView is successfully created",
@@ -217,18 +218,21 @@ func TestEnsureManagedClusterView(t *testing.T) {
 			resourceType:      "InstallPlan",
 			resourceName:      "installPlan-abcd",
 			resourceNamespace: "installPlan-abcd-namespace",
-			label:             "default-cgu",
+			cguName:           "cgu",
+			cguNamespace:      "default",
 			validateFunc: func(t *testing.T, runtimeClient client.Client, safeMcvName, mcvName, mcvNamespace,
-				resourceType, resourceName, resourceNamespace, label string) {
+				resourceType, resourceName, resourceNamespace, cguName, cguNamespace string) {
 				mcv, err := EnsureManagedClusterView(context.TODO(), runtimeClient, safeMcvName, mcvName, mcvNamespace,
-					resourceType, resourceName, resourceNamespace, label)
+					resourceType, resourceName, resourceNamespace, cguName, cguNamespace)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
 				assert.Equal(t, mcv.ObjectMeta.Name, safeMcvName)
 				assert.Equal(t, mcv.ObjectMeta.Namespace, mcvNamespace)
 				assert.Equal(t, mcv.ObjectMeta.Labels,
-					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": label})
+					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguName,
+						"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": cguNamespace,
+					})
 				assert.Equal(t, mcv.Spec.Scope.Resource, resourceType)
 				assert.Equal(t, mcv.Spec.Scope.Name, resourceName)
 				assert.Equal(t, mcv.Spec.Scope.Namespace, resourceNamespace)
@@ -254,18 +258,20 @@ func TestEnsureManagedClusterView(t *testing.T) {
 			resourceType:      "InstallPlan",
 			resourceName:      "installPlan-abcd",
 			resourceNamespace: "installPlan-abcd-namespace",
-			label:             "default-cgu",
+			cguName:           "cgu",
+			cguNamespace:      "default",
 			validateFunc: func(t *testing.T, runtimeClient client.Client, safeMcvName, mcvName, mcvNamespace,
-				resourceType, resourceName, resourceNamespace, label string) {
+				resourceType, resourceName, resourceNamespace, cguName, cguNamespace string) {
 				mcv, err := EnsureManagedClusterView(context.TODO(), runtimeClient, safeMcvName, mcvName, mcvNamespace,
-					resourceType, resourceName, resourceNamespace, label)
+					resourceType, resourceName, resourceNamespace, cguName, cguNamespace)
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
 				assert.Equal(t, mcv.ObjectMeta.Name, safeMcvName)
 				assert.Equal(t, mcv.ObjectMeta.Namespace, mcvNamespace)
 				assert.Equal(t, mcv.ObjectMeta.Labels,
-					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": label})
+					map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguName,
+						"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": cguNamespace})
 				assert.Equal(t, mcv.Spec.Scope.Resource, resourceType)
 				assert.Equal(t, mcv.Spec.Scope.Name, resourceName)
 				assert.Equal(t, mcv.Spec.Scope.Namespace, resourceNamespace)
@@ -286,7 +292,7 @@ func TestEnsureManagedClusterView(t *testing.T) {
 			}
 
 			tc.validateFunc(t, fakeClient, tc.safeMcvName, tc.mcvName, tc.mcvNamespace,
-				tc.resourceType, tc.resourceName, tc.resourceNamespace, tc.label)
+				tc.resourceType, tc.resourceName, tc.resourceNamespace, tc.cguName, tc.cguNamespace)
 		})
 	}
 }
@@ -1205,7 +1211,8 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 						Name:      "view",
 						Namespace: cluster,
 						Labels: map[string]string{
-							"openshift-cluster-group-upgrades/clusterGroupUpgrade": tc.cgu.Namespace + "-" + tc.cgu.Name,
+							"openshift-cluster-group-upgrades/clusterGroupUpgrade":          tc.cgu.Name,
+							"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": tc.cgu.Namespace,
 						},
 					},
 				})
