@@ -166,7 +166,7 @@ spec:
                 name: host-etc
               - hostPath:
                   path: /var/recovery
-                  type: Directory
+                  type: DirectoryOrCreate
                 name: host-var-recovery
               - hostPath:
                   path: /var/lib/
