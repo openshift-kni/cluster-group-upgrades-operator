@@ -1,7 +1,8 @@
 #!/bin/bash
 
 cwd=$(dirname "$0")
-. $cwd/common
+# shellcheck source=pre-cache/common.sh
+. $cwd/common.sh
 
 validate_disk_space() {
     local space_required=${1:-0}
@@ -13,11 +14,11 @@ validate_disk_space() {
     CACERT=${SERVICEACCOUNT}/ca.crt
 
     high=85 # default value for imageGCHighThresholdPercent
-    kubeletconfig=$(with_retries 3 20 curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz) 
+    kubeletconfig=$(with_retries 3 20 curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/nodes/${NODE_NAME}/proxy/configz)
     if [ $? -eq 0 ]; then
         val=$(echo $kubeletconfig | chroot /host jq '.kubeletconfig.imageGCHighThresholdPercent')
         if [[ $val -gt 0 && $val -lt 100 ]]; then
-           high=$val
+            high=$val
         fi
     fi
 

@@ -7,7 +7,9 @@ fatal() {
     exit 1
 }
 
-for f in common olm release pull; do
+export TEST_ENV=true
+
+for f in common.sh olm.sh release.sh pull.sh; do
     echo "Testing import of $f"
     # shellcheck disable=1090,2154
     . $cwd/$f
@@ -47,20 +49,20 @@ cat <<EOF > /tmp/release-manifests/image-references
 EOF
 
 # shellcheck disable=SC2154
-(rm $pull_spec_file || true) &> /dev/null
+(rm $PULL_SPEC_FILE || true) &> /dev/null
 
 # shellcheck disable=SC2034
-container_tool=/usr/bin/echo
+CONTAINER_TOOL=/usr/bin/echo
 # shellcheck disable=SC2034
-config_volume_path=/tmp
+CONFIG_VOLUME_PATH=/tmp
 
 # Test common
 echo "Testing common functions:"
 
 # shellcheck disable=SC2154
-result=$(pull_index "temp" $pull_secret_path)
+result=$(pull_index "temp" $PULL_SECRET_PATH)
 [[ $? -eq 0 ]] || fatal "pull_index unexpected exit code"
-[[ $result == "pull --quiet temp --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
+[[ $result == "pull --quiet temp --authfile=$PULL_SECRET_PATH" ]] || fatal "Index pull failure"
 echo " Index pull pass"
 
 result=$(mount_index test)
@@ -83,8 +85,8 @@ echo " extract_packages - pass"
 echo "Testing release unit:"
 result=$(extract_pull_spec "/tmp")
 [[ $? -eq 0 ]] || fatal "release_image extract unexpected exit code"
-[[ $(cat $pull_spec_file) == "\"quay.io/1\"" ]] || fatal "release pull spec extract failure"
+[[ $(cat $PULL_SPEC_FILE) == "\"quay.io/1\"" ]] || fatal "release pull spec extract failure"
 echo " release extract_pull_spec pass"
 
 # Clean
-rm -rf /tmp/operators.indexes /tmp/release-manifests $pull_spec_file /tmp/operators.packagesAndChannels
+rm -rf /tmp/operators.indexes /tmp/release-manifests $PULL_SPEC_FILE /tmp/operators.packagesAndChannels

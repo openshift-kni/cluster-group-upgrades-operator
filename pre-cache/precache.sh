@@ -19,14 +19,14 @@ cp -rf /etc/config /host/tmp/precache/config
 # Check the available space for the OCP upgrade case or for pre-caching additional images
 { [ -n "$(cat /etc/config/platform.image)" ] || [ -n "$(cat /etc/config/additionalImages)" ]; } && check_disk_space=1 || check_disk_space=0
 if [[ $check_disk_space == 1 ]]; then
-    /opt/precache/check_space $(cat /etc/config/spaceRequired)
+    /opt/precache/check_space.sh $(cat /etc/config/spaceRequired)
 fi
 
-chroot /host /tmp/precache/release
-chroot /host /tmp/precache/olm
-chroot /host /tmp/precache/pull
+chroot /host /tmp/precache/release.sh
+chroot /host /tmp/precache/olm.sh
+chroot /host /tmp/precache/pull.sh
 
 # Check disk space usage post pre-caching to alert if kubelet Garbage Collection will be triggered
 if [[ $check_disk_space == 1 ]]; then
-    /opt/precache/check_space
+    /opt/precache/check_space.sh
 fi
