@@ -73,6 +73,7 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 	insecureSkipVerify := os.Getenv("INSECURE_GRAPH_CALL") == "true"
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: insecureSkipVerify},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 	client := &http.Client{Transport: tr}
 	req, _ := http.NewRequest("GET", updateGraphURL, nil)
