@@ -121,32 +121,52 @@ spec:
                   - mountPath: /host/usr/local
                     name: host-usrlocal
                     readOnly: true
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr
+                    subPath: share/containers
+                    readOnly: true
                   - mountPath: /host/proc
                     name: host-proc
                     readOnly: true
                   - mountPath: /host/etc
                     name: host-etc
-                    readOnly: true
                   - mountPath: /host/var/recovery
                     name: host-var-recovery
+                  - mountPath: /host/var/lib/containers
+                    name: host-var
+                    subPath: lib/containers
+                  - mountPath: /host/var/lib/cni
+                    name: host-var
+                    subPath: lib/cni
+                    readOnly: true
+                  - mountPath: /host/var/lib/etcd
+                    name: host-var
+                    subPath: lib/etcd
+                    readOnly: true
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
-                  - mountPath: /host/var/lib/etcd
-                    name: host-var-lib
-                    subPath: etcd
-                    readOnly: true
                   - mountPath: /host/var/lib/ovn-ic
-                    name: host-var-lib
-                    subPath: ovn-ic
+                    name: host-var
+                    subPath: lib/ovn-ic
                     readOnly: true
+                  - mountPath: /host/var/tmp
+                    name: host-var
+                    subPath: tmp
                   - mountPath: /host/boot
                     name: host-boot
                     readOnly: true
+                  - mountPath: /host/run
+                    name: host-run
                   - mountPath: /host/sysroot
                     name: host-sysroot
+                  - mountPath: /host/sys/fs/cgroup
+                    name: sys-fs-cgroup
+                    readOnly: true
                   - mountPath: /host/dev/log
                     name: host-dev-log
+                  - mountPath: /host/tmp
+                    name: host-tmp
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
@@ -169,9 +189,9 @@ spec:
                   type: DirectoryOrCreate
                 name: host-var-recovery
               - hostPath:
-                  path: /var/lib/
+                  path: /var/
                   type: Directory
-                name: host-var-lib
+                name: host-var
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
@@ -189,9 +209,21 @@ spec:
                   type: Directory
                 name: host-sysroot
               - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /sys/fs/cgroup
+                  type: Directory
+                name: sys-fs-cgroup
+              - hostPath:
                   path: /dev/log
                   type: Socket
                 name: host-dev-log
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
 `
 
 // MngClusterActDeleteBackupNS deletes namespace

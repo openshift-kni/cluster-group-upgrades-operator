@@ -17,6 +17,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os/exec"
 	"syscall"
@@ -55,17 +56,54 @@ func RecoveryInProgress(backupPath string) bool {
 //nolint:gocritic
 func LaunchBackup() error {
 
+	var err error
+	insufficientDiskSpaceError := errors.New("insufficient disk space to trigger backup")
+
 	// Prepare the host directory for taking backups
-	if err := InitBackup(); err != nil {
+	if err = InitBackup(); err != nil {
 		log.Error("Failed to initialize the pre-requisite for taking a backup")
 		return err
 	}
 
 	// change root directory to /host
-	if err := syscall.Chroot(host); err != nil {
+	if err = syscall.Chroot(host); err != nil {
 		log.Errorf("Couldn't do chroot to %s, err: %s", host, err)
 		return err
 	}
+
+	// Handle "/run/ostree-booted" flag file by renaming it to "/run/ostree-booted.tmp"
+	ostreeBooted := "/run/ostree-booted"
+	ostreeBootedRenamed := ""
+	// Check if ostree-booted file exists and is a flag-file (i.e. empty file)
+	if info, err := os.Stat(ostreeBooted); err == nil && !info.IsDir() && info.Size() == 0 {
+		ostreeBootedRenamed = ostreeBooted + ".tmp"
+		if err = os.Rename(ostreeBooted, ostreeBootedRenamed); err == nil {
+			log.Infof("Successfully renamed %s to %s\n", ostreeBooted, ostreeBootedRenamed)
+		} else {
+			log.Errorf("Failed to rename %s: %v\n", ostreeBooted, err)
+		}
+	}
+
+	// Use a defer function to change "/run/ostree-booted" back to the original value before exiting
+	defer func() error {
+		if ostreeBootedRenamed != "" {
+			if info, localErr := os.Stat(ostreeBootedRenamed); localErr == nil && !info.IsDir() && info.Size() == 0 {
+				if localErr = os.Rename(ostreeBootedRenamed, ostreeBooted); localErr == nil {
+					log.Infof("Successfully renamed %s back to %s\n", ostreeBootedRenamed, ostreeBooted)
+				} else {
+					log.Infof("Failed to rename %s back to %s: %v\n", ostreeBootedRenamed, ostreeBooted, localErr)
+				}
+			}
+		}
+
+		// Check "err" for insufficient disk space error, exit if it is
+		if err == insufficientDiskSpaceError {
+			os.Exit(1)
+		}
+
+		// return error that triggered the defer function
+		return err
+	}()
 
 	// During recovery, this container may get relaunched, as it will be in "Running"
 	// state when the backup is taken. We'll check to see if a recovery is already
@@ -75,22 +113,22 @@ func LaunchBackup() error {
 		return nil
 	}
 
-	if err := os.Chdir("/"); err != nil {
+	if err = os.Chdir("/"); err != nil {
 		log.Error("Couldn't do chdir")
 		return err
 	}
 
 	// validate path
-	if _, err := os.Stat(backupPath); os.IsNotExist(err) {
+	if _, err = os.Stat(backupPath); os.IsNotExist(err) {
 		// create path
-		err := os.Mkdir(backupPath, 0700)
+		err = os.Mkdir(backupPath, 0700)
 		if err != nil {
 			log.Error(err)
 			return err
 		}
 	}
 
-	err := Cleanup(backupPath)
+	err = Cleanup(backupPath)
 	if err != nil {
 		log.Errorf("Old directories couldn't be deleted, err: %s\n", err)
 	}
@@ -98,15 +136,17 @@ func LaunchBackup() error {
 	log.Info("Old contents have been cleaned up")
 
 	// Verify disk space
-	ok, err := compareBackupToDisk()
+	var ok bool
+	ok, err = compareBackupToDisk()
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
 	if !ok {
-		log.Error("Insufficient disk space to trigger backup, exiting triggering backup ...")
-		os.Exit(1)
+		err = insufficientDiskSpaceError
+		log.Error(err)
+		return err
 	}
 
 	log.Info("Sufficient disk space found to trigger backup")
@@ -140,6 +180,7 @@ func InitBackup() error {
 
 	hostDev := filepath.Join(host, "dev")
 	hostDevNull := filepath.Join(hostDev, "null")
+	hostDevShm := filepath.Join(hostDev, "shm")
 	hostSysroot := filepath.Join(host, "sysroot")
 
 	// Create null device (/dev/null) on /host
@@ -147,10 +188,25 @@ func InitBackup() error {
 		log.Errorf("Failed to create %s directory, err: %s\n", hostDev, err)
 		return err
 	}
+
+	// Create shm device (/dev/shm) on /host
+	if err := os.MkdirAll(hostDevShm, 0o751); err != nil {
+		log.Errorf("Failed to create %s directory, err: %s\n", hostDevShm, err)
+		return err
+	}
+
 	if err := syscall.Mknod(hostDevNull, uint32(os.FileMode(0o666)), int(unix.Mkdev(uint32(1), uint32(3)))); err != nil {
 		log.Errorf("Failed to create device %s, err: %s\n", hostDevNull, err)
 		return err
 	}
+
+	// Mount /dev/shm
+	flags := syscall.MS_NOEXEC | syscall.MS_NODEV | syscall.MS_NOSUID | syscall.MS_RELATIME
+	if err := syscall.Mount("tmpfs", hostDevShm, "tmpfs", uintptr(flags), ""); err != nil {
+		log.Errorf("Error mounting tmpfs: %v\n", err)
+		return err
+	}
+	log.Infof("Successfully mounted %s\n", hostDevShm)
 
 	// Remount host/sysroot for read-write access for executing ostree admin <undeploy|pin>
 	if err := syscall.Mount(hostSysroot, hostSysroot, "", syscall.MS_REMOUNT, ""); err != nil {
