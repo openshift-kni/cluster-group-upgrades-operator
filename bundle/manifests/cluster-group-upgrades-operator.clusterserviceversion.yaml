@@ -18,7 +18,7 @@ metadata:
     capabilities: Basic Install
     operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
-  name: cluster-group-upgrades-operator.v4.10.0
+  name: cluster-group-upgrades-operator.v4.10.999
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -139,6 +139,13 @@ spec:
         - apiGroups:
           - ""
           resources:
+          - events
+          verbs:
+          - create
+          - patch
+        - apiGroups:
+          - ""
+          resources:
           - namespaces
           verbs:
           - create
@@ -188,6 +195,30 @@ spec:
           - managedclusters/finalizers
           verbs:
           - update
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - prometheusrules
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - monitoring.coreos.com
+          resources:
+          - servicemonitors
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
         - apiGroups:
           - policy.open-cluster-management.io
           resources:
@@ -262,30 +293,6 @@ spec:
           - subjectaccessreviews
           verbs:
           - create
-        - apiGroups:
-          - monitoring.coreos.com
-          resources:
-          - prometheusrules
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - monitoring.coreos.com
-          resources:
-          - servicemonitors
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
       - name: cluster-group-upgrades-controller-manager
@@ -306,7 +313,8 @@ spec:
                 - --upstream=http://127.0.0.1:8080/
                 - --logtostderr=true
                 - --v=10
-                image: gcr.io/kubebuilder/kube-rbac-proxy:v0.8.0
+                - --http2-disable=true
+                image: quay.io/openshift/origin-kube-rbac-proxy:4.10
                 name: kube-rbac-proxy
                 ports:
                 - containerPort: 8443
@@ -320,8 +328,8 @@ spec:
                 - /manager
                 env:
                 - name: PRECACHE_IMG
-                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.0
-                image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.0
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.10.999
+                image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.10.999
                 livenessProbe:
                   httpGet:
                     path: /healthz
@@ -397,4 +405,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  version: 4.10.0
+  version: 4.10.999
