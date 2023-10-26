@@ -405,4 +405,4 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  version: 4.10.999
+  version: 4.10.0
