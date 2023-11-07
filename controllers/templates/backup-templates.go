@@ -119,51 +119,41 @@ spec:
                   - mountPath: /host/tmp
                     name: host-tmp
                   - mountPath: /host/usr/bin
-                    name: host-usr
+                    name: host-usr-bin
                     readOnly: true
-                    subPath: bin
                   - mountPath: /host/usr/lib
-                    name: host-usr
+                    name: host-usr-lib
                     readOnly: true
-                    subPath: lib
                   - mountPath: /host/usr/lib64
-                    name: host-usr
+                    name: host-usr-lib64
                     readOnly: true
-                    subPath: lib64
                   - mountPath: /host/usr/libexec
-                    name: host-usr
+                    name: host-usr-libexec
                     readOnly: true
-                    subPath: libexec
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr
-                    readOnly: true
-                    subPath: share/containers
                   - mountPath: /host/usr/local
-                    name: host-usrlocal
+                    name: host-usr-local
+                    readOnly: true
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr-share-containers
+                    readOnly: true
+                  - mountPath: /host/var/lib/cni
+                    name: host-var-lib-cni
                     readOnly: true
                   - mountPath: /host/var/lib/containers
-                    name: host-var
-                    subPath: lib/containers
-                  - mountPath: /host/var/lib/cni
-                    name: host-var
-                    readOnly: true
-                    subPath: lib/cni
+                    name: host-var-lib-containers
                   - mountPath: /host/var/lib/etcd
-                    name: host-var
+                    name: host-var-lib-etcd
                     readOnly: true
-                    subPath: lib/etcd
-                  - mountPath: /host/var/lib/ovn-ic
-                    name: host-var
-                    readOnly: true
-                    subPath: lib/ovn-ic
-                  - mountPath: /host/var/tmp
-                    name: host-var
-                    subPath: tmp
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
+                  - mountPath: /host/var/lib/ovn-ic
+                    name: host-var-lib-ovn-ic
+                    readOnly: true
                   - mountPath: /host/var/recovery
                     name: host-var-recovery
+                  - mountPath: /host/var/tmp
+                    name: host-var-tmp
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
@@ -205,21 +195,61 @@ spec:
                   type: Directory
                 name: host-usr
               - hostPath:
+                  path: /usr/bin
+                  type: Directory
+                name: host-usr-bin
+              - hostPath:
+                  path: /usr/lib
+                  type: Directory
+                name: host-usr-lib
+              - hostPath:
+                  path: /usr/lib64
+                  type: Directory
+                name: host-usr-lib64
+              - hostPath:
+                  path: /usr/libexec
+                  type: Directory
+                name: host-usr-libexec
+              - hostPath:
                   path: /usr/local
                   type: Directory
-                name: host-usrlocal
+                name: host-usr-local
+              - hostPath:
+                  path: /usr/share-containers
+                  type: Directory
+                name: host-usr-share-containers
               - hostPath:
                   path: /var/
                   type: Directory
                 name: host-var
               - hostPath:
+                  path: /var/lib/cni
+                  type: Directory
+                name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
+              - hostPath:
+                  path: /var/lib/etcd
+                  type: Directory
+                name: host-var-lib-etcd
+              - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
                 name: host-var-lib-kubelet
               - hostPath:
+                  path: /var/lib/ovn-ic
+                  type: Directory
+                name: host-var-lib-ovn-ic
+              - hostPath:
                   path: /var/recovery
                   type: DirectoryOrCreate
                 name: host-var-recovery
+              - hostPath:
+                  path: /var/tmp
+                  type: Directory
+                name: host-var-tmp
               - hostPath:
                   path: /sys/fs/cgroup
                   type: Directory
