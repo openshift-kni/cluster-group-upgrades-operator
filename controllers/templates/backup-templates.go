@@ -102,76 +102,104 @@ spec:
                 volumeMounts:
                   - mountPath: /host
                     name: host
-                  - mountPath: /host/usr/bin
-                    name: host-usr
-                    subPath: bin
-                    readOnly: true
-                  - mountPath: /host/usr/lib
-                    name: host-usr
-                    subPath: lib
-                    readOnly: true
-                  - mountPath: /host/usr/lib64
-                    name: host-usr
-                    subPath: lib64
-                    readOnly: true
-                  - mountPath: /host/usr/libexec
-                    name: host-usr
-                    subPath: libexec
-                    readOnly: true
-                  - mountPath: /host/usr/local
-                    name: host-usrlocal
-                    readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr
-                    subPath: share/containers
-                    readOnly: true
-                  - mountPath: /host/proc
-                    name: host-proc
-                    readOnly: true
-                  - mountPath: /host/etc
-                    name: host-etc
-                  - mountPath: /host/var/recovery
-                    name: host-var-recovery
-                  - mountPath: /host/var/lib/containers
-                    name: host-var
-                    subPath: lib/containers
-                  - mountPath: /host/var/lib/cni
-                    name: host-var
-                    subPath: lib/cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/etcd
-                    name: host-var
-                    subPath: lib/etcd
-                    readOnly: true
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/lib/ovn-ic
-                    name: host-var
-                    subPath: lib/ovn-ic
-                    readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var
-                    subPath: tmp
                   - mountPath: /host/boot
                     name: host-boot
+                    readOnly: true
+                  - mountPath: /host/dev/log
+                    name: host-dev-log
+                  - mountPath: /host/etc
+                    name: host-etc
+                  - mountPath: /host/proc
+                    name: host-proc
                     readOnly: true
                   - mountPath: /host/run
                     name: host-run
                   - mountPath: /host/sysroot
                     name: host-sysroot
+                  - mountPath: /host/tmp
+                    name: host-tmp
+                  - mountPath: /host/usr/bin
+                    name: host-usr
+                    readOnly: true
+                    subPath: bin
+                  - mountPath: /host/usr/lib
+                    name: host-usr
+                    readOnly: true
+                    subPath: lib
+                  - mountPath: /host/usr/lib64
+                    name: host-usr
+                    readOnly: true
+                    subPath: lib64
+                  - mountPath: /host/usr/libexec
+                    name: host-usr
+                    readOnly: true
+                    subPath: libexec
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr
+                    readOnly: true
+                    subPath: share/containers
+                  - mountPath: /host/usr/local
+                    name: host-usrlocal
+                    readOnly: true
+                  - mountPath: /host/var/lib/containers
+                    name: host-var
+                    subPath: lib/containers
+                  - mountPath: /host/var/lib/cni
+                    name: host-var
+                    readOnly: true
+                    subPath: lib/cni
+                  - mountPath: /host/var/lib/etcd
+                    name: host-var
+                    readOnly: true
+                    subPath: lib/etcd
+                  - mountPath: /host/var/lib/ovn-ic
+                    name: host-var
+                    readOnly: true
+                    subPath: lib/ovn-ic
+                  - mountPath: /host/var/tmp
+                    name: host-var
+                    subPath: tmp
+                  - mountPath: /host/var/lib/kubelet
+                    name: host-var-lib-kubelet
+                    readOnly: true
+                  - mountPath: /host/var/recovery
+                    name: host-var-recovery
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
-                  - mountPath: /host/dev/log
-                    name: host-dev-log
-                  - mountPath: /host/tmp
-                    name: host-tmp
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
               - emptyDir: {}
                 name: host
+              - hostPath:
+                  path: /boot
+                  type: Directory
+                name: host-boot
+              - hostPath:
+                  path: /dev/log
+                  type: Socket
+                name: host-dev-log
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /sysroot
+                  type: Directory
+                name: host-sysroot
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
               - hostPath:
                   path: /usr
                   type: Directory
@@ -181,14 +209,6 @@ spec:
                   type: Directory
                 name: host-usrlocal
               - hostPath:
-                  path: /etc
-                  type: Directory
-                name: host-etc
-              - hostPath:
-                  path: /var/recovery
-                  type: DirectoryOrCreate
-                name: host-var-recovery
-              - hostPath:
                   path: /var/
                   type: Directory
                 name: host-var
@@ -197,33 +217,13 @@ spec:
                   type: Directory
                 name: host-var-lib-kubelet
               - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /boot
-                  type: Directory
-                name: host-boot
-              - hostPath:
-                  path: /sysroot
-                  type: Directory
-                name: host-sysroot
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
+                  path: /var/recovery
+                  type: DirectoryOrCreate
+                name: host-var-recovery
               - hostPath:
                   path: /sys/fs/cgroup
                   type: Directory
                 name: sys-fs-cgroup
-              - hostPath:
-                  path: /dev/log
-                  type: Socket
-                name: host-dev-log
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
 `
 
 // MngClusterActDeleteBackupNS deletes namespace
