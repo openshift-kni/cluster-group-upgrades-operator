@@ -13,8 +13,8 @@ spec:
         volumeMounts:
         - name: manager-config
           mountPath: /controller_manager_config.yaml
-          subPath: controller_manager_config.yaml
       volumes:
-      - name: manager-config
-        configMap:
-          name: manager-config
+      - hostPath:
+          path: /controller_manager_config.yaml
+          type: File
+        name: manager-config
