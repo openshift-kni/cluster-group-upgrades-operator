@@ -138,69 +138,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /etc/config
-                name: config-volume
-                readOnly: true
-              - mountPath: /host
-                name: host
-              - mountPath: /host/tmp
-                name: host-tmp
-              - mountPath: /host/usr/bin
-                name: host-usr
-                subPath: bin
-                readOnly: true
-              - mountPath: /host/usr/lib
-                name: host-usr
-                subPath: lib
-                readOnly: true
-              - mountPath: /host/usr/lib64
-                name: host-usr
-                subPath: lib64
-                readOnly: true
-              - mountPath: /host/usr/share/containers
-                name: host-usr
-                subPath: share/containers
-                readOnly: true
-              - mountPath: /host/usr/libexec
-                name: host-usr
-                subPath: libexec
-                readOnly: true
-              - mountPath: /host/var/lib/containers
-                name: host-var
-                subPath: lib/containers
-              - mountPath: /host/var/lib/cni
-                name: host-var
-                subPath: lib/cni
-                readOnly: true
-              - mountPath: /host/var/lib/kubelet
-                name: host-var-lib-kubelet
-                readOnly: true
-              - mountPath: /host/var/tmp
-                name: host-var
-                subPath: tmp
-              - mountPath: /host/lib64
-                name: host-lib64
-                readOnly: true
-              - mountPath: /host/run
-                name: host-run
-              - mountPath: /host/proc
-                name: host-proc
-                readOnly: true
-              - mountPath: /host/sys/fs/cgroup
-                name: sys-fs-cgroup
-                readOnly: true
-              - mountPath: /host/etc/containers
-                name: host-etc
-                subPath: containers
-                readOnly: true
-              - mountPath: /host/etc/pki/ca-trust
-                name: host-etc
-                subPath: pki/ca-trust
-                readOnly: true
-              - mountPath: /host/etc/resolv.conf
-                name: host-etc
-                subPath: resolv.conf
-                readOnly: true
+                - mountPath: /etc/config
+                  name: config-volume
+                  readOnly: true
+                - mountPath: /host
+                  name: host
+                - mountPath: /host/etc/containers
+                  name: host-etc
+                  readOnly: true
+                  subPath: containers
+                - mountPath: /host/etc/pki/ca-trust
+                  name: host-etc
+                  readOnly: true
+                  subPath: pki/ca-trust
+                - mountPath: /host/etc/resolv.conf
+                  name: host-etc
+                  readOnly: true
+                  subPath: resolv.conf
+                - mountPath: /host/lib64
+                  name: host-lib64
+                  readOnly: true
+                - mountPath: /host/proc
+                  name: host-proc
+                  readOnly: true
+                - mountPath: /host/run
+                  name: host-run
+                - mountPath: /host/tmp
+                  name: host-tmp
+                - mountPath: /host/usr/bin
+                  name: host-usr
+                  readOnly: true
+                  subPath: bin
+                - mountPath: /host/usr/lib
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib
+                - mountPath: /host/usr/lib64
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib64
+                - mountPath: /host/usr/share/containers
+                  name: host-usr
+                  readOnly: true
+                  subPath: share/containers
+                - mountPath: /host/usr/libexec
+                  name: host-usr
+                  readOnly: true
+                  subPath: libexec
+                - mountPath: /host/var/lib/containers
+                  name: host-var
+                  subPath: lib/containers
+                - mountPath: /host/var/lib/cni
+                  name: host-var
+                  readOnly: true
+                  subPath: lib/cni
+                - mountPath: /host/var/tmp
+                  name: host-var
+                  subPath: tmp
+                - mountPath: /host/var/lib/kubelet
+                  name: host-var-lib-kubelet
+                  readOnly: true
+                - mountPath: /host/sys/fs/cgroup
+                  name: sys-fs-cgroup
+                  readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -208,48 +208,48 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-            - name: host
-              emptyDir: {}
-            - configMap:
-                defaultMode: 420
-                name: pre-cache-spec
-              name: config-volume
-            - hostPath:
-                path: /usr
-                type: Directory
-              name: host-usr
-            - hostPath:
-                path: /var
-                type: Directory
-              name: host-var
-            - hostPath:
-                path: /var/lib/kubelet
-                type: Directory
-              name: host-var-lib-kubelet
-            - hostPath:
-                path: /tmp
-                type: Directory
-              name: host-tmp
-            - hostPath:
-                path: /lib64
-                type: Directory
-              name: host-lib64
-            - hostPath:
-                path: /proc
-                type: Directory
-              name: host-proc
-            - hostPath:
-                path: /run
-                type: Directory
-              name: host-run
-            - hostPath:
-                path: /sys/fs/cgroup
-                type: Directory
-              name: sys-fs-cgroup
-            - hostPath:
-                path: /etc
-                type: Directory
-              name: host-etc
+              - configMap:
+                  defaultMode: 420
+                  name: pre-cache-spec
+                name: config-volume
+              - emptyDir: {}
+                name: host
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /lib64
+                  type: Directory
+                name: host-lib64
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
+              - hostPath:
+                  path: /usr
+                  type: Directory
+                name: host-usr
+              - hostPath:
+                  path: /var
+                  type: Directory
+                name: host-var
+              - hostPath:
+                  path: /var/lib/kubelet
+                  type: Directory
+                name: host-var-lib-kubelet
+              - hostPath:
+                  path: /sys/fs/cgroup
+                  type: Directory
+                name: sys-fs-cgroup
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -300,69 +300,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /etc/config
-                name: config-volume
-                readOnly: true
-              - mountPath: /host
-                name: host
-              - mountPath: /host/tmp
-                name: host-tmp
-              - mountPath: /host/usr/bin
-                name: host-usr
-                subPath: bin
-                readOnly: true
-              - mountPath: /host/usr/lib
-                name: host-usr
-                subPath: lib
-                readOnly: true
-              - mountPath: /host/usr/lib64
-                name: host-usr
-                subPath: lib64
-                readOnly: true
-              - mountPath: /host/usr/share/containers
-                name: host-usr
-                subPath: share/containers
-                readOnly: true
-              - mountPath: /host/usr/libexec
-                name: host-usr
-                subPath: libexec
-                readOnly: true
-              - mountPath: /host/var/lib/containers
-                name: host-var
-                subPath: lib/containers
-              - mountPath: /host/var/lib/cni
-                name: host-var
-                subPath: lib/cni
-                readOnly: true
-              - mountPath: /host/var/lib/kubelet
-                name: host-var-lib-kubelet
-                readOnly: true
-              - mountPath: /host/var/tmp
-                name: host-var
-                subPath: tmp
-              - mountPath: /host/lib64
-                name: host-lib64
-                readOnly: true
-              - mountPath: /host/run
-                name: host-run
-              - mountPath: /host/proc
-                name: host-proc
-                readOnly: true
-              - mountPath: /host/sys/fs/cgroup
-                name: sys-fs-cgroup
-                readOnly: true
-              - mountPath: /host/etc/containers
-                name: host-etc
-                subPath: containers
-                readOnly: true
-              - mountPath: /host/etc/pki/ca-trust
-                name: host-etc
-                subPath: pki/ca-trust
-                readOnly: true
-              - mountPath: /host/etc/resolv.conf
-                name: host-etc
-                subPath: resolv.conf
-                readOnly: true
+                - mountPath: /etc/config
+                  name: config-volume
+                  readOnly: true
+                - mountPath: /host
+                  name: host
+                - mountPath: /host/etc/containers
+                  name: host-etc
+                  readOnly: true
+                  subPath: containers
+                - mountPath: /host/etc/pki/ca-trust
+                  name: host-etc
+                  readOnly: true
+                  subPath: pki/ca-trust
+                - mountPath: /host/etc/resolv.conf
+                  name: host-etc
+                  readOnly: true
+                  subPath: resolv.conf
+                - mountPath: /host/lib64
+                  name: host-lib64
+                  readOnly: true
+                - mountPath: /host/proc
+                  name: host-proc
+                  readOnly: true
+                - mountPath: /host/run
+                  name: host-run
+                - mountPath: /host/tmp
+                  name: host-tmp
+                - mountPath: /host/usr/bin
+                  name: host-usr
+                  readOnly: true
+                  subPath: bin
+                - mountPath: /host/usr/lib
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib
+                - mountPath: /host/usr/lib64
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib64
+                - mountPath: /host/usr/share/containers
+                  name: host-usr
+                  readOnly: true
+                  subPath: share/containers
+                - mountPath: /host/usr/libexec
+                  name: host-usr
+                  readOnly: true
+                  subPath: libexec
+                - mountPath: /host/var/lib/containers
+                  name: host-var
+                  subPath: lib/containers
+                - mountPath: /host/var/lib/cni
+                  name: host-var
+                  readOnly: true
+                  subPath: lib/cni
+                - mountPath: /host/var/tmp
+                  name: host-var
+                  subPath: tmp
+                - mountPath: /host/var/lib/kubelet
+                  name: host-var-lib-kubelet
+                  readOnly: true
+                - mountPath: /host/sys/fs/cgroup
+                  name: sys-fs-cgroup
+                  readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -370,48 +370,48 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-            - name: host
-              emptyDir: {}
-            - configMap:
-                defaultMode: 420
-                name: pre-cache-spec
-              name: config-volume
-            - hostPath:
-                path: /usr
-                type: Directory
-              name: host-usr
-            - hostPath:
-                path: /var
-                type: Directory
-              name: host-var
-            - hostPath:
-                path: /var/lib/kubelet
-                type: Directory
-              name: host-var-lib-kubelet
-            - hostPath:
-                path: /tmp
-                type: Directory
-              name: host-tmp
-            - hostPath:
-                path: /lib64
-                type: Directory
-              name: host-lib64
-            - hostPath:
-                path: /proc
-                type: Directory
-              name: host-proc
-            - hostPath:
-                path: /run
-                type: Directory
-              name: host-run
-            - hostPath:
-                path: /sys/fs/cgroup
-                type: Directory
-              name: sys-fs-cgroup
-            - hostPath:
-                path: /etc
-                type: Directory
-              name: host-etc
+              - configMap:
+                  defaultMode: 420
+                  name: pre-cache-spec
+                name: config-volume
+              - emptyDir: {}
+                name: host
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /lib64
+                  type: Directory
+                name: host-lib64
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
+              - hostPath:
+                  path: /usr
+                  type: Directory
+                name: host-usr
+              - hostPath:
+                  path: /var
+                  type: Directory
+                name: host-var
+              - hostPath:
+                  path: /var/lib/kubelet
+                  type: Directory
+                name: host-var-lib-kubelet
+              - hostPath:
+                  path: /sys/fs/cgroup
+                  type: Directory
+                name: sys-fs-cgroup
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -462,69 +462,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /etc/config
-                name: config-volume
-                readOnly: true
-              - mountPath: /host
-                name: host
-              - mountPath: /host/tmp
-                name: host-tmp
-              - mountPath: /host/usr/bin
-                name: host-usr
-                subPath: bin
-                readOnly: true
-              - mountPath: /host/usr/lib
-                name: host-usr
-                subPath: lib
-                readOnly: true
-              - mountPath: /host/usr/lib64
-                name: host-usr
-                subPath: lib64
-                readOnly: true
-              - mountPath: /host/usr/share/containers
-                name: host-usr
-                subPath: share/containers
-                readOnly: true
-              - mountPath: /host/usr/libexec
-                name: host-usr
-                subPath: libexec
-                readOnly: true
-              - mountPath: /host/var/lib/containers
-                name: host-var
-                subPath: lib/containers
-              - mountPath: /host/var/lib/cni
-                name: host-var
-                subPath: lib/cni
-                readOnly: true
-              - mountPath: /host/var/lib/kubelet
-                name: host-var-lib-kubelet
-                readOnly: true
-              - mountPath: /host/var/tmp
-                name: host-var
-                subPath: tmp
-              - mountPath: /host/lib64
-                name: host-lib64
-                readOnly: true
-              - mountPath: /host/run
-                name: host-run
-              - mountPath: /host/proc
-                name: host-proc
-                readOnly: true
-              - mountPath: /host/sys/fs/cgroup
-                name: sys-fs-cgroup
-                readOnly: true
-              - mountPath: /host/etc/containers
-                name: host-etc
-                subPath: containers
-                readOnly: true
-              - mountPath: /host/etc/pki/ca-trust
-                name: host-etc
-                subPath: pki/ca-trust
-                readOnly: true
-              - mountPath: /host/etc/resolv.conf
-                name: host-etc
-                subPath: resolv.conf
-                readOnly: true
+                - mountPath: /etc/config
+                  name: config-volume
+                  readOnly: true
+                - mountPath: /host
+                  name: host
+                - mountPath: /host/etc/containers
+                  name: host-etc
+                  readOnly: true
+                  subPath: containers
+                - mountPath: /host/etc/pki/ca-trust
+                  name: host-etc
+                  readOnly: true
+                  subPath: pki/ca-trust
+                - mountPath: /host/etc/resolv.conf
+                  name: host-etc
+                  readOnly: true
+                  subPath: resolv.conf
+                - mountPath: /host/lib64
+                  name: host-lib64
+                  readOnly: true
+                - mountPath: /host/proc
+                  name: host-proc
+                  readOnly: true
+                - mountPath: /host/run
+                  name: host-run
+                - mountPath: /host/tmp
+                  name: host-tmp
+                - mountPath: /host/usr/bin
+                  name: host-usr
+                  readOnly: true
+                  subPath: bin
+                - mountPath: /host/usr/lib
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib
+                - mountPath: /host/usr/lib64
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib64
+                - mountPath: /host/usr/share/containers
+                  name: host-usr
+                  readOnly: true
+                  subPath: share/containers
+                - mountPath: /host/usr/libexec
+                  name: host-usr
+                  readOnly: true
+                  subPath: libexec
+                - mountPath: /host/var/lib/containers
+                  name: host-var
+                  subPath: lib/containers
+                - mountPath: /host/var/lib/cni
+                  name: host-var
+                  readOnly: true
+                  subPath: lib/cni
+                - mountPath: /host/var/tmp
+                  name: host-var
+                  subPath: tmp
+                - mountPath: /host/var/lib/kubelet
+                  name: host-var-lib-kubelet
+                  readOnly: true
+                - mountPath: /host/sys/fs/cgroup
+                  name: sys-fs-cgroup
+                  readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -532,48 +532,48 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-            - name: host
-              emptyDir: {}
-            - configMap:
-                defaultMode: 420
-                name: pre-cache-spec
-              name: config-volume
-            - hostPath:
-                path: /usr
-                type: Directory
-              name: host-usr
-            - hostPath:
-                path: /var
-                type: Directory
-              name: host-var
-            - hostPath:
-                path: /var/lib/kubelet
-                type: Directory
-              name: host-var-lib-kubelet
-            - hostPath:
-                path: /tmp
-                type: Directory
-              name: host-tmp
-            - hostPath:
-                path: /lib64
-                type: Directory
-              name: host-lib64
-            - hostPath:
-                path: /proc
-                type: Directory
-              name: host-proc
-            - hostPath:
-                path: /run
-                type: Directory
-              name: host-run
-            - hostPath:
-                path: /sys/fs/cgroup
-                type: Directory
-              name: sys-fs-cgroup
-            - hostPath:
-                path: /etc
-                type: Directory
-              name: host-etc
+              - configMap:
+                  defaultMode: 420
+                  name: pre-cache-spec
+                name: config-volume
+              - emptyDir: {}
+                name: host
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /lib64
+                  type: Directory
+                name: host-lib64
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
+              - hostPath:
+                  path: /usr
+                  type: Directory
+                name: host-usr
+              - hostPath:
+                  path: /var
+                  type: Directory
+                name: host-var
+              - hostPath:
+                  path: /var/lib/kubelet
+                  type: Directory
+                name: host-var-lib-kubelet
+              - hostPath:
+                  path: /sys/fs/cgroup
+                  type: Directory
+                name: sys-fs-cgroup
 ---              
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -624,69 +624,69 @@ spec:
               terminationMessagePath: /dev/termination-log
               terminationMessagePolicy: File
               volumeMounts:
-              - mountPath: /etc/config
-                name: config-volume
-                readOnly: true
-              - mountPath: /host
-                name: host
-              - mountPath: /host/tmp
-                name: host-tmp
-              - mountPath: /host/usr/bin
-                name: host-usr
-                subPath: bin
-                readOnly: true
-              - mountPath: /host/usr/lib
-                name: host-usr
-                subPath: lib
-                readOnly: true
-              - mountPath: /host/usr/lib64
-                name: host-usr
-                subPath: lib64
-                readOnly: true
-              - mountPath: /host/usr/share/containers
-                name: host-usr
-                subPath: share/containers
-                readOnly: true
-              - mountPath: /host/usr/libexec
-                name: host-usr
-                subPath: libexec
-                readOnly: true
-              - mountPath: /host/var/lib/containers
-                name: host-var
-                subPath: lib/containers
-              - mountPath: /host/var/lib/cni
-                name: host-var
-                subPath: lib/cni
-                readOnly: true
-              - mountPath: /host/var/lib/kubelet
-                name: host-var-lib-kubelet
-                readOnly: true
-              - mountPath: /host/var/tmp
-                name: host-var
-                subPath: tmp
-              - mountPath: /host/lib64
-                name: host-lib64
-                readOnly: true
-              - mountPath: /host/run
-                name: host-run
-              - mountPath: /host/proc
-                name: host-proc
-                readOnly: true
-              - mountPath: /host/sys/fs/cgroup
-                name: sys-fs-cgroup
-                readOnly: true
-              - mountPath: /host/etc/containers
-                name: host-etc
-                subPath: containers
-                readOnly: true
-              - mountPath: /host/etc/pki/ca-trust
-                name: host-etc
-                subPath: pki/ca-trust
-                readOnly: true
-              - mountPath: /host/etc/resolv.conf
-                name: host-etc
-                subPath: resolv.conf
-                readOnly: true
+                - mountPath: /etc/config
+                  name: config-volume
+                  readOnly: true
+                - mountPath: /host
+                  name: host
+                - mountPath: /host/etc/containers
+                  name: host-etc
+                  readOnly: true
+                  subPath: containers
+                - mountPath: /host/etc/pki/ca-trust
+                  name: host-etc
+                  readOnly: true
+                  subPath: pki/ca-trust
+                - mountPath: /host/etc/resolv.conf
+                  name: host-etc
+                  readOnly: true
+                  subPath: resolv.conf
+                - mountPath: /host/lib64
+                  name: host-lib64
+                  readOnly: true
+                - mountPath: /host/proc
+                  name: host-proc
+                  readOnly: true
+                - mountPath: /host/run
+                  name: host-run
+                - mountPath: /host/tmp
+                  name: host-tmp
+                - mountPath: /host/usr/bin
+                  name: host-usr
+                  readOnly: true
+                  subPath: bin
+                - mountPath: /host/usr/lib
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib
+                - mountPath: /host/usr/lib64
+                  name: host-usr
+                  readOnly: true
+                  subPath: lib64
+                - mountPath: /host/usr/share/containers
+                  name: host-usr
+                  readOnly: true
+                  subPath: share/containers
+                - mountPath: /host/usr/libexec
+                  name: host-usr
+                  readOnly: true
+                  subPath: libexec
+                - mountPath: /host/var/lib/containers
+                  name: host-var
+                  subPath: lib/containers
+                - mountPath: /host/var/lib/cni
+                  name: host-var
+                  readOnly: true
+                  subPath: lib/cni
+                - mountPath: /host/var/tmp
+                  name: host-var
+                  subPath: tmp
+                - mountPath: /host/var/lib/kubelet
+                  name: host-var-lib-kubelet
+                  readOnly: true
+                - mountPath: /host/sys/fs/cgroup
+                  name: sys-fs-cgroup
+                  readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -694,46 +694,45 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-            - name: host
-              emptyDir: {}
-            - configMap:
-                defaultMode: 420
-                name: pre-cache-spec
-              name: config-volume
-            - hostPath:
-                path: /usr
-                type: Directory
-              name: host-usr
-            - hostPath:
-                path: /var
-                type: Directory
-              name: host-var
-            - hostPath:
-                path: /var/lib/kubelet
-                type: Directory
-              name: host-var-lib-kubelet
-            - hostPath:
-                path: /tmp
-                type: Directory
-              name: host-tmp
-            - hostPath:
-                path: /lib64
-                type: Directory
-              name: host-lib64
-            - hostPath:
-                path: /proc
-                type: Directory
-              name: host-proc
-            - hostPath:
-                path: /run
-                type: Directory
-              name: host-run
-            - hostPath:
-                path: /sys/fs/cgroup
-                type: Directory
-              name: sys-fs-cgroup
-            - hostPath:
-                path: /etc
-                type: Directory
-              name: host-etc
-
+              - configMap:
+                  defaultMode: 420
+                  name: pre-cache-spec
+                name: config-volume
+              - emptyDir: {}
+                name: host
+              - hostPath:
+                  path: /etc
+                  type: Directory
+                name: host-etc
+              - hostPath:
+                  path: /lib64
+                  type: Directory
+                name: host-lib64
+              - hostPath:
+                  path: /proc
+                  type: Directory
+                name: host-proc
+              - hostPath:
+                  path: /run
+                  type: Directory
+                name: host-run
+              - hostPath:
+                  path: /tmp
+                  type: Directory
+                name: host-tmp
+              - hostPath:
+                  path: /usr
+                  type: Directory
+                name: host-usr
+              - hostPath:
+                  path: /var
+                  type: Directory
+                name: host-var
+              - hostPath:
+                  path: /var/lib/kubelet
+                  type: Directory
+                name: host-var-lib-kubelet
+              - hostPath:
+                  path: /sys/fs/cgroup
+                  type: Directory
+                name: sys-fs-cgroup
