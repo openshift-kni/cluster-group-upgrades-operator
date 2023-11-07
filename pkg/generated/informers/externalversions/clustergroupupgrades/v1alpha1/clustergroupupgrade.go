@@ -21,10 +21,10 @@ import (
 	"context"
 	time "time"
 
-	clustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	versioned "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/listers/clustergroupupgradesoperator/v1alpha1"
+	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/listers/clustergroupupgrades/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	watch "k8s.io/apimachinery/pkg/watch"
@@ -61,16 +61,16 @@ func NewFilteredClusterGroupUpgradeInformer(client versioned.Interface, namespac
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ClustergroupupgradesoperatorV1alpha1().ClusterGroupUpgrades(namespace).List(context.TODO(), options)
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).List(context.TODO(), options)
 			},
 			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.ClustergroupupgradesoperatorV1alpha1().ClusterGroupUpgrades(namespace).Watch(context.TODO(), options)
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).Watch(context.TODO(), options)
 			},
 		},
-		&clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgrade{},
+		&clustergroupupgradesv1alpha1.ClusterGroupUpgrade{},
 		resyncPeriod,
 		indexers,
 	)
@@ -81,7 +81,7 @@ func (f *clusterGroupUpgradeInformer) defaultInformer(client versioned.Interface
 }
 
 func (f *clusterGroupUpgradeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer)
+	return f.factory.InformerFor(&clustergroupupgradesv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer)
 }
 
 func (f *clusterGroupUpgradeInformer) Lister() v1alpha1.ClusterGroupUpgradeLister {

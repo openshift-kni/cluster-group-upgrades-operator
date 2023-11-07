@@ -20,29 +20,29 @@ package v1alpha1
 import (
 	"net/http"
 
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/scheme"
 	rest "k8s.io/client-go/rest"
 )
 
-type ClustergroupupgradesoperatorV1alpha1Interface interface {
+type RanV1alpha1Interface interface {
 	RESTClient() rest.Interface
 	ClusterGroupUpgradesGetter
 }
 
-// ClustergroupupgradesoperatorV1alpha1Client is used to interact with features provided by the clustergroupupgradesoperator group.
-type ClustergroupupgradesoperatorV1alpha1Client struct {
+// RanV1alpha1Client is used to interact with features provided by the ran.openshift.io group.
+type RanV1alpha1Client struct {
 	restClient rest.Interface
 }
 
-func (c *ClustergroupupgradesoperatorV1alpha1Client) ClusterGroupUpgrades(namespace string) ClusterGroupUpgradeInterface {
+func (c *RanV1alpha1Client) ClusterGroupUpgrades(namespace string) ClusterGroupUpgradeInterface {
 	return newClusterGroupUpgrades(c, namespace)
 }
 
-// NewForConfig creates a new ClustergroupupgradesoperatorV1alpha1Client for the given config.
+// NewForConfig creates a new RanV1alpha1Client for the given config.
 // NewForConfig is equivalent to NewForConfigAndClient(c, httpClient),
 // where httpClient was generated with rest.HTTPClientFor(c).
-func NewForConfig(c *rest.Config) (*ClustergroupupgradesoperatorV1alpha1Client, error) {
+func NewForConfig(c *rest.Config) (*RanV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -54,9 +54,9 @@ func NewForConfig(c *rest.Config) (*ClustergroupupgradesoperatorV1alpha1Client, 
 	return NewForConfigAndClient(&config, httpClient)
 }
 
-// NewForConfigAndClient creates a new ClustergroupupgradesoperatorV1alpha1Client for the given config and http client.
+// NewForConfigAndClient creates a new RanV1alpha1Client for the given config and http client.
 // Note the http client provided takes precedence over the configured transport values.
-func NewForConfigAndClient(c *rest.Config, h *http.Client) (*ClustergroupupgradesoperatorV1alpha1Client, error) {
+func NewForConfigAndClient(c *rest.Config, h *http.Client) (*RanV1alpha1Client, error) {
 	config := *c
 	if err := setConfigDefaults(&config); err != nil {
 		return nil, err
@@ -65,12 +65,12 @@ func NewForConfigAndClient(c *rest.Config, h *http.Client) (*Clustergroupupgrade
 	if err != nil {
 		return nil, err
 	}
-	return &ClustergroupupgradesoperatorV1alpha1Client{client}, nil
+	return &RanV1alpha1Client{client}, nil
 }
 
-// NewForConfigOrDie creates a new ClustergroupupgradesoperatorV1alpha1Client for the given config and
+// NewForConfigOrDie creates a new RanV1alpha1Client for the given config and
 // panics if there is an error in the config.
-func NewForConfigOrDie(c *rest.Config) *ClustergroupupgradesoperatorV1alpha1Client {
+func NewForConfigOrDie(c *rest.Config) *RanV1alpha1Client {
 	client, err := NewForConfig(c)
 	if err != nil {
 		panic(err)
@@ -78,9 +78,9 @@ func NewForConfigOrDie(c *rest.Config) *ClustergroupupgradesoperatorV1alpha1Clie
 	return client
 }
 
-// New creates a new ClustergroupupgradesoperatorV1alpha1Client for the given RESTClient.
-func New(c rest.Interface) *ClustergroupupgradesoperatorV1alpha1Client {
-	return &ClustergroupupgradesoperatorV1alpha1Client{c}
+// New creates a new RanV1alpha1Client for the given RESTClient.
+func New(c rest.Interface) *RanV1alpha1Client {
+	return &RanV1alpha1Client{c}
 }
 
 func setConfigDefaults(config *rest.Config) error {
@@ -98,7 +98,7 @@ func setConfigDefaults(config *rest.Config) error {
 
 // RESTClient returns a RESTClient that is used to communicate
 // with API server by this client implementation.
-func (c *ClustergroupupgradesoperatorV1alpha1Client) RESTClient() rest.Interface {
+func (c *RanV1alpha1Client) RESTClient() rest.Interface {
 	if c == nil {
 		return nil
 	}

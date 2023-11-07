@@ -19,8 +19,8 @@ package fake
 
 import (
 	clientset "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned"
-	clustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/typed/clustergroupupgradesoperator/v1alpha1"
-	fakeclustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/typed/clustergroupupgradesoperator/v1alpha1/fake"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/typed/clustergroupupgrades/v1alpha1"
+	fakeranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/typed/clustergroupupgrades/v1alpha1/fake"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/watch"
 	"k8s.io/client-go/discovery"
@@ -78,7 +78,7 @@ var (
 	_ testing.FakeClient  = &Clientset{}
 )
 
-// ClustergroupupgradesoperatorV1alpha1 retrieves the ClustergroupupgradesoperatorV1alpha1Client
-func (c *Clientset) ClustergroupupgradesoperatorV1alpha1() clustergroupupgradesoperatorv1alpha1.ClustergroupupgradesoperatorV1alpha1Interface {
-	return &fakeclustergroupupgradesoperatorv1alpha1.FakeClustergroupupgradesoperatorV1alpha1{Fake: &c.Fake}
+// RanV1alpha1 retrieves the RanV1alpha1Client
+func (c *Clientset) RanV1alpha1() ranv1alpha1.RanV1alpha1Interface {
+	return &fakeranv1alpha1.FakeRanV1alpha1{Fake: &c.Fake}
 }
