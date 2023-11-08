@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"reflect"
@@ -250,22 +251,22 @@ spec:
                       - mountPath: /host/usr/lib64
                         name: host-usr-lib64
                         readOnly: true
-                      - mountPath: /host/usr/share/containers
-                        name: host-usr-share-containers
-                        readOnly: true
                       - mountPath: /host/usr/libexec
                         name: host-usr-libexec
                         readOnly: true
-                      - mountPath: /host/var/lib/containers
-                        name: host-var-lib-containers
+                      - mountPath: /host/usr/share/containers
+                        name: host-usr-share-containers
+                        readOnly: true
                       - mountPath: /host/var/lib/cni
                         name: host-var-lib-cni
                         readOnly: true
-                      - mountPath: /host/var/tmp
-                        name: host-var-tmp
+                      - mountPath: /host/var/lib/containers
+                        name: host-var-lib-containers
                       - mountPath: /host/var/lib/kubelet
                         name: host-var-lib-kubelet
                         readOnly: true
+                      - mountPath: /host/var/tmp
+                        name: host-var-tmp
                       - mountPath: /host/sys/fs/cgroup
                         name: sys-fs-cgroup
                         readOnly: true
@@ -277,8 +278,8 @@ spec:
                   priorityClassName: system-cluster-critical
                   volumes:
                     - configMap:
-                      defaultMode: 420
-                      name: pre-cache-spec
+                        defaultMode: 420
+                        name: pre-cache-spec
                       name: config-volume
                     - emptyDir: {}
                       name: host
@@ -286,10 +287,6 @@ spec:
                         path: /etc
                         type: Directory
                       name: host-etc
-                    - hostPath:
-                        path: /etc/containers
-                        type: Directory
-                      name: host-etc-containers
                     - hostPath:
                         path: /etc/containers
                         type: Directory
@@ -319,8 +316,8 @@ spec:
                         type: Directory
                       name: host-tmp
                     - hostPath:
-                      path: /usr
-                      type: Directory
+                        path: /usr
+                        type: Directory
                       name: host-usr
                     - hostPath:
                         path: /usr/bin
@@ -339,7 +336,7 @@ spec:
                         type: Directory
                       name: host-usr-libexec
                     - hostPath:
-                        path: /usr/share-containers
+                        path: /usr/share/containers
                         type: Directory
                       name: host-usr-share-containers
                     - hostPath:
@@ -545,8 +542,21 @@ spec:
 			l := log.New(os.Stderr, "", 0)
 
 			if !reflect.DeepEqual(renderedObject, desiredObject) {
-				l.Println(renderedObject)
-				l.Println(desiredObject)
+				// By rendering the two objects to json they can more easily
+				// be compared to identify the failure
+				renderedJSON, err := json.Marshal(renderedObject)
+				if err != nil {
+					l.Println(renderedObject)
+				} else {
+					l.Println(string(renderedJSON))
+				}
+
+				desiredJSON, err := json.Marshal(desiredObject)
+				if err != nil {
+					l.Println(desiredObject)
+				} else {
+					l.Println(string(desiredJSON))
+				}
 			}
 		})
 	}
