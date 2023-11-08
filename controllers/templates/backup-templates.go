@@ -215,7 +215,7 @@ spec:
                   type: Directory
                 name: host-usr-local
               - hostPath:
-                  path: /usr/share-containers
+                  path: /usr/share/containers
                   type: Directory
                 name: host-usr-share-containers
               - hostPath:

@@ -229,7 +229,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: Directory
+                  type: File
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
@@ -280,13 +280,13 @@ spec:
                   type: Directory
                 name: host-var
               - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
                   path: /var/lib/cni
                   type: Directory
                 name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
