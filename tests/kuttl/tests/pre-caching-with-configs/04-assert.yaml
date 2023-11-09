@@ -182,22 +182,22 @@ spec:
                   - mountPath: /host/usr/lib64
                     name: host-usr-lib64
                     readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
                   - mountPath: /host/usr/libexec
                     name: host-usr-libexec
                     readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr-share-containers
+                    readOnly: true
                   - mountPath: /host/var/lib/cni
                     name: host-var-lib-cni
                     readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
+                  - mountPath: /host/var/lib/containers
+                    name: host-var-lib-containers
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
+                  - mountPath: /host/var/tmp
+                    name: host-var-tmp
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
@@ -224,7 +224,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: Directory
+                  type: File
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
@@ -246,7 +246,7 @@ spec:
                   path: /tmp
                   type: Directory
                 name: host-tmp
-              - hostPath: 
+              - hostPath:
                   path: /usr
                   type: Directory
                 name: host-usr
@@ -275,13 +275,13 @@ spec:
                   type: Directory
                 name: host-var
               - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
                   path: /var/lib/cni
                   type: Directory
                 name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
@@ -377,22 +377,22 @@ spec:
                   - mountPath: /host/usr/lib64
                     name: host-usr-lib64
                     readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
                   - mountPath: /host/usr/libexec
                     name: host-usr-libexec
                     readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr-share-containers
+                    readOnly: true
                   - mountPath: /host/var/lib/cni
                     name: host-var-lib-cni
                     readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
+                  - mountPath: /host/var/lib/containers
+                    name: host-var-lib-containers
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
+                  - mountPath: /host/var/tmp
+                    name: host-var-tmp
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
@@ -419,7 +419,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: Directory
+                  type: File
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
@@ -441,7 +441,7 @@ spec:
                   path: /tmp
                   type: Directory
                 name: host-tmp
-              - hostPath: 
+              - hostPath:
                   path: /usr
                   type: Directory
                 name: host-usr
@@ -470,13 +470,13 @@ spec:
                   type: Directory
                 name: host-var
               - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
                   path: /var/lib/cni
                   type: Directory
                 name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
@@ -572,22 +572,22 @@ spec:
                   - mountPath: /host/usr/lib64
                     name: host-usr-lib64
                     readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
                   - mountPath: /host/usr/libexec
                     name: host-usr-libexec
                     readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr-share-containers
+                    readOnly: true
                   - mountPath: /host/var/lib/cni
                     name: host-var-lib-cni
                     readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
+                  - mountPath: /host/var/lib/containers
+                    name: host-var-lib-containers
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
+                  - mountPath: /host/var/tmp
+                    name: host-var-tmp
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
@@ -614,7 +614,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: Directory
+                  type: File
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
@@ -636,7 +636,7 @@ spec:
                   path: /tmp
                   type: Directory
                 name: host-tmp
-              - hostPath: 
+              - hostPath:
                   path: /usr
                   type: Directory
                 name: host-usr
@@ -665,13 +665,13 @@ spec:
                   type: Directory
                 name: host-var
               - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
                   path: /var/lib/cni
                   type: Directory
                 name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
@@ -767,22 +767,22 @@ spec:
                   - mountPath: /host/usr/lib64
                     name: host-usr-lib64
                     readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
                   - mountPath: /host/usr/libexec
                     name: host-usr-libexec
                     readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
+                  - mountPath: /host/usr/share/containers
+                    name: host-usr-share-containers
+                    readOnly: true
                   - mountPath: /host/var/lib/cni
                     name: host-var-lib-cni
                     readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
+                  - mountPath: /host/var/lib/containers
+                    name: host-var-lib-containers
                   - mountPath: /host/var/lib/kubelet
                     name: host-var-lib-kubelet
                     readOnly: true
+                  - mountPath: /host/var/tmp
+                    name: host-var-tmp
                   - mountPath: /host/sys/fs/cgroup
                     name: sys-fs-cgroup
                     readOnly: true
@@ -809,7 +809,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: Directory
+                  type: File
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
@@ -831,7 +831,7 @@ spec:
                   path: /tmp
                   type: Directory
                 name: host-tmp
-              - hostPath: 
+              - hostPath:
                   path: /usr
                   type: Directory
                 name: host-usr
@@ -860,13 +860,13 @@ spec:
                   type: Directory
                 name: host-var
               - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
                   path: /var/lib/cni
                   type: Directory
                 name: host-var-lib-cni
+              - hostPath:
+                  path: /var/lib/containers
+                  type: Directory
+                name: host-var-lib-containers
               - hostPath:
                   path: /var/lib/kubelet
                   type: Directory
