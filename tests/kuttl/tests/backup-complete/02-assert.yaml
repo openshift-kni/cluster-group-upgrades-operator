@@ -188,30 +188,30 @@ spec:
                 - mountPath: /host/usr/libexec
                   name: host-usr-libexec
                   readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
                 - mountPath: /host/usr/local
                   name: host-usr-local
                   readOnly: true
-                - mountPath: /host/var/lib/containers
-                  name: host-var-lib-containers
+                - mountPath: /host/usr/share/containers
+                  name: host-usr-share-containers
+                  readOnly: true
                 - mountPath: /host/var/lib/cni
                   name: host-var-lib-cni
                   readOnly: true
+                - mountPath: /host/var/lib/containers
+                  name: host-var-lib-containers
                 - mountPath: /host/var/lib/etcd
                   name: host-var-lib-etcd
                   readOnly: true
-                - mountPath: /host/var/lib/ovn-ic
-                  name: host-var-ovn-ic
-                  readOnly: true
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
                 - mountPath: /host/var/lib/kubelet
                   name: host-var-lib-kubelet
                   readOnly: true
+                - mountPath: /host/var/lib/ovn-ic
+                  name: host-var-lib-ovn-ic
+                  readOnly: true
                 - mountPath: /host/var/recovery
                   name: host-var-recovery
+                - mountPath: /host/var/tmp
+                  name: host-var-tmp
                 - mountPath: /host/sys/fs/cgroup
                   name: sys-fs-cgroup
                   readOnly: true
@@ -272,6 +272,10 @@ spec:
                   path: /usr/local
                   type: Directory
                 name: host-usr-local
+              - hostPath:
+                  path: /usr/share/containers
+                  type: Directory
+                name: host-usr-share-containers
               - hostPath:
                   path: /var/
                   type: Directory
@@ -372,30 +376,30 @@ spec:
                 - mountPath: /host/usr/libexec
                   name: host-usr-libexec
                   readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
                 - mountPath: /host/usr/local
                   name: host-usr-local
                   readOnly: true
-                - mountPath: /host/var/lib/containers
-                  name: host-var-lib-containers
+                - mountPath: /host/usr/share/containers
+                  name: host-usr-share-containers
+                  readOnly: true
                 - mountPath: /host/var/lib/cni
                   name: host-var-lib-cni
                   readOnly: true
+                - mountPath: /host/var/lib/containers
+                  name: host-var-lib-containers
                 - mountPath: /host/var/lib/etcd
                   name: host-var-lib-etcd
                   readOnly: true
-                - mountPath: /host/var/lib/ovn-ic
-                  name: host-var-ovn-ic
-                  readOnly: true
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
                 - mountPath: /host/var/lib/kubelet
                   name: host-var-lib-kubelet
                   readOnly: true
+                - mountPath: /host/var/lib/ovn-ic
+                  name: host-var-lib-ovn-ic
+                  readOnly: true
                 - mountPath: /host/var/recovery
                   name: host-var-recovery
+                - mountPath: /host/var/tmp
+                  name: host-var-tmp
                 - mountPath: /host/sys/fs/cgroup
                   name: sys-fs-cgroup
                   readOnly: true
@@ -456,6 +460,10 @@ spec:
                   path: /usr/local
                   type: Directory
                 name: host-usr-local
+              - hostPath:
+                  path: /usr/share/containers
+                  type: Directory
+                name: host-usr-share-containers
               - hostPath:
                   path: /var/
                   type: Directory
@@ -556,30 +564,30 @@ spec:
                 - mountPath: /host/usr/libexec
                   name: host-usr-libexec
                   readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
                 - mountPath: /host/usr/local
                   name: host-usr-local
                   readOnly: true
-                - mountPath: /host/var/lib/containers
-                  name: host-var-lib-containers
+                - mountPath: /host/usr/share/containers
+                  name: host-usr-share-containers
+                  readOnly: true
                 - mountPath: /host/var/lib/cni
                   name: host-var-lib-cni
                   readOnly: true
+                - mountPath: /host/var/lib/containers
+                  name: host-var-lib-containers
                 - mountPath: /host/var/lib/etcd
                   name: host-var-lib-etcd
                   readOnly: true
-                - mountPath: /host/var/lib/ovn-ic
-                  name: host-var-ovn-ic
-                  readOnly: true
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
                 - mountPath: /host/var/lib/kubelet
                   name: host-var-lib-kubelet
                   readOnly: true
+                - mountPath: /host/var/lib/ovn-ic
+                  name: host-var-lib-ovn-ic
+                  readOnly: true
                 - mountPath: /host/var/recovery
                   name: host-var-recovery
+                - mountPath: /host/var/tmp
+                  name: host-var-tmp
                 - mountPath: /host/sys/fs/cgroup
                   name: sys-fs-cgroup
                   readOnly: true
@@ -640,6 +648,10 @@ spec:
                   path: /usr/local
                   type: Directory
                 name: host-usr-local
+              - hostPath:
+                  path: /usr/share/containers
+                  type: Directory
+                name: host-usr-share-containers
               - hostPath:
                   path: /var/
                   type: Directory
@@ -740,30 +752,30 @@ spec:
                 - mountPath: /host/usr/libexec
                   name: host-usr-libexec
                   readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
                 - mountPath: /host/usr/local
                   name: host-usr-local
                   readOnly: true
-                - mountPath: /host/var/lib/containers
-                  name: host-var-lib-containers
+                - mountPath: /host/usr/share/containers
+                  name: host-usr-share-containers
+                  readOnly: true
                 - mountPath: /host/var/lib/cni
                   name: host-var-lib-cni
                   readOnly: true
+                - mountPath: /host/var/lib/containers
+                  name: host-var-lib-containers
                 - mountPath: /host/var/lib/etcd
                   name: host-var-lib-etcd
                   readOnly: true
-                - mountPath: /host/var/lib/ovn-ic
-                  name: host-var-ovn-ic
-                  readOnly: true
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
                 - mountPath: /host/var/lib/kubelet
                   name: host-var-lib-kubelet
                   readOnly: true
+                - mountPath: /host/var/lib/ovn-ic
+                  name: host-var-lib-ovn-ic
+                  readOnly: true
                 - mountPath: /host/var/recovery
                   name: host-var-recovery
+                - mountPath: /host/var/tmp
+                  name: host-var-tmp
                 - mountPath: /host/sys/fs/cgroup
                   name: sys-fs-cgroup
                   readOnly: true
@@ -824,6 +836,10 @@ spec:
                   path: /usr/local
                   type: Directory
                 name: host-usr-local
+              - hostPath:
+                  path: /usr/share/containers
+                  type: Directory
+                name: host-usr-share-containers
               - hostPath:
                   path: /var/
                   type: Directory
