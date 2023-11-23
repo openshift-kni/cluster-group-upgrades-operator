@@ -229,7 +229,7 @@ spec:
                 name: host-etc-containers
               - hostPath:
                   path: /etc/pki/ca-trust
-                  type: File
+                  type: Directory
                 name: host-etc-pki-ca-trust
               - hostPath:
                   path: /etc/resolv.conf
