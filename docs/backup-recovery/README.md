@@ -12,28 +12,22 @@ There are two methods related to partition creation is described here:
 
 ### Preferred method with Siteconfig ###
 
-The recovery partition can be created at install time by defining a node level property called `diskPartition` in the SiteConfig CR. The configuration for the partition must be defined by `start` parameter which must indicate, in mebibytes, the end of the `/sysroot` RHCOS partition and the start for the newly requested recovery partition.
+The recovery partition can be created at install time by passing disk and filesystem information at the node level property called `ignitionConfigOverride` in the SiteConfig CR.
+It requires to define ignition version, disks and filesystems information. The device under disks must be referenced by a persistent path, such as those under /dev/disk/by-path or /dev/disk/by-id (where the by-path name would be recommended, as it is not hardware-specific and would not change in the case of disk replacement)
 
-Additionally, a spare disk can be used for recovery partition as well and can be configured at provisioning time or at day 2 operation. A recovery partition of 50GB with mountpoint at `/var/recovery` can be created by following the below example. Notice that the device under diskPartition must be referenced by a persistent path, such as those under /dev/disk/by-path or /dev/disk/by-id (where the by-path name would be recommended, as it is not hardware-specific and would not change in the case of disk replacement)
+
+Additionally, a spare disk can be used for recovery partition as well and can be configured at provisioning time or at day 2 operation. A recovery partition of 50GB with mountpoint at `/var/recovery` can be created by following the below example. 
 
 ```yaml
+apiVersion: ran.openshift.io/v1
+kind: SiteConfig
+........
 nodes:
-      - hostName: "snonode.sno-worker-0.e2e.bos.redhat.com"
-        role: "master"
-        rootDeviceHints:
-          hctl: "0:2:0:0"
-          deviceName: /dev/sda
-        ........
-        ........
-        #Disk /dev/sda: 893.3 GiB, 959119884288 bytes, 1873281024 sectors
-        diskPartition:
-          - device: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0
-            partitions:
-              - mount_point: /var/recovery
-                size: 51200
-                start: 800000
-
+  - hostName: "snonode.sno-worker-0.e2e.bos.redhat.com"
+    role: "master"
+    ignitionConfigOverride: '{"ignition":{"version":"3.2.0"},"storage":{"disks":[{"device":"/dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0","wipeTable":false,"partitions":[{"sizeMiB":51200,"label":"recovery","startMiB":800000, "wipePartitionEntry": true}]}],"filesystem":[{"device":"/dev/disk/by-partlabel/recovery","path":"/var/recovery","format":"xfs","wipeFilesystem":true}]}}'
 ```
+In the configuration for the partitions, `startMiB` parameter indicates, in mebibytes, the end of the `/sysroot` RHCOS partition and the start for the newly requested recovery partition. This is an optional parameter.
 
 ### Alternative method with Extra-manifest
 
@@ -58,16 +52,17 @@ spec:
       disks:
         # Use persistent disk path for device, as /dev/sd* names can change
         - device: /dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0
-          wipeTable: true # Wipe the disk. WARNING: Do not set if using root disk
+          wipeTable: false # if true, will wipe the disk. WARNING: Do not set true if using root disk
           partitions:
           - label: recovery
             startMiB: 1 # Optional
             sizeMiB: 51200
+            wipePartitionEntry: true
       filesystems:
         - device: /dev/disk/by-partlabel/recovery
           path: /var/recovery
           format: xfs
-          wipe_filesystem: true
+          wipeFilesystem: true
     systemd:
       units:
         - name: var-recovery.mount
