@@ -20,7 +20,7 @@ package externalversions
 import (
 	"fmt"
 
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -51,9 +51,9 @@ func (f *genericInformer) Lister() cache.GenericLister {
 // TODO extend this to unknown resources with a client pool
 func (f *sharedInformerFactory) ForResource(resource schema.GroupVersionResource) (GenericInformer, error) {
 	switch resource {
-	// Group=clustergroupupgradesoperator, Version=v1alpha1
+	// Group=ran.openshift.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithResource("clustergroupupgrades"):
-		return &genericInformer{resource: resource.GroupResource(), informer: f.Clustergroupupgradesoperator().V1alpha1().ClusterGroupUpgrades().Informer()}, nil
+		return &genericInformer{resource: resource.GroupResource(), informer: f.Ran().V1alpha1().ClusterGroupUpgrades().Informer()}, nil
 
 	}
 

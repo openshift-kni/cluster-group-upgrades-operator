@@ -39,7 +39,7 @@ func ClusterGroupUpgrade(name, namespace string) *ClusterGroupUpgradeApplyConfig
 	b.WithName(name)
 	b.WithNamespace(namespace)
 	b.WithKind("ClusterGroupUpgrade")
-	b.WithAPIVersion("clustergroupupgradesoperator/v1alpha1")
+	b.WithAPIVersion("ran.openshift.io/v1alpha1")
 	return b
 }
 

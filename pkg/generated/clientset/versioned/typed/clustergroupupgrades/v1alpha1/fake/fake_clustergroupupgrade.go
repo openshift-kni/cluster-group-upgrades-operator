@@ -22,8 +22,8 @@ import (
 	json "encoding/json"
 	"fmt"
 
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
-	clustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgradesoperator/v1alpha1"
+	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	labels "k8s.io/apimachinery/pkg/labels"
 	types "k8s.io/apimachinery/pkg/types"
@@ -33,7 +33,7 @@ import (
 
 // FakeClusterGroupUpgrades implements ClusterGroupUpgradeInterface
 type FakeClusterGroupUpgrades struct {
-	Fake *FakeClustergroupupgradesoperatorV1alpha1
+	Fake *FakeRanV1alpha1
 	ns   string
 }
 
@@ -143,7 +143,7 @@ func (c *FakeClusterGroupUpgrades) Patch(ctx context.Context, name string, pt ty
 }
 
 // Apply takes the given apply declarative configuration, applies it and returns the applied clusterGroupUpgrade.
-func (c *FakeClusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
+func (c *FakeClusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
 	if clusterGroupUpgrade == nil {
 		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
 	}
@@ -166,7 +166,7 @@ func (c *FakeClusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrad
 
 // ApplyStatus was generated because the type contains a Status member.
 // Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-func (c *FakeClusterGroupUpgrades) ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
+func (c *FakeClusterGroupUpgrades) ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
 	if clusterGroupUpgrade == nil {
 		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
 	}

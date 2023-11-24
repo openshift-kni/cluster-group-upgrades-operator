@@ -9,7 +9,7 @@ COPY vendor/ vendor/
 
 # Copy the go source
 COPY main.go main.go
-COPY api/ api/
+COPY pkg/api/ pkg/api/
 COPY controllers/ controllers/
 
 # Build

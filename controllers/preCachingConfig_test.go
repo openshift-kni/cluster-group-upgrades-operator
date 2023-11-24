@@ -2,13 +2,14 @@ package controllers
 
 import (
 	"context"
+	"testing"
+
 	"github.com/go-logr/logr"
-	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/scheme"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"testing"
 )
 
 func TestPreCachingConfig_getPreCachingConfigSpec(t *testing.T) {

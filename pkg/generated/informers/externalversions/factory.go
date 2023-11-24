@@ -23,7 +23,7 @@ import (
 	time "time"
 
 	versioned "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned"
-	clustergroupupgradesoperator "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/informers/externalversions/clustergroupupgradesoperator"
+	clustergroupupgrades "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/informers/externalversions/clustergroupupgrades"
 	internalinterfaces "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
@@ -242,9 +242,9 @@ type SharedInformerFactory interface {
 	// client.
 	InformerFor(obj runtime.Object, newFunc internalinterfaces.NewInformerFunc) cache.SharedIndexInformer
 
-	Clustergroupupgradesoperator() clustergroupupgradesoperator.Interface
+	Ran() clustergroupupgrades.Interface
 }
 
-func (f *sharedInformerFactory) Clustergroupupgradesoperator() clustergroupupgradesoperator.Interface {
-	return clustergroupupgradesoperator.New(f, f.namespace, f.tweakListOptions)
+func (f *sharedInformerFactory) Ran() clustergroupupgrades.Interface {
+	return clustergroupupgrades.New(f, f.namespace, f.tweakListOptions)
 }

@@ -3,7 +3,7 @@ package utils
 import (
 	"fmt"
 
-	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/rand"
 )
 

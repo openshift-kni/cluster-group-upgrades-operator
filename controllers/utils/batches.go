@@ -3,7 +3,7 @@ package utils
 import (
 	"time"
 
-	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 )
 
 // CalculateBatchTimeout calculates the current batch timeout for the running cgu

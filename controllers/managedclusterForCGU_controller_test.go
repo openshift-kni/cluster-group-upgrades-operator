@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/go-logr/logr"
-	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -45,8 +45,8 @@ var (
 
 func init() {
 	testscheme.AddKnownTypes(clusterv1.GroupVersion, &clusterv1.ManagedCluster{})
-	testscheme.AddKnownTypes(ranv1alpha1.GroupVersion, &ranv1alpha1.ClusterGroupUpgrade{})
-	testscheme.AddKnownTypes(ranv1alpha1.GroupVersion, &ranv1alpha1.ClusterGroupUpgradeList{})
+	testscheme.AddKnownTypes(ranv1alpha1.SchemeGroupVersion, &ranv1alpha1.ClusterGroupUpgrade{})
+	testscheme.AddKnownTypes(ranv1alpha1.SchemeGroupVersion, &ranv1alpha1.ClusterGroupUpgradeList{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.Policy{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PolicyList{})
 }

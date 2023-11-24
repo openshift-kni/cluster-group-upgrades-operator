@@ -18,8 +18,8 @@ limitations under the License.
 package applyconfiguration
 
 import (
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
-	clustergroupupgradesoperatorv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgradesoperator/v1alpha1"
+	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
 )
 
@@ -27,41 +27,41 @@ import (
 // apply configuration type exists for the given GroupVersionKind.
 func ForKind(kind schema.GroupVersionKind) interface{} {
 	switch kind {
-	// Group=clustergroupupgradesoperator, Version=v1alpha1
+	// Group=ran.openshift.io, Version=v1alpha1
 	case v1alpha1.SchemeGroupVersion.WithKind("Actions"):
-		return &clustergroupupgradesoperatorv1alpha1.ActionsApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ActionsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("AfterCompletion"):
-		return &clustergroupupgradesoperatorv1alpha1.AfterCompletionApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.AfterCompletionApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BackupStatus"):
-		return &clustergroupupgradesoperatorv1alpha1.BackupStatusApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.BackupStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BeforeEnable"):
-		return &clustergroupupgradesoperatorv1alpha1.BeforeEnableApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.BeforeEnableApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BlockingCR"):
-		return &clustergroupupgradesoperatorv1alpha1.BlockingCRApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.BlockingCRApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgrade"):
-		return &clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgradeSpec"):
-		return &clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeSpecApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ClusterGroupUpgradeSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgradeStatus"):
-		return &clustergroupupgradesoperatorv1alpha1.ClusterGroupUpgradeStatusApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ClusterGroupUpgradeStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterRemediationProgress"):
-		return &clustergroupupgradesoperatorv1alpha1.ClusterRemediationProgressApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ClusterRemediationProgressApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterState"):
-		return &clustergroupupgradesoperatorv1alpha1.ClusterStateApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ClusterStateApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ManagedPolicyForUpgrade"):
-		return &clustergroupupgradesoperatorv1alpha1.ManagedPolicyForUpgradeApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.ManagedPolicyForUpgradeApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PolicyStatus"):
-		return &clustergroupupgradesoperatorv1alpha1.PolicyStatusApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.PolicyStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PreCachingConfigCR"):
-		return &clustergroupupgradesoperatorv1alpha1.PreCachingConfigCRApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.PreCachingConfigCRApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PrecachingSpec"):
-		return &clustergroupupgradesoperatorv1alpha1.PrecachingSpecApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.PrecachingSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PrecachingStatus"):
-		return &clustergroupupgradesoperatorv1alpha1.PrecachingStatusApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.PrecachingStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("RemediationStrategySpec"):
-		return &clustergroupupgradesoperatorv1alpha1.RemediationStrategySpecApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.RemediationStrategySpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeStatus"):
-		return &clustergroupupgradesoperatorv1alpha1.UpgradeStatusApplyConfiguration{}
+		return &clustergroupupgradesv1alpha1.UpgradeStatusApplyConfiguration{}
 
 	}
 	return nil
