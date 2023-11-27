@@ -284,10 +284,6 @@ spec:
                     - emptyDir: {}
                       name: host
                     - hostPath:
-                        path: /etc
-                        type: Directory
-                      name: host-etc
-                    - hostPath:
                         path: /etc/containers
                         type: Directory
                       name: host-etc-containers
@@ -316,10 +312,6 @@ spec:
                         type: Directory
                       name: host-tmp
                     - hostPath:
-                        path: /usr
-                        type: Directory
-                      name: host-usr
-                    - hostPath:
                         path: /usr/bin
                         type: Directory
                       name: host-usr-bin
@@ -339,10 +331,6 @@ spec:
                         path: /usr/share/containers
                         type: Directory
                       name: host-usr-share-containers
-                    - hostPath:
-                        path: /var
-                        type: Directory
-                      name: host-var
                     - hostPath:
                         path: /var/lib/cni
                         type: Directory
