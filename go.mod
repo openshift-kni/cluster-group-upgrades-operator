@@ -9,7 +9,7 @@ require (
 	github.com/openshift/build-machinery-go v0.0.0-20230306181456-d321ffa04533
 	github.com/operator-framework/api v0.20.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.3
 	k8s.io/api v0.28.3
 	k8s.io/apimachinery v0.28.3
