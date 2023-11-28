@@ -259,7 +259,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
-	$(OPERATOR_SDK) generate kustomize manifests -q
+	$(OPERATOR_SDK) generate kustomize manifests --apis-dir pkg/api/ -q
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && PRECACHE_IMG=$(PRECACHE_IMG) RECOVERY_IMG=$(RECOVERY_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
@@ -274,6 +274,8 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-check
 bundle-check: bundle
+# Workaround for CI which adds phantom dependencies to go.sum
+	go mod tidy
 	hack/check-git-tree.sh
 
 .PHONY: bundle-run
