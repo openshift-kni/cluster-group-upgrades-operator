@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 	"os"
 	"reflect"
@@ -217,69 +218,58 @@ spec:
                     terminationMessagePath: /dev/termination-log
                     terminationMessagePolicy: File
                     volumeMounts:
-                    - mountPath: /etc/config
-                      name: config-volume
-                      readOnly: true
-                    - mountPath: /host
-                      name: host
-                    - mountPath: /host/tmp
-                      name: host-tmp
-                    - mountPath: /host/usr/bin
-                      name: host-usr
-                      subPath: bin
-                      readOnly: true
-                    - mountPath: /host/usr/lib
-                      name: host-usr
-                      subPath: lib
-                      readOnly: true
-                    - mountPath: /host/usr/lib64
-                      name: host-usr
-                      subPath: lib64
-                      readOnly: true
-                    - mountPath: /host/usr/share/containers
-                      name: host-usr
-                      subPath: share/containers
-                      readOnly: true
-                    - mountPath: /host/usr/libexec
-                      name: host-usr
-                      subPath: libexec
-                      readOnly: true
-                    - mountPath: /host/var/lib/containers
-                      name: host-var
-                      subPath: lib/containers
-                    - mountPath: /host/var/lib/cni
-                      name: host-var
-                      subPath: lib/cni
-                      readOnly: true
-                    - mountPath: /host/var/lib/kubelet
-                      name: host-var-lib-kubelet
-                      readOnly: true
-                    - mountPath: /host/var/tmp
-                      name: host-var
-                      subPath: tmp
-                    - mountPath: /host/lib64
-                      name: host-lib64
-                      readOnly: true
-                    - mountPath: /host/run
-                      name: host-run
-                    - mountPath: /host/proc
-                      name: host-proc
-                      readOnly: true
-                    - mountPath: /host/sys/fs/cgroup
-                      name: sys-fs-cgroup
-                      readOnly: true
-                    - mountPath: /host/etc/containers
-                      name: host-etc
-                      subPath: containers
-                      readOnly: true
-                    - mountPath: /host/etc/pki/ca-trust
-                      name: host-etc
-                      subPath: pki/ca-trust
-                      readOnly: true
-                    - mountPath: /host/etc/resolv.conf
-                      name: host-etc
-                      subPath: resolv.conf
-                      readOnly: true
+                      - mountPath: /etc/config
+                        name: config-volume
+                        readOnly: true
+                      - mountPath: /host
+                        name: host
+                      - mountPath: /host/etc/containers
+                        name: host-etc-containers
+                        readOnly: true
+                      - mountPath: /host/etc/pki/ca-trust
+                        name: host-etc-pki-ca-trust
+                        readOnly: true
+                      - mountPath: /host/etc/resolv.conf
+                        name: host-etc-resolv-conf
+                        readOnly: true
+                      - mountPath: /host/lib64
+                        name: host-lib64
+                        readOnly: true
+                      - mountPath: /host/proc
+                        name: host-proc
+                        readOnly: true
+                      - mountPath: /host/run
+                        name: host-run
+                      - mountPath: /host/tmp
+                        name: host-tmp
+                      - mountPath: /host/usr/bin
+                        name: host-usr-bin
+                        readOnly: true
+                      - mountPath: /host/usr/lib
+                        name: host-usr-lib
+                        readOnly: true
+                      - mountPath: /host/usr/lib64
+                        name: host-usr-lib64
+                        readOnly: true
+                      - mountPath: /host/usr/libexec
+                        name: host-usr-libexec
+                        readOnly: true
+                      - mountPath: /host/usr/share/containers
+                        name: host-usr-share-containers
+                        readOnly: true
+                      - mountPath: /host/var/lib/cni
+                        name: host-var-lib-cni
+                        readOnly: true
+                      - mountPath: /host/var/lib/containers
+                        name: host-var-lib-containers
+                      - mountPath: /host/var/lib/kubelet
+                        name: host-var-lib-kubelet
+                        readOnly: true
+                      - mountPath: /host/var/tmp
+                        name: host-var-tmp
+                      - mountPath: /host/sys/fs/cgroup
+                        name: sys-fs-cgroup
+                        readOnly: true
                   dnsPolicy: ClusterFirst
                   restartPolicy: Never
                   schedulerName: default-scheduler
@@ -287,48 +277,80 @@ spec:
                   serviceAccountName: pre-cache-agent
                   priorityClassName: system-cluster-critical
                   volumes:
-                  - name: host
-                    emptyDir: {}
-                  - configMap:
-                      defaultMode: 420
-                      name: pre-cache-spec
-                    name: config-volume
-                  - hostPath:
-                      path: /usr
-                      type: Directory
-                    name: host-usr
-                  - hostPath:
-                      path: /var
-                      type: Directory
-                    name: host-var
-                  - hostPath:
-                      path: /var/lib/kubelet
-                      type: Directory
-                    name: host-var-lib-kubelet
-                  - hostPath:
-                      path: /tmp
-                      type: Directory
-                    name: host-tmp
-                  - hostPath:
-                      path: /lib64
-                      type: Directory
-                    name: host-lib64
-                  - hostPath:
-                      path: /proc
-                      type: Directory
-                    name: host-proc
-                  - hostPath:
-                      path: /run
-                      type: Directory
-                    name: host-run
-                  - hostPath:
-                      path: /sys/fs/cgroup
-                      type: Directory
-                    name: sys-fs-cgroup
-                  - hostPath:
-                      path: /etc
-                      type: Directory
-                    name: host-etc
+                    - configMap:
+                        defaultMode: 420
+                        name: pre-cache-spec
+                      name: config-volume
+                    - emptyDir: {}
+                      name: host
+                    - hostPath:
+                        path: /etc/containers
+                        type: Directory
+                      name: host-etc-containers
+                    - hostPath:
+                        path: /etc/pki/ca-trust
+                        type: Directory
+                      name: host-etc-pki-ca-trust
+                    - hostPath:
+                        path: /etc/resolv.conf
+                        type: File
+                      name: host-etc-resolv-conf
+                    - hostPath:
+                        path: /lib64
+                        type: Directory
+                      name: host-lib64
+                    - hostPath:
+                        path: /proc
+                        type: Directory
+                      name: host-proc
+                    - hostPath:
+                        path: /run
+                        type: Directory
+                      name: host-run
+                    - hostPath:
+                        path: /tmp
+                        type: Directory
+                      name: host-tmp
+                    - hostPath:
+                        path: /usr/bin
+                        type: Directory
+                      name: host-usr-bin
+                    - hostPath:
+                        path: /usr/lib
+                        type: Directory
+                      name: host-usr-lib
+                    - hostPath:
+                        path: /usr/lib64
+                        type: Directory
+                      name: host-usr-lib64
+                    - hostPath:
+                        path: /usr/libexec
+                        type: Directory
+                      name: host-usr-libexec
+                    - hostPath:
+                        path: /usr/share/containers
+                        type: Directory
+                      name: host-usr-share-containers
+                    - hostPath:
+                        path: /var/lib/cni
+                        type: Directory
+                      name: host-var-lib-cni
+                    - hostPath:
+                        path: /var/lib/containers
+                        type: Directory
+                      name: host-var-lib-containers
+                    - hostPath:
+                        path: /var/lib/kubelet
+                        type: Directory
+                      name: host-var-lib-kubelet
+                    - hostPath:
+                        path: /var/tmp
+                        type: Directory
+                      name: host-var-tmp
+                    - hostPath:
+                        path: /sys/fs/cgroup
+                        type: Directory
+                      name: sys-fs-cgroup
 `,
 		},
 		{
@@ -508,8 +530,21 @@ spec:
 			l := log.New(os.Stderr, "", 0)
 
 			if !reflect.DeepEqual(renderedObject, desiredObject) {
-				l.Println(renderedObject)
-				l.Println(desiredObject)
+				// By rendering the two objects to json they can more easily
+				// be compared to identify the failure
+				renderedJSON, err := json.Marshal(renderedObject)
+				if err != nil {
+					l.Println(renderedObject)
+				} else {
+					l.Println(string(renderedJSON))
+				}
+
+				desiredJSON, err := json.Marshal(desiredObject)
+				if err != nil {
+					l.Println(desiredObject)
+				} else {
+					l.Println(string(desiredJSON))
+				}
 			}
 		})
 	}
