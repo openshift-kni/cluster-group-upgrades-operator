@@ -274,7 +274,7 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-check
 bundle-check: bundle
-# Workaround for CI which adds phatom dependencies to go.sum
+# Workaround for CI which adds phantom dependencies to go.sum
 	go mod tidy
 	hack/check-git-tree.sh
 
