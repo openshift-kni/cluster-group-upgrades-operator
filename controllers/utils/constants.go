@@ -148,6 +148,3 @@ const (
 // SoakAnnotation is the annotation that can be set on policies, which indicates the least number number of seconds
 // which policies should be compliant before the cgu moves on from that policy
 const SoakAnnotation = "ran.openshift.io/soak-seconds"
-
-// RFC1123MetadataRegex for metadata names.
-const RFC1123MetadataRegex = `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*`
