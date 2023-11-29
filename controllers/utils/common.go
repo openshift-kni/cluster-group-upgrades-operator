@@ -32,28 +32,20 @@ func GetMinOf3(number1, number2, number3 int) int {
 }
 
 // GetSafeResourceName returns the safename if already allocated in the map and creates a new one if not
-func GetSafeResourceName(name string, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, maxLength,
-	spareLength int) (string, error) {
-
-	var err error
+func GetSafeResourceName(name string, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, maxLength, spareLength int) string {
 	if clusterGroupUpgrade.Status.SafeResourceNames == nil {
 		clusterGroupUpgrade.Status.SafeResourceNames = make(map[string]string)
 	}
 	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[name]
 	if !ok {
-		safeName, err =
-			NewSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation],
-				maxLength, spareLength)
-		if err != nil {
-			return "", err
-		}
+		safeName = NewSafeResourceName(name, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], maxLength, spareLength)
 		clusterGroupUpgrade.Status.SafeResourceNames[name] = safeName
 	}
-	return safeName, nil
+	return safeName
 }
 
 // NewSafeResourceName creates a safe name to use with random suffix and possible truncation based on limits passed in
-func NewSafeResourceName(name, suffix string, maxLength, spareLength int) (string, error) {
+func NewSafeResourceName(name, suffix string, maxLength, spareLength int) string {
 	if suffix == "" {
 		suffix = rand.String(RandomNameSuffixLength)
 	}
@@ -71,17 +63,8 @@ func NewSafeResourceName(name, suffix string, maxLength, spareLength int) (strin
 		base = base[:len(base)-1]
 	}
 
-	newSafeResourceName := fmt.Sprintf("%s-%s", base, suffix)
-	// Validate the newSafeResourceName matches the required regex as per
+	// The newSafeResourceName should match regex
+	// `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*` as per
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
-	match, err := regexp.MatchString(RFC1123MetadataRegex, newSafeResourceName)
-	if err != nil {
-		return "", err
-	}
-	if !match {
-		return "", fmt.Errorf("Safe resource name \"%s\" for \"%s\" does not match regex '%s'",
-			newSafeResourceName, name, RFC1123MetadataRegex)
-	}
-
-	return newSafeResourceName, nil
+	return fmt.Sprintf("%s-%s", base, suffix)
 }
