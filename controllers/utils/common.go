@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"regexp"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/util/rand"
@@ -56,5 +57,14 @@ func NewSafeResourceName(name, suffix string, maxLength, spareLength int) string
 	} else {
 		base = name
 	}
+
+	// Make sure base ends in '-' or an alphanumerical character.
+	for !regexp.MustCompile(`^[a-zA-Z0-9-]*$`).MatchString(base[len(base)-1:]) {
+		base = base[:len(base)-1]
+	}
+
+	// The newSafeResourceName should match regex
+	// `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*` as per
+	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
 	return fmt.Sprintf("%s-%s", base, suffix)
 }
