@@ -1,5 +1,15 @@
 # Developing in cluster-group-upgrades-operator
 
+## Path structure
+The repository's root directory must be in `github.com/openshift-kni/`.
+Running `./hack/fix-path-structure.sh` from the repository's root directory will fix the path.
+Another option is to clone the repository in the correct path:
+
+```
+mkdir -p github.com/openshift-kni/
+cd github.com/openshift-kni/
+git clone git@github.com:openshift-kni/cluster-group-upgrades-operator.git
+```
 ## Makefile targets
 
 To see all `make` targets, run `make help`
