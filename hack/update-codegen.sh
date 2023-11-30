@@ -9,6 +9,8 @@ if [ ! -d $(dirname "${BASH_SOURCE[0]}")/../../../../${module} ]; then
     echo "In order to use this script the path structure should be:"
     echo $module
     echo "and it should be run as: ./hack/update-codegen.sh"
+    echo "to fix the path, from repo root directory run"
+    echo "./hack/fix-path-structure.sh"
     exit 1
 fi
 
