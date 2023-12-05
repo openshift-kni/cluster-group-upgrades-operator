@@ -1,0 +1,4 @@
+# https://docs.snyk.io/scan-applications/snyk-code/using-snyk-code-from-the-cli/excluding-directories-and-files-from-the-snyk-code-cli-test
+exclude:
+  global:
+    - vendor/**
