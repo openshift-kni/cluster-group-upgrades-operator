@@ -130,13 +130,22 @@ const (
 // https://github.com/stolostron/cluster-backup-operator#steps-to-identify-backup-data
 const ExcludeFromClusterBackup = "velero.io/exclude-from-backup"
 
+// Object template constants
+const (
+	ObjectTemplates    = "object-templates"
+	ObjectTemplatesRaw = "object-templates-raw"
+)
+
 // Policy errors
 const (
 	PlcMissTmplDef           = "policy is missing its spec.policy-templates.objectDefinition"
 	PlcMissTmplDefMeta       = "policy is missing its spec.policy-templates.objectDefinition.metadata"
 	PlcMissTmplDefSpec       = "policy is missing its spec.policy-templates.objectDefinition.spec"
-	ConfigPlcMissObjTmpl     = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates"
+	ConfigPlcFailRawMarshal  = "policy was unable to be unmmarshalled from object-templates-raw"
+	ConfigPlcHasBothObjTmpl  = "policy has both spec.policy-templates.objectDefinition.spec.object-templates and spec.policy-templates.objectDefinition.spec.object-templates-raw"
+	ConfigPlcMissAnyObjTmpl  = "policy is missing both spec.policy-templates.objectDefinition.spec.object-templates and spec.policy-templates.objectDefinition.spec.object-templates-raw"
 	ConfigPlcMissObjTmplDef  = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition"
+	ConfigPlcRawObjTmplErr   = "policy defines spec.policy-templates.objectDefinition.spec.object-templates-raw but is empty"
 	PlcHasHubTmplErr         = "policy has hub template error, check the configuration policy's annotation 'policy.open-cluster-management.io/hub-templates-error' for detail"
 	PlcHubTmplFmtErr         = "template format is not supported in TALM"
 	PlcHubTmplFuncErr        = "template function is not supported in TALM"

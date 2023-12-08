@@ -1154,13 +1154,50 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyForCopiedPolicy
 
 		// Ensure the resources referenced in the hub template policy exist if applicable
 		plcTmplDefSpec := plcTmplDef["spec"].(map[string]interface{})
-		configPlcTmpls := plcTmplDefSpec["object-templates"]
-		resolvedconfigPlcTmpls, err := r.updateConfigurationPolicyHubTemplate(
-			ctx, configPlcTmpls, clusterGroupUpgrade.GetNamespace(), managedPolicyName, managedPolicyNamespace)
-		if err != nil {
-			return err
+
+		// One and only one of [object-templates, object-templates-raw] should be defined
+		objectTemplatePresent := plcTmplDefSpec[utils.ObjectTemplates] != nil
+		objectTemplateRawPresent := plcTmplDefSpec[utils.ObjectTemplatesRaw] != nil
+
+		var configPlcTmpls interface{}
+
+		switch {
+		case objectTemplatePresent && objectTemplateRawPresent:
+			return fmt.Errorf("[updateConfigurationPolicyForCopiedPolicy] found both %s and %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case !objectTemplatePresent && !objectTemplateRawPresent:
+			return fmt.Errorf("[updateConfigurationPolicyForCopiedPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case objectTemplatePresent:
+			configPlcTmpls = plcTmplDefSpec[utils.ObjectTemplates].([]interface{})
+
+			resolvedconfigPlcTmpls, err := r.updateConfigurationPolicyHubTemplate(
+				ctx, configPlcTmpls, clusterGroupUpgrade.GetNamespace(), managedPolicyName, managedPolicyNamespace)
+			if err != nil {
+				return err
+			}
+
+			plcTmplDefSpec[utils.ObjectTemplates] = resolvedconfigPlcTmpls
+
+		case objectTemplateRawPresent:
+			// We cannot strip the raw templating here because they must be passed down to ACM
+			configPlcTmpls := plcTmplDefSpec[utils.ObjectTemplatesRaw].(string)
+
+			resolvedconfigPlcTmpls, err := r.updateConfigurationPolicyHubTemplate(
+				ctx, configPlcTmpls, clusterGroupUpgrade.GetNamespace(), managedPolicyName, managedPolicyNamespace)
+			if err != nil {
+				return err
+			}
+
+			stringResolved, err := utils.YamlToString(resolvedconfigPlcTmpls)
+			if err != nil {
+				return err
+			}
+
+			// If we do not trim the vertical bar here then the policy will be created with two
+			// vertical bars and will not be able to be marshalled later
+			plcTmplDefSpec[utils.ObjectTemplatesRaw] = strings.TrimPrefix(stringResolved, "|")
+		default:
+			return fmt.Errorf("[updateConfigurationPolicyForCopiedPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
 		}
-		plcTmplDefSpec["object-templates"] = resolvedconfigPlcTmpls
 	}
 
 	return nil
