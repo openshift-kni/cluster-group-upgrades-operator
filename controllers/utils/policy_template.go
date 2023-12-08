@@ -61,18 +61,20 @@ func ContainsTemplates(s string) bool {
 	return regexpAllTemplates.MatchString(s)
 }
 
-func stringToYaml(s string) (interface{}, error) {
+// StringToYaml takes a string and attempts to unmarshal it into a YAML
+func StringToYaml(s string) (interface{}, error) {
 	var yamlObj interface{}
 	if err := yaml.Unmarshal([]byte(s), &yamlObj); err != nil {
-		return yamlObj, fmt.Errorf("Could not unmarshal data: %s", err)
+		return yamlObj, fmt.Errorf("could not unmarshal data: %s", err)
 	}
 	return yamlObj, nil
 }
 
-func yamlToString(y interface{}) (string, error) {
+// YamlToString takes an interface and attempts to marshal it into a string
+func YamlToString(y interface{}) (string, error) {
 	b, err := yaml.Marshal(y)
 	if err != nil {
-		return "", fmt.Errorf("Could not marshal data: %s", err)
+		return "", fmt.Errorf("could not marshal data: %s", err)
 	}
 	return string(b), nil
 }
@@ -80,9 +82,18 @@ func yamlToString(y interface{}) (string, error) {
 // VerifyHubTemplateFunctions validates any hub template function discovered in the object and
 // return error if the template is not supported
 func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
-	tmplStr, err := yamlToString(tmpl)
-	if err != nil {
-		return err
+
+	var tmplStr string
+	var err error
+
+	switch tmpl.(type) {
+	case string:
+		tmplStr = tmpl.(string)
+	default:
+		tmplStr, err = YamlToString(tmpl)
+		if err != nil {
+			return err
+		}
 	}
 
 	hubTmplMatches := regexpHubTmplFunc.FindAllStringSubmatch(tmplStr, -1)
@@ -133,9 +144,18 @@ func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 // ProcessHubTemplateFunctions replicates any supported hub template resources discovered in the object
 // to the CGU namespace and return the resolved template object
 func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interface{}, error) {
-	tmplStr, err := yamlToString(tmpl)
-	if err != nil {
-		return tmpl, err
+
+	var tmplStr string
+	var err error
+
+	switch tmpl.(type) {
+	case string:
+		tmplStr = tmpl.(string)
+	default:
+		tmplStr, err = YamlToString(tmpl)
+		if err != nil {
+			return tmpl, err
+		}
 	}
 
 	hubTmplMatches := regexpFromConfigMap.FindAllStringSubmatch(tmplStr, -1)
@@ -178,7 +198,7 @@ func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interf
 	}
 
 	var resolvedTmpl interface{}
-	resolvedTmpl, err = stringToYaml(resolvedTmplStr)
+	resolvedTmpl, err = StringToYaml(resolvedTmplStr)
 	if err != nil {
 		return resolvedTmpl, err
 	}

@@ -180,12 +180,36 @@ func stripPolicy(
 	}
 
 	for _, policyTemplate := range policyTemplates.([]interface{}) {
-		objTemplates := policyTemplate.(map[string]interface {
+
+		plcTmplDefSpec := policyTemplate.(map[string]interface {
 		})["objectDefinition"].(map[string]interface {
-		})["spec"].(map[string]interface{})["object-templates"]
-		if objTemplates == nil {
-			return nil, fmt.Errorf("[stripPolicy] can't find object-templates in policyTemplate")
+		})["spec"].(map[string]interface{})
+
+		// One and only one of [object-templates, object-templates-raw] should be defined
+		objectTemplatePresent := plcTmplDefSpec[utils.ObjectTemplates] != nil
+		objectTemplateRawPresent := plcTmplDefSpec[utils.ObjectTemplatesRaw] != nil
+
+		var objTemplates interface{}
+
+		switch {
+		case objectTemplatePresent && objectTemplateRawPresent:
+			return nil, fmt.Errorf("[stripPolicy] found both %s and %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case !objectTemplatePresent && !objectTemplateRawPresent:
+			return nil, fmt.Errorf("[stripPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case objectTemplatePresent:
+			objTemplates = plcTmplDefSpec[utils.ObjectTemplates]
+		case objectTemplateRawPresent:
+			stringTemplate := utils.StripObjectTemplatesRaw(plcTmplDefSpec[utils.ObjectTemplatesRaw].(string))
+
+			var err error
+			objTemplates, err = utils.StringToYaml(stringTemplate)
+			if err != nil {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+			}
+		default:
+			return nil, fmt.Errorf("[stripPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
 		}
+
 		for _, objTemplate := range objTemplates.([]interface{}) {
 			complianceType := objTemplate.(map[string]interface{})["complianceType"]
 			if complianceType == "mustnothave" {
