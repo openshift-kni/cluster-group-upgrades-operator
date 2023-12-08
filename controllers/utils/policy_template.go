@@ -86,9 +86,9 @@ func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 	var tmplStr string
 	var err error
 
-	switch tmpl.(type) {
+	switch tmpl := tmpl.(type) {
 	case string:
-		tmplStr = tmpl.(string)
+		tmplStr = tmpl
 	default:
 		tmplStr, err = YamlToString(tmpl)
 		if err != nil {
@@ -148,9 +148,9 @@ func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interf
 	var tmplStr string
 	var err error
 
-	switch tmpl.(type) {
+	switch tmpl := tmpl.(type) {
 	case string:
-		tmplStr = tmpl.(string)
+		tmplStr = tmpl
 	default:
 		tmplStr, err = YamlToString(tmpl)
 		if err != nil {
