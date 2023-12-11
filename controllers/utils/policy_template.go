@@ -83,17 +83,9 @@ func YamlToString(y interface{}) (string, error) {
 // return error if the template is not supported
 func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 
-	var tmplStr string
-	var err error
-
-	switch tmpl := tmpl.(type) {
-	case string:
-		tmplStr = tmpl
-	default:
-		tmplStr, err = YamlToString(tmpl)
-		if err != nil {
-			return err
-		}
+	tmplStr, err := typeConvertTemplateToString(tmpl)
+	if err != nil {
+		return err
 	}
 
 	hubTmplMatches := regexpHubTmplFunc.FindAllStringSubmatch(tmplStr, -1)
@@ -145,17 +137,9 @@ func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 // to the CGU namespace and return the resolved template object
 func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interface{}, error) {
 
-	var tmplStr string
-	var err error
-
-	switch tmpl := tmpl.(type) {
-	case string:
-		tmplStr = tmpl
-	default:
-		tmplStr, err = YamlToString(tmpl)
-		if err != nil {
-			return tmpl, err
-		}
+	tmplStr, err := typeConvertTemplateToString(tmpl)
+	if err != nil {
+		return tmpl, err
 	}
 
 	hubTmplMatches := regexpFromConfigMap.FindAllStringSubmatch(tmplStr, -1)
@@ -253,4 +237,19 @@ func (r *TemplateResolver) copyConfigmap(ctx context.Context, fromResource, toRe
 		}
 	}
 	return nil
+}
+
+func typeConvertTemplateToString(tmpl interface{}) (string, error) {
+	var tmplStr string
+	var err error
+
+	switch tmpl := tmpl.(type) {
+	case string:
+		tmplStr = tmpl
+	default:
+		// We don't need to check the err here because we will be returning it below anyway
+		tmplStr, err = YamlToString(tmpl)
+	}
+
+	return tmplStr, err
 }
