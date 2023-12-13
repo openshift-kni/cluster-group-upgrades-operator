@@ -40,7 +40,7 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 				if object["spec"].(map[string]interface{})["upstream"] != nil {
 					nextUpstream := object["spec"].(map[string]interface{})["upstream"].(string)
 
-					if nextUpstream == "placeholder" {
+					if nextUpstream == utils.Placeholder {
 						return result, errors.New("templating cluster version fields not supported")
 					}
 
@@ -54,7 +54,7 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 				if object["spec"].(map[string]interface{})["channel"] != nil {
 					nextChannel := object["spec"].(map[string]interface{})["channel"].(string)
 
-					if nextChannel == "placeholder" {
+					if nextChannel == utils.Placeholder {
 						return result, errors.New("templating cluster version fields not supported")
 					}
 
@@ -69,7 +69,7 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"] != nil {
 						nextVersion := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"].(string)
 
-						if nextVersion == "placeholder" {
+						if nextVersion == utils.Placeholder {
 							return result, errors.New("templating cluster version fields not supported")
 						}
 
@@ -82,7 +82,7 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"] != nil {
 						nextImage := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"].(string)
 
-						if nextImage == "placeholder" {
+						if nextImage == utils.Placeholder {
 							return result, errors.New("templating cluster version fields not supported")
 						}
 
@@ -146,7 +146,7 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 		// Using a few temporary variables here makes the if below much more readable
 		versionInfoContainsEmptyString := versionInfo.upstream == "" || versionInfo.channel == "" || versionInfo.version == ""
 		versionInfoContainsTemplate := utils.ContainsTemplates(versionInfo.upstream) || utils.ContainsTemplates(versionInfo.channel) || utils.ContainsTemplates(versionInfo.version)
-		versionInfoContainsPlaceholder := versionInfo.upstream == "placeholder" || versionInfo.channel == "placeholder" || versionInfo.version == "placeholder"
+		versionInfoContainsPlaceholder := versionInfo.upstream == utils.Placeholder || versionInfo.channel == utils.Placeholder || versionInfo.version == utils.Placeholder
 
 		// Check for all the required parameters needed to make the update graph HTTP call and retrieve the image
 		if versionInfoContainsEmptyString {

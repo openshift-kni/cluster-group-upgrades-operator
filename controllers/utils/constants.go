@@ -146,6 +146,7 @@ const (
 	ConfigPlcMissAnyObjTmpl  = "policy is missing both spec.policy-templates.objectDefinition.spec.object-templates and spec.policy-templates.objectDefinition.spec.object-templates-raw"
 	ConfigPlcMissObjTmplDef  = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition"
 	ConfigPlcRawObjTmplErr   = "policy defines spec.policy-templates.objectDefinition.spec.object-templates-raw but is empty"
+	Placeholder				 = "placeholder"
 	PlcHasHubTmplErr         = "policy has hub template error, check the configuration policy's annotation 'policy.open-cluster-management.io/hub-templates-error' for detail"
 	PlcHubTmplFmtErr         = "template format is not supported in TALM"
 	PlcHubTmplFuncErr        = "template function is not supported in TALM"
