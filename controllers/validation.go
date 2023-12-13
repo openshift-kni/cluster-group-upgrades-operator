@@ -39,6 +39,11 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 
 				if object["spec"].(map[string]interface{})["upstream"] != nil {
 					nextUpstream := object["spec"].(map[string]interface{})["upstream"].(string)
+
+					if nextUpstream == "placeholder" {
+						return result, errors.New("templating cluster version fields not supported")
+					}
+
 					if result.upstream == "" {
 						result.upstream = nextUpstream
 					} else if result.upstream != nextUpstream {
@@ -48,6 +53,11 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 
 				if object["spec"].(map[string]interface{})["channel"] != nil {
 					nextChannel := object["spec"].(map[string]interface{})["channel"].(string)
+
+					if nextChannel == "placeholder" {
+						return result, errors.New("templating cluster version fields not supported")
+					}
+
 					if result.channel == "" {
 						result.channel = nextChannel
 					} else if result.channel != nextChannel {
@@ -58,6 +68,11 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 				if object["spec"].(map[string]interface{})["desiredUpdate"] != nil {
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"] != nil {
 						nextVersion := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["version"].(string)
+
+						if nextVersion == "placeholder" {
+							return result, errors.New("templating cluster version fields not supported")
+						}
+
 						if result.version == "" {
 							result.version = nextVersion
 						} else if result.version != nextVersion {
@@ -66,6 +81,11 @@ func extractOCPVersionInfoFromPolicies(policies []*unstructured.Unstructured) (o
 					}
 					if object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"] != nil {
 						nextImage := object["spec"].(map[string]interface{})["desiredUpdate"].(map[string]interface{})["image"].(string)
+
+						if nextImage == "placeholder" {
+							return result, errors.New("templating cluster version fields not supported")
+						}
+
 						if result.image == "" {
 							result.image = nextImage
 						} else if result.image != nextImage {
@@ -122,14 +142,18 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 		if !versionInfo.clusterVersionCRFound || versionInfo.image != "" {
 			return nil
 		}
+
+		// Using a few temporary variables here makes the if below much more readable
+		versionInfoContainsEmptyString := versionInfo.upstream == "" || versionInfo.channel == "" || versionInfo.version == ""
+		versionInfoContainsTemplate := utils.ContainsTemplates(versionInfo.upstream) || utils.ContainsTemplates(versionInfo.channel) || utils.ContainsTemplates(versionInfo.version)
+		versionInfoContainsPlaceholder := versionInfo.upstream == "placeholder" || versionInfo.channel == "placeholder" || versionInfo.version == "placeholder"
+
 		// Check for all the required parameters needed to make the update graph HTTP call and retrieve the image
-		if versionInfo.upstream == "" || versionInfo.channel == "" || versionInfo.version == "" {
+		if versionInfoContainsEmptyString {
 			err = errors.New("policy with ClusterVersion must have upstream, channel, and version when image is not provided")
-		} else if utils.ContainsTemplates(versionInfo.upstream) || utils.ContainsTemplates(versionInfo.channel) || utils.ContainsTemplates(versionInfo.version) {
-			if clusterGroupUpgrade.Spec.PreCaching {
-				// return error if the fields contain templates
-				err = errors.New("templatized ClusterVersion fields not supported with precaching")
-			}
+		} else if clusterGroupUpgrade.Spec.PreCaching && (versionInfoContainsTemplate || versionInfoContainsPlaceholder) {
+			// return error if the fields contain templates
+			err = errors.New("templatized ClusterVersion fields not supported with precaching")
 		} else {
 			_, err = r.getImageForVersionFromUpdateGraph(versionInfo.upstream, versionInfo.channel, versionInfo.version)
 		}
