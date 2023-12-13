@@ -151,7 +151,7 @@ func (r *ClusterGroupUpgradeReconciler) validateOpenshiftUpgradeVersion(
 		// Check for all the required parameters needed to make the update graph HTTP call and retrieve the image
 		if versionInfoContainsEmptyString {
 			err = errors.New("policy with ClusterVersion must have upstream, channel, and version when image is not provided")
-		} else if (versionInfoContainsTemplate || versionInfoContainsPlaceholder) {
+		} else if versionInfoContainsTemplate || versionInfoContainsPlaceholder {
 			if clusterGroupUpgrade.Spec.PreCaching {
 				// return error if the fields contain templates
 				err = errors.New("templatized ClusterVersion fields not supported with precaching")
