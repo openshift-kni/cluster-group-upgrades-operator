@@ -270,7 +270,7 @@ func StripObjectTemplatesRaw(tmplStr string) string {
 		// e.g. "{{ $my.example.var }}"
 
 		// Replace all plain usages of variable with placeholder
-		result = strings.ReplaceAll(result, item[0], "placeholder")
+		result = strings.ReplaceAll(result, item[0], Placeholder)
 	}
 
 	// Get all inline usage of declared ranges
@@ -283,7 +283,7 @@ func StripObjectTemplatesRaw(tmplStr string) string {
 		// e.g. "{{ .data.item }}"
 
 		// Replace all plain usages of inlines with placeholder
-		result = strings.ReplaceAll(result, item[0], "placeholder")
+		result = strings.ReplaceAll(result, item[0], Placeholder)
 	}
 
 	// Get everything between sets of brackets as substrings
