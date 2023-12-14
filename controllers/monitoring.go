@@ -69,12 +69,33 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 
 		// Get the object-templates from the spec.
 		specContent := spec.(map[string]interface{})
-		objectTemplates := specContent["object-templates"]
-		if objectTemplates == nil {
-			return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates", managedPolicyName)
+
+		// One and only one of [object-templates, object-templates-raw] should be defined
+		objectTemplatePresent := specContent[utils.ObjectTemplates] != nil
+		objectTemplateRawPresent := specContent[utils.ObjectTemplatesRaw] != nil
+
+		var marshalledObjectTemplates interface{}
+
+		switch {
+		case objectTemplatePresent && objectTemplateRawPresent:
+			return nil, fmt.Errorf("[getMonitoredObjects] found both %s and %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case !objectTemplatePresent && !objectTemplateRawPresent:
+			return nil, fmt.Errorf("[getMonitoredObjects] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
+		case objectTemplatePresent:
+			marshalledObjectTemplates = specContent[utils.ObjectTemplates]
+		case objectTemplateRawPresent:
+			stringTemplate := utils.StripObjectTemplatesRaw(specContent[utils.ObjectTemplatesRaw].(string))
+
+			var err error
+			marshalledObjectTemplates, err = utils.StringToYaml(stringTemplate)
+			if err != nil {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+			}
+		default:
+			return nil, fmt.Errorf("[getMonitoredObjects] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
 		}
 
-		objectTemplatesContent := objectTemplates.([]interface{})
+		objectTemplatesContent := marshalledObjectTemplates.([]interface{})
 		for _, objectTemplate := range objectTemplatesContent {
 			objectTemplateContent := objectTemplate.(map[string]interface{})
 			if objectTemplateContent["complianceType"] == "mustnothave" {

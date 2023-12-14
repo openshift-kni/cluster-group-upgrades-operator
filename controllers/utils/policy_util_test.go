@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"strings"
 	"testing"
 	"time"
 
@@ -96,5 +97,200 @@ func TestUpdateManagedPolicyNamespaceList(t *testing.T) {
 	for _, tc := range testcases {
 		UpdateManagedPolicyNamespaceList(tc.policiesNs, tc.policyNameArr)
 		assert.Equal(t, tc.policiesNs, tc.expectedResult)
+	}
+}
+
+func TestStripObjectTemplatesRaw(t *testing.T) {
+	// Test cases were derived from examples on this blog post: https://cloud.redhat.com/blog/tips-for-using-templating-in-governance-policies-part-2
+	testcases := []struct {
+		name             string
+		inputRawTemplate string
+		expectedResult   string
+	}{
+		{
+			name: "Singleline ACM Templating",
+			inputRawTemplate: `
+				{{- /* find Portworx pods in terminated state */ -}}
+				{{- range $pp := (lookup "v1" "Pod" "portworx" "").items }}
+				{{- /* if the pod is blocked because it is in node shutdown we should delete the pod */ -}}
+				{{- if and (eq $pp.status.phase "Failed") (contains "kvdb" $pp.metadata.name) }}
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: {{ $pp.metadata.name }}
+      namespace: {{ $pp.metadata.namespace }}
+				{{- end }}
+				{{- end }}
+			`,
+			expectedResult: `
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: placeholder
+      namespace: placeholder
+			`,
+		},
+		{
+			name: "Multiline ACM Templating",
+			inputRawTemplate: `
+				{{- /* find Portworx pods in terminated state */ -}}
+				{{- range $pp := (lookup "v1" "Pod" "portworx" "").items }}
+				{{- /* if the pod is blocked because it is in node shutdown we should delete the pod */ -}}
+				{{- if and (eq $pp.status.phase "Failed")
+							(contains "kvdb" $pp.metadata.name) }}
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: {{ $pp.metadata.name }}
+      namespace: {{ $pp.metadata.namespace }}
+				{{- end }}
+				{{- end }}
+			`,
+			expectedResult: `
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: placeholder
+      namespace: placeholder
+			`,
+		},
+		{
+			name: "Singleline ACM Templating and Hub Templating",
+			inputRawTemplate: `
+				{{- /* find Portworx pods in terminated state */ -}}
+				{{- range $pp := (lookup "v1" "Pod" "portworx" "").items }}
+				{{- /* if the pod is blocked because it is in node shutdown we should delete the pod */ -}}
+				{{- if and (eq $pp.status.phase "Failed") (contains "kvdb" $pp.metadata.name) }}
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: {{ $pp.metadata.name }}-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      namespace: {{ $pp.metadata.namespace }}
+				{{- end }}
+				{{- end }}
+			`,
+			expectedResult: `
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: placeholder-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      namespace: placeholder
+			`,
+		},
+		{
+			name: "Multiline ACM Templating and Hub Templating",
+			inputRawTemplate: `
+				{{- /* find Portworx pods in terminated state */ -}}
+				{{- range $pp := (lookup "v1" "Pod" "portworx" "").items }}
+				{{- /* if the pod is blocked because it is in node shutdown we should delete the pod */ -}}
+				{{- if and (eq $pp.status.phase "Failed")
+					(contains "kvdb" $pp.metadata.name) }}
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: {{ $pp.metadata.name }}-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      namespace: {{ $pp.metadata.namespace }}
+				{{- end }}
+				{{- end }}
+			`,
+			expectedResult: `
+- complianceType: mustnothave
+  objectDefinition:
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: placeholder-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      namespace: placeholder
+			`,
+		},
+		{
+			name: "Inline range function template",
+			inputRawTemplate: `
+			{{- range (lookup "v1" "ConfigMap" "default" "").items }}
+			{{- if eq .data.name "Sea Otter" }}
+- complianceType: musthave
+  objectDefinition:
+    kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: {{ .metadata.name }}
+      namespace: {{ .metadata.namespace }}
+      labels:
+        species-category: mammal
+			{{- end }}
+			{{- end }}
+            `,
+			expectedResult: `
+- complianceType: musthave
+  objectDefinition:
+    kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: placeholder
+      namespace: placeholder
+      labels:
+        species-category: mammal
+            `,
+		},
+		{
+			name: "Vertical bar multiline string template",
+			inputRawTemplate: `|
+{{- range (lookup "v1" "ConfigMap" "default" "").items }}
+{{- if eq .data.name "Sea Otter" }}
+- complianceType: musthave
+  objectDefinition:
+    kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: {{ .metadata.name }}
+      namespace: {{ .metadata.namespace }}
+      labels:
+        species-category: mammal
+{{- end }}
+{{- end }}
+            `,
+			expectedResult: `|
+
+
+- complianceType: musthave
+  objectDefinition:
+    kind: ConfigMap
+    apiVersion: v1
+    metadata:
+      name: placeholder
+      namespace: placeholder
+      labels:
+        species-category: mammal
+`,
+		},
+	}
+
+	// Loop over all test cases
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Call test function
+			actualResult := StripObjectTemplatesRaw(tc.inputRawTemplate)
+
+			// Trim whitespace
+			trimmedActual := strings.TrimSpace(actualResult)
+			trimmedExpected := strings.TrimSpace(tc.expectedResult)
+
+			// Assert the actual result matches the expected result
+			assert.Equal(t, trimmedActual, trimmedExpected)
+		})
 	}
 }
