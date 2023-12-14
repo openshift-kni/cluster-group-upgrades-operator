@@ -136,20 +136,8 @@ spec:
                   - mountPath: /host/usr/share/containers
                     name: host-usr-share-containers
                     readOnly: true
-                  - mountPath: /host/var/lib/cni
-                    name: host-var-lib-cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
-                  - mountPath: /host/var/lib/etcd
-                    name: host-var-lib-etcd
-                    readOnly: true
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/lib/ovn-ic
-                    name: host-var-lib-ovn-ic
-                    readOnly: true
+                  - mountPath: /host/var/lib
+                    name: host-var-lib
                   - mountPath: /host/var/recovery
                     name: host-var-recovery
                   - mountPath: /host/var/tmp
@@ -215,25 +203,9 @@ spec:
                   type: Directory
                 name: host-usr-share-containers
               - hostPath:
-                  path: /var/lib/cni
+                  path: /var/lib
                   type: Directory
-                name: host-var-lib-cni
-              - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
-                  path: /var/lib/etcd
-                  type: Directory
-                name: host-var-lib-etcd
-              - hostPath:
-                  path: /var/lib/kubelet
-                  type: Directory
-                name: host-var-lib-kubelet
-              - hostPath:
-                  path: /var/lib/ovn-ic
-                  type: Directory
-                name: host-var-lib-ovn-ic
+                name: host-var-lib
               - hostPath:
                   path: /var/recovery
                   type: DirectoryOrCreate
