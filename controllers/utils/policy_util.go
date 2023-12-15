@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -165,14 +166,34 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		}
 		plcTmplDefSpec := plcTmplDef["spec"].(map[string]interface{})
 
-		// Make sure the ConfigurationPolicy object-templates exists.
-		if plcTmplDefSpec["object-templates"] == nil {
-			return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmpl}
+		// One and only one of [object-templates, object-templates-raw] should be defined
+		objectTemplatePresent := plcTmplDefSpec[ObjectTemplates] != nil
+		objectTemplateRawPresent := plcTmplDefSpec[ObjectTemplatesRaw] != nil
+
+		var configPlcTmpls interface{}
+
+		switch {
+		case objectTemplatePresent && objectTemplateRawPresent:
+			return containsStatus, &PolicyErr{policyName, ConfigPlcMissAnyObjTmpl}
+		case !objectTemplatePresent && !objectTemplateRawPresent:
+			return containsStatus, &PolicyErr{policyName, ConfigPlcHasBothObjTmpl}
+		case objectTemplatePresent:
+			configPlcTmpls = plcTmplDefSpec[ObjectTemplates].([]interface{})
+		case objectTemplateRawPresent:
+			stringTemplate := StripObjectTemplatesRaw(plcTmplDefSpec[ObjectTemplatesRaw].(string))
+
+			var err error
+			configPlcTmpls, err = StringToYaml(stringTemplate)
+			if err != nil {
+				return containsStatus, &PolicyErr{policyName, ConfigPlcFailRawMarshal}
+			}
+
+		default:
+			return containsStatus, &PolicyErr{policyName, ConfigPlcMissAnyObjTmpl}
 		}
-		configPlcTmpls := plcTmplDefSpec["object-templates"].([]interface{})
 
 		// Go through the ConfigurationPolicy object-templates.
-		for _, configPlcTmpl := range configPlcTmpls {
+		for _, configPlcTmpl := range configPlcTmpls.([]interface{}) {
 			// Make sure the objectDefinition of the ConfigurationPolicy object template exists.
 			if configPlcTmpl.(map[string]interface{})["objectDefinition"] == nil {
 				return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
@@ -188,6 +209,7 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		if err != nil {
 			return containsStatus, err
 		}
+
 	}
 	return containsStatus, nil
 }
@@ -226,7 +248,62 @@ func UpdateManagedPolicyNamespaceList(policyNs map[string][]string, policyNameAr
 			break
 		}
 	}
-	if nsFound == false {
+	if !nsFound {
 		policyNs[crtPolicyName] = append(policyNs[crtPolicyName], crtPolicyNs)
 	}
+}
+
+// StripObjectTemplatesRaw removes all the ACM raw templating from a string and returns an interface
+// of what the object-templates would be if not for the raw templating
+func StripObjectTemplatesRaw(tmplStr string) string {
+
+	// Create a copy of the input since we will be editing it multiple times
+	result := tmplStr
+
+	// Get all variable usages
+	variableUsageRegex := regexp.MustCompile(`{{\s*\$[\w\.]*\s*}}`)
+	variableUsages := variableUsageRegex.FindAllStringSubmatch(result, -1)
+
+	// Get the usage of all of those variables
+	for _, item := range variableUsages {
+		// item[0] is the full usage of a variable
+		// e.g. "{{ $my.example.var }}"
+
+		// Replace all plain usages of variable with placeholder
+		result = strings.ReplaceAll(result, item[0], Placeholder)
+	}
+
+	// Get all inline usage of declared ranges
+	inlineUsageRegex := regexp.MustCompile(`{{\s*\.[\w\.]*\s*}}`)
+	inlineUsages := inlineUsageRegex.FindAllStringSubmatch(result, -1)
+
+	// Get the usage of all of those inlines
+	for _, item := range inlineUsages {
+		// item[0] is the full usage of a inline
+		// e.g. "{{ .data.item }}"
+
+		// Replace all plain usages of inlines with placeholder
+		result = strings.ReplaceAll(result, item[0], Placeholder)
+	}
+
+	// Get everything between sets of brackets as substrings
+	bracketRegex := regexp.MustCompile(`\{{[^}]+}\}`)
+
+	// Each result here will be a substring including the start and end brackets
+	// e.g. "{{ $example.var.usage }}"
+	bracketSubstrings := bracketRegex.FindAllStringSubmatch(result, -1)
+
+	// For our usage all our results will be an array with a single item
+	// so we will just use item[0] here
+	for _, item := range bracketSubstrings {
+		// We want to remove all the ACM templates but not the hub side templates
+		if strings.HasPrefix(item[0], "{{hub") && strings.HasSuffix(item[0], "hub}}") {
+			continue
+		}
+
+		// Else just delete the template line entirely, including the newline at the end
+		result = strings.Replace(result+"\n", item[0], "", 1)
+	}
+
+	return result
 }
