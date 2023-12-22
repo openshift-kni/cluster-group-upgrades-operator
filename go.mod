@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
-	github.com/go-logr/logr v1.3.0
+	github.com/go-logr/logr v1.4.1
 	github.com/onsi/gomega v1.30.0
 	github.com/openshift/build-machinery-go v0.0.0-20230306181456-d321ffa04533
 	github.com/operator-framework/api v0.20.0
