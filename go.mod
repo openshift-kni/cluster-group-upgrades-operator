@@ -7,23 +7,23 @@ require (
 	github.com/go-logr/logr v1.4.1
 	github.com/onsi/gomega v1.30.0
 	github.com/openshift/build-machinery-go v0.0.0-20230306181456-d321ffa04533
-	github.com/operator-framework/api v0.20.0
+	github.com/operator-framework/api v0.21.0
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.8.4
-	k8s.io/api v0.28.3
+	k8s.io/api v0.28.4
 	k8s.io/apimachinery v0.29.0
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.12.0
-	open-cluster-management.io/governance-policy-propagator v0.12.0
+	open-cluster-management.io/governance-policy-propagator v0.6.0
 	sigs.k8s.io/controller-runtime v0.16.3
 )
 
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.13.1
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
+	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240109072430-f5fe6043d1f8
 	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.29.0
@@ -51,7 +51,7 @@ require (
 	github.com/google/go-cmp v0.6.0 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/pprof v0.0.0-20230502171905-255e3b9b56de // indirect
-	github.com/google/uuid v1.3.0 // indirect
+	github.com/google/uuid v1.3.1 // indirect
 	github.com/imdario/mergo v0.3.15 // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
@@ -73,7 +73,7 @@ require (
 	golang.org/x/exp v0.0.0-20230321023759-10a507213a29 // indirect
 	golang.org/x/mod v0.13.0 // indirect
 	golang.org/x/net v0.17.0 // indirect
-	golang.org/x/oauth2 v0.8.0 // indirect
+	golang.org/x/oauth2 v0.11.0 // indirect
 	golang.org/x/term v0.13.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
@@ -83,13 +83,13 @@ require (
 	google.golang.org/protobuf v1.31.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.28.3 // indirect
-	k8s.io/component-base v0.28.3 // indirect
+	k8s.io/apiextensions-apiserver v0.28.4 // indirect
+	k8s.io/component-base v0.28.4 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20231010175941-2dd684a91f00 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
-	open-cluster-management.io/multicloud-operators-subscription v0.11.0 // indirect
+	open-cluster-management.io/multicloud-operators-subscription v0.6.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
