@@ -7,7 +7,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// Subject defines the resource that can be used as PlacementBinding subject
+// Subject reference
 type Subject struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -15,14 +15,14 @@ type Subject struct {
 	APIGroup string `json:"apiGroup"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
-	// +kubebuilder:validation:Enum=Policy;PolicySet
+	// +kubebuilder:validation:Enum=Policy
 	Kind string `json:"kind"`
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
 	Name string `json:"name"`
 }
 
-// PlacementSubject defines the resource that can be used as PlacementBinding placementRef
+// PlacementSubject reference
 type PlacementSubject struct {
 	// +kubebuilder:validation:Required
 	// +kubebuilder:validation:MinLength=1
@@ -40,19 +40,6 @@ type PlacementSubject struct {
 // PlacementBindingStatus defines the observed state of PlacementBinding
 type PlacementBindingStatus struct{}
 
-// BindingOverrides defines the overrides to the Subjects
-type BindingOverrides struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=Enforce;enforce
-	// This field overrides the policy remediationAction on target clusters
-	RemediationAction string `json:"remediationAction,omitempty"`
-}
-
-// SubFilter defines the selection rule for bound clusters
-type SubFilter string
-
-const Restricted SubFilter = "restricted"
-
 //+kubebuilder:object:root=true
 
 // PlacementBinding is the Schema for the placementbindings API
@@ -62,15 +49,10 @@ const Restricted SubFilter = "restricted"
 type PlacementBinding struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
-	// +kubebuilder:validation:Optional
-	BindingOverrides BindingOverrides `json:"bindingOverrides,omitempty"`
-	// This field provides the ability to select a subset of bound clusters
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Enum=restricted
-	SubFilter SubFilter `json:"subFilter,omitempty"`
 	// +kubebuilder:validation:Required
 	PlacementRef PlacementSubject `json:"placementRef"`
 	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxItems=1
 	// +kubebuilder:validation:MinItems=1
 	Subjects []Subject              `json:"subjects"`
 	Status   PlacementBindingStatus `json:"status,omitempty"`
