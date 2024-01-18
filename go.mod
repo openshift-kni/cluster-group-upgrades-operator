@@ -22,7 +22,7 @@ require (
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/onsi/ginkgo/v2 v2.14.0
+	github.com/onsi/ginkgo/v2 v2.15.0
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240109072430-f5fe6043d1f8
 	golang.org/x/sys v0.16.0
 	gopkg.in/yaml.v3 v3.0.1
