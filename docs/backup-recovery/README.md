@@ -25,7 +25,7 @@ kind: SiteConfig
 nodes:
   - hostName: "snonode.sno-worker-0.e2e.bos.redhat.com"
     role: "master"
-    ignitionConfigOverride: '{"ignition":{"version":"3.2.0"},"storage":{"disks":[{"device":"/dev/disk/by-path/pci-0000:18:00.0-scsi-0:2:1:0","wipeTable":false,"partitions":[{"sizeMiB":51200,"label":"recovery","startMiB":800000, "wipePartitionEntry": true}]}],"filesystem":[{"device":"/dev/disk/by-partlabel/recovery","path":"/var/recovery","format":"xfs","wipeFilesystem":true}]}}'
+    ignitionConfigOverride: '{"ignition":{"version":"3.2.0"},"storage":{"disks":[{"device":"/dev/disk/by-id/wwn-0x6b07b250ebb9d0002a33509f24af1f62","partitions":[{"label":"recovery","sizeMiB":40960,"startMiB":350020}],"wipeTable":false}],"filesystems":[{"device":"/dev/disk/by-partlabel/recovery","format":"xfs","path":"/var/recovery","wipeFilesystem":true}]},"systemd":{"units":[{"contents":"[Unit]\nRequires=systemd-fsck@dev-disk-by\\x2dpartlabel-recovery.service\nAfter=systemd-fsck@dev-disk-by\\x2dpartlabel-recovery.service\n\n[Mount]\nWhere=/var/recovery\nWhat=/dev/disk/by-partlabel/recovery\nType=xfs\n\n[Install]\nRequiredBy=local-fs.target","enabled":true,"name":"var-recovery.mount"}]}}'
 ```
 In the configuration for the partitions, `startMiB` parameter indicates, in mebibytes, the end of the `/sysroot` RHCOS partition and the start for the newly requested recovery partition. This is an optional parameter.
 
