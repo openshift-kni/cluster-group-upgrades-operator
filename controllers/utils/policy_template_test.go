@@ -55,6 +55,7 @@ spec:
     test14: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName).metadata.labels.sites hub}}'
     test15: '{{hub index ( lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName ).metadata.labels "sites" hub}}'
     test16: '{{hub range $_, $element := (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" "cluster1").status.clusterClaims hub}} {{hub if eq $element.name "id.openshift.io" hub}} {{hub $element.value hub}} {{hub end hub}} {{hub end hub}}'
+    test17: '{{hub copyConfigMapData "ztp-common" "common-cm" hub}}'
 `,
 			expected: nil,
 		},
@@ -67,9 +68,22 @@ metadata:
     name: resource-sample
     namespace: resource-namespace
 spec:
-    test1: '{{hub fromSecret "ztp-common" "common-cm" "common-key" hub}}'
+    test1: '{{hub fromSecret "ztp-common" "common-secret" "common-key" hub}}'
 `,
 			expected: fmt.Errorf("fromSecret: " + PlcHubTmplFuncErr),
+		},
+		{
+			name: "Unsupported hub template copySecretData",
+			input: `
+apiVersion: test.openshift.io/v1
+kind: TestResource
+metadata:
+    name: resource-sample
+    namespace: resource-namespace
+spec:
+    test1: '{{hub copySecretData "ztp-common" "common-secret" hub}}'
+`,
+			expected: fmt.Errorf("copySecretData: " + PlcHubTmplFuncErr),
 		},
 		{
 			name: "Unsupported Printf in the Name field in fromConfigMap function",
@@ -191,6 +205,10 @@ spec:
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-common" "common-cm") | base64enc hub}}'
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-common" "common-cm") | toInt hub}}-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" | toInt hub}}'
     test13: '{{hub .ManagedClusterName hub}}'
+    test14: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName).metadata.labels.sites hub}}'
+    test15: '{{hub index ( lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName ).metadata.labels "sites" hub}}'
+    test16: '{{hub range $_, $element := (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" "cluster1").status.clusterClaims hub}} {{hub if eq $element.name "id.openshift.io" hub}} {{hub $element.value hub}} {{hub end hub}} {{hub end hub}}'
+    test17: '{{hub copyConfigMapData "ztp-common" "common-cm" hub}}'
 `,
 			expected: `
 apiVersion: test.openshift.io/v1
@@ -218,6 +236,10 @@ spec:
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-install" "ztp-common.common-cm") | base64enc hub}}'
         - '{{hub (printf "%s-name" .ManagedClusterName | fromConfigMap "ztp-install" "ztp-common.common-cm") | toInt hub}}-{{hub fromConfigMap "ztp-install" "ztp-common.common-cm" "common-key" | toInt hub}}'
     test13: '{{hub .ManagedClusterName hub}}'
+    test14: '{{hub (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName).metadata.labels.sites hub}}'
+    test15: '{{hub index ( lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" .ManagedClusterName ).metadata.labels "sites" hub}}'
+    test16: '{{hub range $_, $element := (lookup "cluster.open-cluster-management.io/v1" "ManagedCluster" "" "cluster1").status.clusterClaims hub}} {{hub if eq $element.name "id.openshift.io" hub}} {{hub $element.value hub}} {{hub end hub}} {{hub end hub}}'
+    test17: '{{hub copyConfigMapData "ztp-install" "ztp-common.common-cm" hub}}'
 `,
 		},
 	}
