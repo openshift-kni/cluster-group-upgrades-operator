@@ -206,7 +206,7 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 	// Get the managedClusterView for the monitored object contained in the current managedPolicy.
 	// If missing, then return error.
 	mcvName := utils.GetMultiCloudObjectName(clusterGroupUpgrade, object.Kind, object.Name)
-	safeName := utils.GetSafeResourceName(mcvName, "", clusterGroupUpgrade, utils.MaxObjectNameLength, &r.Log)
+	safeName := utils.GetSafeResourceName(mcvName, "", clusterGroupUpgrade, utils.MaxObjectNameLength)
 	mcv, err := utils.EnsureManagedClusterView(
 		ctx, r.Client, safeName, mcvName, clusterName, object.Kind+"."+strings.Split(object.APIVersion, "/")[0],
 		object.Name, *object.Namespace, clusterGroupUpgrade.Name, clusterGroupUpgrade.Namespace)

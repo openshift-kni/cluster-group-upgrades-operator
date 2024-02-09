@@ -1234,7 +1234,7 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyName(
 
 	metadataContent := metadata.(map[string]interface{})
 	name := utils.GetResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
-	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxPolicyNameLength, &r.Log)
+	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxPolicyNameLengthExcludingTheDot)
 	metadataContent["name"] = safeName
 }
 
@@ -1242,7 +1242,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policy *unstructured.Unstructured) error {
 
 	name := policy.GetName()
-	safeName := utils.GetSafeResourceName(name, policy.GetNamespace(), clusterGroupUpgrade, utils.MaxPolicyNameLength, &r.Log)
+	safeName := utils.GetSafeResourceName(name, policy.GetNamespace(), clusterGroupUpgrade, utils.MaxPolicyNameLengthExcludingTheDot)
 	policy.SetName(safeName)
 	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, policy, r.Scheme); err != nil {
 		return err
@@ -1280,7 +1280,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string, managedPolicy *unstructured.Unstructured) (string, error) {
 
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
-	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxObjectNameLength, &r.Log)
+	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxObjectNameLength)
 	pr := r.newBatchPlacementRule(clusterGroupUpgrade, policyName, safeName, name)
 
 	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
@@ -1448,7 +1448,7 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, placementRuleName string, managedPolicy *unstructured.Unstructured) error {
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
-	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxObjectNameLength, &r.Log)
+	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxObjectNameLength)
 	// Ensure batch placement bindings.
 	pb := r.newBatchPlacementBinding(clusterGroupUpgrade, policyName, placementRuleName, safeName, name)
 
