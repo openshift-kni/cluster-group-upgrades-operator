@@ -28,7 +28,7 @@ var (
 	hubTmplLog = ctrl.Log.WithName("utils.policy_template")
 
 	// This regular expression is to extract all hub template functions from a string.
-	regexpHubTmplFunc = regexp.MustCompile(`{{hub.*?(fromConfigMap|fromSecret|lookup).*?hub}}`)
+	regexpHubTmplFunc = regexp.MustCompile(`{{hub.*?(fromConfigMap|copyConfigMapData|fromSecret|copySecretData|lookup).*?hub}}`)
 
 	// This regular expression is to get the function name, resource name and namespace referenced in the function from a hub template.
 	// The following captured groups represent for:
@@ -42,7 +42,7 @@ var (
 	// 		$7: resource name with printf variable
 	// 		$8: resource name with a fixed string
 	// 		$9: any characters after the resource name field
-	regexpFromConfigMap = regexp.MustCompile(`({{hub.*?)(fromConfigMap)\s+((\(\s*printf\s.+?\s*\))|"(.*?)")\s+((\(\s*printf\s.+?\s*\))|"(.*?)")(.*?hub}})`)
+	regexpForConfigMap = regexp.MustCompile(`({{hub.*?)(fromConfigMap|copyConfigMapData)\s+((\(\s*printf\s.+?\s*\))|"(.*?)")\s+((\(\s*printf\s.+?\s*\))|"(.*?)")(.*?hub}})`)
 
 	// This regular expression is to capture the lookup hub template function.
 	// The following captured groups represent for:
@@ -99,8 +99,8 @@ func VerifyHubTemplateFunctions(tmpl interface{}, policyName string) error {
 		hubTmplFunc := hubTmplMatch[1]
 
 		hubTmplLog.Info("Validating hub template in policy", "policy", policyName, "template", hubTmpl)
-		if hubTmplFunc == "fromConfigMap" {
-			matches := regexpFromConfigMap.FindStringSubmatch(hubTmpl)
+		if hubTmplFunc == "fromConfigMap" || hubTmplFunc == "copyConfigMapData" {
+			matches := regexpForConfigMap.FindStringSubmatch(hubTmpl)
 
 			// Hub template doesn't match the regular expression
 			if len(matches) == 0 {
@@ -142,7 +142,7 @@ func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interf
 		return tmpl, err
 	}
 
-	hubTmplMatches := regexpFromConfigMap.FindAllStringSubmatch(tmplStr, -1)
+	hubTmplMatches := regexpForConfigMap.FindAllStringSubmatch(tmplStr, -1)
 	if len(hubTmplMatches) == 0 {
 		// No fromConfigMap hub functions found, skip processing
 		return tmpl, nil
@@ -176,7 +176,7 @@ func (r *TemplateResolver) ProcessHubTemplateFunctions(tmpl interface{}) (interf
 		}
 
 		// Update the hub templating with the replicated configmap name and namespace
-		updatedHubTmpl := regexpFromConfigMap.ReplaceAllString(hubTmpl, `$1$2`+` "`+toResource.Namespace+`"`+` "`+toResource.Name+`"`+`$9`)
+		updatedHubTmpl := regexpForConfigMap.ReplaceAllString(hubTmpl, `$1$2`+` "`+toResource.Namespace+`"`+` "`+toResource.Name+`"`+`$9`)
 		resolvedTmplStr = strings.ReplaceAll(resolvedTmplStr, hubTmpl, updatedHubTmpl)
 		hubTmplLog.Info("Processed hub template in policy", "policy", r.PolicyName, "template", updatedHubTmpl)
 	}
