@@ -25,19 +25,19 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Precaching spec is valid and consistent
     reason: PrecacheSpecIsWellFormed
-    status: "True"
+    status: 'True'
     type: PrecacheSpecValid
   - message: Precaching in progress for 1 clusters
     reason: InProgress
-    status: "False"
+    status: 'False'
     type: PrecachingSuceeded
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
@@ -69,7 +69,7 @@ status:
       operatorsPackagesAndChannels:
       - ptp-operator:4.9
       - sriov-network-operator:4.9
-      - performance-addon-operator:4.9      
+      - performance-addon-operator:4.9
     status:
       spoke1: Succeeded
       spoke2: PrecacheTimeout
@@ -81,14 +81,13 @@ status:
     - spoke1
     - spoke5
   safeResourceNames:
-    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
-    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
-    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
-    cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+    /cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    /cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    default/cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    default/cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+    default/cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
 ---
-#MCAs for clean up succeeded clusters
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
 metadata:

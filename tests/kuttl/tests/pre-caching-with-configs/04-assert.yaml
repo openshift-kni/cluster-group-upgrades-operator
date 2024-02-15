@@ -6,16 +6,16 @@ metadata:
 spec:
   backup: false
   clusters:
-    - spoke6
-    - spoke2
-    - spoke1
-    - spoke5
+  - spoke6
+  - spoke2
+  - spoke1
+  - spoke5
   enable: false
   managedPolicies:
-    - policy0-common-config-policy
-    - policy2-common-pao-sub-policy
-    - policy3-common-ptp-sub-policy
-    - policy4-common-sriov-sub-policy
+  - policy0-common-config-policy
+  - policy2-common-pao-sub-policy
+  - policy3-common-ptp-sub-policy
+  - policy4-common-sriov-sub-policy
   preCaching: true
   preCachingConfigRef:
     name: pre-caching-config
@@ -26,80 +26,79 @@ spec:
 status:
   computedMaxConcurrency: 4
   conditions:
-    - message: All selected clusters are valid
-      reason: ClusterSelectionCompleted
-      status: "True"
-      type: ClustersSelected
-    - message: Completed validation
-      reason: ValidationCompleted
-      status: "True"
-      type: Validated
-    - message: Precaching spec is valid and consistent
-      reason: PrecacheSpecIsWellFormed
-      status: "True"
-      type: PrecacheSpecValid
-    - message: Precaching in progress for 4 clusters
-      reason: InProgress
-      status: "False"
-      type: PrecachingSuceeded
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: Precaching spec is valid and consistent
+    reason: PrecacheSpecIsWellFormed
+    status: 'True'
+    type: PrecacheSpecValid
+  - message: Precaching in progress for 4 clusters
+    reason: InProgress
+    status: 'False'
+    type: PrecachingSuceeded
   copiedPolicies:
-    - cgu-policy3-common-ptp-sub-policy-kuttl
-    - cgu-policy4-common-sriov-sub-policy-kuttl
+  - cgu-policy3-common-ptp-sub-policy-kuttl
+  - cgu-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
-    - policy0-common-config-policy
-    - policy2-common-pao-sub-policy
+  - policy0-common-config-policy
+  - policy2-common-pao-sub-policy
   managedPoliciesContent:
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
     policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
-    - name: policy3-common-ptp-sub-policy
-      namespace: default
-    - name: policy4-common-sriov-sub-policy
-      namespace: default
+  - name: policy3-common-ptp-sub-policy
+    namespace: default
+  - name: policy4-common-sriov-sub-policy
+    namespace: default
   managedPoliciesNs:
     policy3-common-ptp-sub-policy: default
     policy4-common-sriov-sub-policy: default
   placementBindings:
-    - cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   placementRules:
-    - cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    - cgu-policy4-common-sriov-sub-policy-placement-kuttl
+  - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   precaching:
     spec:
       platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
       operatorsIndexes:
-        - e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+      - e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
       operatorsPackagesAndChannels:
-        - performance-addon-operator:stable
-        - ptp-operator:stable
-        - sriov-network-operator:stable
+      - performance-addon-operator:stable
+      - ptp-operator:stable
+      - sriov-network-operator:stable
       excludePrecachePatterns:
-        - aws
-        - azure
+      - aws
+      - azure
       additionalImages:
-        - image1:latest
-        - image2:latest
-      spaceRequired: "40"
+      - image1:latest
+      - image2:latest
+      spaceRequired: '40'
     status:
       spoke1: Starting
       spoke2: Starting
       spoke5: Starting
       spoke6: Starting
   remediationPlan:
-    - - spoke6
-      - spoke2
-      - spoke1
-      - spoke5
+  - - spoke6
+    - spoke2
+    - spoke1
+    - spoke5
   safeResourceNames:
-    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
-    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
-    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
-    cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+    /cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    /cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    default/cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    default/cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+    default/cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
 ---
-# MCAs
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
 metadata:
@@ -128,79 +127,79 @@ spec:
             name: pre-cache
           spec:
             containers:
-              - args:
-                  - /opt/precache/precache.sh
-                command:
-                  - /bin/bash
-                  - -c
-                env:
-                  - name: config_volume_path
-                    value: /tmp/precache/config
-                  - name: NODE_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: spec.nodeName
-                image: quay.io/test_images/pre-cache:latest
-                name: pre-cache-container
-                resources: {}
-                securityContext:
-                  privileged: true
-                  runAsUser: 0
-                terminationMessagePath: /dev/termination-log
-                terminationMessagePolicy: File
-                volumeMounts:
-                  - mountPath: /etc/config
-                    name: config-volume
-                    readOnly: true
-                  - mountPath: /host
-                    name: host
-                  - mountPath: /host/etc/containers
-                    name: host-etc-containers
-                    readOnly: true
-                  - mountPath: /host/etc/pki/ca-trust
-                    name: host-etc-pki-ca-trust
-                    readOnly: true
-                  - mountPath: /host/etc/resolv.conf
-                    name: host-etc-resolv-conf
-                    readOnly: true
-                  - mountPath: /host/lib64
-                    name: host-lib64
-                    readOnly: true
-                  - mountPath: /host/proc
-                    name: host-proc
-                    readOnly: true
-                  - mountPath: /host/run
-                    name: host-run
-                  - mountPath: /host/tmp
-                    name: host-tmp
-                  - mountPath: /host/usr/bin
-                    name: host-usr-bin
-                    readOnly: true
-                  - mountPath: /host/usr/lib
-                    name: host-usr-lib
-                    readOnly: true
-                  - mountPath: /host/usr/lib64
-                    name: host-usr-lib64
-                    readOnly: true
-                  - mountPath: /host/usr/libexec
-                    name: host-usr-libexec
-                    readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
-                  - mountPath: /host/var/lib/cni
-                    name: host-var-lib-cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
-                  - mountPath: /host/sys/fs/cgroup
-                    name: sys-fs-cgroup
-                    readOnly: true
+            - args:
+              - /opt/precache/precache.sh
+              command:
+              - /bin/bash
+              - -c
+              env:
+              - name: config_volume_path
+                value: /tmp/precache/config
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+              image: quay.io/test_images/pre-cache:latest
+              name: pre-cache-container
+              resources: {}
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - mountPath: /etc/config
+                name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/etc/containers
+                name: host-etc-containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc-pki-ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc-resolv-conf
+                readOnly: true
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib/cni
+                name: host-var-lib-cni
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var-lib-containers
+              - mountPath: /host/var/lib/kubelet
+                name: host-var-lib-kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -208,80 +207,80 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-              - configMap:
-                  defaultMode: 420
-                  name: pre-cache-spec
-                name: config-volume
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /etc/containers
-                  type: Directory
-                name: host-etc-containers
-              - hostPath:
-                  path: /etc/pki/ca-trust
-                  type: Directory
-                name: host-etc-pki-ca-trust
-              - hostPath:
-                  path: /etc/resolv.conf
-                  type: File
-                name: host-etc-resolv-conf
-              - hostPath:
-                  path: /lib64
-                  type: Directory
-                name: host-lib64
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib/cni
-                  type: Directory
-                name: host-var-lib-cni
-              - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
-                  path: /var/lib/kubelet
-                  type: Directory
-                name: host-var-lib-kubelet
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - configMap:
+                defaultMode: 420
+                name: pre-cache-spec
+              name: config-volume
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /etc/containers
+                type: Directory
+              name: host-etc-containers
+            - hostPath:
+                path: /etc/pki/ca-trust
+                type: Directory
+              name: host-etc-pki-ca-trust
+            - hostPath:
+                path: /etc/resolv.conf
+                type: File
+              name: host-etc-resolv-conf
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib/cni
+                type: Directory
+              name: host-var-lib-cni
+            - hostPath:
+                path: /var/lib/containers
+                type: Directory
+              name: host-var-lib-containers
+            - hostPath:
+                path: /var/lib/kubelet
+                type: Directory
+              name: host-var-lib-kubelet
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -311,79 +310,79 @@ spec:
             name: pre-cache
           spec:
             containers:
-              - args:
-                  - /opt/precache/precache.sh
-                command:
-                  - /bin/bash
-                  - -c
-                env:
-                  - name: config_volume_path
-                    value: /tmp/precache/config
-                  - name: NODE_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: spec.nodeName
-                image: quay.io/test_images/pre-cache:latest
-                name: pre-cache-container
-                resources: {}
-                securityContext:
-                  privileged: true
-                  runAsUser: 0
-                terminationMessagePath: /dev/termination-log
-                terminationMessagePolicy: File
-                volumeMounts:
-                  - mountPath: /etc/config
-                    name: config-volume
-                    readOnly: true
-                  - mountPath: /host
-                    name: host
-                  - mountPath: /host/etc/containers
-                    name: host-etc-containers
-                    readOnly: true
-                  - mountPath: /host/etc/pki/ca-trust
-                    name: host-etc-pki-ca-trust
-                    readOnly: true
-                  - mountPath: /host/etc/resolv.conf
-                    name: host-etc-resolv-conf
-                    readOnly: true
-                  - mountPath: /host/lib64
-                    name: host-lib64
-                    readOnly: true
-                  - mountPath: /host/proc
-                    name: host-proc
-                    readOnly: true
-                  - mountPath: /host/run
-                    name: host-run
-                  - mountPath: /host/tmp
-                    name: host-tmp
-                  - mountPath: /host/usr/bin
-                    name: host-usr-bin
-                    readOnly: true
-                  - mountPath: /host/usr/lib
-                    name: host-usr-lib
-                    readOnly: true
-                  - mountPath: /host/usr/lib64
-                    name: host-usr-lib64
-                    readOnly: true
-                  - mountPath: /host/usr/libexec
-                    name: host-usr-libexec
-                    readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
-                  - mountPath: /host/var/lib/cni
-                    name: host-var-lib-cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
-                  - mountPath: /host/sys/fs/cgroup
-                    name: sys-fs-cgroup
-                    readOnly: true
+            - args:
+              - /opt/precache/precache.sh
+              command:
+              - /bin/bash
+              - -c
+              env:
+              - name: config_volume_path
+                value: /tmp/precache/config
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+              image: quay.io/test_images/pre-cache:latest
+              name: pre-cache-container
+              resources: {}
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - mountPath: /etc/config
+                name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/etc/containers
+                name: host-etc-containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc-pki-ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc-resolv-conf
+                readOnly: true
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib/cni
+                name: host-var-lib-cni
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var-lib-containers
+              - mountPath: /host/var/lib/kubelet
+                name: host-var-lib-kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -391,80 +390,80 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-              - configMap:
-                  defaultMode: 420
-                  name: pre-cache-spec
-                name: config-volume
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /etc/containers
-                  type: Directory
-                name: host-etc-containers
-              - hostPath:
-                  path: /etc/pki/ca-trust
-                  type: Directory
-                name: host-etc-pki-ca-trust
-              - hostPath:
-                  path: /etc/resolv.conf
-                  type: File
-                name: host-etc-resolv-conf
-              - hostPath:
-                  path: /lib64
-                  type: Directory
-                name: host-lib64
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib/cni
-                  type: Directory
-                name: host-var-lib-cni
-              - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
-                  path: /var/lib/kubelet
-                  type: Directory
-                name: host-var-lib-kubelet
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - configMap:
+                defaultMode: 420
+                name: pre-cache-spec
+              name: config-volume
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /etc/containers
+                type: Directory
+              name: host-etc-containers
+            - hostPath:
+                path: /etc/pki/ca-trust
+                type: Directory
+              name: host-etc-pki-ca-trust
+            - hostPath:
+                path: /etc/resolv.conf
+                type: File
+              name: host-etc-resolv-conf
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib/cni
+                type: Directory
+              name: host-var-lib-cni
+            - hostPath:
+                path: /var/lib/containers
+                type: Directory
+              name: host-var-lib-containers
+            - hostPath:
+                path: /var/lib/kubelet
+                type: Directory
+              name: host-var-lib-kubelet
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -494,79 +493,79 @@ spec:
             name: pre-cache
           spec:
             containers:
-              - args:
-                  - /opt/precache/precache.sh
-                command:
-                  - /bin/bash
-                  - -c
-                env:
-                  - name: config_volume_path
-                    value: /tmp/precache/config
-                  - name: NODE_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: spec.nodeName
-                image: quay.io/test_images/pre-cache:latest
-                name: pre-cache-container
-                resources: {}
-                securityContext:
-                  privileged: true
-                  runAsUser: 0
-                terminationMessagePath: /dev/termination-log
-                terminationMessagePolicy: File
-                volumeMounts:
-                  - mountPath: /etc/config
-                    name: config-volume
-                    readOnly: true
-                  - mountPath: /host
-                    name: host
-                  - mountPath: /host/etc/containers
-                    name: host-etc-containers
-                    readOnly: true
-                  - mountPath: /host/etc/pki/ca-trust
-                    name: host-etc-pki-ca-trust
-                    readOnly: true
-                  - mountPath: /host/etc/resolv.conf
-                    name: host-etc-resolv-conf
-                    readOnly: true
-                  - mountPath: /host/lib64
-                    name: host-lib64
-                    readOnly: true
-                  - mountPath: /host/proc
-                    name: host-proc
-                    readOnly: true
-                  - mountPath: /host/run
-                    name: host-run
-                  - mountPath: /host/tmp
-                    name: host-tmp
-                  - mountPath: /host/usr/bin
-                    name: host-usr-bin
-                    readOnly: true
-                  - mountPath: /host/usr/lib
-                    name: host-usr-lib
-                    readOnly: true
-                  - mountPath: /host/usr/lib64
-                    name: host-usr-lib64
-                    readOnly: true
-                  - mountPath: /host/usr/libexec
-                    name: host-usr-libexec
-                    readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
-                  - mountPath: /host/var/lib/cni
-                    name: host-var-lib-cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
-                  - mountPath: /host/sys/fs/cgroup
-                    name: sys-fs-cgroup
-                    readOnly: true
+            - args:
+              - /opt/precache/precache.sh
+              command:
+              - /bin/bash
+              - -c
+              env:
+              - name: config_volume_path
+                value: /tmp/precache/config
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+              image: quay.io/test_images/pre-cache:latest
+              name: pre-cache-container
+              resources: {}
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - mountPath: /etc/config
+                name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/etc/containers
+                name: host-etc-containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc-pki-ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc-resolv-conf
+                readOnly: true
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib/cni
+                name: host-var-lib-cni
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var-lib-containers
+              - mountPath: /host/var/lib/kubelet
+                name: host-var-lib-kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -574,80 +573,80 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-              - configMap:
-                  defaultMode: 420
-                  name: pre-cache-spec
-                name: config-volume
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /etc/containers
-                  type: Directory
-                name: host-etc-containers
-              - hostPath:
-                  path: /etc/pki/ca-trust
-                  type: Directory
-                name: host-etc-pki-ca-trust
-              - hostPath:
-                  path: /etc/resolv.conf
-                  type: File
-                name: host-etc-resolv-conf
-              - hostPath:
-                  path: /lib64
-                  type: Directory
-                name: host-lib64
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib/cni
-                  type: Directory
-                name: host-var-lib-cni
-              - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
-                  path: /var/lib/kubelet
-                  type: Directory
-                name: host-var-lib-kubelet
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - configMap:
+                defaultMode: 420
+                name: pre-cache-spec
+              name: config-volume
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /etc/containers
+                type: Directory
+              name: host-etc-containers
+            - hostPath:
+                path: /etc/pki/ca-trust
+                type: Directory
+              name: host-etc-pki-ca-trust
+            - hostPath:
+                path: /etc/resolv.conf
+                type: File
+              name: host-etc-resolv-conf
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib/cni
+                type: Directory
+              name: host-var-lib-cni
+            - hostPath:
+                path: /var/lib/containers
+                type: Directory
+              name: host-var-lib-containers
+            - hostPath:
+                path: /var/lib/kubelet
+                type: Directory
+              name: host-var-lib-kubelet
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -677,79 +676,79 @@ spec:
             name: pre-cache
           spec:
             containers:
-              - args:
-                  - /opt/precache/precache.sh
-                command:
-                  - /bin/bash
-                  - -c
-                env:
-                  - name: config_volume_path
-                    value: /tmp/precache/config
-                  - name: NODE_NAME
-                    valueFrom:
-                      fieldRef:
-                        fieldPath: spec.nodeName
-                image: quay.io/test_images/pre-cache:latest
-                name: pre-cache-container
-                resources: {}
-                securityContext:
-                  privileged: true
-                  runAsUser: 0
-                terminationMessagePath: /dev/termination-log
-                terminationMessagePolicy: File
-                volumeMounts:
-                  - mountPath: /etc/config
-                    name: config-volume
-                    readOnly: true
-                  - mountPath: /host
-                    name: host
-                  - mountPath: /host/etc/containers
-                    name: host-etc-containers
-                    readOnly: true
-                  - mountPath: /host/etc/pki/ca-trust
-                    name: host-etc-pki-ca-trust
-                    readOnly: true
-                  - mountPath: /host/etc/resolv.conf
-                    name: host-etc-resolv-conf
-                    readOnly: true
-                  - mountPath: /host/lib64
-                    name: host-lib64
-                    readOnly: true
-                  - mountPath: /host/proc
-                    name: host-proc
-                    readOnly: true
-                  - mountPath: /host/run
-                    name: host-run
-                  - mountPath: /host/tmp
-                    name: host-tmp
-                  - mountPath: /host/usr/bin
-                    name: host-usr-bin
-                    readOnly: true
-                  - mountPath: /host/usr/lib
-                    name: host-usr-lib
-                    readOnly: true
-                  - mountPath: /host/usr/lib64
-                    name: host-usr-lib64
-                    readOnly: true
-                  - mountPath: /host/usr/libexec
-                    name: host-usr-libexec
-                    readOnly: true
-                  - mountPath: /host/usr/share/containers
-                    name: host-usr-share-containers
-                    readOnly: true
-                  - mountPath: /host/var/lib/cni
-                    name: host-var-lib-cni
-                    readOnly: true
-                  - mountPath: /host/var/lib/containers
-                    name: host-var-lib-containers
-                  - mountPath: /host/var/lib/kubelet
-                    name: host-var-lib-kubelet
-                    readOnly: true
-                  - mountPath: /host/var/tmp
-                    name: host-var-tmp
-                  - mountPath: /host/sys/fs/cgroup
-                    name: sys-fs-cgroup
-                    readOnly: true
+            - args:
+              - /opt/precache/precache.sh
+              command:
+              - /bin/bash
+              - -c
+              env:
+              - name: config_volume_path
+                value: /tmp/precache/config
+              - name: NODE_NAME
+                valueFrom:
+                  fieldRef:
+                    fieldPath: spec.nodeName
+              image: quay.io/test_images/pre-cache:latest
+              name: pre-cache-container
+              resources: {}
+              securityContext:
+                privileged: true
+                runAsUser: 0
+              terminationMessagePath: /dev/termination-log
+              terminationMessagePolicy: File
+              volumeMounts:
+              - mountPath: /etc/config
+                name: config-volume
+                readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/etc/containers
+                name: host-etc-containers
+                readOnly: true
+              - mountPath: /host/etc/pki/ca-trust
+                name: host-etc-pki-ca-trust
+                readOnly: true
+              - mountPath: /host/etc/resolv.conf
+                name: host-etc-resolv-conf
+                readOnly: true
+              - mountPath: /host/lib64
+                name: host-lib64
+                readOnly: true
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib/cni
+                name: host-var-lib-cni
+                readOnly: true
+              - mountPath: /host/var/lib/containers
+                name: host-var-lib-containers
+              - mountPath: /host/var/lib/kubelet
+                name: host-var-lib-kubelet
+                readOnly: true
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             dnsPolicy: ClusterFirst
             priorityClassName: system-cluster-critical
             restartPolicy: Never
@@ -757,77 +756,77 @@ spec:
             securityContext: {}
             serviceAccountName: pre-cache-agent
             volumes:
-              - configMap:
-                  defaultMode: 420
-                  name: pre-cache-spec
-                name: config-volume
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /etc/containers
-                  type: Directory
-                name: host-etc-containers
-              - hostPath:
-                  path: /etc/pki/ca-trust
-                  type: Directory
-                name: host-etc-pki-ca-trust
-              - hostPath:
-                  path: /etc/resolv.conf
-                  type: File
-                name: host-etc-resolv-conf
-              - hostPath:
-                  path: /lib64
-                  type: Directory
-                name: host-lib64
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib/cni
-                  type: Directory
-                name: host-var-lib-cni
-              - hostPath:
-                  path: /var/lib/containers
-                  type: Directory
-                name: host-var-lib-containers
-              - hostPath:
-                  path: /var/lib/kubelet
-                  type: Directory
-                name: host-var-lib-kubelet
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - configMap:
+                defaultMode: 420
+                name: pre-cache-spec
+              name: config-volume
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /etc/containers
+                type: Directory
+              name: host-etc-containers
+            - hostPath:
+                path: /etc/pki/ca-trust
+                type: Directory
+              name: host-etc-pki-ca-trust
+            - hostPath:
+                path: /etc/resolv.conf
+                type: File
+              name: host-etc-resolv-conf
+            - hostPath:
+                path: /lib64
+                type: Directory
+              name: host-lib64
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib/cni
+                type: Directory
+              name: host-var-lib-cni
+            - hostPath:
+                path: /var/lib/containers
+                type: Directory
+              name: host-var-lib-containers
+            - hostPath:
+                path: /var/lib/kubelet
+                type: Directory
+              name: host-var-lib-kubelet
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
