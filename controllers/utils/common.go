@@ -37,11 +37,11 @@ func GetSafeResourceName(name, namespace string, clusterGroupUpgrade *ranv1alpha
 	if clusterGroupUpgrade.Status.SafeResourceNames == nil {
 		clusterGroupUpgrade.Status.SafeResourceNames = make(map[string]string)
 	}
-	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[namespace+"/"+name]
+	safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[PrefixNameWithNamespace(namespace, name)]
 
 	if !ok {
 		safeName = NewSafeResourceName(name, namespace, clusterGroupUpgrade.GetAnnotations()[NameSuffixAnnotation], maxLength)
-		clusterGroupUpgrade.Status.SafeResourceNames[namespace+"/"+name] = safeName
+		clusterGroupUpgrade.Status.SafeResourceNames[PrefixNameWithNamespace(namespace, name)] = safeName
 	}
 	return safeName
 }
@@ -73,4 +73,9 @@ func NewSafeResourceName(name, namespace, suffix string, maxLength int) (safenam
 	// `[a-z0-9]([-a-z0-9]*[a-z0-9])?(\.[a-z0-9]([-a-z0-9]*[a-z0-9])?)*` as per
 	// https://kubernetes.io/docs/concepts/overview/working-with-objects/names/
 	return fmt.Sprintf("%s-%s", base, suffix)
+}
+
+// PrefixNameWithNamespace Prefixes the passed name with the passed namespace. Use '/' as a separator
+func PrefixNameWithNamespace(namespace, name string) string {
+	return namespace + "/" + name
 }
