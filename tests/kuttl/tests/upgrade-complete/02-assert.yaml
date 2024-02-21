@@ -17,21 +17,21 @@ spec:
     timeout: 241
 status:
   clusters:
-    - name: spoke6
-      state: complete        
-    - name: spoke1
-      state: complete    
+  - name: spoke6
+    state: complete
+  - name: spoke1
+    state: complete
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Remediating non-compliant policies
     reason: InProgress
-    status: "True"
+    status: 'True'
     type: Progressing
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
@@ -56,12 +56,12 @@ status:
   - - spoke1
   - - spoke4
   safeResourceNames:
-    cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
-    cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
-    cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
-    cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
-    cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
-    cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+    /cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-confi-kuttl
+    /cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
+    default/cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+    default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
+    default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status:
     currentBatch: 2
     currentBatchRemediationProgress:
@@ -73,12 +73,12 @@ apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
   labels:
-    ztp-done: ""
+    ztp-done: ''
   name: spoke1
 ---
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
 metadata:
   labels:
-    ztp-running: ""
+    ztp-running: ''
   name: spoke4

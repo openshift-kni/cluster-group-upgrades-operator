@@ -19,15 +19,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Not enabled
     reason: NotEnabled
-    status: "False"
+    status: 'False'
     type: Progressing
   copiedPolicies:
   - cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
@@ -52,10 +52,10 @@ status:
   - - spoke1
   - - spoke4
   safeResourceNames:
-    cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
-    cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
-    cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
-    cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
-    cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
-    cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+    /cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-confi-kuttl
+    /cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
+    default/cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
+    default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-upgrade-complete-policy2-common-pao-sub-policy: cgu-upgrade-complete-policy2-common-pao-sub-polic-kuttl
+    default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status: {}

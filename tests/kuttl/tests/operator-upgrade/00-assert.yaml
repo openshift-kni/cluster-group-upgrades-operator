@@ -20,15 +20,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Not enabled
     reason: NotEnabled
-    status: "False"
+    status: 'False'
     type: Progressing
   copiedPolicies:
   - cgu-policy5-subscriptions-kuttl
@@ -48,7 +48,7 @@ status:
     - spoke2
   - - spoke5
   safeResourceNames:
-    cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
-    cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
-    cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
+    /cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
+    default/cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
+    default/cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
   status: {}
