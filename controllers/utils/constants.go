@@ -41,10 +41,12 @@ const (
 
 // CR name length limits and suffix annotation
 const (
-	MaxPolicyNameLength    = 63
-	MaxObjectNameLength    = 253
-	NameSuffixAnnotation   = CsvNamePrefix + "/name-suffix"
-	RandomNameSuffixLength = 5
+	// Maximum length of policy + namespace (not including extra separator dot so 63 -1 = 62)
+	// this is calculated with utf8.RuneCountInString(policy.Name)+utf8.RuneCountInString+utf8.RuneCountInString(policy.Namespace)
+	MaxPolicyNameLengthExcludingTheDot = 62
+	MaxObjectNameLength                = 253
+	NameSuffixAnnotation               = CsvNamePrefix + "/name-suffix"
+	RandomNameSuffixLength             = 5
 )
 
 // Pre-cache constants

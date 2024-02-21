@@ -6,10 +6,10 @@ metadata:
 spec:
   clusterLabelSelectors:
   - matchLabels:
-      upgrade2: "true"
+      upgrade2: 'true'
   - matchExpressions:
-      - key: upgrade
-        operator: Exists
+    - key: upgrade
+      operator: Exists
   clusters:
   - spoke1
   - spoke2
@@ -28,15 +28,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Not enabled
     reason: NotEnabled
-    status: "False"
+    status: 'False'
     type: Progressing
   copiedPolicies:
   - cgu-cluster-selector-policy1-common-cluster-versi-kuttl
@@ -78,17 +78,16 @@ status:
     - spoke6
   - - spoke4
   safeResourceNames:
-    cgu-cluster-selector-common-cluster-version-policy-config: cgu-cluster-selector-common-cluster-version-policy-config-kuttl
-    cgu-cluster-selector-common-pao-sub-policy-config: cgu-cluster-selector-common-pao-sub-policy-config-kuttl
-    cgu-cluster-selector-common-ptp-sub-policy-config: cgu-cluster-selector-common-ptp-sub-policy-config-kuttl
-    cgu-cluster-selector-common-sriov-sub-policy-config: cgu-cluster-selector-common-sriov-sub-policy-config-kuttl
-    cgu-cluster-selector-policy1-common-cluster-version-policy: cgu-cluster-selector-policy1-common-cluster-versi-kuttl
-    cgu-cluster-selector-policy1-common-cluster-version-policy-placement: cgu-cluster-selector-policy1-common-cluster-version-policy-placement-kuttl
-    cgu-cluster-selector-policy2-common-pao-sub-policy: cgu-cluster-selector-policy2-common-pao-sub-polic-kuttl
-    cgu-cluster-selector-policy2-common-pao-sub-policy-placement: cgu-cluster-selector-policy2-common-pao-sub-policy-placement-kuttl
-    cgu-cluster-selector-policy3-common-ptp-sub-policy: cgu-cluster-selector-policy3-common-ptp-sub-polic-kuttl
-    cgu-cluster-selector-policy3-common-ptp-sub-policy-placement: cgu-cluster-selector-policy3-common-ptp-sub-policy-placement-kuttl
-    cgu-cluster-selector-policy4-common-sriov-sub-policy: cgu-cluster-selector-policy4-common-sriov-sub-pol-kuttl
-    cgu-cluster-selector-policy4-common-sriov-sub-policy-placement: cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
+    /cgu-cluster-selector-common-cluster-version-policy-config: cgu-cluster-selector-common-cluster-version-policy-confi-kuttl
+    /cgu-cluster-selector-common-pao-sub-policy-config: cgu-cluster-selector-common-pao-sub-policy-config-kuttl
+    /cgu-cluster-selector-common-ptp-sub-policy-config: cgu-cluster-selector-common-ptp-sub-policy-config-kuttl
+    /cgu-cluster-selector-common-sriov-sub-policy-config: cgu-cluster-selector-common-sriov-sub-policy-config-kuttl
+    default/cgu-cluster-selector-policy1-common-cluster-version-policy: cgu-cluster-selector-policy1-common-cluster-versi-kuttl
+    default/cgu-cluster-selector-policy1-common-cluster-version-policy-placement: cgu-cluster-selector-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-cluster-selector-policy2-common-pao-sub-policy: cgu-cluster-selector-policy2-common-pao-sub-polic-kuttl
+    default/cgu-cluster-selector-policy2-common-pao-sub-policy-placement: cgu-cluster-selector-policy2-common-pao-sub-policy-placement-kuttl
+    default/cgu-cluster-selector-policy3-common-ptp-sub-policy: cgu-cluster-selector-policy3-common-ptp-sub-polic-kuttl
+    default/cgu-cluster-selector-policy3-common-ptp-sub-policy-placement: cgu-cluster-selector-policy3-common-ptp-sub-policy-placement-kuttl
+    default/cgu-cluster-selector-policy4-common-sriov-sub-policy: cgu-cluster-selector-policy4-common-sriov-sub-pol-kuttl
+    default/cgu-cluster-selector-policy4-common-sriov-sub-policy-placement: cgu-cluster-selector-policy4-common-sriov-sub-policy-placement-kuttl
   status: {}
-
