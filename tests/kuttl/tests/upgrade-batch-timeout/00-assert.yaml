@@ -52,7 +52,7 @@ status:
   - - spoke1
   - - spoke4
   safeResourceNames:
-    /cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-confi-kuttl
+    /cgu-upgrade-complete-common-cluster-version-policy-config: cgu-upgrade-complete-common-cluster-version-policy-config-kuttl
     /cgu-upgrade-complete-common-pao-sub-policy-config: cgu-upgrade-complete-common-pao-sub-policy-config-kuttl
     default/cgu-upgrade-complete-policy1-common-cluster-version-policy: cgu-upgrade-complete-policy1-common-cluster-versi-kuttl
     default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
