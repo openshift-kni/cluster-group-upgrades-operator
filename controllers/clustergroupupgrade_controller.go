@@ -1231,7 +1231,7 @@ func (r *ClusterGroupUpgradeReconciler) updateConfigurationPolicyName(
 
 	metadataContent := metadata.(map[string]interface{})
 	name := utils.GetResourceName(clusterGroupUpgrade, metadataContent["name"].(string))
-	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxPolicyNameLengthExcludingTheDot)
+	safeName := utils.GetSafeResourceName(name, "", clusterGroupUpgrade, utils.MaxObjectNameLength)
 	metadataContent["name"] = safeName
 }
 

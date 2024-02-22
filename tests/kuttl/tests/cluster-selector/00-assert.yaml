@@ -78,7 +78,7 @@ status:
     - spoke6
   - - spoke4
   safeResourceNames:
-    /cgu-cluster-selector-common-cluster-version-policy-config: cgu-cluster-selector-common-cluster-version-policy-confi-kuttl
+    /cgu-cluster-selector-common-cluster-version-policy-config: cgu-cluster-selector-common-cluster-version-policy-config-kuttl
     /cgu-cluster-selector-common-pao-sub-policy-config: cgu-cluster-selector-common-pao-sub-policy-config-kuttl
     /cgu-cluster-selector-common-ptp-sub-policy-config: cgu-cluster-selector-common-ptp-sub-policy-config-kuttl
     /cgu-cluster-selector-common-sriov-sub-policy-config: cgu-cluster-selector-common-sriov-sub-policy-config-kuttl
