@@ -22,15 +22,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Remediating non-compliant policies
     reason: InProgress
-    status: "True"
+    status: 'True'
     type: Progressing
   copiedPolicies:
   - cgu-policy2-common-pao-sub-policy-kuttl
@@ -57,14 +57,14 @@ status:
     - spoke2
   - - spoke4
   safeResourceNames:
-    cgu-common-pao-sub-policy-config: cgu-common-pao-sub-policy-config-kuttl
-    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
-    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
-    cgu-policy2-common-pao-sub-policy: cgu-policy2-common-pao-sub-policy-kuttl
-    cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
-    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
-    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    /cgu-common-pao-sub-policy-config: cgu-common-pao-sub-policy-config-kuttl
+    /cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    /cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    /cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    default/cgu-policy2-common-pao-sub-policy: cgu-policy2-common-pao-sub-policy-kuttl
+    default/cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
+    default/cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
   status:
     currentBatch: 1
     currentBatchRemediationProgress:

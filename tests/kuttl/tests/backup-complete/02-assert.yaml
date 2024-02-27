@@ -29,19 +29,19 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Backup in progress for 4 clusters
     reason: InProgress
-    status: "False"
+    status: 'False'
     type: BackupSuceeded
   - message: Cluster backup is in progress
     reason: NotStarted
-    status: "False"
+    status: 'False'
     type: Progressing
   copiedPolicies:
   - cgu-policy3-common-ptp-sub-policy-kuttl
@@ -72,14 +72,13 @@ status:
     - spoke1
     - spoke5
   safeResourceNames:
-    cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
-    cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
-    cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
-    cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
-    cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
-    cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
+    /cgu-common-ptp-sub-policy-config: cgu-common-ptp-sub-policy-config-kuttl
+    /cgu-common-sriov-sub-policy-config: cgu-common-sriov-sub-policy-config-kuttl
+    default/cgu-policy3-common-ptp-sub-policy: cgu-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    default/cgu-policy4-common-sriov-sub-policy: cgu-policy4-common-sriov-sub-policy-kuttl
+    default/cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
 ---
-# MCVs
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
@@ -124,7 +123,6 @@ spec:
     namespace: openshift-talo-backup
     resource: jobs
 ---
-# MCA
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
 metadata:
@@ -158,124 +156,124 @@ spec:
                 runAsUser: 0
               tty: true
               volumeMounts:
-                - mountPath: /host
-                  name: host
-                - mountPath: /host/boot
-                  name: host-boot
-                  readOnly: true
-                - mountPath: /host/dev/log
-                  name: host-dev-log
-                - mountPath: /host/etc
-                  name: host-etc
-                - mountPath: /host/proc
-                  name: host-proc
-                  readOnly: true
-                - mountPath: /host/run
-                  name: host-run
-                - mountPath: /host/sysroot
-                  name: host-sysroot
-                - mountPath: /host/tmp
-                  name: host-tmp
-                - mountPath: /host/usr/bin
-                  name: host-usr-bin
-                  readOnly: true
-                - mountPath: /host/usr/lib
-                  name: host-usr-lib
-                  readOnly: true
-                - mountPath: /host/usr/lib64
-                  name: host-usr-lib64
-                  readOnly: true
-                - mountPath: /host/usr/libexec
-                  name: host-usr-libexec
-                  readOnly: true
-                - mountPath: /host/usr/local
-                  name: host-usr-local
-                  readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
-                - mountPath: /host/var/lib
-                  name: host-var-lib
-                - mountPath: /host/var/recovery
-                  name: host-var-recovery
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
-                - mountPath: /host/sys/fs/cgroup
-                  name: sys-fs-cgroup
-                  readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/boot
+                name: host-boot
+                readOnly: true
+              - mountPath: /host/dev/log
+                name: host-dev-log
+              - mountPath: /host/etc
+                name: host-etc
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/sysroot
+                name: host-sysroot
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/local
+                name: host-usr-local
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib
+                name: host-var-lib
+              - mountPath: /host/var/recovery
+                name: host-var-recovery
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /boot
-                  type: Directory
-                name: host-boot
-              - hostPath:
-                  path: /dev/log
-                  type: Socket
-                name: host-dev-log
-              - hostPath:
-                  path: /etc
-                  type: Directory
-                name: host-etc
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /sysroot
-                  type: Directory
-                name: host-sysroot
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/local
-                  type: Directory
-                name: host-usr-local
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib
-                  type: Directory
-                name: host-var-lib
-              - hostPath:
-                  path: /var/recovery
-                  type: DirectoryOrCreate
-                name: host-var-recovery
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /boot
+                type: Directory
+              name: host-boot
+            - hostPath:
+                path: /dev/log
+                type: Socket
+              name: host-dev-log
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sysroot
+                type: Directory
+              name: host-sysroot
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/local
+                type: Directory
+              name: host-usr-local
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib
+                type: Directory
+              name: host-var-lib
+            - hostPath:
+                path: /var/recovery
+                type: DirectoryOrCreate
+              name: host-var-recovery
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -310,124 +308,124 @@ spec:
                 runAsUser: 0
               tty: true
               volumeMounts:
-                - mountPath: /host
-                  name: host
-                - mountPath: /host/boot
-                  name: host-boot
-                  readOnly: true
-                - mountPath: /host/dev/log
-                  name: host-dev-log
-                - mountPath: /host/etc
-                  name: host-etc
-                - mountPath: /host/proc
-                  name: host-proc
-                  readOnly: true
-                - mountPath: /host/run
-                  name: host-run
-                - mountPath: /host/sysroot
-                  name: host-sysroot
-                - mountPath: /host/tmp
-                  name: host-tmp
-                - mountPath: /host/usr/bin
-                  name: host-usr-bin
-                  readOnly: true
-                - mountPath: /host/usr/lib
-                  name: host-usr-lib
-                  readOnly: true
-                - mountPath: /host/usr/lib64
-                  name: host-usr-lib64
-                  readOnly: true
-                - mountPath: /host/usr/libexec
-                  name: host-usr-libexec
-                  readOnly: true
-                - mountPath: /host/usr/local
-                  name: host-usr-local
-                  readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
-                - mountPath: /host/var/lib
-                  name: host-var-lib
-                - mountPath: /host/var/recovery
-                  name: host-var-recovery
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
-                - mountPath: /host/sys/fs/cgroup
-                  name: sys-fs-cgroup
-                  readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/boot
+                name: host-boot
+                readOnly: true
+              - mountPath: /host/dev/log
+                name: host-dev-log
+              - mountPath: /host/etc
+                name: host-etc
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/sysroot
+                name: host-sysroot
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/local
+                name: host-usr-local
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib
+                name: host-var-lib
+              - mountPath: /host/var/recovery
+                name: host-var-recovery
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /boot
-                  type: Directory
-                name: host-boot
-              - hostPath:
-                  path: /dev/log
-                  type: Socket
-                name: host-dev-log
-              - hostPath:
-                  path: /etc
-                  type: Directory
-                name: host-etc
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /sysroot
-                  type: Directory
-                name: host-sysroot
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/local
-                  type: Directory
-                name: host-usr-local
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib
-                  type: Directory
-                name: host-var-lib
-              - hostPath:
-                  path: /var/recovery
-                  type: DirectoryOrCreate
-                name: host-var-recovery
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /boot
+                type: Directory
+              name: host-boot
+            - hostPath:
+                path: /dev/log
+                type: Socket
+              name: host-dev-log
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sysroot
+                type: Directory
+              name: host-sysroot
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/local
+                type: Directory
+              name: host-usr-local
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib
+                type: Directory
+              name: host-var-lib
+            - hostPath:
+                path: /var/recovery
+                type: DirectoryOrCreate
+              name: host-var-recovery
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -462,124 +460,124 @@ spec:
                 runAsUser: 0
               tty: true
               volumeMounts:
-                - mountPath: /host
-                  name: host
-                - mountPath: /host/boot
-                  name: host-boot
-                  readOnly: true
-                - mountPath: /host/dev/log
-                  name: host-dev-log
-                - mountPath: /host/etc
-                  name: host-etc
-                - mountPath: /host/proc
-                  name: host-proc
-                  readOnly: true
-                - mountPath: /host/run
-                  name: host-run
-                - mountPath: /host/sysroot
-                  name: host-sysroot
-                - mountPath: /host/tmp
-                  name: host-tmp
-                - mountPath: /host/usr/bin
-                  name: host-usr-bin
-                  readOnly: true
-                - mountPath: /host/usr/lib
-                  name: host-usr-lib
-                  readOnly: true
-                - mountPath: /host/usr/lib64
-                  name: host-usr-lib64
-                  readOnly: true
-                - mountPath: /host/usr/libexec
-                  name: host-usr-libexec
-                  readOnly: true
-                - mountPath: /host/usr/local
-                  name: host-usr-local
-                  readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
-                - mountPath: /host/var/lib
-                  name: host-var-lib
-                - mountPath: /host/var/recovery
-                  name: host-var-recovery
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
-                - mountPath: /host/sys/fs/cgroup
-                  name: sys-fs-cgroup
-                  readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/boot
+                name: host-boot
+                readOnly: true
+              - mountPath: /host/dev/log
+                name: host-dev-log
+              - mountPath: /host/etc
+                name: host-etc
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/sysroot
+                name: host-sysroot
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/local
+                name: host-usr-local
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib
+                name: host-var-lib
+              - mountPath: /host/var/recovery
+                name: host-var-recovery
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /boot
-                  type: Directory
-                name: host-boot
-              - hostPath:
-                  path: /dev/log
-                  type: Socket
-                name: host-dev-log
-              - hostPath:
-                  path: /etc
-                  type: Directory
-                name: host-etc
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /sysroot
-                  type: Directory
-                name: host-sysroot
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/local
-                  type: Directory
-                name: host-usr-local
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib
-                  type: Directory
-                name: host-var-lib
-              - hostPath:
-                  path: /var/recovery
-                  type: DirectoryOrCreate
-                name: host-var-recovery
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /boot
+                type: Directory
+              name: host-boot
+            - hostPath:
+                path: /dev/log
+                type: Socket
+              name: host-dev-log
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sysroot
+                type: Directory
+              name: host-sysroot
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/local
+                type: Directory
+              name: host-usr-local
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib
+                type: Directory
+              name: host-var-lib
+            - hostPath:
+                path: /var/recovery
+                type: DirectoryOrCreate
+              name: host-var-recovery
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
 apiVersion: action.open-cluster-management.io/v1beta1
 kind: ManagedClusterAction
@@ -614,125 +612,122 @@ spec:
                 runAsUser: 0
               tty: true
               volumeMounts:
-                - mountPath: /host
-                  name: host
-                - mountPath: /host/boot
-                  name: host-boot
-                  readOnly: true
-                - mountPath: /host/dev/log
-                  name: host-dev-log
-                - mountPath: /host/etc
-                  name: host-etc
-                - mountPath: /host/proc
-                  name: host-proc
-                  readOnly: true
-                - mountPath: /host/run
-                  name: host-run
-                - mountPath: /host/sysroot
-                  name: host-sysroot
-                - mountPath: /host/tmp
-                  name: host-tmp
-                - mountPath: /host/usr/bin
-                  name: host-usr-bin
-                  readOnly: true
-                - mountPath: /host/usr/lib
-                  name: host-usr-lib
-                  readOnly: true
-                - mountPath: /host/usr/lib64
-                  name: host-usr-lib64
-                  readOnly: true
-                - mountPath: /host/usr/libexec
-                  name: host-usr-libexec
-                  readOnly: true
-                - mountPath: /host/usr/local
-                  name: host-usr-local
-                  readOnly: true
-                - mountPath: /host/usr/share/containers
-                  name: host-usr-share-containers
-                  readOnly: true
-                - mountPath: /host/var/lib
-                  name: host-var-lib
-                - mountPath: /host/var/recovery
-                  name: host-var-recovery
-                - mountPath: /host/var/tmp
-                  name: host-var-tmp
-                - mountPath: /host/sys/fs/cgroup
-                  name: sys-fs-cgroup
-                  readOnly: true
+              - mountPath: /host
+                name: host
+              - mountPath: /host/boot
+                name: host-boot
+                readOnly: true
+              - mountPath: /host/dev/log
+                name: host-dev-log
+              - mountPath: /host/etc
+                name: host-etc
+              - mountPath: /host/proc
+                name: host-proc
+                readOnly: true
+              - mountPath: /host/run
+                name: host-run
+              - mountPath: /host/sysroot
+                name: host-sysroot
+              - mountPath: /host/tmp
+                name: host-tmp
+              - mountPath: /host/usr/bin
+                name: host-usr-bin
+                readOnly: true
+              - mountPath: /host/usr/lib
+                name: host-usr-lib
+                readOnly: true
+              - mountPath: /host/usr/lib64
+                name: host-usr-lib64
+                readOnly: true
+              - mountPath: /host/usr/libexec
+                name: host-usr-libexec
+                readOnly: true
+              - mountPath: /host/usr/local
+                name: host-usr-local
+                readOnly: true
+              - mountPath: /host/usr/share/containers
+                name: host-usr-share-containers
+                readOnly: true
+              - mountPath: /host/var/lib
+                name: host-var-lib
+              - mountPath: /host/var/recovery
+                name: host-var-recovery
+              - mountPath: /host/var/tmp
+                name: host-var-tmp
+              - mountPath: /host/sys/fs/cgroup
+                name: sys-fs-cgroup
+                readOnly: true
             restartPolicy: Never
             serviceAccountName: backup-agent
             volumes:
-              - emptyDir: {}
-                name: host
-              - hostPath:
-                  path: /boot
-                  type: Directory
-                name: host-boot
-              - hostPath:
-                  path: /dev/log
-                  type: Socket
-                name: host-dev-log
-              - hostPath:
-                  path: /etc
-                  type: Directory
-                name: host-etc
-              - hostPath:
-                  path: /proc
-                  type: Directory
-                name: host-proc
-              - hostPath:
-                  path: /run
-                  type: Directory
-                name: host-run
-              - hostPath:
-                  path: /sysroot
-                  type: Directory
-                name: host-sysroot
-              - hostPath:
-                  path: /tmp
-                  type: Directory
-                name: host-tmp
-              - hostPath:
-                  path: /usr/bin
-                  type: Directory
-                name: host-usr-bin
-              - hostPath:
-                  path: /usr/lib
-                  type: Directory
-                name: host-usr-lib
-              - hostPath:
-                  path: /usr/lib64
-                  type: Directory
-                name: host-usr-lib64
-              - hostPath:
-                  path: /usr/libexec
-                  type: Directory
-                name: host-usr-libexec
-              - hostPath:
-                  path: /usr/local
-                  type: Directory
-                name: host-usr-local
-              - hostPath:
-                  path: /usr/share/containers
-                  type: Directory
-                name: host-usr-share-containers
-              - hostPath:
-                  path: /var/lib
-                  type: Directory
-                name: host-var-lib
-              - hostPath:
-                  path: /var/recovery
-                  type: DirectoryOrCreate
-                name: host-var-recovery
-              - hostPath:
-                  path: /var/tmp
-                  type: Directory
-                name: host-var-tmp
-              - hostPath:
-                  path: /sys/fs/cgroup
-                  type: Directory
-                name: sys-fs-cgroup
+            - emptyDir: {}
+              name: host
+            - hostPath:
+                path: /boot
+                type: Directory
+              name: host-boot
+            - hostPath:
+                path: /dev/log
+                type: Socket
+              name: host-dev-log
+            - hostPath:
+                path: /etc
+                type: Directory
+              name: host-etc
+            - hostPath:
+                path: /proc
+                type: Directory
+              name: host-proc
+            - hostPath:
+                path: /run
+                type: Directory
+              name: host-run
+            - hostPath:
+                path: /sysroot
+                type: Directory
+              name: host-sysroot
+            - hostPath:
+                path: /tmp
+                type: Directory
+              name: host-tmp
+            - hostPath:
+                path: /usr/bin
+                type: Directory
+              name: host-usr-bin
+            - hostPath:
+                path: /usr/lib
+                type: Directory
+              name: host-usr-lib
+            - hostPath:
+                path: /usr/lib64
+                type: Directory
+              name: host-usr-lib64
+            - hostPath:
+                path: /usr/libexec
+                type: Directory
+              name: host-usr-libexec
+            - hostPath:
+                path: /usr/local
+                type: Directory
+              name: host-usr-local
+            - hostPath:
+                path: /usr/share/containers
+                type: Directory
+              name: host-usr-share-containers
+            - hostPath:
+                path: /var/lib
+                type: Directory
+              name: host-var-lib
+            - hostPath:
+                path: /var/recovery
+                type: DirectoryOrCreate
+              name: host-var-recovery
+            - hostPath:
+                path: /var/tmp
+                type: Directory
+              name: host-var-tmp
+            - hostPath:
+                path: /sys/fs/cgroup
+                type: Directory
+              name: sys-fs-cgroup
 ---
-
-
-

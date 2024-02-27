@@ -1,4 +1,3 @@
-# Ensure that cgu-a has been unblocked
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
@@ -26,15 +25,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Remediating non-compliant policies
     reason: InProgress
-    status: "True"
+    status: 'True'
     type: Progressing
   copiedPolicies:
   - cgu-a-policy1-common-cluster-version-policy-kuttl
@@ -66,15 +65,15 @@ status:
   - - spoke1
   - - spoke2
   safeResourceNames:
-    cgu-a-common-cluster-version-policy-config: cgu-a-common-cluster-version-policy-config-kuttl
-    cgu-a-common-pao-sub-policy-config: cgu-a-common-pao-sub-policy-config-kuttl
-    cgu-a-common-ptp-sub-policy-config: cgu-a-common-ptp-sub-policy-config-kuttl
-    cgu-a-policy1-common-cluster-version-policy: cgu-a-policy1-common-cluster-version-policy-kuttl
-    cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
-    cgu-a-policy2-common-pao-sub-policy: cgu-a-policy2-common-pao-sub-policy-kuttl
-    cgu-a-policy2-common-pao-sub-policy-placement: cgu-a-policy2-common-pao-sub-policy-placement-kuttl
-    cgu-a-policy3-common-ptp-sub-policy: cgu-a-policy3-common-ptp-sub-policy-kuttl
-    cgu-a-policy3-common-ptp-sub-policy-placement: cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
+    /cgu-a-common-cluster-version-policy-config: cgu-a-common-cluster-version-policy-config-kuttl
+    /cgu-a-common-pao-sub-policy-config: cgu-a-common-pao-sub-policy-config-kuttl
+    /cgu-a-common-ptp-sub-policy-config: cgu-a-common-ptp-sub-policy-config-kuttl
+    default/cgu-a-policy1-common-cluster-version-policy: cgu-a-policy1-common-cluster-version-policy-kuttl
+    default/cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-a-policy2-common-pao-sub-policy: cgu-a-policy2-common-pao-sub-policy-kuttl
+    default/cgu-a-policy2-common-pao-sub-policy-placement: cgu-a-policy2-common-pao-sub-policy-placement-kuttl
+    default/cgu-a-policy3-common-ptp-sub-policy: cgu-a-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-a-policy3-common-ptp-sub-policy-placement: cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
   status:
     currentBatch: 1
     currentBatchRemediationProgress:
@@ -82,7 +81,6 @@ status:
         policyIndex: 0
         state: InProgress
 ---
-# Check that cgu-b is still blocked
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
@@ -108,15 +106,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: 'Blocking CRs that are not completed: [cgu-a]'
     reason: IncompleteBlockingCR
-    status: "False"
+    status: 'False'
     type: Progressing
   copiedPolicies:
   - cgu-b-policy1-common-cluster-version-policy-kuttl
@@ -155,16 +153,16 @@ status:
   - - spoke4
   - - spoke5
   safeResourceNames:
-    cgu-b-common-cluster-version-policy-config: cgu-b-common-cluster-version-policy-config-kuttl
-    cgu-b-common-pao-sub-policy-config: cgu-b-common-pao-sub-policy-config-kuttl
-    cgu-b-common-ptp-sub-policy-config: cgu-b-common-ptp-sub-policy-config-kuttl
-    cgu-b-common-sriov-sub-policy-config: cgu-b-common-sriov-sub-policy-config-kuttl
-    cgu-b-policy1-common-cluster-version-policy: cgu-b-policy1-common-cluster-version-policy-kuttl
-    cgu-b-policy1-common-cluster-version-policy-placement: cgu-b-policy1-common-cluster-version-policy-placement-kuttl
-    cgu-b-policy2-common-pao-sub-policy: cgu-b-policy2-common-pao-sub-policy-kuttl
-    cgu-b-policy2-common-pao-sub-policy-placement: cgu-b-policy2-common-pao-sub-policy-placement-kuttl
-    cgu-b-policy3-common-ptp-sub-policy: cgu-b-policy3-common-ptp-sub-policy-kuttl
-    cgu-b-policy3-common-ptp-sub-policy-placement: cgu-b-policy3-common-ptp-sub-policy-placement-kuttl
-    cgu-b-policy4-common-sriov-sub-policy: cgu-b-policy4-common-sriov-sub-policy-kuttl
-    cgu-b-policy4-common-sriov-sub-policy-placement: cgu-b-policy4-common-sriov-sub-policy-placement-kuttl
+    /cgu-b-common-cluster-version-policy-config: cgu-b-common-cluster-version-policy-config-kuttl
+    /cgu-b-common-pao-sub-policy-config: cgu-b-common-pao-sub-policy-config-kuttl
+    /cgu-b-common-ptp-sub-policy-config: cgu-b-common-ptp-sub-policy-config-kuttl
+    /cgu-b-common-sriov-sub-policy-config: cgu-b-common-sriov-sub-policy-config-kuttl
+    default/cgu-b-policy1-common-cluster-version-policy: cgu-b-policy1-common-cluster-version-policy-kuttl
+    default/cgu-b-policy1-common-cluster-version-policy-placement: cgu-b-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-b-policy2-common-pao-sub-policy: cgu-b-policy2-common-pao-sub-policy-kuttl
+    default/cgu-b-policy2-common-pao-sub-policy-placement: cgu-b-policy2-common-pao-sub-policy-placement-kuttl
+    default/cgu-b-policy3-common-ptp-sub-policy: cgu-b-policy3-common-ptp-sub-policy-kuttl
+    default/cgu-b-policy3-common-ptp-sub-policy-placement: cgu-b-policy3-common-ptp-sub-policy-placement-kuttl
+    default/cgu-b-policy4-common-sriov-sub-policy: cgu-b-policy4-common-sriov-sub-policy-kuttl
+    default/cgu-b-policy4-common-sriov-sub-policy-placement: cgu-b-policy4-common-sriov-sub-policy-placement-kuttl
   status: {}
