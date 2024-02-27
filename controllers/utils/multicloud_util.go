@@ -170,7 +170,7 @@ func EnsureManagedClusterView(
 					"openshift-cluster-group-upgrades/clusterGroupUpgrade": cguLabel,
 				},
 				Annotations: map[string]string{
-					DesiredResourceName: name,
+					DesiredResourceName: PrefixNameWithNamespace(namespace, name),
 				},
 			}
 			viewSpec := viewv1beta1.ViewSpec{
