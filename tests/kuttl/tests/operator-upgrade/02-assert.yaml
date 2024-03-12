@@ -20,15 +20,15 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
   - message: Remediating non-compliant policies
     reason: InProgress
-    status: "True"
+    status: 'True'
     type: Progressing
   copiedPolicies:
   - cgu-policy5-subscriptions-kuttl
@@ -48,14 +48,14 @@ status:
     - spoke2
   - - spoke5
   safeResourceNames:
-    cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
-    cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
-    cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
-    cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
-    cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
-    cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
-    cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
-    cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
+    /cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
+    /cgu-default-subscription-cluster-logging: cgu-default-subscription-cluster-logging-kuttl
+    /cgu-default-subscription-local-storage-operator: cgu-default-subscription-local-storage-operator-kuttl
+    /cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
+    /cgu-default-subscription-ptp-operator-subscription: cgu-default-subscription-ptp-operator-subscription-kuttl
+    /cgu-default-subscription-sriov-network-operator-subscription: cgu-default-subscription-sriov-network-operator-subscription-kuttl
+    default/cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
+    default/cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
   status:
     currentBatch: 1
     currentBatchRemediationProgress:
@@ -66,8 +66,6 @@ status:
         policyIndex: 0
         state: InProgress
 ---
-# Check the ManagedClusterActions for approving the install plans have been created.
-# Check spoke1.
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:
@@ -133,7 +131,6 @@ spec:
     namespace: openshift-sriov-network-operator
     resource: InstallPlan
 ---
-# Check spoke2
 apiVersion: view.open-cluster-management.io/v1beta1
 kind: ManagedClusterView
 metadata:

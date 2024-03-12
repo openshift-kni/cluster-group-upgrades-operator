@@ -21,18 +21,19 @@ status:
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
-    status: "True"
+    status: 'True'
     type: ClustersSelected
   - message: Completed validation
     reason: ValidationCompleted
-    status: "True"
+    status: 'True'
     type: Validated
-  - message: "Precaching spec is incomplete: inconsistent precaching configuration: olm index provided, but no packages"
+  - message: 'Precaching spec is incomplete: inconsistent precaching configuration:
+      olm index provided, but no packages'
     reason: PrecacheSpecIncomplete
-    status: "False"
+    status: 'False'
     type: PrecacheSpecValid
   copiedPolicies:
-    - cgu-policy0-common-config-policy-kuttl
+  - cgu-policy0-common-config-policy-kuttl
   managedPoliciesForUpgrade:
   - name: policy0-common-config-policy
     namespace: default
@@ -45,8 +46,8 @@ status:
   precaching:
     spec: {}
   safeResourceNames:
-    cgu-common-config-policy-config: cgu-common-config-policy-config-kuttl
-    cgu-policy0-common-config-policy: cgu-policy0-common-config-policy-kuttl
-    cgu-policy0-common-config-policy-placement: cgu-policy0-common-config-policy-placement-kuttl
+    /cgu-common-config-policy-config: cgu-common-config-policy-config-kuttl
+    default/cgu-policy0-common-config-policy: cgu-policy0-common-config-policy-kuttl
+    default/cgu-policy0-common-config-policy-placement: cgu-policy0-common-config-policy-placement-kuttl
   remediationPlan:
   - - spoke1
