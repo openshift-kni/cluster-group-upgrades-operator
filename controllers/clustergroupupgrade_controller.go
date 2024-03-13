@@ -1141,9 +1141,10 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 			"namespace": policyNamespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
-				"openshift-cluster-group-upgrades/forPolicy":           policyName,
-				utils.ExcludeFromClusterBackup:                         "true",
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
+				"openshift-cluster-group-upgrades/forPolicy":                    policyName,
+				utils.ExcludeFromClusterBackup:                                  "true",
 			},
 			"annotations": map[string]interface{}{
 				utils.DesiredResourceName: utils.PrefixNameWithNamespace(clusterGroupUpgrade.Namespace, desiredName),
@@ -1311,8 +1312,9 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 			"namespace": policyNamespace,
 			"labels": map[string]interface{}{
 				"app": "openshift-cluster-group-upgrades",
-				"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name,
-				utils.ExcludeFromClusterBackup:                         "true",
+				"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+				"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
+				utils.ExcludeFromClusterBackup:                                  "true",
 			},
 			"annotations": map[string]interface{}{
 				utils.DesiredResourceName: utils.PrefixNameWithNamespace(clusterGroupUpgrade.Namespace, desiredName),
@@ -1341,7 +1343,10 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string, policyNamespace string) (*unstructured.UnstructuredList, error) {
-	var placementRuleLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	var placementRuleLabels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
+	}
 	if policyName != nil {
 		placementRuleLabels["openshift-cluster-group-upgrades/forPolicy"] = *policyName
 	}
@@ -1364,7 +1369,10 @@ func (r *ClusterGroupUpgradeReconciler) getPlacementRules(ctx context.Context, c
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyNamespace string) (*unstructured.UnstructuredList, error) {
-	var placementBindingLabels = map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	var placementBindingLabels = map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
+	}
 	listOpts := []client.ListOption{
 		client.InNamespace(policyNamespace),
 		client.MatchingLabels(placementBindingLabels),

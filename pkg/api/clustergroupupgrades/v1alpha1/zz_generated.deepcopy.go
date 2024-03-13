@@ -274,6 +274,11 @@ func (in *ClusterGroupUpgradeStatus) DeepCopyInto(out *ClusterGroupUpgradeStatus
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
+	if in.CopiedPolicies != nil {
+		in, out := &in.CopiedPolicies, &out.CopiedPolicies
+		*out = make([]string, len(*in))
+		copy(*out, *in)
+	}
 	if in.Conditions != nil {
 		in, out := &in.Conditions, &out.Conditions
 		*out = make([]v1.Condition, len(*in))

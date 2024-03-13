@@ -350,6 +350,11 @@ spec:
                   - type
                   type: object
                 type: array
+              copiedPolicies:
+                description: Deprecated
+                items:
+                  type: string
+                type: array
               managedPoliciesCompliantBeforeUpgrade:
                 items:
                   type: string

@@ -129,6 +129,9 @@ spec:
         path: computedMaxConcurrency
       - displayName: Conditions
         path: conditions
+      - description: Deprecated
+        displayName: Copied Policies
+        path: copiedPolicies
       - displayName: Managed Policies Compliant Before Upgrade
         path: managedPoliciesCompliantBeforeUpgrade
       - displayName: Managed Policies Content

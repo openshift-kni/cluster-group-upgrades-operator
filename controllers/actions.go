@@ -140,7 +140,10 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 		}
 	}
 
-	labels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Name}
+	labels := map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
+	}
 	for _, ns := range targetNamespaces {
 		err := utils.DeletePlacementRules(ctx, r.Client, ns, labels)
 		if err != nil {
