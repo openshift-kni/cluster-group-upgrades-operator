@@ -35,10 +35,6 @@ status:
     reason: IncompleteBlockingCR
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-a-policy1-common-cluster-version-policy-kuttl
-  - cgu-a-policy2-common-pao-sub-policy-kuttl
-  - cgu-a-policy3-common-ptp-sub-policy-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
@@ -65,14 +61,8 @@ status:
   - - spoke1
   - - spoke2
   safeResourceNames:
-    /cgu-a-common-cluster-version-policy-config: cgu-a-common-cluster-version-policy-config-kuttl
-    /cgu-a-common-pao-sub-policy-config: cgu-a-common-pao-sub-policy-config-kuttl
-    /cgu-a-common-ptp-sub-policy-config: cgu-a-common-ptp-sub-policy-config-kuttl
-    default/cgu-a-policy1-common-cluster-version-policy: cgu-a-policy1-common-cluster-version-policy-kuttl
     default/cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-a-policy2-common-pao-sub-policy: cgu-a-policy2-common-pao-sub-policy-kuttl
     default/cgu-a-policy2-common-pao-sub-policy-placement: cgu-a-policy2-common-pao-sub-policy-placement-kuttl
-    default/cgu-a-policy3-common-ptp-sub-policy: cgu-a-policy3-common-ptp-sub-policy-kuttl
     default/cgu-a-policy3-common-ptp-sub-policy-placement: cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
   status: {}
 ---
@@ -111,11 +101,6 @@ status:
     reason: IncompleteBlockingCR
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-b-policy1-common-cluster-version-policy-kuttl
-  - cgu-b-policy2-common-pao-sub-policy-kuttl
-  - cgu-b-policy3-common-ptp-sub-policy-kuttl
-  - cgu-b-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
@@ -148,17 +133,9 @@ status:
   - - spoke4
   - - spoke5
   safeResourceNames:
-    /cgu-b-common-cluster-version-policy-config: cgu-b-common-cluster-version-policy-config-kuttl
-    /cgu-b-common-pao-sub-policy-config: cgu-b-common-pao-sub-policy-config-kuttl
-    /cgu-b-common-ptp-sub-policy-config: cgu-b-common-ptp-sub-policy-config-kuttl
-    /cgu-b-common-sriov-sub-policy-config: cgu-b-common-sriov-sub-policy-config-kuttl
-    default/cgu-b-policy1-common-cluster-version-policy: cgu-b-policy1-common-cluster-version-policy-kuttl
     default/cgu-b-policy1-common-cluster-version-policy-placement: cgu-b-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-b-policy2-common-pao-sub-policy: cgu-b-policy2-common-pao-sub-policy-kuttl
     default/cgu-b-policy2-common-pao-sub-policy-placement: cgu-b-policy2-common-pao-sub-policy-placement-kuttl
-    default/cgu-b-policy3-common-ptp-sub-policy: cgu-b-policy3-common-ptp-sub-policy-kuttl
     default/cgu-b-policy3-common-ptp-sub-policy-placement: cgu-b-policy3-common-ptp-sub-policy-placement-kuttl
-    default/cgu-b-policy4-common-sriov-sub-policy: cgu-b-policy4-common-sriov-sub-policy-kuttl
     default/cgu-b-policy4-common-sriov-sub-policy-placement: cgu-b-policy4-common-sriov-sub-policy-placement-kuttl
   status: {}
 ---
@@ -193,9 +170,6 @@ status:
     reason: InProgress
     status: 'True'
     type: Progressing
-  copiedPolicies:
-  - cgu-c-policy1-common-cluster-version-policy-kuttl
-  - cgu-c-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
   - policy2-common-pao-sub-policy
   - policy3-common-ptp-sub-policy
@@ -218,11 +192,7 @@ status:
   remediationPlan:
   - - spoke6
   safeResourceNames:
-    /cgu-c-common-cluster-version-policy-config: cgu-c-common-cluster-version-policy-config-kuttl
-    /cgu-c-common-sriov-sub-policy-config: cgu-c-common-sriov-sub-policy-config-kuttl
-    default/cgu-c-policy1-common-cluster-version-policy: cgu-c-policy1-common-cluster-version-policy-kuttl
     default/cgu-c-policy1-common-cluster-version-policy-placement: cgu-c-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-c-policy4-common-sriov-sub-policy: cgu-c-policy4-common-sriov-sub-policy-kuttl
     default/cgu-c-policy4-common-sriov-sub-policy-placement: cgu-c-policy4-common-sriov-sub-policy-placement-kuttl
   status:
     currentBatch: 1

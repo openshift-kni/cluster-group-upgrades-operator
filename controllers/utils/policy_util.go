@@ -10,6 +10,7 @@ import (
 	"time"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	"gopkg.in/yaml.v3"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -25,6 +26,15 @@ type PolicyErr struct {
 
 func (e *PolicyErr) Error() string {
 	return fmt.Sprintf("%s: %s", e.ObjName, e.ErrMsg)
+}
+
+// StringToYaml takes a string and attempts to unmarshal it into a YAML
+func StringToYaml(s string) (interface{}, error) {
+	var yamlObj interface{}
+	if err := yaml.Unmarshal([]byte(s), &yamlObj); err != nil {
+		return yamlObj, fmt.Errorf("could not unmarshal data: %s", err)
+	}
+	return yamlObj, nil
 }
 
 // GetChildPolicies gets the child policies for a list of clusters
@@ -77,43 +87,37 @@ func DeletePolicies(ctx context.Context, c client.Client, ns string, labels map[
 
 // DeletePlacementBindings deletes PlacementBindings
 func DeletePlacementBindings(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
-	listOpts := []client.ListOption{
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(ns),
 		client.MatchingLabels(labels),
 	}
-	placementBindingsList := &policiesv1.PlacementBindingList{}
-	if err := c.List(ctx, placementBindingsList, listOpts...); err != nil {
+	placementBinding := &unstructured.Unstructured{}
+	placementBinding.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "policy.open-cluster-management.io",
+		Kind:    "PlacementBinding",
+		Version: "v1",
+	})
+	if err := c.DeleteAllOf(ctx, placementBinding, deleteAllOpts...); err != nil {
 		return err
-	}
-
-	for _, placementBinding := range placementBindingsList.Items {
-		if err := c.Delete(ctx, &placementBinding); err != nil {
-			return err
-		}
 	}
 	return nil
 }
 
 // DeletePlacementRules deletes PlacementRules
 func DeletePlacementRules(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
-	listOpts := []client.ListOption{
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(ns),
 		client.MatchingLabels(labels),
 	}
-	placementRulesList := &unstructured.UnstructuredList{}
-	placementRulesList.SetGroupVersionKind(schema.GroupVersionKind{
+
+	placementRule := &unstructured.Unstructured{}
+	placementRule.SetGroupVersionKind(schema.GroupVersionKind{
 		Group:   "apps.open-cluster-management.io",
-		Kind:    "PlacementRuleList",
+		Kind:    "PlacementRule",
 		Version: "v1",
 	})
-	if err := c.List(ctx, placementRulesList, listOpts...); err != nil {
+	if err := c.DeleteAllOf(ctx, placementRule, deleteAllOpts...); err != nil {
 		return err
-	}
-
-	for _, policy := range placementRulesList.Items {
-		if err := c.Delete(ctx, &policy); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -203,13 +207,6 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 				containsStatus = true
 			}
 		}
-
-		// Make sure hub template functions are valid if exist
-		err := VerifyHubTemplateFunctions(configPlcTmpls, policyName)
-		if err != nil {
-			return containsStatus, err
-		}
-
 	}
 	return containsStatus, nil
 }

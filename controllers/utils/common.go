@@ -32,6 +32,16 @@ func GetMinOf3(number1, number2, number3 int) int {
 	}
 }
 
+// FindStringInSlice checks if a given string is in the slice, and returns true along with its index if it's found
+func FindStringInSlice(a []string, s string) (int, bool) {
+	for i, e := range a {
+		if e == s {
+			return i, true
+		}
+	}
+	return -1, false
+}
+
 // GetSafeResourceName returns the safename if already allocated in the map and creates a new one if not
 func GetSafeResourceName(name, namespace string, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, maxLength int) string {
 	if clusterGroupUpgrade.Status.SafeResourceNames == nil {
@@ -78,4 +88,12 @@ func NewSafeResourceName(name, namespace, suffix string, maxLength int) (safenam
 // PrefixNameWithNamespace Prefixes the passed name with the passed namespace. Use '/' as a separator
 func PrefixNameWithNamespace(namespace, name string) string {
 	return namespace + "/" + name
+}
+
+// ContainsTemplates checks if the string contains some templatized parts
+func ContainsTemplates(s string) bool {
+	// This expression matches all template types
+	regexpAllTemplates := regexp.MustCompile(`{{.*}}`)
+
+	return regexpAllTemplates.MatchString(s)
 }

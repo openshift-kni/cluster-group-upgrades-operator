@@ -134,7 +134,8 @@ spec:
         path: computedMaxConcurrency
       - displayName: Conditions
         path: conditions
-      - displayName: Copied Policies
+      - description: Deprecated
+        displayName: Copied Policies
         path: copiedPolicies
       - displayName: Managed Policies Compliant Before Upgrade
         path: managedPoliciesCompliantBeforeUpgrade
@@ -230,6 +231,7 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch
@@ -282,6 +284,7 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch

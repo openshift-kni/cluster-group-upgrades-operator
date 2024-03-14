@@ -30,8 +30,6 @@ status:
     reason: NotEnabled
     status: 'False'
     type: Progressing
-  copiedPolicies:
-  - cgu-policy5-subscriptions-kuttl
   managedPoliciesContent:
     policy5-subscriptions: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"},{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"},{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"},{"kind":"Subscription","name":"cluster-logging","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-logging"},{"kind":"Subscription","name":"local-storage-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-local-storage"}]'
   managedPoliciesForUpgrade:
@@ -48,7 +46,5 @@ status:
     - spoke2
   - - spoke5
   safeResourceNames:
-    /cgu-common-subscriptions-policy-config: cgu-common-subscriptions-policy-config-kuttl
-    default/cgu-policy5-subscriptions: cgu-policy5-subscriptions-kuttl
     default/cgu-policy5-subscriptions-placement: cgu-policy5-subscriptions-placement-kuttl
   status: {}

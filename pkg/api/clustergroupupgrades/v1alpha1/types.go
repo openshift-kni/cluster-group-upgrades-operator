@@ -251,6 +251,7 @@ type ClusterGroupUpgradeStatus struct {
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placement Rules"
 	PlacementRules []string `json:"placementRules,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Copied Policies"
+	// Deprecated
 	CopiedPolicies []string `json:"copiedPolicies,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Conditions"
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
