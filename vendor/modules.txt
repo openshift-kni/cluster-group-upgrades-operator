@@ -205,8 +205,8 @@ github.com/spf13/pflag
 ## explicit; go 1.19
 github.com/stolostron/cluster-lifecycle-api/action/v1beta1
 github.com/stolostron/cluster-lifecycle-api/view/v1beta1
-# github.com/stretchr/testify v1.8.4
-## explicit; go 1.20
+# github.com/stretchr/testify v1.9.0
+## explicit; go 1.17
 github.com/stretchr/testify/assert
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
