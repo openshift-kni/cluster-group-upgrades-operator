@@ -508,8 +508,10 @@ k8s.io/client-go/applyconfigurations/storage/v1
 k8s.io/client-go/applyconfigurations/storage/v1alpha1
 k8s.io/client-go/applyconfigurations/storage/v1beta1
 k8s.io/client-go/discovery
+k8s.io/client-go/discovery/cached/memory
 k8s.io/client-go/discovery/fake
 k8s.io/client-go/dynamic
+k8s.io/client-go/dynamic/fake
 k8s.io/client-go/kubernetes
 k8s.io/client-go/kubernetes/scheme
 k8s.io/client-go/kubernetes/typed/admissionregistration/v1
@@ -565,6 +567,7 @@ k8s.io/client-go/kubernetes/typed/storage/v1alpha1
 k8s.io/client-go/kubernetes/typed/storage/v1beta1
 k8s.io/client-go/metadata
 k8s.io/client-go/openapi
+k8s.io/client-go/openapi/cached
 k8s.io/client-go/pkg/apis/clientauthentication
 k8s.io/client-go/pkg/apis/clientauthentication/install
 k8s.io/client-go/pkg/apis/clientauthentication/v1
@@ -697,6 +700,9 @@ k8s.io/utils/trace
 # open-cluster-management.io/api v0.12.0
 ## explicit; go 1.19
 open-cluster-management.io/api/cluster/v1
+# open-cluster-management.io/config-policy-controller v0.12.0
+## explicit; go 1.20
+open-cluster-management.io/config-policy-controller/api/v1
 # open-cluster-management.io/governance-policy-propagator v0.12.0
 ## explicit; go 1.20
 open-cluster-management.io/governance-policy-propagator/api/v1

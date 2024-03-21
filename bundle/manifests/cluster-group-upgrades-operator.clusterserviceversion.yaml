@@ -416,6 +416,8 @@ spec:
                 command:
                 - /manager
                 env:
+                - name: AZTP_IMG
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.16.0
                 - name: PRECACHE_IMG
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.16.0
                 - name: RECOVERY_IMG
