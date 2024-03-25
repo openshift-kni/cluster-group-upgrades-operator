@@ -20,9 +20,10 @@ package v1alpha1
 // ClusterStateApplyConfiguration represents an declarative configuration of the ClusterState type for use
 // with apply.
 type ClusterStateApplyConfiguration struct {
-	Name          *string                         `json:"name,omitempty"`
-	State         *string                         `json:"state,omitempty"`
-	CurrentPolicy *PolicyStatusApplyConfiguration `json:"currentPolicy,omitempty"`
+	Name                *string                               `json:"name,omitempty"`
+	State               *string                               `json:"state,omitempty"`
+	CurrentPolicy       *PolicyStatusApplyConfiguration       `json:"currentPolicy,omitempty"`
+	CurrentManifestWork *ManifestWorkStatusApplyConfiguration `json:"currentManifestWork,omitempty"`
 }
 
 // ClusterStateApplyConfiguration constructs an declarative configuration of the ClusterState type for use with
@@ -52,5 +53,13 @@ func (b *ClusterStateApplyConfiguration) WithState(value string) *ClusterStateAp
 // If called multiple times, the CurrentPolicy field is set to the value of the last call.
 func (b *ClusterStateApplyConfiguration) WithCurrentPolicy(value *PolicyStatusApplyConfiguration) *ClusterStateApplyConfiguration {
 	b.CurrentPolicy = value
+	return b
+}
+
+// WithCurrentManifestWork sets the CurrentManifestWork field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the CurrentManifestWork field is set to the value of the last call.
+func (b *ClusterStateApplyConfiguration) WithCurrentManifestWork(value *ManifestWorkStatusApplyConfiguration) *ClusterStateApplyConfiguration {
+	b.CurrentManifestWork = value
 	return b
 }

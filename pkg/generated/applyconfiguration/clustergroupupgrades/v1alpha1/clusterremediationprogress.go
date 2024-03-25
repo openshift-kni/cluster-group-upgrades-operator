@@ -24,9 +24,10 @@ import (
 // ClusterRemediationProgressApplyConfiguration represents an declarative configuration of the ClusterRemediationProgress type for use
 // with apply.
 type ClusterRemediationProgressApplyConfiguration struct {
-	State            *string  `json:"state,omitempty"`
-	PolicyIndex      *int     `json:"policyIndex,omitempty"`
-	FirstCompliantAt *v1.Time `json:"firstComplaintAt,omitempty"`
+	State             *string  `json:"state,omitempty"`
+	ManifestWorkIndex *int     `json:"manifestWorkIndex,omitempty"`
+	PolicyIndex       *int     `json:"policyIndex,omitempty"`
+	FirstCompliantAt  *v1.Time `json:"firstComplaintAt,omitempty"`
 }
 
 // ClusterRemediationProgressApplyConfiguration constructs an declarative configuration of the ClusterRemediationProgress type for use with
@@ -40,6 +41,14 @@ func ClusterRemediationProgress() *ClusterRemediationProgressApplyConfiguration 
 // If called multiple times, the State field is set to the value of the last call.
 func (b *ClusterRemediationProgressApplyConfiguration) WithState(value string) *ClusterRemediationProgressApplyConfiguration {
 	b.State = &value
+	return b
+}
+
+// WithManifestWorkIndex sets the ManifestWorkIndex field in the declarative configuration to the given value
+// and returns the receiver, so that objects can be built by chaining "With" function invocations.
+// If called multiple times, the ManifestWorkIndex field is set to the value of the last call.
+func (b *ClusterRemediationProgressApplyConfiguration) WithManifestWorkIndex(value int) *ClusterRemediationProgressApplyConfiguration {
+	b.ManifestWorkIndex = &value
 	return b
 }
 

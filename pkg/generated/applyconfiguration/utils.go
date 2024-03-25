@@ -50,6 +50,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &clustergroupupgradesv1alpha1.ClusterStateApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ManagedPolicyForUpgrade"):
 		return &clustergroupupgradesv1alpha1.ManagedPolicyForUpgradeApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ManifestWorkStatus"):
+		return &clustergroupupgradesv1alpha1.ManifestWorkStatusApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("NamespacedCR"):
+		return &clustergroupupgradesv1alpha1.NamespacedCRApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PolicyStatus"):
 		return &clustergroupupgradesv1alpha1.PolicyStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("PreCachingConfigCR"):
