@@ -107,6 +107,10 @@ spec:
         path: managedPolicies
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Manifest Work Templates
+        path: manifestWorkTemplates
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
       - description: This field determines whether container image pre-caching will
           be done on all the clusters matching the selector. If required, the pre-caching
           process starts immediately on all clusters irrespectively of the value of
@@ -358,6 +362,18 @@ spec:
           - view.open-cluster-management.io
           resources:
           - managedclusterviews
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - work.open-cluster-management.io
+          resources:
+          - manifestworks
           verbs:
           - create
           - delete
