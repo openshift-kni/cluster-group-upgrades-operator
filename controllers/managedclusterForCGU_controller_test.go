@@ -266,7 +266,7 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
-				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.RemoveClusterLabels, []string{ztpRunningLabel})
 
 				if !result.IsZero() {
 					t.Errorf("expect to stop reconcile, but failed")
@@ -337,7 +337,7 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
-				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.RemoveClusterLabels, []string{ztpRunningLabel})
 
 				if !result.IsZero() {
 					t.Errorf("expect to stop reconcile, but failed")
@@ -407,7 +407,7 @@ func TestControllerReconciler(t *testing.T) {
 				assert.Equal(t, clusterGroupUpgrade.Spec.RemediationStrategy.MaxConcurrency, 1)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.BeforeEnable.AddClusterLabels, map[string]string{ztpRunningLabel: ""})
 				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.AddClusterLabels, map[string]string{ztpDoneLabel: ""})
-				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteClusterLabels, map[string]string{ztpRunningLabel: ""})
+				assert.Equal(t, clusterGroupUpgrade.Spec.Actions.AfterCompletion.RemoveClusterLabels, []string{ztpRunningLabel})
 
 				if !result.IsZero() {
 					t.Errorf("expect to stop reconcile, but failed")

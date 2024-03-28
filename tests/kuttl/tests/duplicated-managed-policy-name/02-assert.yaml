@@ -4,10 +4,6 @@ metadata:
   name: cgu
   namespace: default
 spec:
-  actions:
-    afterCompletion:
-      deleteObjects: true
-    beforeEnable: {}
   backup: false
   clusters:
   - spoke1
