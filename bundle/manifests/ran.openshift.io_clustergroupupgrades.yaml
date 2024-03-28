@@ -55,48 +55,81 @@ spec:
                     description: AfterCompletion defines the actions to be done after
                       upgrade is completed
                     properties:
+                      addClusterAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster annotations to be added or updated
+                          to the defined clusters.
+                        type: object
                       addClusterLabels:
                         additionalProperties:
                           type: string
                         description: This field defines a map of key/value pairs that
-                          identify the cluster labels to be added to the specified
-                          clusters. Labels applied to the clusters either defined
-                          in spec.clusters or selected by spec.clusterSelector.
+                          identify the cluster labels to be added to the defined clusters.
                         type: object
                       deleteClusterLabels:
                         additionalProperties:
                           type: string
-                        description: This field defines a map of key/value pairs that
-                          identify the cluster labels to be deleted for the specified
-                          clusters. Labels applied to the clusters either defined
-                          in spec.clusters or selected by spec.clusterSelector.
+                        description: 'This field defines a map of key/value pairs
+                          that identify the cluster labels to be deleted for the defined
+                          clusters. Deprecated: Use RemoveClusterLabels instead.'
                         type: object
                       deleteObjects:
                         default: true
                         description: This field defines whether clean up the resources
                           created for upgrade
                         type: boolean
+                      removeClusterAnnotations:
+                        description: This field defines a list of annotations to be
+                          removed for the defined clusters.
+                        items:
+                          type: string
+                        type: array
+                      removeClusterLabels:
+                        description: This field defines a list of labels to be removed
+                          for the defined clusters.
+                        items:
+                          type: string
+                        type: array
                     type: object
                   beforeEnable:
                     description: BeforeEnable defines the actions to be done before
                       starting upgrade
                     properties:
+                      addClusterAnnotations:
+                        additionalProperties:
+                          type: string
+                        description: This field defines a map of key/value pairs that
+                          identify the cluster annotations to be added or updated
+                          to the defined clusters.
+                        type: object
                       addClusterLabels:
                         additionalProperties:
                           type: string
                         description: This field defines a map of key/value pairs that
-                          identify the cluster labels to be added to the specified
-                          clusters. Labels applied to the clusters either defined
-                          in spec.clusters or selected by spec.clusterSelector.
+                          identify the cluster labels to be added or updated to the
+                          defined clusters.
                         type: object
                       deleteClusterLabels:
                         additionalProperties:
                           type: string
-                        description: This field defines a map of key/value pairs that
-                          identify the cluster labels to be deleted for the specified
-                          clusters. Labels applied to the clusters either defined
-                          in spec.clusters or selected by spec.clusterSelector.
+                        description: 'This field defines a map of key/value pairs
+                          that identify the cluster labels to be deleted for the defined
+                          clusters. Deprecated: Use RemoveClusterLabels instead.'
                         type: object
+                      removeClusterAnnotations:
+                        description: This field defines a list of annotations to be
+                          removed for the defined clusters.
+                        items:
+                          type: string
+                        type: array
+                      removeClusterLabels:
+                        description: This field defines a list of labels to be removed
+                          for the defined clusters.
+                        items:
+                          type: string
+                        type: array
                     type: object
                 type: object
               backup:

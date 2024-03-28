@@ -20,8 +20,11 @@ package v1alpha1
 // BeforeEnableApplyConfiguration represents an declarative configuration of the BeforeEnable type for use
 // with apply.
 type BeforeEnableApplyConfiguration struct {
-	AddClusterLabels    map[string]string `json:"addClusterLabels,omitempty"`
-	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	AddClusterLabels         map[string]string `json:"addClusterLabels,omitempty"`
+	DeleteClusterLabels      map[string]string `json:"deleteClusterLabels,omitempty"`
+	RemoveClusterLabels      []string          `json:"removeClusterLabels,omitempty"`
+	AddClusterAnnotations    map[string]string `json:"addClusterAnnotations,omitempty"`
+	RemoveClusterAnnotations []string          `json:"removeClusterAnnotations,omitempty"`
 }
 
 // BeforeEnableApplyConfiguration constructs an declarative configuration of the BeforeEnable type for use with
@@ -54,6 +57,40 @@ func (b *BeforeEnableApplyConfiguration) WithDeleteClusterLabels(entries map[str
 	}
 	for k, v := range entries {
 		b.DeleteClusterLabels[k] = v
+	}
+	return b
+}
+
+// WithRemoveClusterLabels adds the given value to the RemoveClusterLabels field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the RemoveClusterLabels field.
+func (b *BeforeEnableApplyConfiguration) WithRemoveClusterLabels(values ...string) *BeforeEnableApplyConfiguration {
+	for i := range values {
+		b.RemoveClusterLabels = append(b.RemoveClusterLabels, values[i])
+	}
+	return b
+}
+
+// WithAddClusterAnnotations puts the entries into the AddClusterAnnotations field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, the entries provided by each call will be put on the AddClusterAnnotations field,
+// overwriting an existing map entries in AddClusterAnnotations field with the same key.
+func (b *BeforeEnableApplyConfiguration) WithAddClusterAnnotations(entries map[string]string) *BeforeEnableApplyConfiguration {
+	if b.AddClusterAnnotations == nil && len(entries) > 0 {
+		b.AddClusterAnnotations = make(map[string]string, len(entries))
+	}
+	for k, v := range entries {
+		b.AddClusterAnnotations[k] = v
+	}
+	return b
+}
+
+// WithRemoveClusterAnnotations adds the given value to the RemoveClusterAnnotations field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the RemoveClusterAnnotations field.
+func (b *BeforeEnableApplyConfiguration) WithRemoveClusterAnnotations(values ...string) *BeforeEnableApplyConfiguration {
+	for i := range values {
+		b.RemoveClusterAnnotations = append(b.RemoveClusterAnnotations, values[i])
 	}
 	return b
 }
