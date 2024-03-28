@@ -47,32 +47,44 @@ type PreCachingConfigCR NamespacedCR
 
 // Actions defines the actions to be done either before or after the managedPolicies are remediated
 type Actions struct {
-	BeforeEnable    BeforeEnable    `json:"beforeEnable,omitempty"`
-	AfterCompletion AfterCompletion `json:"afterCompletion,omitempty"`
+	BeforeEnable    *BeforeEnable    `json:"beforeEnable,omitempty"`
+	AfterCompletion *AfterCompletion `json:"afterCompletion,omitempty"`
 }
 
 // BeforeEnable defines the actions to be done before starting upgrade
 type BeforeEnable struct {
 	// This field defines a map of key/value pairs that identify the cluster labels
-	// to be added to the specified clusters. Labels applied to the clusters either
-	// defined in spec.clusters or selected by spec.clusterSelector.
+	// to be added or updated to the defined clusters.
 	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
 	// This field defines a map of key/value pairs that identify the cluster labels
-	// to be deleted for the specified clusters. Labels applied to the clusters either
-	// defined in spec.clusters or selected by spec.clusterSelector.
+	// to be deleted for the defined clusters.
+	// Deprecated: Use RemoveClusterLabels instead.
 	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	// This field defines a list of labels to be removed for the defined clusters.
+	RemoveClusterLabels []string `json:"removeClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster annotations
+	// to be added or updated to the defined clusters.
+	AddClusterAnnotations map[string]string `json:"addClusterAnnotations,omitempty"`
+	// This field defines a list of annotations to be removed for the defined clusters.
+	RemoveClusterAnnotations []string `json:"removeClusterAnnotations,omitempty"`
 }
 
 // AfterCompletion defines the actions to be done after upgrade is completed
 type AfterCompletion struct {
 	// This field defines a map of key/value pairs that identify the cluster labels
-	// to be added to the specified clusters. Labels applied to the clusters either
-	// defined in spec.clusters or selected by spec.clusterSelector.
+	// to be added to the defined clusters.
 	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
 	// This field defines a map of key/value pairs that identify the cluster labels
-	// to be deleted for the specified clusters. Labels applied to the clusters either
-	// defined in spec.clusters or selected by spec.clusterSelector.
+	// to be deleted for the defined clusters.
+	// Deprecated: Use RemoveClusterLabels instead.
 	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	// This field defines a list of labels to be removed for the defined clusters.
+	RemoveClusterLabels []string `json:"removeClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster annotations
+	// to be added or updated to the defined clusters.
+	AddClusterAnnotations map[string]string `json:"addClusterAnnotations,omitempty"`
+	// This field defines a list of annotations to be removed for the defined clusters.
+	RemoveClusterAnnotations []string `json:"removeClusterAnnotations,omitempty"`
 	// This field defines whether clean up the resources created for upgrade
 	//+kubebuilder:default=true
 	DeleteObjects *bool `json:"deleteObjects,omitempty"`
