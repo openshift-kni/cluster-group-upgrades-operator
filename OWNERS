@@ -9,4 +9,9 @@ filters:
       - upgrades-operator-reviewers
     approvers:
       - upgrades-operator-approvers
-
+  ^Dockerfile:
+    reviewers:
+    - rauhersu
+  ^bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml:
+    reviewers:
+    - rauhersu
