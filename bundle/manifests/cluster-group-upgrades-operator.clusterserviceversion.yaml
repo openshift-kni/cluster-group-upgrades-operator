@@ -422,6 +422,8 @@ spec:
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.16.0
                 - name: INSECURE_GRAPH_CALL
                   value: "false"
+                - name: CONTROLLER_IMG
+                  value: quay.io/openshift-kni/cluster-group-upgrades-operator:4.16.0
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.16.0
                 livenessProbe:
                   httpGet:

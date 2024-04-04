@@ -27,7 +27,9 @@ require (
 	golang.org/x/sys v0.18.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.29.0
+	open-cluster-management.io/config-policy-controller v0.12.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.4.1
+	sigs.k8s.io/yaml v1.4.0
 )
 
 require (
@@ -91,7 +93,6 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 	open-cluster-management.io/multicloud-operators-subscription v0.11.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
-	sigs.k8s.io/yaml v1.4.0 // indirect
 )
 
 replace k8s.io/client-go => k8s.io/client-go v0.28.2
