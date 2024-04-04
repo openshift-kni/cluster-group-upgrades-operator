@@ -18,9 +18,7 @@ package controllers
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"os"
 	"sort"
 	"strconv"
 	"strings"
@@ -30,7 +28,6 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -40,23 +37,18 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-	yaml "sigs.k8s.io/yaml"
 
-	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
-	policyv1 "open-cluster-management.io/config-policy-controller/api/v1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 )
 
 const (
-	ztpInstallNS             = "ztp-install"
-	ztpDeployWaveAnnotation  = "ran.openshift.io/ztp-deploy-wave"
-	ztpRunningLabel          = "ztp-running"
-	ztpDoneLabel             = "ztp-done"
-	aztpRequiredLabel        = "accelerated-ztp"
-	aztpDeployServiceVariant = "full"
+	ztpInstallNS            = "ztp-install"
+	ztpDeployWaveAnnotation = "ran.openshift.io/ztp-deploy-wave"
+	ztpRunningLabel         = "ztp-running"
+	ztpDoneLabel            = "ztp-done"
 )
 
 // ManagedClusterForCguReconciler reconciles a ManagedCluster object to auto create the ClusterGroupUpgrade
@@ -71,7 +63,6 @@ type ManagedClusterForCguReconciler struct {
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=clustergroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=namespaces,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;create;delete
 
 // Reconcile the managed cluster auto create ClusterGroupUpgrade
 //   - Controller watches for create event of managed cluster object. Reconciliation
@@ -95,7 +86,7 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		return ctrl.Result{}, err
 	}
 
-	// Stop creating UOCR or AZTP if ztp of this cluster is done already
+	// Stop creating UOCR if ztp of this cluster is done already
 	if _, found := managedCluster.Labels[ztpDoneLabel]; found {
 		r.Log.Info("ZTP for the cluster has completed. "+ztpDoneLabel+" label found.", "Name", managedCluster.Name)
 		return doNotRequeue(), nil
@@ -115,7 +106,9 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 
 	// clusterGroupUpgrade CR doesn't exist
 	availableCondition := meta.FindStatusCondition(managedCluster.Status.Conditions, clusterv1.ManagedClusterConditionAvailable)
-	if availableCondition != nil && availableCondition.Status == metav1.ConditionTrue {
+	if availableCondition == nil {
+		return r.handleNotReadyCluster(managedCluster), nil
+	} else if availableCondition.Status == metav1.ConditionTrue {
 		// cluster is ready
 		r.Log.Info("cluster is ready", "Name", managedCluster.Name)
 
@@ -138,19 +131,15 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		}
 	} else {
 		// availableCondition is false or unknown, cluster is not ready
-		return r.handleNotReadyCluster(ctx, managedCluster)
+		return r.handleNotReadyCluster(managedCluster), nil
 	}
 
 	return doNotRequeue(), nil
 }
 
-func (r *ManagedClusterForCguReconciler) handleNotReadyCluster(
-	ctx context.Context, managedCluster *clusterv1.ManagedCluster) (reconcile.Result, error) {
+func (r *ManagedClusterForCguReconciler) handleNotReadyCluster(managedCluster *clusterv1.ManagedCluster) reconcile.Result {
 	r.Log.Info("cluster is not ready", "Name", managedCluster.Name)
-	if err := r.extractAztpPolicies(ctx, managedCluster); err != nil {
-		return ctrl.Result{}, err
-	}
-	return doNotRequeue(), nil
+	return doNotRequeue()
 }
 
 // sort map[string]int by value in ascending order, return sorted keys
@@ -275,167 +264,6 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	return nil
 }
 
-func (r *ManagedClusterForCguReconciler) newConfigmap(name, namespace string) *corev1.ConfigMap {
-	return &corev1.ConfigMap{
-		TypeMeta:   metav1.TypeMeta{APIVersion: "v1", Kind: "ConfigMap"},
-		ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
-		Data:       map[string]string{},
-	}
-}
-
-// Extract policies for AZTP
-func (r *ManagedClusterForCguReconciler) extractAztpPolicies(ctx context.Context, managedCluster *clusterv1.ManagedCluster) (err error) {
-	aztpVariant, aztpRequired := managedCluster.GetLabels()[aztpRequiredLabel]
-	if !aztpRequired {
-		return nil
-	}
-	namespace := managedCluster.GetName()
-	if namespace == "local-cluster" {
-		return nil
-	}
-	configMapName := fmt.Sprintf("%s-aztp", namespace)
-	innerCmNs := os.Getenv("AZTP_INNER_CONFIGMAP_NAMESPACE")
-	if innerCmNs == "" {
-		innerCmNs = "ztp-profile"
-	}
-	innerCmName := os.Getenv("AZTP_INNER_CONFIGMAP_NAME")
-	if innerCmName == "" {
-		innerCmName = "ztp-post-provision"
-	}
-	cm := r.newConfigmap(configMapName, namespace)
-	if err := r.Delete(ctx, cm, &client.DeleteOptions{}); err != nil {
-		if !errors.IsNotFound(err) {
-			return err
-		}
-	}
-
-	policies, err := utils.GetChildPolicies(ctx, r.Client, []string{namespace})
-	if err != nil {
-		return err
-	}
-	if len(policies) == 0 {
-		r.Log.Info("no child policies found for cluster", "Name", namespace)
-		return nil
-	}
-
-	objects, err := r.GetConfigurationObjects(policies)
-	if err != nil {
-		return err
-	}
-	r.Log.Info(fmt.Sprintf("found %d policies and %d objects for %s", len(policies), len(objects), namespace))
-	var directlyAppliedObjects []unstructured.Unstructured
-	var wrappedObjects []unstructured.Unstructured
-
-	for _, ob := range objects {
-		ob.Object["status"] = map[string]interface{}{} // remove status, we can't apply it
-		groupKind := ob.GroupVersionKind().GroupKind().String()
-		r.Log.Info("adding object", "groupKind", groupKind, "name", ob.GetName())
-		switch groupKind {
-		case "PerformanceProfile.performance.openshift.io",
-			"Tuned.tuned.openshift.io",
-			"Namespace",
-			"CatalogSource.operators.coreos.com",
-			"ContainerRuntimeConfig.machineconfiguration.openshift.io":
-			directlyAppliedObjects = append(directlyAppliedObjects, ob)
-		case "Subscription.operators.coreos.com":
-			ob.Object["spec"].(map[string]interface{})["installPlanApproval"] = "Automatic"
-			wrappedObjects = append(wrappedObjects, ob)
-		default:
-			wrappedObjects = append(wrappedObjects, ob)
-		}
-	}
-	if len(wrappedObjects) > 0 {
-		innerCm, err := r.wrapObjects(wrappedObjects, innerCmName, innerCmNs)
-		if err != nil {
-			return err
-		}
-
-		innerCmObj, err := runtime.DefaultUnstructuredConverter.ToUnstructured(innerCm)
-		if err != nil {
-			return err
-		}
-		var innerCmUns unstructured.Unstructured
-		innerCmUns.SetUnstructuredContent(innerCmObj)
-		directlyAppliedObjects = append(directlyAppliedObjects, innerCmUns)
-	}
-
-	var data templates.AztpTemplateData
-
-	data.AztpImage = os.Getenv("AZTP_IMG")
-	if strings.Compare(data.AztpImage, "") == 0 {
-		return fmt.Errorf("aztp failure: can't retrieve image pull spec")
-	}
-
-	objects, err = templates.RenderAztpService(data, aztpVariant)
-	if err != nil {
-		return fmt.Errorf("failed to create aztp service manifests: %v", err)
-	}
-	directlyAppliedObjects = append(directlyAppliedObjects, objects...)
-
-	cmr, err := r.wrapObjects(directlyAppliedObjects, configMapName, namespace)
-	if err != nil {
-		return err
-	}
-	// make this managedcluster owner of the configmap
-	if err := controllerutil.SetControllerReference(managedCluster, cmr, r.Scheme); err != nil {
-		return err
-	}
-	if err := r.Create(ctx, cmr); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *ManagedClusterForCguReconciler) wrapObjects(objects []unstructured.Unstructured, name, namespace string) (*corev1.ConfigMap, error) {
-	cm := r.newConfigmap(name, namespace)
-	for _, item := range objects {
-		key := strings.ToLower(fmt.Sprintf("%s-%s-%s.yaml", item.GetKind(), item.GetNamespace(), item.GetName()))
-		out, err := yaml.Marshal(item.Object)
-		if err != nil {
-			return cm, err
-		}
-		cm.Data[key] = string(out)
-	}
-	return cm, nil
-}
-
-// GetConfigurationObjects gets encapsulated objects from configuration policies
-func (r *ManagedClusterForCguReconciler) GetConfigurationObjects(policies []policiesv1.Policy) ([]unstructured.Unstructured, error) {
-	var uobjects []unstructured.Unstructured
-
-	var objects []runtime.RawExtension
-	for _, pol := range policies {
-		if !pol.Spec.Disabled {
-			for _, template := range pol.Spec.PolicyTemplates {
-				o := *template.ObjectDefinition.DeepCopy()
-				objects = append(objects, o)
-			}
-		}
-	}
-
-	for _, ob := range objects {
-		var pol policyv1.ConfigurationPolicy
-		err := json.Unmarshal(ob.DeepCopy().Raw, &pol)
-		if err != nil {
-			r.Log.Info(err.Error())
-			return uobjects, err
-		}
-		for _, ot := range pol.Spec.ObjectTemplates {
-			var object unstructured.Unstructured
-			err = object.UnmarshalJSON(ot.ObjectDefinition.DeepCopy().Raw)
-			if err != nil {
-				return uobjects, err
-			}
-			object.Object["status"] = map[string]interface{}{}
-			_, specDefined := object.Object["spec"]
-			if specDefined || object.GetKind() == "Namespace" {
-				uobjects = append(uobjects, object)
-			}
-		}
-	}
-	return uobjects, nil
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	namespace := &corev1.Namespace{
@@ -463,7 +291,6 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 					// We want to return true for that event only, and false for everything else
 					_, doneLabelExistsInOld := e.ObjectOld.GetLabels()[ztpDoneLabel]
 					_, doneLabelExistsInNew := e.ObjectNew.GetLabels()[ztpDoneLabel]
-					_, aztpRequired := e.ObjectNew.GetLabels()[aztpRequiredLabel]
 
 					doneLabelRemoved := doneLabelExistsInOld && !doneLabelExistsInNew
 
@@ -476,14 +303,7 @@ func (r *ManagedClusterForCguReconciler) SetupWithManager(mgr ctrl.Manager) erro
 					if availableCondition != nil && availableCondition.Status == metav1.ConditionTrue {
 						availableInNew = true
 					}
-
-					var hubAccepted bool
-					acceptedCondition := meta.FindStatusCondition(e.ObjectNew.(*clusterv1.ManagedCluster).Status.Conditions, clusterv1.ManagedClusterConditionHubAccepted)
-					if acceptedCondition != nil && acceptedCondition.Status == metav1.ConditionTrue {
-						hubAccepted = true
-					}
-
-					return (doneLabelRemoved && availableInNew) || (!availableInOld && availableInNew && !doneLabelExistsInNew) || (hubAccepted && aztpRequired)
+					return (doneLabelRemoved && availableInNew) || (!availableInOld && availableInNew && !doneLabelExistsInNew)
 				},
 			})).
 		Owns(&ranv1alpha1.ClusterGroupUpgrade{},
