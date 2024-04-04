@@ -9,8 +9,6 @@ spec:
       containers:
         - name: manager
           env:
-          - name: AZTP_IMG
-            value: $AZTP_IMG          
           - name: PRECACHE_IMG
             value: $PRECACHE_IMG
           - name: RECOVERY_IMG
