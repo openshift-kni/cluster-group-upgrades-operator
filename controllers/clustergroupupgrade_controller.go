@@ -167,8 +167,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	if suceededCondition != nil {
 		if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-			deleteObjects := clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteObjects
-			if deleteObjects == nil || *deleteObjects {
+			afterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
+			if afterCompletion == nil || afterCompletion.DeleteObjects == nil || *afterCompletion.DeleteObjects {
 				err = r.deleteResources(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return

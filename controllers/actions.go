@@ -16,20 +16,32 @@ import (
 func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
-	actionsBeforeEnable := clusterGroupUpgrade.Spec.Actions.BeforeEnable
-	// Add/delete cluster labels
-	if actionsBeforeEnable.AddClusterLabels != nil || actionsBeforeEnable.DeleteClusterLabels != nil {
+	beforeEnable := clusterGroupUpgrade.Spec.Actions.BeforeEnable
+	if beforeEnable != nil {
 		clusters := utils.GetClustersListFromRemediationPlan(clusterGroupUpgrade)
 		r.Log.Info("[actions]", "clusterList", clusters)
-		labels := map[string]map[string]string{
-			"add":    actionsBeforeEnable.AddClusterLabels,
-			"delete": actionsBeforeEnable.DeleteClusterLabels,
+
+		var labels map[string]any      // nil
+		var annotations map[string]any // nil
+		if len(beforeEnable.AddClusterLabels) != 0 || len(beforeEnable.DeleteClusterLabels) != 0 || len(beforeEnable.RemoveClusterLabels) != 0 {
+			labels = map[string]any{
+				"add":    beforeEnable.AddClusterLabels,
+				"delete": beforeEnable.DeleteClusterLabels, // deleteClusterLabels is deprecated
+				"remove": beforeEnable.RemoveClusterLabels,
+			}
+		}
+		if len(beforeEnable.AddClusterAnnotations) != 0 || len(beforeEnable.RemoveClusterAnnotations) != 0 {
+			annotations = map[string]any{
+				"add":    beforeEnable.AddClusterAnnotations,
+				"remove": beforeEnable.RemoveClusterAnnotations,
+			}
 		}
 
-		for _, c := range clusters {
-			err := r.manageClusterLabels(ctx, c, labels)
-			if err != nil {
-				return err
+		if labels != nil || annotations != nil {
+			for _, c := range clusters {
+				if err := r.manageClusterLabelsAndAnnotations(ctx, c, labels, annotations); err != nil {
+					return err
+				}
 			}
 		}
 	}
@@ -44,26 +56,68 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 		Name: cluster, State: utils.ClusterRemediationComplete}
 	clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)
 
-	actionsAfterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
-	// Add/delete cluster labels
-	if actionsAfterCompletion.AddClusterLabels != nil || actionsAfterCompletion.DeleteClusterLabels != nil {
-		labels := map[string]map[string]string{
-			"add":    actionsAfterCompletion.AddClusterLabels,
-			"delete": actionsAfterCompletion.DeleteClusterLabels,
+	afterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
+	if afterCompletion != nil {
+		var labels map[string]any      // nil
+		var annotations map[string]any // nil
+		if len(afterCompletion.AddClusterLabels) != 0 || len(afterCompletion.DeleteClusterLabels) != 0 || len(afterCompletion.RemoveClusterLabels) != 0 {
+			labels = map[string]interface{}{
+				"add":    afterCompletion.AddClusterLabels,
+				"delete": afterCompletion.DeleteClusterLabels, // deleteClusterLabels is deprecated
+				"remove": afterCompletion.RemoveClusterLabels,
+			}
 		}
-		err := r.manageClusterLabels(ctx, cluster, labels)
-		if err != nil {
-			return err
+		if len(afterCompletion.AddClusterAnnotations) != 0 || len(afterCompletion.RemoveClusterAnnotations) != 0 {
+			annotations = map[string]any{
+				"add":    afterCompletion.AddClusterAnnotations,
+				"remove": afterCompletion.RemoveClusterAnnotations,
+			}
+		}
+		if labels != nil || annotations != nil {
+			if err := r.manageClusterLabelsAndAnnotations(ctx, cluster, labels, annotations); err != nil {
+				return err
+			}
 		}
 	}
 
 	return nil
 }
 
-// manageClusterLabels adds/deletes the cluster labels for selected clusters
-func (r *ClusterGroupUpgradeReconciler) manageClusterLabels(
-	ctx context.Context, cluster string, labels map[string]map[string]string) error {
+func setClusterLabels(cluster *clusterv1.ManagedCluster, labels map[string]any) {
+	currentLabels := cluster.GetLabels()
+	if currentLabels == nil {
+		currentLabels = make(map[string]string)
+	}
 
+	for name, value := range labels["add"].(map[string]string) {
+		currentLabels[name] = value
+	}
+	// Deprecated
+	for name := range labels["delete"].(map[string]string) {
+		delete(currentLabels, name)
+	}
+	for _, name := range labels["remove"].([]string) {
+		delete(currentLabels, name)
+	}
+	cluster.SetLabels(currentLabels)
+}
+
+func setClusterAnnotations(cluster *clusterv1.ManagedCluster, annotations map[string]any) {
+	currentAnnotations := cluster.GetAnnotations()
+	if currentAnnotations == nil {
+		currentAnnotations = make(map[string]string)
+	}
+
+	for name, value := range annotations["add"].(map[string]string) {
+		currentAnnotations[name] = value
+	}
+	for _, name := range annotations["remove"].([]string) {
+		delete(currentAnnotations, name)
+	}
+	cluster.SetAnnotations(currentAnnotations)
+}
+
+func (r *ClusterGroupUpgradeReconciler) manageClusterLabelsAndAnnotations(ctx context.Context, cluster string, labels, annotations map[string]any) error {
 	managedCluster := &clusterv1.ManagedCluster{}
 	if err := r.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster); err != nil {
 		if errors.IsNotFound(err) {
@@ -71,62 +125,16 @@ func (r *ClusterGroupUpgradeReconciler) manageClusterLabels(
 		}
 		return err
 	}
-	if err := r.addClusterLabels(ctx, managedCluster, labels["add"]); err != nil {
-		return fmt.Errorf("fail to add labels for cluster %s: %v", managedCluster.Name, err)
-	}
-	if err := r.deleteClusterLabels(ctx, managedCluster, labels["delete"]); err != nil {
-		return fmt.Errorf("fail to delete labels for cluster %s: %v", managedCluster.Name, err)
-	}
-	return nil
-}
 
-// Add cluster labels
-func (r *ClusterGroupUpgradeReconciler) addClusterLabels(
-	ctx context.Context, cluster *clusterv1.ManagedCluster, labels map[string]string) error {
-
-	if len(labels) == 0 {
-		return nil
+	if labels != nil {
+		setClusterLabels(managedCluster, labels)
+	}
+	if annotations != nil {
+		setClusterAnnotations(managedCluster, annotations)
 	}
 
-	currentLabels := cluster.GetLabels()
-	if currentLabels == nil {
-		currentLabels = make(map[string]string)
-	}
-	for key, value := range labels {
-		currentLabels[key] = value
-	}
-	cluster.SetLabels(currentLabels)
-
-	//nolint:revive
-	if err := r.Update(ctx, cluster); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Delete cluster labels
-func (r *ClusterGroupUpgradeReconciler) deleteClusterLabels(
-	ctx context.Context, cluster *clusterv1.ManagedCluster, labels map[string]string) error {
-
-	if len(labels) == 0 {
-		return nil
-	}
-
-	currentLabels := cluster.GetLabels()
-	if currentLabels == nil {
-		return nil
-	}
-	for key, value := range labels {
-		currentLabelValue, found := currentLabels[key]
-		if found && currentLabelValue == value {
-			delete(currentLabels, key)
-		}
-	}
-	cluster.SetLabels(currentLabels)
-
-	//nolint:revive
-	if err := r.Update(ctx, cluster); err != nil {
-		return err
+	if err := r.Update(ctx, managedCluster); err != nil {
+		return fmt.Errorf("failed to update labels/annotations for cluster: %s, err: %v", managedCluster.Name, err)
 	}
 	return nil
 }

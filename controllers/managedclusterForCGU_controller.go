@@ -222,17 +222,17 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 			MaxConcurrency: 1,
 		},
 		Actions: ranv1alpha1.Actions{
-			BeforeEnable: ranv1alpha1.BeforeEnable{
+			BeforeEnable: &ranv1alpha1.BeforeEnable{
 				AddClusterLabels: map[string]string{
 					ztpRunningLabel: "",
 				},
 			},
-			AfterCompletion: ranv1alpha1.AfterCompletion{
+			AfterCompletion: &ranv1alpha1.AfterCompletion{
 				AddClusterLabels: map[string]string{
 					ztpDoneLabel: "",
 				},
-				DeleteClusterLabels: map[string]string{
-					ztpRunningLabel: "",
+				RemoveClusterLabels: []string{
+					ztpRunningLabel,
 				},
 			},
 		},
