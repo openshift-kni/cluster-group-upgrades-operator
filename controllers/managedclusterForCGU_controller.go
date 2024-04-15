@@ -361,9 +361,9 @@ func (r *ManagedClusterForCguReconciler) extractAztpPolicies(ctx context.Context
 
 	var data templates.AztpTemplateData
 
-	data.AztpImage = os.Getenv("CONTROLLER_IMG")
+	data.AztpImage = os.Getenv("AZTP_IMG")
 	if strings.Compare(data.AztpImage, "") == 0 {
-		return fmt.Errorf("aztp failure: can't retrieve controller image pull spec")
+		return fmt.Errorf("aztp failure: can't retrieve aztp image pull spec")
 	}
 
 	objects, err = templates.RenderAztpService(data, aztpVariant)
