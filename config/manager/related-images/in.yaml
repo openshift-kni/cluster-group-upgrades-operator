@@ -15,5 +15,5 @@ spec:
             value: $RECOVERY_IMG
           - name: INSECURE_GRAPH_CALL
             value: "false"
-          - name: CONTROLLER_IMG
-            value: $CONTROLLER_IMG          
+          - name: AZTP_IMG
+            value: $AZTP_IMG                    
