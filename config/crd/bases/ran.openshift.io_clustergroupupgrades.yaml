@@ -238,14 +238,7 @@ spec:
                 type: array
               manifestWorkTemplates:
                 items:
-                  description: NamespacedCR defines the name and namespace of a custom
-                    resource
-                  properties:
-                    name:
-                      type: string
-                    namespace:
-                      type: string
-                  type: object
+                  type: string
                 type: array
               preCaching:
                 default: false
@@ -309,9 +302,7 @@ spec:
                       description: ManifestWorkStatus defines the status of a certain
                         ManifestWork
                       properties:
-                        name:
-                          type: string
-                        resourceStatus:
+                        manifestStatus:
                           description: ManifestResourceStatus represents the status
                             of each resource in manifest work deployed on managed
                             cluster
@@ -514,7 +505,7 @@ spec:
                                 type: object
                               type: array
                           type: object
-                        status:
+                        name:
                           type: string
                       required:
                       - name

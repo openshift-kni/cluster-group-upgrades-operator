@@ -370,6 +370,7 @@ install-acm-crds:
 	kubectl apply -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
 	kubectl apply -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
 	kubectl apply -f deploy/acm/crds/work.open-cluster-management.io_manifestworks.crd.yaml
+	kubectl apply -f deploy/acm/crds/work.open-cluster-management.io_manifestworkreplicasets.crd.yaml
 
 uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
@@ -380,10 +381,11 @@ uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
 	kubectl delete -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
 	kubectl delete -f deploy/acm/crds/work.open-cluster-management.io_manifestworks.crd.yaml
+	kubectl delete -f deploy/acm/crds/work.open-cluster-management.io_manifestworkreplicasets.crd.yaml
 
 kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"
-	kubectl-kuttl test
+	kubectl-kuttl test --namespace default
 
 start-test-proxy:
 	@echo "Start kubectl proxy for testing"

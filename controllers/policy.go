@@ -21,76 +21,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-/*
-isBatchCompleteForPolicies: Each cluster is checked against each policy in order. If the cluster is not bound
-to the policy, or if the cluster is already compliant with the policy, the indexing advances until a NonCompliant
-policy is found for the cluster or the end of the list is reached.
-
-The policy currently applied for each cluster has its index held in
-clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex (the index is used to range through the
-policies present in clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade).
-
-returns: bool     : true if the batch is done upgrading; false if not
-
-	error/nil: in case any error happens
-*/
-func (r *ClusterGroupUpgradeReconciler) isBatchCompleteForPolicies(
-	ctx context.Context, client client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, bool, error) {
-	batchIndex := clusterGroupUpgrade.Status.Status.CurrentBatch - 1
-	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
-	isBatchComplete := true
-	isSoaking := false
-
-	for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
-		// nil check to avoid panic in edge cases
-		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress == nil {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress = make(map[string]*ranv1alpha1.ClusterRemediationProgress)
-		}
-		if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName] == nil {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName] = new(ranv1alpha1.ClusterRemediationProgress)
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.NotStarted
-		}
-		clusterProgressState := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State
-		if clusterProgressState == ranv1alpha1.NotStarted {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = new(int)
-			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = 0
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.InProgress
-		} else if clusterProgressState == ranv1alpha1.Completed {
-			continue
-		}
-		currentPolicyIndex := *clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex
-
-		// Get the index of the next policy for which the cluster is NonCompliant.
-		currentPolicyIndex, soak, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, currentPolicyIndex)
-		if soak {
-			isSoaking = true
-		}
-		if err != nil {
-			return false, isSoaking, err
-		}
-
-		if currentPolicyIndex >= numberOfPolicies {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = nil
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].State = ranv1alpha1.Completed
-			err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, clusterName)
-			if err != nil {
-				return false, isSoaking, err
-			}
-			// Clean up ManagedClusterView only as ManagedClusterActions get deleted automatically when executed successfully.
-			err = utils.DeleteManagedClusterViews(ctx, client, clusterGroupUpgrade, clusterName)
-			if err != nil {
-				return false, isSoaking, err
-			}
-		} else {
-			isBatchComplete = false
-			*clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = currentPolicyIndex
-		}
-	}
-
-	r.Log.Info("[getNextRemediationPoliciesForBatch]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)
-	return isBatchComplete, isSoaking, nil
-}
-
 func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 
 	policiesToUpdate := make(map[int][]string)
@@ -500,6 +430,22 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 	return currentPolicyIndex, isSoaking, nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) handlePolicyTimeoutForCluster(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, clusterState *ranv1alpha1.ClusterState) {
+	clusterProgress := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName]
+	if clusterProgress.PolicyIndex == nil {
+		r.Log.Info("[addClustsersStatusOnTimeout] Missing index for cluster", "clusterName", clusterName, "clusterProgress", clusterProgress)
+		return
+	}
+
+	policyIndex := *clusterProgress.PolicyIndex
+	// Avoid panics because of index out of bound in edge cases
+	if policyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
+		clusterState.CurrentPolicy = &ranv1alpha1.PolicyStatus{
+			Name:   clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[policyIndex].Name,
+			Status: utils.ClusterStatusNonCompliant}
+	}
+}
+
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, placementRuleName string, managedPolicy *unstructured.Unstructured) error {
 
@@ -772,6 +718,20 @@ func (r *ClusterGroupUpgradeReconciler) getClustersNonCompliantWithManagedPolici
 	}
 
 	return clustersNonCompliantMap
+}
+
+func (r *ClusterGroupUpgradeReconciler) arePreviousBatchesCompleteForPolicies(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, bool, error) {
+	// Check previous batches
+	for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
+		for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
+			// Start with policy index 0 as we don't keep progress info from previous batches
+			nextNonCompliantPolicyIndex, isSoaking, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0)
+			if err != nil || nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
+				return false, isSoaking, err
+			}
+		}
+	}
+	return true, false, nil
 }
 
 /*

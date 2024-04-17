@@ -25,8 +25,7 @@ import (
 // with apply.
 type ManifestWorkStatusApplyConfiguration struct {
 	Name           *string                    `json:"name,omitempty"`
-	Status         *string                    `json:"status,omitempty"`
-	ResourceStatus *v1.ManifestResourceStatus `json:"resourceStatus,omitempty"`
+	ManifestStatus *v1.ManifestResourceStatus `json:"manifestStatus,omitempty"`
 }
 
 // ManifestWorkStatusApplyConfiguration constructs an declarative configuration of the ManifestWorkStatus type for use with
@@ -43,18 +42,10 @@ func (b *ManifestWorkStatusApplyConfiguration) WithName(value string) *ManifestW
 	return b
 }
 
-// WithStatus sets the Status field in the declarative configuration to the given value
+// WithManifestStatus sets the ManifestStatus field in the declarative configuration to the given value
 // and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Status field is set to the value of the last call.
-func (b *ManifestWorkStatusApplyConfiguration) WithStatus(value string) *ManifestWorkStatusApplyConfiguration {
-	b.Status = &value
-	return b
-}
-
-// WithResourceStatus sets the ResourceStatus field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the ResourceStatus field is set to the value of the last call.
-func (b *ManifestWorkStatusApplyConfiguration) WithResourceStatus(value v1.ManifestResourceStatus) *ManifestWorkStatusApplyConfiguration {
-	b.ResourceStatus = &value
+// If called multiple times, the ManifestStatus field is set to the value of the last call.
+func (b *ManifestWorkStatusApplyConfiguration) WithManifestStatus(value v1.ManifestResourceStatus) *ManifestWorkStatusApplyConfiguration {
+	b.ManifestStatus = &value
 	return b
 }

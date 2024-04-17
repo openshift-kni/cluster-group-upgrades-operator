@@ -219,8 +219,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResource(
 	obj.SetGroupVersionKind(gvk)
 	obj.SetName(name)
 	obj.SetNamespace(namespace)
-	err := r.Delete(ctx, obj)
-	if err != nil {
+	if err := r.Client.Delete(ctx, obj); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 	return nil

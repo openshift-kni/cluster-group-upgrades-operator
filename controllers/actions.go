@@ -153,21 +153,22 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
 	}
 	for _, ns := range targetNamespaces {
-		err := utils.DeletePlacementRules(ctx, r.Client, ns, labels)
-		if err != nil {
+		if err := utils.DeletePlacementRules(ctx, r.Client, ns, labels); err != nil {
 			return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
 		}
 		clusterGroupUpgrade.Status.PlacementRules = nil
 
-		err = utils.DeletePlacementBindings(ctx, r.Client, ns, labels)
-		if err != nil {
+		if err := utils.DeletePlacementBindings(ctx, r.Client, ns, labels); err != nil {
 			return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)
 		}
 		clusterGroupUpgrade.Status.PlacementBindings = nil
 	}
 
-	err := r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade)
-	if err != nil {
+	if err := r.cleanupManifestWorkForCurrentBatch(ctx, clusterGroupUpgrade); err != nil {
+		return fmt.Errorf("failed to delete ManifestWork for CGU %s: %v", clusterGroupUpgrade.Name, err)
+	}
+
+	if err := r.jobAndViewFinalCleanup(ctx, clusterGroupUpgrade); err != nil {
 		return fmt.Errorf("failed to delete precaching objects for CGU %s: %v", clusterGroupUpgrade.Name, err)
 	}
 	clusterGroupUpgrade.Status.SafeResourceNames = nil

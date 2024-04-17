@@ -223,6 +223,7 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch
@@ -365,6 +366,7 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch
@@ -373,10 +375,19 @@ spec:
         - apiGroups:
           - work.open-cluster-management.io
           resources:
+          - manifestworkreplicasets
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - work.open-cluster-management.io
+          resources:
           - manifestworks
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch

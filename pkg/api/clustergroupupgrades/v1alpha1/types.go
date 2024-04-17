@@ -178,7 +178,7 @@ type ClusterGroupUpgradeSpec struct {
 	ManagedPolicies []string `json:"managedPolicies,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Manifest Work Templates",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	//+kubebuilder:validation:Optional
-	ManifestWorkTemplates []NamespacedCR `json:"manifestWorkTemplates"`
+	ManifestWorkTemplates []string `json:"manifestWorkTemplates"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Blocking CRs",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	BlockingCRs []BlockingCR `json:"blockingCRs,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Actions",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
@@ -252,8 +252,7 @@ type PolicyStatus struct {
 // ManifestWorkStatus defines the status of a certain ManifestWork
 type ManifestWorkStatus struct {
 	Name           string                      `json:"name"`
-	Status         string                      `json:"status,omitempty"`
-	ResourceStatus mwv1.ManifestResourceStatus `json:"resourceStatus,omitempty"`
+	ManifestStatus mwv1.ManifestResourceStatus `json:"manifestStatus,omitempty"`
 }
 
 // ClusterState defines the final state of a cluster

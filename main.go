@@ -44,6 +44,7 @@ import (
 
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
+	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -57,6 +58,7 @@ func init() {
 
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(mwv1.AddToScheme(scheme))
+	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(policiesv1.AddToScheme(scheme))
 	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
