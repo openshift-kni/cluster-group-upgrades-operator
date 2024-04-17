@@ -1,0 +1,48 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: ibu-upgrade
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  manifestWorkTemplates:
+  - ibu-prep
+  - ibu-upgrade
+  - ibu-finalize
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  clusters:
+  - name: spoke1
+    state: complete
+  - name: spoke4
+    state: complete
+  - name: spoke6
+    state: complete
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: All manifestworks rolled out successfully on all clusters
+    reason: Completed
+    status: "False"
+    type: Progressing
+  - message: All manifestworks rolled out successfully on all clusters
+    reason: Completed
+    status: "True"
+    type: Succeeded
+  remediationPlan:
+  - - spoke1
+    - spoke4
+  - - spoke6
+
