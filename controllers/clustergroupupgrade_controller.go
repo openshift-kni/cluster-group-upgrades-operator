@@ -168,8 +168,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 	if suceededCondition != nil {
 		if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
-			afterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
-			if afterCompletion == nil || afterCompletion.DeleteObjects == nil || *afterCompletion.DeleteObjects {
+			if shouldDeleteObjects(clusterGroupUpgrade) {
 				err = r.deleteResources(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return
@@ -508,8 +507,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		// Also set the start time of the current batch to the current timestamp.
 		if clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 			r.initializeBatchProgress(clusterGroupUpgrade)
-			deleteObjects := clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteObjects
-			if deleteObjects == nil || *deleteObjects {
+			if shouldDeleteObjects(clusterGroupUpgrade) {
 				err = r.cleanupManifestWorkForPreviousBatch(ctx, clusterGroupUpgrade)
 				if err != nil {
 					return
@@ -668,6 +666,14 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
+}
+
+func shouldDeleteObjects(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) bool {
+	afterCompletion := clusterGroupUpgrade.Spec.Actions.AfterCompletion
+	if afterCompletion == nil || afterCompletion.DeleteObjects == nil || *afterCompletion.DeleteObjects {
+		return true
+	}
+	return false
 }
 
 func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
@@ -1194,10 +1200,8 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			if err := utils.FinalMultiCloudObjectCleanup(ctx, r.Client, clusterGroupUpgrade); err != nil {
 				return utils.StopReconciling, err
 			}
-
-			deleteObjects := clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteObjects
 			// additional cleanup if CGU is not completed yet or deleteObject is set to false
-			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() || (deleteObjects != nil && !*deleteObjects) {
+			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() || !shouldDeleteObjects(clusterGroupUpgrade) {
 				r.Log.Info("Final cleanup for in prgress CGU or deleteObject set to false")
 				// Include placementRules, placementBindings, precaching/backup job/manageClusterView/Action and ManifestWork for current batch
 				if err := r.deleteResources(ctx, clusterGroupUpgrade); err != nil {
