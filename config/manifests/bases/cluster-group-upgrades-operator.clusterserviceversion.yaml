@@ -14,7 +14,7 @@ metadata:
     features.operators.openshift.io/token-auth-aws: "false"
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
-    olm.skipRange: '>=4.10.0 <4.16.0'
+    olm.skipRange: '>=4.10.0 <4.17.0'
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
   name: cluster-group-upgrades-operator.v0.0.0
   namespace: placeholder
