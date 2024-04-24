@@ -310,21 +310,14 @@ func DeleteManagedClusterViews(
 	var labels = map[string]string{
 		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
 		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace}
-	opts := []client.ListOption{
+
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(clusterName),
 		client.MatchingLabels(labels),
 	}
 
-	mcvList := &viewv1beta1.ManagedClusterViewList{}
-	if err := c.List(ctx, mcvList, opts...); err != nil {
+	if err := c.DeleteAllOf(ctx, &viewv1beta1.ManagedClusterView{}, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
-	}
-
-	for _, mcv := range mcvList.Items {
-		multiCloudLog.Info("[DeleteManagedClusterViews] Delete ManagedClusterView", "ns", mcv.Namespace, "name", mcv.Name)
-		if err := c.Delete(ctx, &mcv); err != nil {
-			return err
-		}
 	}
 	return nil
 }
@@ -337,21 +330,13 @@ func DeleteManagedClusterActions(
 
 	var labels = map[string]string{
 		"openshift-cluster-group-upgrades/clusterGroupUpgrade": clusterGroupUpgrade.Namespace + "-" + clusterGroupUpgrade.Name}
-	opts := []client.ListOption{
+	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(clusterName),
 		client.MatchingLabels(labels),
 	}
 
-	mcaList := &actionv1beta1.ManagedClusterActionList{}
-	if err := c.List(ctx, mcaList, opts...); err != nil {
+	if err := c.DeleteAllOf(ctx, &actionv1beta1.ManagedClusterAction{}, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
-	}
-
-	for _, mca := range mcaList.Items {
-		multiCloudLog.Info("[DeleteManagedClusterActions] Delete ManagedClusterAction", "ns", mca.Namespace, "name", mca.Name)
-		if err := c.Delete(ctx, &mca); err != nil {
-			return err
-		}
 	}
 	return nil
 }

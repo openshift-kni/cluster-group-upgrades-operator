@@ -1,0 +1,42 @@
+apiVersion: work.open-cluster-management.io/v1alpha1
+kind: ManifestWorkReplicaSet
+metadata:
+  name: ibu-prep
+  annotations:
+    openshift-cluster-group-upgrades/expectedValues: |
+      [{"manifestIndex":0,"name":"isPrepCompleted","value":"True"}]
+spec:
+  placementRefs:
+    - name: dummy
+  manifestWorkTemplate:
+    deleteOption:
+      propagationPolicy: Orphan
+    workload:
+      manifests:
+        - apiVersion: lca.openshift.io/v1alpha1
+          kind: ImageBasedUpgrade
+          metadata:
+            name: upgrade
+          spec:
+            additionalImages:
+              name: ""
+              namespace: ""
+            autoRollbackOnFailure: {}
+            seedImageRef:
+              image: quay.io/angwang/lca-seed-cnfdf20:4.15.0-rc.5-v4
+              version: 4.15.0-rc.5
+            stage: Prep
+    manifestConfigs:
+      - resourceIdentifier:
+          group: lca.openshift.io
+          resource: imagebasedupgrades
+          name: upgrade
+        feedbackRules:
+          - type: JSONPaths
+            jsonPaths:
+              - name: isPrepCompleted
+                path: '.status.conditions[?(@.type=="PrepCompleted")].status'
+              - name: prepInProgressConditionMessage
+                path: '.status.conditions[?(@.type=="PrepInProgress")].message'
+              - name: prepCompletedConditionMessage
+                path: '.status.conditions[?(@.type=="PrepCompleted")].message'

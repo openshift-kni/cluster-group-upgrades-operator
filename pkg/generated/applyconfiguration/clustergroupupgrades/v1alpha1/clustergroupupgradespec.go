@@ -33,6 +33,7 @@ type ClusterGroupUpgradeSpecApplyConfiguration struct {
 	ClusterLabelSelectors []v1.LabelSelector                         `json:"clusterLabelSelectors,omitempty"`
 	RemediationStrategy   *RemediationStrategySpecApplyConfiguration `json:"remediationStrategy,omitempty"`
 	ManagedPolicies       []string                                   `json:"managedPolicies,omitempty"`
+	ManifestWorkTemplates []string                                   `json:"manifestWorkTemplates,omitempty"`
 	BlockingCRs           []BlockingCRApplyConfiguration             `json:"blockingCRs,omitempty"`
 	Actions               *ActionsApplyConfiguration                 `json:"actions,omitempty"`
 	BatchTimeoutAction    *string                                    `json:"batchTimeoutAction,omitempty"`
@@ -120,6 +121,16 @@ func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithRemediationStrategy(valu
 func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithManagedPolicies(values ...string) *ClusterGroupUpgradeSpecApplyConfiguration {
 	for i := range values {
 		b.ManagedPolicies = append(b.ManagedPolicies, values[i])
+	}
+	return b
+}
+
+// WithManifestWorkTemplates adds the given value to the ManifestWorkTemplates field in the declarative configuration
+// and returns the receiver, so that objects can be build by chaining "With" function invocations.
+// If called multiple times, values provided by each call will be appended to the ManifestWorkTemplates field.
+func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithManifestWorkTemplates(values ...string) *ClusterGroupUpgradeSpecApplyConfiguration {
+	for i := range values {
+		b.ManifestWorkTemplates = append(b.ManifestWorkTemplates, values[i])
 	}
 	return b
 }
