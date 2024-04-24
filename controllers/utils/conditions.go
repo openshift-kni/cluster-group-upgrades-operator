@@ -1,6 +1,7 @@
 package utils
 
 import (
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -75,6 +76,24 @@ var ConditionReasons = struct {
 	PrecacheSpecIsWellFormed:      "PrecacheSpecIsWellFormed",
 	TimedOut:                      "TimedOut",
 	UnresolvableDenpendency:       "UnresolvableDenpendency",
+}
+
+// InProgressMessages defines the in progress messages for the conditions by rollout type
+var InProgressMessages = map[ranv1alpha1.RolloutType]string{
+	ranv1alpha1.RolloutTypes.Policy:       "Remediating non-compliant policies",
+	ranv1alpha1.RolloutTypes.ManifestWork: "Rolling out manifestworks",
+}
+
+// TimeoutMessages defines the timeout messages for the conditions by rollout type
+var TimeoutMessages = map[ranv1alpha1.RolloutType]string{
+	ranv1alpha1.RolloutTypes.Policy:       "Policy remediation took too long",
+	ranv1alpha1.RolloutTypes.ManifestWork: "Manifestwork rollout took too long",
+}
+
+// CompletedMessages defines the completed messages for the conditions by rollout type
+var CompletedMessages = map[ranv1alpha1.RolloutType]string{
+	ranv1alpha1.RolloutTypes.Policy:       "All clusters are compliant with all the managed policies",
+	ranv1alpha1.RolloutTypes.ManifestWork: "All manifestworks rolled out successfully on all clusters",
 }
 
 // SetStatusCondition is a convenience wrapper for meta.SetStatusCondition that takes in the types defined here and converts them to strings
