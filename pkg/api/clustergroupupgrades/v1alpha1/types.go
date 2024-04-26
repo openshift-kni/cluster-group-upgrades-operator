@@ -251,8 +251,8 @@ type PolicyStatus struct {
 
 // ManifestWorkStatus defines the status of a certain ManifestWork
 type ManifestWorkStatus struct {
-	Name           string                      `json:"name"`
-	ManifestStatus mwv1.ManifestResourceStatus `json:"manifestStatus,omitempty"`
+	Name   string                      `json:"name"`
+	Status mwv1.ManifestResourceStatus `json:"status,omitempty"`
 }
 
 // ClusterState defines the final state of a cluster

@@ -1,0 +1,90 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: ibu-upgrade
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  manifestWorkTemplates:
+  - ibu-prep
+  - ibu-upgrade
+  - ibu-finalize
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 0
+status:
+  clusters:
+  - currentManifestWork:
+      status:
+        manifests:
+        - conditions:
+          - lastTransitionTime: "2024-02-28T15:19:23Z"
+            message: Failed to apply
+            reason: Failed
+            status: "False"
+            type: Applied
+          resourceMeta:
+            group: lca.openshift.io
+            kind: ImageBasedUpgrade
+            name: upgrade
+            namespace: ""
+            ordinal: 0
+            resource: imagebasedupgrades
+            version: v1alpha1
+          statusFeedback: {}
+      name: ibu-prep
+    name: spoke1
+    state: timedout
+  - currentManifestWork:
+      status:
+        manifests:
+        - resourceMeta:
+            group: lca.openshift.io
+            kind: ImageBasedUpgrade
+            name: upgrade
+            namespace: ""
+            ordinal: 0
+            resource: imagebasedupgrades
+            version: v1alpha1
+          statusFeedback:
+            values:
+            - fieldValue:
+                string: "False"
+                type: String
+              name: isPrepCompleted
+            - fieldValue:
+                string: Completed
+                type: String
+              name: prepInProgressConditionMessage
+            - fieldValue:
+                string: Completed
+                type: String
+              name: prepCompletedConditionMessage
+      name: ibu-prep
+    name: spoke4
+    state: timedout
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: Manifestwork rollout took too long
+    reason: TimedOut
+    status: "False"
+    type: Progressing
+  - message: Manifestwork rollout took too long
+    reason: TimedOut
+    status: "False"
+    type: Succeeded
+  remediationPlan:
+  - - spoke1
+    - spoke4
+  - - spoke6

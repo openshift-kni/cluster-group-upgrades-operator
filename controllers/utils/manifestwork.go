@@ -45,7 +45,7 @@ func IsManifestWorkCompleted(mw *mwv1.ManifestWork) (bool, error) {
 		}
 		for _, expectedValue := range expectedValues {
 			mc := getManifestCondition(mw, expectedValue.ManifestIndex)
-			if mc == nil || !isManifestConditionReady(mc) || expectedValue.Value != getFieldValue(mc, expectedValue.Name) {
+			if mc == nil || !IsManifestConditionReady(mc) || expectedValue.Value != getFieldValue(mc, expectedValue.Name) {
 				return false, nil
 			}
 		}
@@ -93,7 +93,8 @@ func getFieldValue(mc *mwv1.ManifestCondition, name string) string {
 	return ""
 }
 
-func isManifestConditionReady(mc *mwv1.ManifestCondition) bool {
+// IsManifestConditionReady returns true if the manifest is applied, available and synced
+func IsManifestConditionReady(mc *mwv1.ManifestCondition) bool {
 	var applied, available, synced bool
 	for _, condition := range mc.Conditions {
 		if condition.Type == mwv1.ManifestApplied && condition.Status == v1.ConditionTrue {

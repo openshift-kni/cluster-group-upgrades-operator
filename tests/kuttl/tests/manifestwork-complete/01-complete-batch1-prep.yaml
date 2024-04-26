@@ -2,7 +2,7 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-  - command: ../../../../deploy/upgrades/manifestwork/complete-manifestwork.sh spoke1 default.ibu-prep-kuttl prep-mw-completed-status.json
+  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke1 default.ibu-prep-kuttl prep-mw-completed-status.json
     ignoreFailure: false
-  - command: ../../../../deploy/upgrades/manifestwork/complete-manifestwork.sh spoke4 default.ibu-prep-kuttl prep-mw-completed-status.json
+  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke4 default.ibu-prep-kuttl prep-mw-completed-status.json
     ignoreFailure: false

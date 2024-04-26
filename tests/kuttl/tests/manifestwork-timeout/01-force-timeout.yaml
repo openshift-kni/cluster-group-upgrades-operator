@@ -1,0 +1,10 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke1 default.ibu-prep-kuttl prep-mw-not-ready-status.json
+    ignoreFailure: false
+  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke4 default.ibu-prep-kuttl prep-mw-wrong-feedback-value.json
+    ignoreFailure: false
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/ibu-upgrade --patch '{"spec":{"remediationStrategy":{"timeout":0}}}' --type=merge
+    ignoreFailure: false
