@@ -27,6 +27,10 @@ type FakeRanV1alpha1 struct {
 	*testing.Fake
 }
 
+func (c *FakeRanV1alpha1) ClusterGroupImageBasedUpgrades(namespace string) v1alpha1.ClusterGroupImageBasedUpgradeInterface {
+	return &FakeClusterGroupImageBasedUpgrades{c, namespace}
+}
+
 func (c *FakeRanV1alpha1) ClusterGroupUpgrades(namespace string) v1alpha1.ClusterGroupUpgradeInterface {
 	return &FakeClusterGroupUpgrades{c, namespace}
 }

@@ -23,6 +23,8 @@ import (
 
 // Interface provides access to all the informers in this group version.
 type Interface interface {
+	// ClusterGroupImageBasedUpgrades returns a ClusterGroupImageBasedUpgradeInformer.
+	ClusterGroupImageBasedUpgrades() ClusterGroupImageBasedUpgradeInformer
 	// ClusterGroupUpgrades returns a ClusterGroupUpgradeInformer.
 	ClusterGroupUpgrades() ClusterGroupUpgradeInformer
 }
@@ -36,6 +38,11 @@ type version struct {
 // New returns a new Interface.
 func New(f internalinterfaces.SharedInformerFactory, namespace string, tweakListOptions internalinterfaces.TweakListOptionsFunc) Interface {
 	return &version{factory: f, namespace: namespace, tweakListOptions: tweakListOptions}
+}
+
+// ClusterGroupImageBasedUpgrades returns a ClusterGroupImageBasedUpgradeInformer.
+func (v *version) ClusterGroupImageBasedUpgrades() ClusterGroupImageBasedUpgradeInformer {
+	return &clusterGroupImageBasedUpgradeInformer{factory: v.factory, namespace: v.namespace, tweakListOptions: v.tweakListOptions}
 }
 
 // ClusterGroupUpgrades returns a ClusterGroupUpgradeInformer.

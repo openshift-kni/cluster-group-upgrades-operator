@@ -38,6 +38,10 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &clustergroupupgradesv1alpha1.BeforeEnableApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BlockingCR"):
 		return &clustergroupupgradesv1alpha1.BlockingCRApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupImageBasedUpgrade"):
+		return &clustergroupupgradesv1alpha1.ClusterGroupImageBasedUpgradeApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupImageBasedUpgradeSpec"):
+		return &clustergroupupgradesv1alpha1.ClusterGroupImageBasedUpgradeSpecApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgrade"):
 		return &clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgradeSpec"):
@@ -62,6 +66,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &clustergroupupgradesv1alpha1.PrecachingStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("RemediationStrategySpec"):
 		return &clustergroupupgradesv1alpha1.RemediationStrategySpecApplyConfiguration{}
+	case v1alpha1.SchemeGroupVersion.WithKind("RolloutStrategy"):
+		return &clustergroupupgradesv1alpha1.RolloutStrategyApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("UpgradeStatus"):
 		return &clustergroupupgradesv1alpha1.UpgradeStatusApplyConfiguration{}
 

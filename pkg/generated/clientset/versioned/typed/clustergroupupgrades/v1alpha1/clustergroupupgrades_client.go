@@ -27,12 +27,17 @@ import (
 
 type RanV1alpha1Interface interface {
 	RESTClient() rest.Interface
+	ClusterGroupImageBasedUpgradesGetter
 	ClusterGroupUpgradesGetter
 }
 
 // RanV1alpha1Client is used to interact with features provided by the ran.openshift.io group.
 type RanV1alpha1Client struct {
 	restClient rest.Interface
+}
+
+func (c *RanV1alpha1Client) ClusterGroupImageBasedUpgrades(namespace string) ClusterGroupImageBasedUpgradeInterface {
+	return newClusterGroupImageBasedUpgrades(c, namespace)
 }
 
 func (c *RanV1alpha1Client) ClusterGroupUpgrades(namespace string) ClusterGroupUpgradeInterface {

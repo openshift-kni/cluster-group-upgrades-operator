@@ -17,6 +17,14 @@ limitations under the License.
 
 package v1alpha1
 
+// ClusterGroupImageBasedUpgradeListerExpansion allows custom methods to be added to
+// ClusterGroupImageBasedUpgradeLister.
+type ClusterGroupImageBasedUpgradeListerExpansion interface{}
+
+// ClusterGroupImageBasedUpgradeNamespaceListerExpansion allows custom methods to be added to
+// ClusterGroupImageBasedUpgradeNamespaceLister.
+type ClusterGroupImageBasedUpgradeNamespaceListerExpansion interface{}
+
 // ClusterGroupUpgradeListerExpansion allows custom methods to be added to
 // ClusterGroupUpgradeLister.
 type ClusterGroupUpgradeListerExpansion interface{}
