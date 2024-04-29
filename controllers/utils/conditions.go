@@ -11,6 +11,7 @@ type ConditionType string
 
 // ConditionTypes define the different types of conditions that will be set
 var ConditionTypes = struct {
+	// CGU
 	BackupSuceeded     ConditionType
 	ClustersSelected   ConditionType
 	PrecacheSpecValid  ConditionType
@@ -18,6 +19,9 @@ var ConditionTypes = struct {
 	Progressing        ConditionType
 	Succeeded          ConditionType
 	Validated          ConditionType
+
+	// IBGU
+	ManifestsCreated ConditionType
 }{
 	BackupSuceeded:     "BackupSuceeded",
 	ClustersSelected:   "ClustersSelected",
@@ -26,6 +30,7 @@ var ConditionTypes = struct {
 	Progressing:        "Progressing",
 	Succeeded:          "Succeeded",
 	Validated:          "Validated",
+	ManifestsCreated:   "ManifestsCreated",
 }
 
 // ConditionReason is a string representing the condition's reason
