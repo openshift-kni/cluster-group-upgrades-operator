@@ -1,0 +1,221 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.13.0
+  name: clustergroupimagebasedupgrades.ran.openshift.io
+spec:
+  group: ran.openshift.io
+  names:
+    kind: ClusterGroupImageBasedUpgrade
+    listKind: ClusterGroupImageBasedUpgradeList
+    plural: clustergroupimagebasedupgrades
+    shortNames:
+    - cgibu
+    singular: clustergroupimagebasedupgrade
+  scope: Namespaced
+  versions:
+  - additionalPrinterColumns:
+    - jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ClusterGroupImageBasedUpgrade is the schema for upgrading a group
+          of clusters using IBU
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: ClusterGroupImageBasedUpgradeSpec defines the desired state
+              of ClusterGroupImageBasedUpgrade
+            properties:
+              actions:
+                items:
+                  description: ImageBasedUpgradeAction defines the type for the actions
+                    field
+                  enum:
+                  - Abort
+                  - Prep
+                  - Upgrade
+                  - Rollback
+                  - Finalize
+                  type: string
+                type: array
+              clusterLabelSelectors:
+                items:
+                  description: A label selector is a label query over a set of resources.
+                    The result of matchLabels and matchExpressions are ANDed. An empty
+                    label selector matches all objects. A null label selector matches
+                    no objects.
+                  properties:
+                    matchExpressions:
+                      description: matchExpressions is a list of label selector requirements.
+                        The requirements are ANDed.
+                      items:
+                        description: A label selector requirement is a selector that
+                          contains values, a key, and an operator that relates the
+                          key and values.
+                        properties:
+                          key:
+                            description: key is the label key that the selector applies
+                              to.
+                            type: string
+                          operator:
+                            description: operator represents a key's relationship
+                              to a set of values. Valid operators are In, NotIn, Exists
+                              and DoesNotExist.
+                            type: string
+                          values:
+                            description: values is an array of string values. If the
+                              operator is In or NotIn, the values array must be non-empty.
+                              If the operator is Exists or DoesNotExist, the values
+                              array must be empty. This array is replaced during a
+                              strategic merge patch.
+                            items:
+                              type: string
+                            type: array
+                        required:
+                        - key
+                        - operator
+                        type: object
+                      type: array
+                    matchLabels:
+                      additionalProperties:
+                        type: string
+                      description: matchLabels is a map of {key,value} pairs. A single
+                        {key,value} in the matchLabels map is equivalent to an element
+                        of matchExpressions, whose key field is "key", the operator
+                        is "In", and the values array contains only "value". The requirements
+                        are ANDed.
+                      type: object
+                  type: object
+                  x-kubernetes-map-type: atomic
+                type: array
+              clusters:
+                items:
+                  type: string
+                type: array
+              ibuSpec:
+                description: ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
+                properties:
+                  autoRollbackOnFailure:
+                    description: AutoRollbackOnFailure defines automatic rollback
+                      settings if the upgrade fails or if the upgrade does not complete
+                      within the specified time limit.
+                    properties:
+                      initMonitorTimeoutSeconds:
+                        description: InitMonitorTimeoutSeconds defines the time frame
+                          in seconds. If not defined or set to 0, the default value
+                          of 1800 seconds (30 minutes) is used.
+                        minimum: 0
+                        type: integer
+                    type: object
+                  extraManifests:
+                    description: ExtraManifests defines the list of ConfigMap resources
+                      that contain the user-specific extra manifests to be applied
+                      during the upgrade post-pivot stage. Users can also add their
+                      custom catalog sources that may want to retain after the upgrade.
+                    items:
+                      description: ConfigMapRef defines a reference to a config map
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    type: array
+                  oadpContent:
+                    description: OADPContent defines the list of ConfigMap resources
+                      that contain the OADP Backup and Restore CRs.
+                    items:
+                      description: ConfigMapRef defines a reference to a config map
+                      properties:
+                        name:
+                          type: string
+                        namespace:
+                          type: string
+                      required:
+                      - name
+                      - namespace
+                      type: object
+                    type: array
+                  seedImageRef:
+                    description: SeedImageRef defines the seed image and OCP version
+                      for the upgrade
+                    properties:
+                      image:
+                        description: Image defines the full pull-spec of the seed
+                          container image to use.
+                        minLength: 1
+                        pattern: ^([a-z0-9]+://)?[\S]+$
+                        type: string
+                      pullSecretRef:
+                        description: PullSecretRef defines the reference to a secret
+                          with credentials to pull container images.
+                        properties:
+                          name:
+                            type: string
+                        required:
+                        - name
+                        type: object
+                      version:
+                        description: Version defines the target platform version.
+                          The value must match the version of the seed image.
+                        type: string
+                    type: object
+                  stage:
+                    description: ImageBasedUpgradeStage defines the type for the IBU
+                      stage field
+                    enum:
+                    - Idle
+                    - Prep
+                    - Upgrade
+                    - Rollback
+                    type: string
+                type: object
+              rolloutStrategy:
+                description: RolloutStrategy defines how to rollout ibu
+                properties:
+                  maxConcurrency:
+                    type: integer
+                  timeout:
+                    default: 240
+                    type: integer
+                required:
+                - maxConcurrency
+                type: object
+            required:
+            - actions
+            - ibuSpec
+            type: object
+            x-kubernetes-validations:
+            - message: Invalid list of actions
+              rule: self.actions==['Prep'] || self.actions==['Prep','Upgrade'] ||
+                self.actions==['Prep','Upgrade','Finalize'] || self.actions==['Rollback']
+                || self.actions==['Rollback', 'Finalize'] || self.actions==['Upgrade']
+                || self.actions==['Finalize']
+          status:
+            description: ClusterGroupImageBasedUpgradeStatus is the status field for
+              ClusterGroupImageBasedUpgrade
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}

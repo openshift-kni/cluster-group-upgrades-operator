@@ -1,0 +1,20 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupImageBasedUpgrade
+metadata:
+  name: upgrade-4.15.0
+  namespace: default
+spec:
+  clusterLabelSelectors:
+    - matchLabels:
+        common: "true"
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/angwang/lca-seed-cnfdf20:4.15.0-rc.5-v4
+      version: 4.15.0-rc.5
+  actions:
+    - "Prep"
+    - "Upgrade"
+    - "Finalize"
+  rolloutStrategy:
+    maxConcurrency: 200
+    timeout: 2400

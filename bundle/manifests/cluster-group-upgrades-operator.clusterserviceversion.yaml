@@ -36,6 +36,9 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - kind: ClusterGroupImageBasedUpgrade
+      name: clustergroupimagebasedupgrades.ran.openshift.io
+      version: v1alpha1
     - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
         API
       displayName: Cluster Group Upgrade
