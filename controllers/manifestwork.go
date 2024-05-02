@@ -88,7 +88,16 @@ func (r *ClusterGroupUpgradeReconciler) handleManifestWorkTimeoutForCluster(ctx 
 		if err != nil {
 			return err
 		}
-		clusterState.CurrentManifestWork.ManifestStatus = currentManifestWork.Status.ResourceStatus
+		clusterState.CurrentManifestWork.Status = currentManifestWork.Status.ResourceStatus
+		// Trim manifest status conditionally as it's too verbose
+		for i := range clusterState.CurrentManifestWork.Status.Manifests {
+			mc := &clusterState.CurrentManifestWork.Status.Manifests[i]
+			if utils.IsManifestConditionReady(mc) {
+				mc.Conditions = nil
+			} else {
+				mc.StatusFeedbacks.Values = nil
+			}
+		}
 	}
 	return nil
 }

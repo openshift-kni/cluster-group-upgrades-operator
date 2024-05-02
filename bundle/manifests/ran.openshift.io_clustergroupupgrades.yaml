@@ -302,7 +302,9 @@ spec:
                       description: ManifestWorkStatus defines the status of a certain
                         ManifestWork
                       properties:
-                        manifestStatus:
+                        name:
+                          type: string
+                        status:
                           description: ManifestResourceStatus represents the status
                             of each resource in manifest work deployed on managed
                             cluster
@@ -505,8 +507,6 @@ spec:
                                 type: object
                               type: array
                           type: object
-                        name:
-                          type: string
                       required:
                       - name
                       type: object
