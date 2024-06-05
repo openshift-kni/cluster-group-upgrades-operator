@@ -24,7 +24,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240109072430-f5fe6043d1f8
-	golang.org/x/sys v0.20.0
+	golang.org/x/sys v0.21.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.29.0
 	open-cluster-management.io/config-policy-controller v0.12.0
