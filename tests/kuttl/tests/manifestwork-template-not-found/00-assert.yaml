@@ -1,0 +1,28 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: ibu-upgrade
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  manifestWorkTemplates:
+  - ibu-prep
+  - ibu-upgrade
+  - ibu-finalize
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240
+status:
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: 'Missing manifest templates: [ibu-upgrade ibu-finalize]'
+    reason: NotAllManifestTemplatesExist
+    status: "False"
+    type: Validated

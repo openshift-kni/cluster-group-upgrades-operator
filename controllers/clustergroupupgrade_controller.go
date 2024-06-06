@@ -190,7 +190,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 
 		var allManagedPoliciesExist, allManifestWorkTemplatesExist bool
 		var managedPoliciesInfo policiesInfo
-		var clusters []string
+		var clusters, missingTemplates []string
 		var reconcile bool
 		clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 		if err != nil {
@@ -221,7 +221,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			allManagedPoliciesExist, managedPoliciesInfo, err =
 				r.doManagedPoliciesExist(ctx, clusterGroupUpgrade, clusters)
 		} else {
-			allManifestWorkTemplatesExist, _, err = r.validateManifestWorkTemplates(ctx, clusterGroupUpgrade)
+			_, missingTemplates, err = r.validateManifestWorkTemplates(ctx, clusterGroupUpgrade)
+			allManifestWorkTemplatesExist = len(missingTemplates) == 0
 		}
 		if err != nil {
 			return
@@ -272,20 +273,25 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			var statusMessage string
 			var conditionReason utils.ConditionReason
 
-			conditionReason = utils.ConditionReasons.NotAllManagedPoliciesExist
-			if len(managedPoliciesInfo.missingPolicies) != 0 {
-				statusMessage = fmt.Sprintf("Missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
-			}
+			if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
+				conditionReason = utils.ConditionReasons.NotAllManagedPoliciesExist
+				if len(managedPoliciesInfo.missingPolicies) != 0 {
+					statusMessage = fmt.Sprintf("Missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
+				}
 
-			if len(managedPoliciesInfo.invalidPolicies) != 0 {
-				statusMessage = fmt.Sprintf("Invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
-			}
+				if len(managedPoliciesInfo.invalidPolicies) != 0 {
+					statusMessage = fmt.Sprintf("Invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
+				}
 
-			if len(managedPoliciesInfo.duplicatedPoliciesNs) != 0 {
-				jsonData, _ := json.Marshal(managedPoliciesInfo.duplicatedPoliciesNs)
-				statusMessage = fmt.Sprintf(
-					"Managed policy name should be unique, but was found in multiple namespaces: %s ", jsonData)
-				conditionReason = utils.ConditionReasons.AmbiguousManagedPoliciesNames
+				if len(managedPoliciesInfo.duplicatedPoliciesNs) != 0 {
+					jsonData, _ := json.Marshal(managedPoliciesInfo.duplicatedPoliciesNs)
+					statusMessage = fmt.Sprintf(
+						"Managed policy name should be unique, but was found in multiple namespaces: %s ", jsonData)
+					conditionReason = utils.ConditionReasons.AmbiguousManagedPoliciesNames
+				}
+			} else {
+				conditionReason = utils.ConditionReasons.NotAllManifestTemplatesExist
+				statusMessage = fmt.Sprintf("Missing manifest templates: %s", missingTemplates)
 			}
 			// If there are errors regarding the managedPolicies, update the Status accordingly.
 			utils.SetStatusCondition(

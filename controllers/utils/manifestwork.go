@@ -119,6 +119,16 @@ func GetManifestWorkForCluster(ctx context.Context, client client.Client, cluste
 	return mw, err
 }
 
+// GetManifestsFromTemplate returns the list of manifests from the manifestwork template
+func GetManifestsFromTemplate(ctx context.Context, client client.Client, name types.NamespacedName) (manifests []mwv1.Manifest, err error) {
+	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{}
+	err = client.Get(ctx, name, mwrs)
+	if err != nil {
+		return nil, err
+	}
+	return mwrs.Spec.ManifestWorkTemplate.Workload.Manifests, nil
+}
+
 // CreateManifestWorkForCluster creates the manifest work instance for the given spoke
 func CreateManifestWorkForCluster(ctx context.Context, client client.Client, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	index int, clusterName string) error {
