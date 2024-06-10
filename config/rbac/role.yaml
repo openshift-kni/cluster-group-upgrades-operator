@@ -78,6 +78,32 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - monitoring.coreos.com
   resources:
   - prometheusrules
