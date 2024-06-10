@@ -166,6 +166,9 @@ spec:
       - displayName: Status
         path: status
       version: v1alpha1
+    - kind: ImageBasedGroupUpgrade
+      name: imagebasedgroupupgrades.lcm.openshift.io
+      version: v1alpha1
     - description: PreCachingConfig is the Schema for the precachingconfigs API
       displayName: Pre-caching Config
       kind: PreCachingConfig
@@ -257,6 +260,32 @@ spec:
           resources:
           - managedclusters/finalizers
           verbs:
+          - update
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades/status
+          verbs:
+          - get
+          - patch
           - update
         - apiGroups:
           - monitoring.coreos.com
