@@ -8,6 +8,7 @@ import (
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -119,6 +120,70 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 	}
 	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isPrepCompleted")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+}
+
+// GeneratePermissionsManifestWorkReplicaset returns a ManifestWorkReplicaset for permissions required for work agent to access IBU
+func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	clusterRole := &rbac.ClusterRole{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "open-cluster-management:klusterlet-work:ibu-role",
+			Labels: map[string]string{
+				"open-cluster-management.io/aggregate-to-work": "true",
+			},
+		},
+		Rules: []rbac.PolicyRule{
+			{
+				APIGroups: []string{"lca.openshift.io"},
+				Resources: []string{"imagebasedupgrades"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
+		},
+	}
+	crBytes, err := clusterRoleToBytes(clusterRole)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
+	}
+	manifestConfigs := []mwv1.ManifestConfigOption{}
+	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+		},
+		Spec: mwv1alpha1.ManifestWorkReplicaSetSpec{
+			PlacementRefs: []mwv1alpha1.LocalPlacementReference{
+				{
+					Name: "dummy",
+				},
+			},
+			ManifestWorkTemplate: mwv1.ManifestWorkSpec{
+				Workload: mwv1.ManifestsTemplate{
+					Manifests: []mwv1.Manifest{{RawExtension: runtime.RawExtension{Raw: crBytes}}},
+				},
+				DeleteOption:    &mwv1.DeleteOption{PropagationPolicy: mwv1.DeletePropagationPolicyTypeOrphan},
+				ManifestConfigs: manifestConfigs,
+			},
+		},
+	}
+	return mwrs, nil
+}
+
+func clusterRoleToBytes(cr *rbac.ClusterRole) ([]byte, error) {
+	scheme := runtime.NewScheme()
+	rbac.AddToScheme(scheme)
+	s := serializer.NewSerializerWithOptions(serializer.DefaultMetaFactory, scheme, scheme, serializer.SerializerOptions{})
+	gvks, isUnversioned, err := scheme.ObjectKinds(cr)
+	if err != nil {
+		return []byte{}, err
+	}
+	if !isUnversioned && len(gvks) == 1 {
+		cr.TypeMeta = metav1.TypeMeta{
+			Kind:       gvks[0].Kind,
+			APIVersion: gvks[0].GroupVersion().Identifier(),
+		}
+	}
+	var dst bytes.Buffer
+	s.Encode(cr, &dst)
+	return dst.Bytes(), nil
 }
 
 func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, jsonPaths []mwv1.JsonPath, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
