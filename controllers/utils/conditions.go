@@ -120,3 +120,13 @@ func SetStatusCondition(existingConditions *[]metav1.Condition, conditionType Co
 		},
 	)
 }
+
+// IsStatusConditionPresent checks whether conditionType is present in the list of conditions
+func IsStatusConditionPresent(conditions []metav1.Condition, conditionType string) bool {
+	for _, condition := range conditions {
+		if condition.Type == conditionType {
+			return true
+		}
+	}
+	return false
+}

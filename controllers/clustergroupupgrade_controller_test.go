@@ -17,15 +17,297 @@ limitations under the License.
 package controllers
 
 import (
+	"context"
 	"os"
 	"testing"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
+	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	"github.com/stretchr/testify/assert"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func TestBlockingCRsNotCompletedWihtPartialComplete(t *testing.T) {
+	tests := []struct {
+		name        string
+		CGUs        []v1alpha1.ClusterGroupUpgrade
+		blockingCRs []v1alpha1.BlockingCR
+		expected    []string
+	}{
+		{
+			name: "one partially completed",
+			blockingCRs: []v1alpha1.BlockingCR{
+				{Name: "name1", Namespace: "namespace"},
+				{Name: "name2", Namespace: "namespace"},
+			},
+			expected: []string{"name2"},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name1",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type:   string(utils.ConditionTypes.Progressing),
+								Status: v1.ConditionFalse,
+							},
+							{
+								Type:   string(utils.ConditionTypes.Succeeded),
+								Status: v1.ConditionFalse,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name2",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type:   string(utils.ConditionTypes.Progressing),
+								Status: v1.ConditionTrue,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "all partially completed",
+			blockingCRs: []v1alpha1.BlockingCR{
+				{Name: "name1", Namespace: "namespace"},
+				{Name: "name2", Namespace: "namespace"},
+			},
+			expected: []string{},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name1",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type:   string(utils.ConditionTypes.Progressing),
+								Status: v1.ConditionFalse,
+							},
+							{
+								Type:   string(utils.ConditionTypes.Succeeded),
+								Status: v1.ConditionFalse,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name2",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type:   string(utils.ConditionTypes.Progressing),
+								Status: v1.ConditionFalse,
+							},
+							{
+								Type:   string(utils.ConditionTypes.Succeeded),
+								Status: v1.ConditionFalse,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	cgu := &v1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			Annotations: map[string]string{
+				utils.BlockingCGUCompletionModeAnn: utils.PartialBlockingCGUCompletion,
+			},
+		},
+		Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+		Status: v1alpha1.ClusterGroupUpgradeStatus{
+			Clusters: []v1alpha1.ClusterState{
+				{
+					Name:  "spoke1",
+					State: "complete",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		fakeClient, err := getFakeClientFromObjects([]client.Object{}...)
+		if err != nil {
+			t.Errorf("error in creating fake client")
+		}
+		r := &ClusterGroupUpgradeReconciler{Client: fakeClient, Log: logr.Discard(), Scheme: testscheme}
+		cgu.Spec.BlockingCRs = test.blockingCRs
+		for _, tcgu := range test.CGUs {
+			err := fakeClient.Create(context.TODO(), &tcgu)
+			if err != nil {
+				panic(err)
+			}
+		}
+		nonCompleted, _, err := r.blockingCRsNotCompleted(context.TODO(), cgu)
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, nonCompleted, test.expected)
+	}
+}
+
+func TestFilterNonCompletedClusters(t *testing.T) {
+	tests := []struct {
+		name        string
+		CGUs        []v1alpha1.ClusterGroupUpgrade
+		blockingCRs []v1alpha1.BlockingCR
+		expected    []string
+	}{
+		{
+			name: "one completed",
+			blockingCRs: []v1alpha1.BlockingCR{
+				{Name: "name1", Namespace: "namespace"},
+				{Name: "name2", Namespace: "namespace"},
+			},
+			expected: []string{"cluster1"},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name1",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Clusters: []v1alpha1.ClusterState{
+							{
+								Name:  "cluster1",
+								State: utils.ClusterRemediationComplete,
+							},
+							{
+								Name:  "cluster2",
+								State: utils.ClusterRemediationComplete,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name2",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Clusters: []v1alpha1.ClusterState{
+							{
+								Name:  "cluster1",
+								State: utils.ClusterRemediationComplete,
+							},
+							{
+								Name:  "cluster2",
+								State: utils.ClusterRemediationTimedout,
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "all completed",
+			blockingCRs: []v1alpha1.BlockingCR{
+				{Name: "name1", Namespace: "namespace"},
+				{Name: "name2", Namespace: "namespace"},
+			},
+			expected: []string{"cluster1", "cluster2"},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name1",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Clusters: []v1alpha1.ClusterState{
+							{
+								Name:  "cluster1",
+								State: utils.ClusterRemediationComplete,
+							},
+							{
+								Name:  "cluster2",
+								State: utils.ClusterRemediationComplete,
+							},
+						},
+					},
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name2",
+						Namespace: "namespace",
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Clusters: []v1alpha1.ClusterState{
+							{
+								Name:  "cluster1",
+								State: utils.ClusterRemediationComplete,
+							},
+							{
+								Name:  "cluster2",
+								State: utils.ClusterRemediationComplete,
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	cgu := &v1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+			Annotations: map[string]string{
+				utils.BlockingCGUCompletionModeAnn: utils.PartialBlockingCGUCompletion,
+			},
+		},
+		Spec: v1alpha1.ClusterGroupUpgradeSpec{},
+		Status: v1alpha1.ClusterGroupUpgradeStatus{
+			Clusters: []v1alpha1.ClusterState{
+				{
+					Name:  "spoke1",
+					State: "complete",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		fakeClient, err := getFakeClientFromObjects([]client.Object{}...)
+		if err != nil {
+			t.Errorf("error in creating fake client")
+		}
+		r := &ClusterGroupUpgradeReconciler{Client: fakeClient, Log: logr.Discard(), Scheme: testscheme}
+		cgu.Spec.BlockingCRs = test.blockingCRs
+		for _, tcgu := range test.CGUs {
+			err := fakeClient.Create(context.TODO(), &tcgu)
+			if err != nil {
+				panic(err)
+			}
+		}
+		got, err := r.filterNonCompletedClustersInBlockingCRs(context.TODO(), cgu, []string{"cluster1", "cluster2"})
+		assert.NoError(t, err)
+		assert.ElementsMatch(t, test.expected, got)
+	}
+}
 
 func TestClusterGroupUpgradeReconciler_getClusterComplianceWithPolicy(t *testing.T) {
 	type fields struct {
