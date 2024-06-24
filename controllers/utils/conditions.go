@@ -49,6 +49,7 @@ var ConditionReasons = struct {
 	InvalidPlatformImage          ConditionReason
 	MissingBlockingCR             ConditionReason
 	NotAllManagedPoliciesExist    ConditionReason
+	NotAllManifestTemplatesExist  ConditionReason
 	AmbiguousManagedPoliciesNames ConditionReason
 	NotEnabled                    ConditionReason
 	NotStarted                    ConditionReason
@@ -71,6 +72,7 @@ var ConditionReasons = struct {
 	InvalidPlatformImage:          "InvalidPlatformImage",
 	MissingBlockingCR:             "MissingBlockingCR",
 	NotAllManagedPoliciesExist:    "NotAllManagedPoliciesExist",
+	NotAllManifestTemplatesExist:  "NotAllManifestTemplatesExist",
 	AmbiguousManagedPoliciesNames: "AmbiguousManagedPoliciesNames",
 	NotEnabled:                    "NotEnabled",
 	NotStarted:                    "NotStarted",

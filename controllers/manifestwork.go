@@ -7,13 +7,28 @@ import (
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *ClusterGroupUpgradeReconciler) validateManifestWorkTemplates(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (bool, []mwv1.Manifest, error) {
-	return true, nil, nil
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (manifests []mwv1.Manifest, missingTemplates []string, err error) {
+	for _, name := range clusterGroupUpgrade.Spec.ManifestWorkTemplates {
+		var ml []mwv1.Manifest
+		ml, err = utils.GetManifestsFromTemplate(ctx, r.Client, types.NamespacedName{Name: name, Namespace: clusterGroupUpgrade.Namespace})
+		if err != nil {
+			if errors.IsNotFound(err) {
+				err = nil
+				missingTemplates = append(missingTemplates, name)
+			} else {
+				return
+			}
+		} else {
+			manifests = append(manifests, ml...)
+		}
+	}
+	return
 }
 
 func (r *ClusterGroupUpgradeReconciler) getNextManifestWorkForCluster(
