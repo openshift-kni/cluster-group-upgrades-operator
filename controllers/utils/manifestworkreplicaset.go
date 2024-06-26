@@ -30,7 +30,7 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.Imag
 			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
 		},
 		{
-			Name: "idleConditionMessage",
+			Name: "idleConditionMessages",
 			Path: `.status.conditions[?(@.type=="Idle")].message`,
 		},
 	}
@@ -51,7 +51,7 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
 		},
 		{
-			Name: "idleConditionMessage",
+			Name: "idleConditionMessages",
 			Path: `.status.conditions[?(@.type=="Idle")].message`,
 		},
 	}
@@ -302,4 +302,62 @@ func GenerateClusterGroupUpgradeForIBGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrad
 			},
 		},
 	}
+}
+
+// GetActionFromMWRSName returns the ImageBasedUpgradeAction corresponding to the mwrs template name
+func GetActionFromMWRSName(mwrsName string) string {
+	splitted := strings.Split(mwrsName, "-")
+	last := splitted[len(splitted)-1]
+	actions := []string{
+		ibguv1alpha1.Abort, ibguv1alpha1.Finalize, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.Prep,
+	}
+	for _, action := range actions {
+		if strings.EqualFold(last, action) {
+			return action
+		}
+	}
+	return ""
+}
+
+// GetAllActionMessagesFromCGU returns the list of all actions based on CGU's ManifestWorkTemplates
+func GetAllActionMessagesFromCGU(cgu *ranv1alpha1.ClusterGroupUpgrade) []ibguv1alpha1.ActionMessage {
+	return getActionMessagesFromCGU(cgu, -1)
+}
+
+// GetFirstNActionMessagesFromCGU returns the list of n first actions based on CGU's ManifestWorkTemplates
+func GetFirstNActionMessagesFromCGU(cgu *ranv1alpha1.ClusterGroupUpgrade, count int) []ibguv1alpha1.ActionMessage {
+	return getActionMessagesFromCGU(cgu, count)
+}
+
+func getActionMessagesFromCGU(cgu *ranv1alpha1.ClusterGroupUpgrade, limit int) []ibguv1alpha1.ActionMessage {
+	actions := make([]ibguv1alpha1.ActionMessage, 0)
+	for i, manifest := range cgu.Spec.ManifestWorkTemplates {
+		if limit >= 0 && i >= limit {
+			break
+		}
+		action := GetActionFromMWRSName(manifest)
+		if action == "" {
+			continue
+		}
+		actions = append(actions, ibguv1alpha1.ActionMessage{Action: action})
+	}
+	return actions
+}
+
+// GetConditionMessageFromManifestWorkStatus return the final message of a manifest work status for ibu
+func GetConditionMessageFromManifestWorkStatus(status *ranv1alpha1.ManifestWorkStatus) string {
+	if status == nil {
+		return ""
+	}
+	if len(status.Status.Manifests) == 0 {
+		return ""
+	}
+	for _, value := range status.Status.Manifests[0].StatusFeedbacks.Values {
+		if strings.Contains(value.Name, "CompletedConditionMessages") {
+			if value.Value.String != nil {
+				return *value.Value.String
+			}
+		}
+	}
+	return ""
 }

@@ -56,9 +56,9 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 				},
 			},
 			Actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				ibguv1alpha1.Prep,
-				ibguv1alpha1.Upgrade,
-				ibguv1alpha1.Finalize,
+				{Action: ibguv1alpha1.Prep},
+				{Action: ibguv1alpha1.Upgrade},
+				{Action: ibguv1alpha1.Finalize},
 			},
 			IBUSpec: lcav1.ImageBasedUpgradeSpec{
 				SeedImageRef: lcav1.SeedImageRef{
@@ -277,7 +277,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
                   "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
                 },
                 {
-                  "name": "idleConditionMessage",
+                  "name": "idleConditionMessages",
                   "path": ".status.conditions[?(@.type==\"Idle\")].message"
                 }
               ],
@@ -386,7 +386,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
                   "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
                 },
                 {
-                  "name": "idleConditionMessage",
+                  "name": "idleConditionMessages",
                   "path": ".status.conditions[?(@.type==\"Idle\")].message"
                 }
               ],
@@ -668,4 +668,35 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
 		panic(err)
 	}
 	assert.JSONEq(t, expectedRaw, json)
+}
+
+func TestGetActionsFromCGU(t *testing.T) {
+	tests := []struct {
+		name      string
+		templates []string
+		expected  []ibguv1alpha1.ActionMessage
+	}{
+		{
+			name: "hi",
+			templates: []string{
+				"name-ibu-permissions", "name-prep", "name-upgrade", "name-finalize", "name-abort", "name-gd-rollback",
+			},
+			expected: []ibguv1alpha1.ActionMessage{
+				{Action: ibguv1alpha1.Prep},
+				{Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+				{Action: ibguv1alpha1.Abort}, {Action: ibguv1alpha1.Rollback},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cgu := &v1alpha1.ClusterGroupUpgrade{
+				Spec: v1alpha1.ClusterGroupUpgradeSpec{
+					ManifestWorkTemplates: test.templates,
+				},
+			}
+			got := GetAllActionMessagesFromCGU(cgu)
+			assert.Equal(t, test.expected, got)
+		})
+	}
 }

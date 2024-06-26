@@ -124,34 +124,34 @@ func SortCGUListByIBUAction(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
 		jSplitted := strings.Split(cguList.Items[j].GetName(), "-")
 		iLast := iSplitted[len(iSplitted)-1]
 		jLast := jSplitted[len(jSplitted)-1]
-		if strings.EqualFold(iLast, ibguv1alpha1.Prep.Action) {
+		if strings.EqualFold(iLast, ibguv1alpha1.Prep) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Prep.Action) {
+		if strings.EqualFold(jLast, ibguv1alpha1.Prep) {
 			return false
 		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Upgrade.Action) {
+		if strings.EqualFold(iLast, ibguv1alpha1.Upgrade) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Upgrade.Action) {
+		if strings.EqualFold(jLast, ibguv1alpha1.Upgrade) {
 			return false
 		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Rollback.Action) {
+		if strings.EqualFold(iLast, ibguv1alpha1.Rollback) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Rollback.Action) {
+		if strings.EqualFold(jLast, ibguv1alpha1.Rollback) {
 			return false
 		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Finalize.Action) {
+		if strings.EqualFold(iLast, ibguv1alpha1.Finalize) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Finalize.Action) {
+		if strings.EqualFold(jLast, ibguv1alpha1.Finalize) {
 			return false
 		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Abort.Action) {
+		if strings.EqualFold(iLast, ibguv1alpha1.Abort) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Abort.Action) {
+		if strings.EqualFold(jLast, ibguv1alpha1.Abort) {
 			return false
 		}
 		return true

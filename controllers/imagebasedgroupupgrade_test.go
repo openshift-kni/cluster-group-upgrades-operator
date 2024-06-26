@@ -15,6 +15,7 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -27,8 +28,30 @@ func init() {
 }
 
 func TestSyncStatusWithCGUs(t *testing.T) {
-	namePrep := "name-prep"
-	nameFinalize := "name-finalize"
+	errorMsg := "error message"
+	cmw := &v1alpha1.ManifestWorkStatus{
+		Name: "ibu-finalize",
+		Status: mwv1.ManifestResourceStatus{
+			Manifests: []mwv1.ManifestCondition{
+				{
+					StatusFeedbacks: mwv1.StatusFeedbackResult{
+						Values: []mwv1.FeedbackValue{
+							{
+								Name: "idleCompletedConditionMessages",
+								Value: mwv1.FieldValue{
+									Type:   mwv1.String,
+									String: &errorMsg,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	two := 2
+	one := 1
 	tests := []struct {
 		name                   string
 		CGUs                   []v1alpha1.ClusterGroupUpgrade
@@ -74,8 +97,9 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Clusters: []v1alpha1.ClusterState{
 							{
-								Name:  "spoke1",
-								State: "timedout",
+								Name:                "spoke1",
+								State:               "timedout",
+								CurrentManifestWork: cmw,
 							},
 						},
 					},
@@ -83,8 +107,13 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			},
 			expectedClustersStatus: []ibguv1alpha1.ClusterState{
 				{
-					Name:  "spoke1",
-					State: "timedout",
+					Name: "spoke1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
+					},
+					FailedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Finalize, Message: "error message"},
+					},
 				},
 			},
 		},
@@ -134,13 +163,15 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			},
 			expectedClustersStatus: []ibguv1alpha1.ClusterState{
 				{
-					Name:  "spoke1",
-					State: "complete",
+					Name: "spoke1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+					},
 				},
 			},
 		},
 		{
-			name: "two CGUs, one in progress",
+			name: "two CGUs one in progress",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
@@ -187,9 +218,44 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			},
 			expectedClustersStatus: []ibguv1alpha1.ClusterState{
 				{
-					Name:          "spoke1",
-					State:         "InProgress",
-					CurrentAction: &nameFinalize,
+					Name: "spoke1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
+					},
+					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+				},
+			},
+		},
+		{
+			name: "one cgu in progress",
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name-prep",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{"ibu-permissions", "name-prep"},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Status: v1alpha1.UpgradeStatus{
+							CurrentBatchRemediationProgress: map[string]*v1alpha1.ClusterRemediationProgress{
+								"spoke6": {
+									ManifestWorkIndex: &one,
+									State:             "InProgress",
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedClustersStatus: []ibguv1alpha1.ClusterState{
+				{
+					Name:          "spoke6",
+					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Prep},
 				},
 			},
 		},
@@ -221,7 +287,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 						Status: v1alpha1.UpgradeStatus{
 							CurrentBatchRemediationProgress: map[string]*v1alpha1.ClusterRemediationProgress{
 								"spoke6": {
-									ManifestWorkIndex: new(int),
+									ManifestWorkIndex: &two,
 									State:             "InProgress",
 								},
 							},
@@ -231,17 +297,23 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			},
 			expectedClustersStatus: []ibguv1alpha1.ClusterState{
 				{
-					Name:  "spoke1",
-					State: "complete",
+					Name: "spoke1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+					},
 				},
 				{
-					Name:  "spoke4",
-					State: "complete",
+					Name: "spoke4",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+					},
 				},
 				{
 					Name:          "spoke6",
-					State:         "InProgress",
-					CurrentAction: &namePrep,
+					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
+					},
 				},
 			},
 		},
@@ -275,21 +347,23 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		objs := []client.Object{}
-		fakeClient, err := getFakeClientFromObjects(objs...)
-		for _, cgu := range test.CGUs {
-			err := fakeClient.Create(context.TODO(), &cgu)
-			if err != nil {
-				panic(err)
+		t.Run(test.name, func(t *testing.T) {
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			for _, cgu := range test.CGUs {
+				err := fakeClient.Create(context.TODO(), &cgu)
+				if err != nil {
+					panic(err)
+				}
 			}
-		}
-		if err != nil {
-			t.Errorf("error in creating fake client")
-		}
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-		err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
-		assert.NoError(t, err)
-		assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
+			assert.NoError(t, err)
+			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
+		})
 	}
 }
 
@@ -304,9 +378,9 @@ func TestEnsureManifests(t *testing.T) {
 		{
 			name: "without append",
 			actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				ibguv1alpha1.Prep,
-				ibguv1alpha1.Upgrade,
-				ibguv1alpha1.Finalize,
+				{Action: ibguv1alpha1.Prep},
+				{Action: ibguv1alpha1.Upgrade},
+				{Action: ibguv1alpha1.Finalize},
 			},
 			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
 			expectedCGUs: []v1alpha1.ClusterGroupUpgrade{
@@ -320,9 +394,9 @@ func TestEnsureManifests(t *testing.T) {
 		{
 			name: "append",
 			actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				ibguv1alpha1.Prep,
-				ibguv1alpha1.Upgrade,
-				ibguv1alpha1.Finalize,
+				{Action: ibguv1alpha1.Prep},
+				{Action: ibguv1alpha1.Upgrade},
+				{Action: ibguv1alpha1.Finalize},
 			},
 			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
@@ -420,6 +494,7 @@ func TestEnsureManifests(t *testing.T) {
 		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
 		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
 		list := &mwv1alpha1.ManifestWorkReplicaSetList{}
 		err = reconciler.List(context.TODO(), list)
 		assert.NoError(t, err)
