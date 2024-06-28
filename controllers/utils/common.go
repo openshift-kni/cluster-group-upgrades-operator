@@ -104,6 +104,18 @@ func Difference(a, b []string) []string {
 	return diff
 }
 
+// Contains check if str is in slice
+// can be replaced by slices.Contains when golang is updated to 1.21
+func Contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
 // SortCGUListByIBUAction orders the CGUs by the last action in the name of cgu
 // with following order prep-upgrade-rollback-finalize-abort
 func SortCGUListByIBUAction(cguList *ranv1alpha1.ClusterGroupUpgradeList) {

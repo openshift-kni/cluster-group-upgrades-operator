@@ -401,9 +401,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			)
 			nextReconcile = requeueWithMediumInterval()
 		} else {
-			// There are no blocking CRs, continue with the upgrade process.
-			// create backup
-
 			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
 			if err != nil {
 				r.Log.Error(err, "reconcileBackup error")
@@ -450,6 +447,33 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				nextReconcile = requeueImmediately()
 				r.updateStatus(ctx, clusterGroupUpgrade)
 				return
+			}
+
+			if clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUCompletionModeAnn] == utils.PartialBlockingCGUCompletion {
+				clusters, err = r.filterNonCompletedClustersInBlockingCRs(ctx, clusterGroupUpgrade, clusters)
+				if err != nil {
+					r.Log.Error(err, "filterNonCompletedClustersInBlockingCRs")
+					return
+				}
+				if len(clusters) == 0 {
+					utils.SetStatusCondition(
+						&clusterGroupUpgrade.Status.Conditions,
+						utils.ConditionTypes.Progressing,
+						utils.ConditionReasons.Completed,
+						metav1.ConditionFalse,
+						"No clusters available for remediation after filtering out non-completed clusters from blocking CGUs",
+					)
+					utils.SetStatusCondition(
+						&clusterGroupUpgrade.Status.Conditions,
+						utils.ConditionTypes.Succeeded,
+						utils.ConditionReasons.Failed,
+						metav1.ConditionFalse,
+						"No clusters available for remediation after filtering out non-completed clusters from blocking CGUs",
+					)
+					nextReconcile = requeueWithShortInterval()
+					r.updateStatus(ctx, clusterGroupUpgrade)
+					return
+				}
 			}
 
 			// Rebuild remediation plan since we are about to start the upgrade and want to make sure the non-successful clusters were filtered out
@@ -1104,6 +1128,29 @@ func (r *ClusterGroupUpgradeReconciler) updateStatus(ctx context.Context, cluste
 	return nil
 }
 
+func (r *ClusterGroupUpgradeReconciler) filterNonCompletedClustersInBlockingCRs(ctx context.Context, cgu *ranv1alpha1.ClusterGroupUpgrade, clusters []string) ([]string, error) {
+	completedCGUs := make(map[string]int)
+	for _, blockingCR := range cgu.Spec.BlockingCRs {
+		blockingCGU := &ranv1alpha1.ClusterGroupUpgrade{}
+		err := r.Get(ctx, types.NamespacedName{Name: blockingCR.Name, Namespace: blockingCR.Namespace}, blockingCGU)
+		if err != nil {
+			return []string{}, fmt.Errorf("failed to get blocking CR: %w", err)
+		}
+		for _, clusterState := range blockingCGU.Status.Clusters {
+			if clusterState.State == utils.ClusterRemediationComplete {
+				completedCGUs[clusterState.Name]++
+			}
+		}
+	}
+	filteredClusters := make([]string, 0)
+	for clusterName, numberCompleted := range completedCGUs {
+		if numberCompleted == len(cgu.Spec.BlockingCRs) && utils.Contains(clusters, clusterName) {
+			filteredClusters = append(filteredClusters, clusterName)
+		}
+	}
+	return filteredClusters, nil
+}
+
 func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, []string, error) {
 
 	var blockingCRsNotCompleted []string
@@ -1131,13 +1178,16 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 			continue
 		}
 
-		// If we find a blocking CR that does not contain a true succeeded condition then we add it to the list.
-		if !meta.IsStatusConditionTrue(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)) {
+		if clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUCompletionModeAnn] == utils.PartialBlockingCGUCompletion {
+			if !utils.IsStatusConditionPresent(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)) {
+				blockingCRsNotCompleted = append(blockingCRsNotCompleted, cgu.Name)
+			}
+		} else if !meta.IsStatusConditionTrue(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)) {
 			blockingCRsNotCompleted = append(blockingCRsNotCompleted, cgu.Name)
 		}
 	}
 
-	r.Log.Info("[blockingCRsNotCompleted]", "blockingCRs", blockingCRsNotCompleted)
+	r.Log.Info("[blockingCRsNotCompleted]", "blockingCRsNotCompleted", blockingCRsNotCompleted)
 	return blockingCRsNotCompleted, blockingCRsMissing, nil
 }
 
