@@ -1,7 +1,7 @@
 package v1alpha1
 
 import (
-	lcav1alpha1 "github.com/openshift-kni/lifecycle-agent/api/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -44,7 +44,7 @@ type RolloutStrategy struct {
 type ImageBasedGroupUpgradeSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="IBU Spec"
 	//+kubebuilder:validation:Required
-	IBUSpec lcav1alpha1.ImageBasedUpgradeSpec `json:"ibuSpec"`
+	IBUSpec lcav1.ImageBasedUpgradeSpec `json:"ibuSpec"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Clusters",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	Clusters []string `json:"clusters,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}

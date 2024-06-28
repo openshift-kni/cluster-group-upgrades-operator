@@ -11,7 +11,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
-	lcav1alpha1 "github.com/openshift-kni/lifecycle-agent/api/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
@@ -264,8 +264,8 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					},
 				},
 			},
-			IBUSpec: lcav1alpha1.ImageBasedUpgradeSpec{
-				SeedImageRef: lcav1alpha1.SeedImageRef{
+			IBUSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{
 					Version: "version",
 					Image:   "image",
 				},
@@ -394,8 +394,8 @@ func TestEnsureManifests(t *testing.T) {
 					},
 				},
 				Actions: test.actions,
-				IBUSpec: lcav1alpha1.ImageBasedUpgradeSpec{
-					SeedImageRef: lcav1alpha1.SeedImageRef{
+				IBUSpec: lcav1.ImageBasedUpgradeSpec{
+					SeedImageRef: lcav1.SeedImageRef{
 						Version: "version",
 						Image:   "image",
 					},
