@@ -41,7 +41,7 @@ import (
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
-	lcav1alpha1 "github.com/openshift-kni/lifecycle-agent/api/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -145,7 +145,7 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
 	manifestWorkReplicaSetsNames := []string{}
-	ibu := &lcav1alpha1.ImageBasedUpgrade{
+	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},

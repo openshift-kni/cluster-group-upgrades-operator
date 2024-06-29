@@ -5,7 +5,7 @@ import (
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
-	lcav1alpha1 "github.com/openshift-kni/lifecycle-agent/api/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -13,12 +13,12 @@ import (
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
-var ibu = &lcav1alpha1.ImageBasedUpgrade{
+var ibu = &lcav1.ImageBasedUpgrade{
 	ObjectMeta: v1.ObjectMeta{
 		Name: "upgrade",
 	},
-	Spec: lcav1alpha1.ImageBasedUpgradeSpec{
-		SeedImageRef: lcav1alpha1.SeedImageRef{
+	Spec: lcav1.ImageBasedUpgradeSpec{
+		SeedImageRef: lcav1.SeedImageRef{
 			Image:   "quay.io/image/version:tag",
 			Version: "14.4.0-rc.2",
 		},
@@ -60,8 +60,8 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 				ibguv1alpha1.Upgrade,
 				ibguv1alpha1.Finalize,
 			},
-			IBUSpec: lcav1alpha1.ImageBasedUpgradeSpec{
-				SeedImageRef: lcav1alpha1.SeedImageRef{
+			IBUSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{
 					Version: "version",
 					Image:   "image",
 				},
@@ -137,7 +137,7 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 func TestUpgradeManifestworkReplicaset(t *testing.T) {
 	mwrs, _ := GenerateUpgradeManifestWorkReplicaset("ibu-upgrade", "namespace", ibu)
 	expectedRaw := `
-    {
+{
   "apiVersion": "work.open-cluster-management.io/v1alpha1",
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
@@ -178,21 +178,20 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
             "group": "lca.openshift.io",
             "name": "upgrade",
             "namespace": "",
-            "resource": ""
+            "resource": "imagebasedupgrades"
           }
         }
       ],
       "workload": {
         "manifests": [
           {
-            "apiVersion": "lca.openshift.io/v1alpha1",
+            "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
             "metadata": {
               "creationTimestamp": null,
               "name": "upgrade"
             },
             "spec": {
-              "autoRollbackOnFailure": {},
               "seedImageRef": {
                 "image": "quay.io/image/version:tag",
                 "version": "14.4.0-rc.2"
@@ -201,6 +200,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
             },
             "status": {
               "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
               "startedAt": null
             }
           }
@@ -234,12 +234,12 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
 }
 
 func TestAbortManifestworkReplicaset(t *testing.T) {
-	ibu := &lcav1alpha1.ImageBasedUpgrade{
+	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},
-		Spec: lcav1alpha1.ImageBasedUpgradeSpec{
-			SeedImageRef: lcav1alpha1.SeedImageRef{
+		Spec: lcav1.ImageBasedUpgradeSpec{
+			SeedImageRef: lcav1.SeedImageRef{
 				Image:   "quay.io/image/version:tag",
 				Version: "14.4.0-rc.2",
 			},
@@ -288,21 +288,20 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
             "group": "lca.openshift.io",
             "name": "upgrade",
             "namespace": "",
-            "resource": ""
+            "resource": "imagebasedupgrades"
           }
         }
       ],
       "workload": {
         "manifests": [
           {
-            "apiVersion": "lca.openshift.io/v1alpha1",
+            "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
             "metadata": {
               "creationTimestamp": null,
               "name": "upgrade"
             },
             "spec": {
-              "autoRollbackOnFailure": {},
               "seedImageRef": {
                 "image": "quay.io/image/version:tag",
                 "version": "14.4.0-rc.2"
@@ -311,6 +310,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
             },
             "status": {
               "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
               "startedAt": null
             }
           }
@@ -343,12 +343,12 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
 	assert.JSONEq(t, expectedRaw, json)
 }
 func TestFinalizeManifestworkReplicaset(t *testing.T) {
-	ibu := &lcav1alpha1.ImageBasedUpgrade{
+	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},
-		Spec: lcav1alpha1.ImageBasedUpgradeSpec{
-			SeedImageRef: lcav1alpha1.SeedImageRef{
+		Spec: lcav1.ImageBasedUpgradeSpec{
+			SeedImageRef: lcav1.SeedImageRef{
 				Image:   "quay.io/image/version:tag",
 				Version: "14.4.0-rc.2",
 			},
@@ -397,21 +397,20 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
             "group": "lca.openshift.io",
             "name": "upgrade",
             "namespace": "",
-            "resource": ""
+            "resource": "imagebasedupgrades"
           }
         }
       ],
       "workload": {
         "manifests": [
           {
-            "apiVersion": "lca.openshift.io/v1alpha1",
+            "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
             "metadata": {
               "creationTimestamp": null,
               "name": "upgrade"
             },
             "spec": {
-              "autoRollbackOnFailure": {},
               "seedImageRef": {
                 "image": "quay.io/image/version:tag",
                 "version": "14.4.0-rc.2"
@@ -420,6 +419,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
             },
             "status": {
               "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
               "startedAt": null
             }
           }
@@ -453,12 +453,12 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
 }
 
 func TestRollbackManifestworkReplicaset(t *testing.T) {
-	ibu := &lcav1alpha1.ImageBasedUpgrade{
+	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},
-		Spec: lcav1alpha1.ImageBasedUpgradeSpec{
-			SeedImageRef: lcav1alpha1.SeedImageRef{
+		Spec: lcav1.ImageBasedUpgradeSpec{
+			SeedImageRef: lcav1.SeedImageRef{
 				Image:   "quay.io/image/version:tag",
 				Version: "14.4.0-rc.2",
 			},
@@ -507,21 +507,20 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
             "group": "lca.openshift.io",
             "name": "upgrade",
             "namespace": "",
-            "resource": ""
+            "resource": "imagebasedupgrades"
           }
         }
       ],
       "workload": {
         "manifests": [
           {
-            "apiVersion": "lca.openshift.io/v1alpha1",
+            "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
             "metadata": {
               "creationTimestamp": null,
               "name": "upgrade"
             },
             "spec": {
-              "autoRollbackOnFailure": {},
               "seedImageRef": {
                 "image": "quay.io/image/version:tag",
                 "version": "14.4.0-rc.2"
@@ -530,6 +529,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
             },
             "status": {
               "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
               "startedAt": null
             }
           }
@@ -562,12 +562,12 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
 	assert.JSONEq(t, expectedRaw, json)
 }
 func TestPrepManifestworkReplicaset(t *testing.T) {
-	ibu := &lcav1alpha1.ImageBasedUpgrade{
+	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},
-		Spec: lcav1alpha1.ImageBasedUpgradeSpec{
-			SeedImageRef: lcav1alpha1.SeedImageRef{
+		Spec: lcav1.ImageBasedUpgradeSpec{
+			SeedImageRef: lcav1.SeedImageRef{
 				Image:   "quay.io/image/version:tag",
 				Version: "14.4.0-rc.2",
 			},
@@ -616,21 +616,20 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
             "group": "lca.openshift.io",
             "name": "upgrade",
             "namespace": "",
-            "resource": ""
+            "resource": "imagebasedupgrades"
           }
         }
       ],
       "workload": {
         "manifests": [
           {
-            "apiVersion": "lca.openshift.io/v1alpha1",
+            "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
             "metadata": {
               "creationTimestamp": null,
               "name": "upgrade"
             },
             "spec": {
-              "autoRollbackOnFailure": {},
               "seedImageRef": {
                 "image": "quay.io/image/version:tag",
                 "version": "14.4.0-rc.2"
@@ -639,6 +638,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
             },
             "status": {
               "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
               "startedAt": null
             }
           }
