@@ -7,7 +7,7 @@ import (
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
-	lcav1alpha1 "github.com/openshift-kni/lifecycle-agent/api/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -17,8 +17,8 @@ import (
 )
 
 // GenerateAbortManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for abort stage of an ImageBasedUpgrade
-func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	ibu.Spec.Stage = lcav1alpha1.Stages.Idle
+func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Idle
 	jsonPaths := []mwv1.JsonPath{
 		{
 			Name: "isIdle",
@@ -38,8 +38,8 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha
 }
 
 // GenerateFinalizeManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for finalize stage of an ImageBasedUpgrade
-func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	ibu.Spec.Stage = lcav1alpha1.Stages.Idle
+func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Idle
 	jsonPaths := []mwv1.JsonPath{
 		{
 			Name: "isIdle",
@@ -59,8 +59,8 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1al
 }
 
 // GenerateUpgradeManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for upgrade stage of an ImageBasedUpgrade
-func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	ibu.Spec.Stage = lcav1alpha1.Stages.Upgrade
+func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Upgrade
 	jsonPaths := []mwv1.JsonPath{
 		{
 			Name: "isUpgradeCompleted",
@@ -80,8 +80,8 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1alp
 }
 
 // GenerateRollbackManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for rollback stage of an ImageBasedUpgrade
-func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	ibu.Spec.Stage = lcav1alpha1.Stages.Rollback
+func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Rollback
 	jsonPaths := []mwv1.JsonPath{
 		{
 			Name: "isRollbackCompleted",
@@ -101,8 +101,8 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1al
 }
 
 // GeneratePrepManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for Prep stage of an ImageBasedUpgrade
-func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	ibu.Spec.Stage = lcav1alpha1.Stages.Prep
+func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Prep
 	jsonPaths := []mwv1.JsonPath{
 		{
 			Name: "isPrepCompleted",
@@ -121,7 +121,7 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1alpha1
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
-func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, jsonPaths []mwv1.JsonPath, ibu *lcav1alpha1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, jsonPaths []mwv1.JsonPath, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
 	ibuRaw, err := ibuToBytes(ibu)
 	if err != nil {
 		return nil, err
@@ -131,7 +131,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 			ResourceIdentifier: mwv1.ResourceIdentifier{
 				Name:     ibu.GetName(),
 				Group:    ibu.GroupVersionKind().Group,
-				Resource: ibu.GetResourceVersion(),
+				Resource: "imagebasedupgrades",
 			},
 			FeedbackRules: []mwv1.FeedbackRule{
 				{
@@ -167,9 +167,9 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 	return mwrs, nil
 }
 
-func ibuToBytes(ibu *lcav1alpha1.ImageBasedUpgrade) ([]byte, error) {
+func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	scheme := runtime.NewScheme()
-	lcav1alpha1.AddToScheme(scheme)
+	lcav1.AddToScheme(scheme)
 	s := serializer.NewSerializerWithOptions(serializer.DefaultMetaFactory, scheme, scheme, serializer.SerializerOptions{})
 	gvks, isUnversioned, err := scheme.ObjectKinds(ibu)
 	if err != nil {
