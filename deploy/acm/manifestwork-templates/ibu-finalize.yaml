@@ -38,5 +38,5 @@ spec:
                 path: '.status.conditions[?(@.type=="Idle")].status'
               - name: idleConditionReason
                 path: '.status.conditions[?(@.type=="Idle")].reason'
-              - name: idleConditionMessage
+              - name: idleConditionMessages
                 path: '.status.conditions[?(@.type=="Idle")].message'
