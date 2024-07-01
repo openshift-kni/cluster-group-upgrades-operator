@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -311,7 +312,7 @@ func TestEnsureManifests(t *testing.T) {
 			expectedCGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name: "name-prep-upgrade-finalize",
+						Name: "name-ibu-permissions-prep-upgrade-finalize",
 					},
 				},
 			},
@@ -348,13 +349,14 @@ func TestEnsureManifests(t *testing.T) {
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
 						ManifestWorkTemplates: []string{
+							"name-ibu-permissions",
 							"name-prep",
 						},
 					},
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-upgrade-finalize",
+						Name:      "name-ibu-permissions-upgrade-finalize",
 						Namespace: "namespace",
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
@@ -374,6 +376,7 @@ func TestEnsureManifests(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
+		fmt.Println(test.name)
 		ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
 			ObjectMeta: v1.ObjectMeta{
 				Name:      "name",
@@ -431,8 +434,8 @@ func TestEnsureManifests(t *testing.T) {
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		for _, expected := range test.expectedCGUs {
 			err = reconciler.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: "namespace"}, cgu)
-			assert.Equal(t, expected.Spec.BlockingCRs, cgu.Spec.BlockingCRs)
 			assert.NoError(t, err)
+			assert.Equal(t, expected.Spec.BlockingCRs, cgu.Spec.BlockingCRs)
 		}
 	}
 }

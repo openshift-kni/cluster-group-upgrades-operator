@@ -145,6 +145,15 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
 	manifestWorkReplicaSetsNames := []string{}
+
+	permissionsName := "ibu-permissions"
+	mwrs, err := utils.GeneratePermissionsManifestWorkReplicaset(permissionsName, ibgu.GetNamespace())
+	if err != nil {
+		return fmt.Errorf("Error generating manifestworkreplicaset: %w", err)
+	}
+	manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
+	manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, permissionsName)
+
 	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
@@ -183,6 +192,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		err := r.Get(ctx, types.NamespacedName{Name: mwrs.Name, Namespace: mwrs.Namespace}, foundMWRS)
 		if err != nil && errors.IsNotFound(err) {
 			r.Log.Info("Creating ManifestWorkReplicaSet", "ManifestWorkReplicaSet", mwrs.Name)
+			ctrl.SetControllerReference(ibgu, mwrs, r.Scheme)
 			err = r.Create(ctx, mwrs)
 			if err != nil {
 				return fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
@@ -195,7 +205,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		}
 	}
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err := r.List(ctx, cguList, &client.ListOptions{
+	err = r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
 	})
