@@ -37,7 +37,10 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 		policyName := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[index].Name
 		policyNamespace := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[index].Namespace
 
-		placementRuleName := utils.GetResourceName(clusterGroupUpgrade, policyName+"-placement")
+		placementRuleName := utils.GetResourceName(
+			clusterGroupUpgrade, fmt.Sprintf("%s-placement", policyName),
+		)
+
 		if prSafeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[utils.PrefixNameWithNamespace(policyNamespace, placementRuleName)]; ok {
 			// The PR should be in the same namespace as where the policy is created
 			err := r.updatePlacementRuleWithClusters(ctx, clusterNames, prSafeName, policyNamespace)
@@ -231,7 +234,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 
 	for _, managedPolicyName := range clusterGroupUpgrade.Spec.ManagedPolicies {
 		if policyEnforce[managedPolicyName] {
-			r.Log.Info("Ignoring policy " + managedPolicyName + " with remediationAction enforce")
+			r.Log.Info("Ignoring policy with remediationAction enforce", "policy", managedPolicyName)
 			continue
 		}
 
