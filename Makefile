@@ -139,11 +139,6 @@ vet: ## Run go vet against code.
 	@echo "Running go vet"
 	go vet ./...
 
-.PHONY: lint
-lint: ## Run golint against code.
-	@echo "Running golint"
-	hack/lint.sh
-
 .PHONY: unittests
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
@@ -166,7 +161,7 @@ bashate: ## Run bashate
 	hack/bashate.sh
 
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
@@ -187,7 +182,11 @@ OPERATOR_SDK_VERSION = $(shell $(OPERATOR_SDK) version 2>/dev/null | sed 's/^ope
 OPERATOR_SDK_VERSION_REQ = v1.16.0-ocp
 operator-sdk: ## Download operator-sdk locally if necessary.
 ifneq ($(OPERATOR_SDK_VERSION_REQ),$(OPERATOR_SDK_VERSION))
-	curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.10.17/operator-sdk-v1.16.0-ocp-linux-x86_64.tar.gz | tar -xz -C bin/
+	@{ \
+	set -e ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell arch) && \
+	curl -Lv https://mirror.openshift.com/pub/openshift-v4/$${ARCH}/clients/operator-sdk/4.10.17/operator-sdk-v1.16.0-ocp-$${OS}-$${ARCH}.tar.gz | tar -xz -C bin/ ;\
+	}
 endif
 
 kustomize: ## Download kustomize locally if necessary.
@@ -286,7 +285,7 @@ bundle-check: bundle
 
 .PHONY: bundle-run
 bundle-run: # Install bundle on cluster using operator sdk. Index image is require due to upstream issue: https://github.com/operator-framework/operator-registry/issues/984
-	$(OPERATOR_SDK) --index-image=quay.io/operator-framework/opm:v1.23.0 run bundle $(BUNDLE_IMG)
+	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG)
 
 .PHONY: bundle-upgrade
 bundle-upgrade: # Upgrade bundle on cluster using operator sdk.
@@ -305,7 +304,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.15.1/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.43.1/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
