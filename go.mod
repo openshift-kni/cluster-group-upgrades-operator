@@ -1,6 +1,8 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
-go 1.22
+go 1.22.0
+
+toolchain go1.22.4
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -11,8 +13,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.0
 	github.com/stretchr/testify v1.9.0
-	k8s.io/api v0.29.4
-	k8s.io/apimachinery v0.29.4
+	k8s.io/api v0.30.2
+	k8s.io/apimachinery v0.30.2
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.14.0
@@ -76,6 +78,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
+	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
@@ -87,8 +90,9 @@ require (
 	k8s.io/apiextensions-apiserver v0.29.4 // indirect
 	k8s.io/component-base v0.29.4 // indirect
 	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
+	k8s.io/gengo/v2 v2.0.0-20240228010128-51d4e06bde70 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/kube-openapi v0.0.0-20240221221325-2ac9dc51f3f1 // indirect
+	k8s.io/kube-openapi v0.0.0-20240228011516-70dd3763d340 // indirect
 	k8s.io/utils v0.0.0-20240102154912-e7106e64919e // indirect
 	open-cluster-management.io/multicloud-operators-subscription v0.11.0 // indirect
 	sigs.k8s.io/json v0.0.0-20221116044647-bc3834ca7abd // indirect
