@@ -240,17 +240,44 @@ spec:
                 items:
                   description: ClusterState defines the current state of a cluster
                   properties:
-                    CurrentAction:
-                      type: string
-                    message:
-                      type: string
+                    completedActions:
+                      items:
+                        description: ActionMessage defines the action and its message
+                        properties:
+                          action:
+                            type: string
+                          message:
+                            type: string
+                        required:
+                        - action
+                        type: object
+                      type: array
+                    currentAction:
+                      description: ActionMessage defines the action and its message
+                      properties:
+                        action:
+                          type: string
+                        message:
+                          type: string
+                      required:
+                      - action
+                      type: object
+                    failedActions:
+                      items:
+                        description: ActionMessage defines the action and its message
+                        properties:
+                          action:
+                            type: string
+                          message:
+                            type: string
+                        required:
+                        - action
+                        type: object
+                      type: array
                     name:
-                      type: string
-                    state:
                       type: string
                   required:
                   - name
-                  - state
                   type: object
                 type: array
               completedAt:
