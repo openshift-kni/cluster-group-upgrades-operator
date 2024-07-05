@@ -118,25 +118,42 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 	if len(cguList.Items) == 0 {
 		return nil
 	}
-	m := make(map[string]ibguv1alpha1.ClusterState)
+	m := make(map[string]*ibguv1alpha1.ClusterState)
 	utils.SortCGUListByIBUAction(cguList)
 	for _, cgu := range cguList.Items {
 		for _, cluster := range cgu.Status.Clusters {
-			m[cluster.Name] = ibguv1alpha1.ClusterState{Name: cluster.Name, State: cluster.State}
+			if _, exist := m[cluster.Name]; !exist {
+				m[cluster.Name] = &ibguv1alpha1.ClusterState{Name: cluster.Name}
+			}
+			if cluster.State == utils.ClusterRemediationComplete {
+				m[cluster.Name].CompletedActions = append(m[cluster.Name].CompletedActions, utils.GetAllActionMessagesFromCGU(&cgu)...)
+			} else if cluster.State == utils.ClusterRemediationTimedout {
+				if cluster.CurrentManifestWork != nil {
+					action := utils.GetActionFromMWRSName(cluster.CurrentManifestWork.Name)
+					msg := utils.GetConditionMessageFromManifestWorkStatus(cluster.CurrentManifestWork)
+					m[cluster.Name].FailedActions = append(m[cluster.Name].FailedActions,
+						ibguv1alpha1.ActionMessage{Action: action, Message: msg})
+				}
+			}
 		}
 	}
 	for _, cgu := range cguList.Items {
-		for cluster, progress := range cgu.Status.Status.CurrentBatchRemediationProgress {
-			var currentAction *string
-			if progress.ManifestWorkIndex != nil {
-				currentAction = &cgu.Spec.ManifestWorkTemplates[*progress.ManifestWorkIndex]
+		for clusterName, progress := range cgu.Status.Status.CurrentBatchRemediationProgress {
+			if _, exist := m[clusterName]; !exist {
+				m[clusterName] = &ibguv1alpha1.ClusterState{Name: clusterName}
 			}
-			m[cluster] = ibguv1alpha1.ClusterState{Name: cluster, State: progress.State, CurrentAction: currentAction}
+			if progress.ManifestWorkIndex != nil {
+				m[clusterName].CurrentAction = ibguv1alpha1.ActionMessage{
+					Action: utils.GetActionFromMWRSName(cgu.Spec.ManifestWorkTemplates[*progress.ManifestWorkIndex]),
+				}
+				m[clusterName].CompletedActions = append(m[clusterName].CompletedActions,
+					utils.GetFirstNActionMessagesFromCGU(&cgu, *progress.ManifestWorkIndex)...)
+			}
 		}
 	}
 	clusters := make([]ibguv1alpha1.ClusterState, 0, len(m))
 	for _, value := range m {
-		clusters = append(clusters, value)
+		clusters = append(clusters, *value)
 	}
 	ibgu.Status.Clusters = clusters
 	return nil
@@ -164,7 +181,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		templateName := ""
 		var mwrs *mwv1alpha1.ManifestWorkReplicaSet
 		var err error
-		switch action {
+		switch action.Action {
 		case ibguv1alpha1.Prep:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Prep))
 			mwrs, err = utils.GeneratePrepManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)

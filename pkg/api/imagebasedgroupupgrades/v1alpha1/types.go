@@ -13,23 +13,17 @@ type ImageBasedUpgradeAction struct {
 	Action string `json:"action"`
 }
 
-func (i ImageBasedUpgradeAction) String() string {
-	return i.Action
-}
-
-var (
+const (
 	// Prep defines the preparing stage for image based upgrade
-	Prep = ImageBasedUpgradeAction{"Prep"}
+	Prep = "Prep"
 	// Upgrade defines the upgrading stage for image based upgrade
-	Upgrade = ImageBasedUpgradeAction{"Upgrade"}
+	Upgrade = "Upgrade"
 	// Rollback defines the rollback stage for image based upgrade
-	Rollback = ImageBasedUpgradeAction{"Rollback"}
+	Rollback = "Rollback"
 	// Finalize defines the finalizing stage for image based upgrade
-	Finalize = ImageBasedUpgradeAction{"Finalize"}
+	Finalize = "Finalize"
 	// Abort defines the aborting stage for image based upgrade
-	Abort = ImageBasedUpgradeAction{"Abort"}
-	// Unknown defines an unknown ImageBasedUpgrade action
-	Unknown = ImageBasedUpgradeAction{""}
+	Abort = "Abort"
 )
 
 // RolloutStrategy defines how to rollout ibu
@@ -60,12 +54,18 @@ type ImageBasedGroupUpgradeSpec struct {
 	RolloutStrategy RolloutStrategy `json:"rolloutStrategy,omitempty"`
 }
 
+// ActionMessage defines the action and its message
+type ActionMessage struct {
+	Action  string `json:"action"`
+	Message string `json:"message,omitempty"`
+}
+
 // ClusterState defines the current state of a cluster
 type ClusterState struct {
-	Name          string  `json:"name"`
-	State         string  `json:"state"`
-	CurrentAction *string `json:"CurrentAction,omitempty"`
-	Message       *string `json:"message,omitempty"`
+	Name             string          `json:"name"`
+	CompletedActions []ActionMessage `json:"completedActions,omitempty"`
+	FailedActions    []ActionMessage `json:"failedActions,omitempty"`
+	CurrentAction    ActionMessage   `json:"currentAction,omitempty"`
 }
 
 // ImageBasedGroupUpgradeStatus is the status field for ImageBasedGroupUpgrade
