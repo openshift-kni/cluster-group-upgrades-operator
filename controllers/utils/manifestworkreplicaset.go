@@ -34,7 +34,7 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.Imag
 			Path: `.status.conditions[?(@.type=="Idle")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isIdle")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
@@ -55,7 +55,7 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 			Path: `.status.conditions[?(@.type=="Idle")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isIdle")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
@@ -76,7 +76,7 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.Im
 			Path: `.status.conditions[?(@.type=="UpgradeCompleted")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isUpgradeCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isUpgradeCompleted")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
@@ -97,7 +97,7 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 			Path: `.status.conditions[?(@.type=="RollbackCompleted")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isRollbackCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isRollbackCompleted")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
@@ -118,7 +118,7 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 			Path: `.status.conditions[?(@.type=="PrepCompleted")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, "isPrepCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isPrepCompleted")
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
 }
 
@@ -191,6 +191,25 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 	if err != nil {
 		return nil, err
 	}
+	clusterRole := &rbac.ClusterRole{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "open-cluster-management:klusterlet-work:ibu-role",
+			Labels: map[string]string{
+				"open-cluster-management.io/aggregate-to-work": "true",
+			},
+		},
+		Rules: []rbac.PolicyRule{
+			{
+				APIGroups: []string{"lca.openshift.io"},
+				Resources: []string{"imagebasedupgrades"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
+		},
+	}
+	crBytes, err := clusterRoleToBytes(clusterRole)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
+	}
 	manifestConfigs := []mwv1.ManifestConfigOption{
 		{
 			ResourceIdentifier: mwv1.ResourceIdentifier{
@@ -222,7 +241,10 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 			},
 			ManifestWorkTemplate: mwv1.ManifestWorkSpec{
 				Workload: mwv1.ManifestsTemplate{
-					Manifests: []mwv1.Manifest{{RawExtension: runtime.RawExtension{Raw: ibuRaw}}},
+					Manifests: []mwv1.Manifest{
+						{RawExtension: runtime.RawExtension{Raw: crBytes}},
+						{RawExtension: runtime.RawExtension{Raw: ibuRaw}},
+					},
 				},
 				DeleteOption:    &mwv1.DeleteOption{PropagationPolicy: mwv1.DeletePropagationPolicyTypeOrphan},
 				ManifestConfigs: manifestConfigs,
@@ -251,16 +273,10 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	return dst.Bytes(), nil
 }
 
-func getCGUNameForIBGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, templates []string) string {
-	s := []string{}
-	for _, template := range templates {
-		s = append(s, strings.ReplaceAll(template, ibgu.GetName()+"-", ""))
-	}
-	return fmt.Sprintf("%s-%s", ibgu.Name, strings.Join(s, "-"))
-}
-
-// GenerateClusterGroupUpgradeForIBGU returns a populated CGU for an IBGU
-func GenerateClusterGroupUpgradeForIBGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, templateNames, blockingCGUs []string) *ranv1alpha1.ClusterGroupUpgrade {
+// GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
+func GenerateClusterGroupUpgradeForPlanItem(
+	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
+	templateNames, blockingCGUs []string) *ranv1alpha1.ClusterGroupUpgrade {
 	blockingCRs := []ranv1alpha1.BlockingCR{}
 	for _, cguName := range blockingCGUs {
 		blockingCRs = append(blockingCRs, ranv1alpha1.BlockingCR{
@@ -280,7 +296,7 @@ func GenerateClusterGroupUpgradeForIBGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrad
 
 	return &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      getCGUNameForIBGU(ibgu, templateNames),
+			Name:      name,
 			Namespace: ibgu.GetNamespace(),
 			Labels: map[string]string{
 				CGUOwnerIBGULabel: ibgu.GetName(),
@@ -292,8 +308,8 @@ func GenerateClusterGroupUpgradeForIBGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrad
 			Enable:                &enable,
 			ManifestWorkTemplates: templateNames,
 			RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{
-				MaxConcurrency: ibgu.Spec.RolloutStrategy.MaxConcurrency,
-				Timeout:        ibgu.Spec.RolloutStrategy.Timeout,
+				MaxConcurrency: planItem.RolloutStrategy.MaxConcurrency,
+				Timeout:        planItem.RolloutStrategy.Timeout,
 			},
 			BlockingCRs: blockingCRs,
 			Actions: ranv1alpha1.Actions{
