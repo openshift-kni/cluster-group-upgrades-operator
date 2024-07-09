@@ -35,17 +35,25 @@ func objToJSON(obj runtime.Object) (string, error) {
 	return string(json), err
 }
 
-func TestGetCGUForCGUIBU(t *testing.T) {
+func TestGenerateCGUForPlanItem(t *testing.T) {
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      "ibu",
 			Namespace: "namespace",
 		},
 		Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
-
-			RolloutStrategy: ibguv1alpha1.RolloutStrategy{
-				Timeout:        50,
-				MaxConcurrency: 2,
+			Plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{
+						ibguv1alpha1.Prep,
+						ibguv1alpha1.Upgrade,
+						ibguv1alpha1.Finalize,
+					},
+					RolloutStrategy: ibguv1alpha1.RolloutStrategy{
+						Timeout:        50,
+						MaxConcurrency: 2,
+					},
+				},
 			},
 			ClusterLabelSelectors: []v1.LabelSelector{
 
@@ -55,11 +63,6 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 					},
 				},
 			},
-			Actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				{Action: ibguv1alpha1.Prep},
-				{Action: ibguv1alpha1.Upgrade},
-				{Action: ibguv1alpha1.Finalize},
-			},
 			IBUSpec: lcav1.ImageBasedUpgradeSpec{
 				SeedImageRef: lcav1.SeedImageRef{
 					Version: "version",
@@ -68,8 +71,8 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 			},
 		},
 	}
-	templateNames := []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}
-	cgu := GenerateClusterGroupUpgradeForIBGU(ibgu, templateNames, []string{"name-action"})
+
+	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, []string{})
 
 	json, _ := objToJSON(cgu)
 	expected := `
@@ -97,12 +100,6 @@ func TestGetCGUForCGUIBU(t *testing.T) {
         }
       }
     },
-    "blockingCRs": [
-      {
-        "name": "name-action",
-        "namespace": "namespace"
-      }
-    ],
     "clusterLabelSelectors": [
       {
         "matchLabels": {
@@ -137,12 +134,12 @@ func TestGetCGUForCGUIBU(t *testing.T) {
 func TestUpgradeManifestworkReplicaset(t *testing.T) {
 	mwrs, _ := GenerateUpgradeManifestWorkReplicaset("ibu-upgrade", "namespace", ibu)
 	expectedRaw := `
-{
+    {
   "apiVersion": "work.open-cluster-management.io/v1alpha1",
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
     "annotations": {
-      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":0,\"name\":\"isUpgradeCompleted\",\"value\":\"True\"}]"
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isUpgradeCompleted\",\"value\":\"True\"}]"
     },
     "creationTimestamp": null,
     "name": "ibu-upgrade",
@@ -184,6 +181,36 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
       ],
       "workload": {
         "manifests": [
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
           {
             "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
@@ -252,7 +279,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
     "annotations": {
-      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":0,\"name\":\"isIdle\",\"value\":\"True\"}]"
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isIdle\",\"value\":\"True\"}]"
     },
     "creationTimestamp": null,
     "name": "ibu-abort",
@@ -294,6 +321,36 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
       ],
       "workload": {
         "manifests": [
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
           {
             "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
@@ -361,7 +418,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
     "annotations": {
-      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":0,\"name\":\"isIdle\",\"value\":\"True\"}]"
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isIdle\",\"value\":\"True\"}]"
     },
     "creationTimestamp": null,
     "name": "ibu-finalize",
@@ -403,6 +460,36 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
       ],
       "workload": {
         "manifests": [
+        {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
           {
             "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
@@ -471,7 +558,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
     "annotations": {
-      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":0,\"name\":\"isRollbackCompleted\",\"value\":\"True\"}]"
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isRollbackCompleted\",\"value\":\"True\"}]"
     },
     "creationTimestamp": null,
     "name": "ibu-prep",
@@ -513,6 +600,36 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
       ],
       "workload": {
         "manifests": [
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
           {
             "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",
@@ -580,7 +697,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
   "kind": "ManifestWorkReplicaSet",
   "metadata": {
     "annotations": {
-      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":0,\"name\":\"isPrepCompleted\",\"value\":\"True\"}]"
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isPrepCompleted\",\"value\":\"True\"}]"
     },
     "creationTimestamp": null,
     "name": "ibu-prep",
@@ -622,6 +739,36 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
       ],
       "workload": {
         "manifests": [
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
           {
             "apiVersion": "lca.openshift.io/v1",
             "kind": "ImageBasedUpgrade",

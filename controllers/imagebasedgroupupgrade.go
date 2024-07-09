@@ -143,7 +143,7 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 				m[clusterName] = &ibguv1alpha1.ClusterState{Name: clusterName}
 			}
 			if progress.ManifestWorkIndex != nil {
-				m[clusterName].CurrentAction = ibguv1alpha1.ActionMessage{
+				m[clusterName].CurrentAction = &ibguv1alpha1.ActionMessage{
 					Action: utils.GetActionFromMWRSName(cgu.Spec.ManifestWorkTemplates[*progress.ManifestWorkIndex]),
 				}
 				m[clusterName].CompletedActions = append(m[clusterName].CompletedActions,
@@ -159,29 +159,44 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 	return nil
 }
 
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem) string {
+	actions := strings.ToLower(strings.Join(planItem.Actions, "-"))
+	return fmt.Sprintf("%s-%s", ibgu.GetName(), actions)
+}
+
+func (r *IBGUReconciler) ensureCGUForPlanItem(
+	ctx context.Context,
+	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	planItem *ibguv1alpha1.PlanItem,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+	blockingCGUs []string,
+) error {
+	cguName := getCGUNameForPlanItem(ibgu, planItem)
+	found := false
+	for _, cgu := range cguList.Items {
+		if cgu.GetName() == cguName {
+			found = true
+			break
+		}
+	}
+	if found {
+		r.Log.Info("CGU already exist for plan item", "cgu name", cguName)
+		return nil
+	}
+
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
 	manifestWorkReplicaSetsNames := []string{}
-
-	permissionsName := "ibu-permissions"
-	mwrs, err := utils.GeneratePermissionsManifestWorkReplicaset(permissionsName, ibgu.GetNamespace())
-	if err != nil {
-		return fmt.Errorf("Error generating manifestworkreplicaset: %w", err)
-	}
-	manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
-	manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, permissionsName)
-
 	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{
 			Name: "upgrade",
 		},
 		Spec: ibgu.Spec.IBUSpec,
 	}
-	for _, action := range ibgu.Spec.Actions {
+	for _, action := range planItem.Actions {
 		templateName := ""
 		var mwrs *mwv1alpha1.ManifestWorkReplicaSet
 		var err error
-		switch action.Action {
+		switch action {
 		case ibguv1alpha1.Prep:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Prep))
 			mwrs, err = utils.GeneratePrepManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
@@ -221,35 +236,35 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 			r.Log.Info("ManifestWorkReplicaSet already exist", "ManifestWorkReplicaSet", mwrs.Name)
 		}
 	}
-	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err = r.List(ctx, cguList, &client.ListOptions{
-		Namespace:     ibgu.Namespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-	})
-	if err != nil {
-		return fmt.Errorf("error listing cgus for ibgu")
-	}
-	templatesInCGUs := []string{}
-	blockingCGUs := []string{}
-	for _, cgu := range cguList.Items {
-		for _, template := range cgu.Spec.ManifestWorkTemplates {
-			templatesInCGUs = append(templatesInCGUs, template)
-		}
-		blockingCGUs = append(blockingCGUs, cgu.GetName())
-	}
-	templatesNotInCGUs := utils.Difference(manifestWorkReplicaSetsNames, templatesInCGUs)
-	if len(templatesNotInCGUs) == 0 {
-		return nil
-	}
-	cgu := utils.GenerateClusterGroupUpgradeForIBGU(ibgu, templatesNotInCGUs, blockingCGUs)
-	r.Log.Info("Creating CGU for IBGU", "ClusterGroupUpgrade", cgu.GetName())
-	err = ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
+	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(cguName, ibgu, planItem, manifestWorkReplicaSetsNames, blockingCGUs)
+	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
+	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
 		return fmt.Errorf("error setting owner reference for cgu: %w", err)
 	}
 	err = r.Create(ctx, cgu)
 	if err != nil {
 		return fmt.Errorf("error creating CGU: %w", err)
+	}
+	return nil
+}
+
+func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
+	err := r.List(ctx, cguList, &client.ListOptions{
+		Namespace:     ibgu.Namespace,
+		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
+	})
+	if err != nil {
+		return fmt.Errorf("error listing cgus for ibgu")
+	}
+	blockingCGUs := make([]string, 0)
+	for _, planItem := range ibgu.Spec.Plan {
+		err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList, blockingCGUs)
+		if err != nil {
+			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
+		}
+		blockingCGUs = append(blockingCGUs, getCGUNameForPlanItem(ibgu, &planItem))
 	}
 	return nil
 }

@@ -46,42 +46,6 @@ spec:
           spec:
             description: ImageBasedGroupUpgradeSpec defines the desired state of ImageBasedGroupUpgrade
             properties:
-              actions:
-                description: kubebuilder:validation:XValidation:message="Invalid list
-                  of actions", rule="self.map(x,x.action)==['Prep'] || self.map(x,x.action)==['Prep','Upgrade']
-                  || self.map(x,x.action)==['Prep','Upgrade','Finalize'] || self.map(x,x.action)==['Rollback']
-                  || self.map(x,x.action)==['Rollback', 'Finalize'] || self.map(x,x.action)==['Upgrade']
-                  || self.map(x,x.action)==['Upgrade','Finalize'] || self.map(x,x.action)==['Finalize']
-                  || self.map(x,x.action)==['Abort'] || self.map(x,x.action)==['Prep',
-                  'Abort'] || self.map(x,x.action)==['Prep', 'Upgrade', 'Rollback']
-                  || self.map(x,x.action)==['Prep', 'Upgrade', 'Rollback', 'Finalize']
-                  || self.map(x,x.action)==['Upgrade','Rollback'] || self.map(x,x.action)==['Upgrade','Rollback','Finalize']"
-                items:
-                  description: ImageBasedUpgradeAction defines the type of the action
-                    to perform. Abort will stop the upgrade by setting the IBU stage
-                    to Idle. Finalize will remove the previous stateroot after upgrade
-                    is done by setting the IBU stage to Idle. Prep will start preparing
-                    the upgrade by setting the IBU stage to Prep. Upgrade will start
-                    the upgrade process by setting the IBU stage to Upgrade. Rollback
-                    will pivot back to previous stateroot by setting the IBU stage
-                    to Rollback.
-                  properties:
-                    action:
-                      enum:
-                      - Abort
-                      - Prep
-                      - Upgrade
-                      - Rollback
-                      - Finalize
-                      type: string
-                  required:
-                  - action
-                  type: object
-                maxItems: 4
-                type: array
-                x-kubernetes-validations:
-                - message: You can only add actions to the list
-                  rule: oldSelf.all(x, (x in self))
               clusterLabelSelectors:
                 items:
                   description: |-
@@ -218,20 +182,32 @@ spec:
                     - Rollback
                     type: string
                 type: object
-              rolloutStrategy:
-                description: RolloutStrategy defines how to rollout ibu
-                properties:
-                  maxConcurrency:
-                    type: integer
-                  timeout:
-                    default: 240
-                    type: integer
-                required:
-                - maxConcurrency
-                type: object
+              plan:
+                items:
+                  properties:
+                    actions:
+                      items:
+                        type: string
+                      type: array
+                    rolloutStrategy:
+                      description: RolloutStrategy defines how to rollout ibu
+                      properties:
+                        maxConcurrency:
+                          type: integer
+                        timeout:
+                          default: 240
+                          type: integer
+                      required:
+                      - maxConcurrency
+                      type: object
+                  required:
+                  - actions
+                  - rolloutStrategy
+                  type: object
+                type: array
             required:
-            - actions
             - ibuSpec
+            - plan
             type: object
           status:
             description: ImageBasedGroupUpgradeStatus is the status field for ImageBasedGroupUpgrade
