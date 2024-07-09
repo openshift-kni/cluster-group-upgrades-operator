@@ -7,13 +7,6 @@ import (
 
 // +kubebuilder:object:generate=true
 
-type PlanItem struct {
-	//+kubebuilder:validation:Required
-	Actions []string `json:"actions"`
-	//+kubebuilder:validation:Required
-	RolloutStrategy RolloutStrategy `json:"rolloutStrategy"`
-}
-
 const (
 	// Prep defines the preparing stage for image based upgrade
 	Prep = "Prep"
@@ -39,12 +32,26 @@ type RolloutStrategy struct {
 type ImageBasedGroupUpgradeSpec struct {
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="IBU Spec"
 	//+kubebuilder:validation:Required
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="ibuSpec is immutable"
 	IBUSpec lcav1.ImageBasedUpgradeSpec `json:"ibuSpec"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Clusters",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="clusters is immutable"
 	Clusters []string `json:"clusters,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="clusterLabelSelectors is immutable"
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
-	Plan                  []PlanItem             `json:"plan"`
+	// +kubebuilder:validation:MaxItems=4
+	// +kubebuilder:validation:XValidation:rule="oldSelf.all(element, element in self)",message="plan is append only"
+	// +kubebuilder:validation:XValidation:rule="[[['Prep']], [['Prep'], ['Upgrade']], [['Prep', 'Upgrade']], [['Prep'], ['Upgrade'], ['Finalize']], [['Prep'], ['Upgrade', 'Finalize']], [['Prep', 'Upgrade'], ['Finalize']], [['Prep', 'Upgrade', 'Finalize']], [['Rollback']], [['Rollback'], ['Finalize']], [['Rollback', 'Finalize']], [['Upgrade']], [['Upgrade'], ['Finalize']], [['Upgrade', 'Finalize']], [['Finalize']], [['Abort']], [['Prep'], ['Abort']], [['Prep', 'Abort']], [['Prep'], ['Upgrade'], ['Rollback']], [['Prep'], ['Upgrade', 'Rollback']], [['Prep', 'Upgrade'], ['Rollback']], [['Prep', 'Upgrade', 'Rollback']], [['Prep'], ['Upgrade'], ['Rollback'], ['Finalize']], [['Prep'], ['Upgrade'], ['Rollback', 'Finalize']], [['Prep'], ['Upgrade', 'Rollback'], ['Finalize']], [['Prep'], ['Upgrade', 'Rollback', 'Finalize']], [['Prep', 'Upgrade'], ['Rollback'], ['Finalize']], [['Prep', 'Upgrade'], ['Rollback', 'Finalize']], [['Prep', 'Upgrade', 'Rollback'], ['Finalize']], [['Prep', 'Upgrade', 'Rollback', 'Finalize']], [['Upgrade'], ['Rollback']], [['Upgrade', 'Rollback']], [['Upgrade'], ['Rollback'], ['Finalize']], [['Upgrade'], ['Rollback', 'Finalize']], [['Upgrade', 'Rollback'], ['Finalize']], [['Upgrade', 'Rollback', 'Finalize']]].exists(x, x==self.map(y, y.actions))",message="invalid combinations of actions in the plan"
+	Plan []PlanItem `json:"plan"`
+}
+
+type PlanItem struct {
+	// +kubebuilder:validation:Required
+	// +kubebuilder:validation:MaxItems=4
+	Actions []string `json:"actions"`
+	// +kubebuilder:validation:Required
+	RolloutStrategy RolloutStrategy `json:"rolloutStrategy"`
 }
 
 // ActionMessage defines the action and its message
