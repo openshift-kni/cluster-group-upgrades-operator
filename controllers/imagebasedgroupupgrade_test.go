@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -222,7 +221,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					CompletedActions: []ibguv1alpha1.ActionMessage{
 						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
 					},
-					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
 				},
 			},
 		},
@@ -255,7 +254,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			expectedClustersStatus: []ibguv1alpha1.ClusterState{
 				{
 					Name:          "spoke6",
-					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Prep},
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Prep},
 				},
 			},
 		},
@@ -310,7 +309,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 				{
 					Name:          "spoke6",
-					CurrentAction: ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
 					CompletedActions: []ibguv1alpha1.ActionMessage{
 						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
 					},
@@ -325,10 +324,6 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 		},
 		Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
 
-			RolloutStrategy: ibguv1alpha1.RolloutStrategy{
-				Timeout:        50,
-				MaxConcurrency: 2,
-			},
 			ClusterLabelSelectors: []v1.LabelSelector{
 
 				{
@@ -370,35 +365,38 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 func TestEnsureManifests(t *testing.T) {
 	tests := []struct {
 		name         string
-		actions      []ibguv1alpha1.ImageBasedUpgradeAction
+		plan         []ibguv1alpha1.PlanItem
 		expectedMWRS []string
 		CGUs         []v1alpha1.ClusterGroupUpgrade
 		expectedCGUs []v1alpha1.ClusterGroupUpgrade
 	}{
 		{
 			name: "without append",
-			actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				{Action: ibguv1alpha1.Prep},
-				{Action: ibguv1alpha1.Upgrade},
-				{Action: ibguv1alpha1.Finalize},
+			plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Finalize},
+				},
 			},
 			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
 			expectedCGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name: "name-ibu-permissions-prep-upgrade-finalize",
+						Name: "name-prep-upgrade-finalize",
 					},
 				},
 			},
 		},
 		{
 			name: "append",
-			actions: []ibguv1alpha1.ImageBasedUpgradeAction{
-				{Action: ibguv1alpha1.Prep},
-				{Action: ibguv1alpha1.Upgrade},
-				{Action: ibguv1alpha1.Finalize},
+			plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{ibguv1alpha1.Prep},
+				},
+				{
+					Actions: []string{ibguv1alpha1.Upgrade, ibguv1alpha1.Finalize},
+				},
 			},
-			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
+			expectedMWRS: []string{"name-upgrade", "name-finalize"},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
@@ -430,7 +428,7 @@ func TestEnsureManifests(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-ibu-permissions-upgrade-finalize",
+						Name:      "name-upgrade-finalize",
 						Namespace: "namespace",
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
@@ -450,67 +448,64 @@ func TestEnsureManifests(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		fmt.Println(test.name)
-		ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      "name",
-				Namespace: "namespace",
-			},
-			Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
-
-				RolloutStrategy: ibguv1alpha1.RolloutStrategy{
-					Timeout:        50,
-					MaxConcurrency: 2,
+		t.Run(test.name, func(t *testing.T) {
+			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
 				},
-				ClusterLabelSelectors: []v1.LabelSelector{
+				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
 
-					{
-						MatchLabels: map[string]string{
-							"common": "true",
+					ClusterLabelSelectors: []v1.LabelSelector{
+
+						{
+							MatchLabels: map[string]string{
+								"common": "true",
+							},
+						},
+					},
+					Plan: test.plan,
+					IBUSpec: lcav1.ImageBasedUpgradeSpec{
+						SeedImageRef: lcav1.SeedImageRef{
+							Version: "version",
+							Image:   "image",
 						},
 					},
 				},
-				Actions: test.actions,
-				IBUSpec: lcav1.ImageBasedUpgradeSpec{
-					SeedImageRef: lcav1.SeedImageRef{
-						Version: "version",
-						Image:   "image",
-					},
-				},
-			},
-		}
-
-		objs := []client.Object{}
-		fakeClient, err := getFakeClientFromObjects(objs...)
-		for _, cgu := range test.CGUs {
-			err := fakeClient.Create(context.TODO(), &cgu)
-			if err != nil {
-				panic(err)
 			}
-		}
-		if err != nil {
-			t.Errorf("error in creating fake client")
-		}
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		list := &mwv1alpha1.ManifestWorkReplicaSetList{}
-		err = reconciler.List(context.TODO(), list)
-		assert.NoError(t, err)
-		mwrsNames := []string{}
-		for _, mwrs := range list.Items {
-			mwrsNames = append(mwrsNames, mwrs.Name)
-		}
-		for _, expected := range test.expectedMWRS {
-			assert.Contains(t, mwrsNames, expected)
-		}
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			for _, cgu := range test.CGUs {
+				err := fakeClient.Create(context.TODO(), &cgu)
+				if err != nil {
+					panic(err)
+				}
+			}
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
-		cgu := &v1alpha1.ClusterGroupUpgrade{}
-		for _, expected := range test.expectedCGUs {
-			err = reconciler.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: "namespace"}, cgu)
+			err = reconciler.ensureManifests(context.TODO(), ibgu)
 			assert.NoError(t, err)
-			assert.Equal(t, expected.Spec.BlockingCRs, cgu.Spec.BlockingCRs)
-		}
+			list := &mwv1alpha1.ManifestWorkReplicaSetList{}
+			err = reconciler.List(context.TODO(), list)
+			assert.NoError(t, err)
+			mwrsNames := []string{}
+			for _, mwrs := range list.Items {
+				mwrsNames = append(mwrsNames, mwrs.Name)
+			}
+			for _, expected := range test.expectedMWRS {
+				assert.Contains(t, mwrsNames, expected)
+			}
+
+			cgu := &v1alpha1.ClusterGroupUpgrade{}
+			for _, expected := range test.expectedCGUs {
+				err = reconciler.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: "namespace"}, cgu)
+				assert.NoError(t, err)
+				assert.Equal(t, expected.Spec.BlockingCRs, cgu.Spec.BlockingCRs)
+			}
+		})
 	}
 }

@@ -7,10 +7,11 @@ import (
 
 // +kubebuilder:object:generate=true
 
-// ImageBasedUpgradeAction defines the type of the action to perform. Abort will stop the upgrade by setting the IBU stage to Idle. Finalize will remove the previous stateroot after upgrade is done by setting the IBU stage to Idle. Prep will start preparing the upgrade by setting the IBU stage to Prep. Upgrade will start the upgrade process by setting the IBU stage to Upgrade. Rollback will pivot back to previous stateroot by setting the IBU stage to Rollback.
-type ImageBasedUpgradeAction struct {
-	// +kubebuilder:validation:Enum=Abort;Prep;Upgrade;Rollback;Finalize
-	Action string `json:"action"`
+type PlanItem struct {
+	//+kubebuilder:validation:Required
+	Actions []string `json:"actions"`
+	//+kubebuilder:validation:Required
+	RolloutStrategy RolloutStrategy `json:"rolloutStrategy"`
 }
 
 const (
@@ -43,15 +44,7 @@ type ImageBasedGroupUpgradeSpec struct {
 	Clusters []string `json:"clusters,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
-	//kubebuilder:validation:Minimum=1
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Actions"
-	// kubebuilder:validation:XValidation:message="Invalid list of actions", rule="self.map(x,x.action)==['Prep'] || self.map(x,x.action)==['Prep','Upgrade'] || self.map(x,x.action)==['Prep','Upgrade','Finalize'] || self.map(x,x.action)==['Rollback'] || self.map(x,x.action)==['Rollback', 'Finalize'] || self.map(x,x.action)==['Upgrade'] || self.map(x,x.action)==['Upgrade','Finalize'] || self.map(x,x.action)==['Finalize'] || self.map(x,x.action)==['Abort'] || self.map(x,x.action)==['Prep', 'Abort'] || self.map(x,x.action)==['Prep', 'Upgrade', 'Rollback'] || self.map(x,x.action)==['Prep', 'Upgrade', 'Rollback', 'Finalize'] || self.map(x,x.action)==['Upgrade','Rollback'] || self.map(x,x.action)==['Upgrade','Rollback','Finalize']"
-	// +kubebuilder:validation:XValidation:message="You can only add actions to the list", rule="oldSelf.all(x, (x in self))"
-	// +kubebuilder:validation:MaxItems=4
-	Actions []ImageBasedUpgradeAction `json:"actions"`
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Rollout Strategy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	//+kubebuilder:validation:Required
-	RolloutStrategy RolloutStrategy `json:"rolloutStrategy,omitempty"`
+	Plan                  []PlanItem             `json:"plan"`
 }
 
 // ActionMessage defines the action and its message
@@ -65,7 +58,7 @@ type ClusterState struct {
 	Name             string          `json:"name"`
 	CompletedActions []ActionMessage `json:"completedActions,omitempty"`
 	FailedActions    []ActionMessage `json:"failedActions,omitempty"`
-	CurrentAction    ActionMessage   `json:"currentAction,omitempty"`
+	CurrentAction    *ActionMessage  `json:"currentAction,omitempty"`
 }
 
 // ImageBasedGroupUpgradeStatus is the status field for ImageBasedGroupUpgrade

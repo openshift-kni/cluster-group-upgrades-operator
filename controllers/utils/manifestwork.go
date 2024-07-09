@@ -15,7 +15,7 @@ import (
 )
 
 const manifestWorkExpectedValuesAnnotation = "openshift-cluster-group-upgrades/expectedValues"
-const manifestWorkExpectedValuesAnnotationTemplate = `[{"manifestIndex":0,"name":"%s","value":"True"}]`
+const manifestWorkExpectedValuesAnnotationTemplate = `[{"manifestIndex":%d,"name":"%s","value":"True"}]`
 
 // This type is not exposed by mwv1 unfortunately, copied from:
 // https://github.com/open-cluster-management-io/work/blob/81fc808f78ce4dafa9c24f979af4e33078df48b6/pkg/spoke/controllers/statuscontroller/availablestatus_controller.go#L30
