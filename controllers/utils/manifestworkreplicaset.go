@@ -35,7 +35,7 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.Imag
 		},
 	}
 	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
-	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
 // GenerateFinalizeManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for finalize stage of an ImageBasedUpgrade
@@ -56,7 +56,7 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 	}
 	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
-	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
 // GenerateUpgradeManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for upgrade stage of an ImageBasedUpgrade
@@ -77,7 +77,7 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.Im
 		},
 	}
 	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isUpgradeCompleted")
-	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
 // GenerateRollbackManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for rollback stage of an ImageBasedUpgrade
@@ -98,11 +98,11 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 	}
 	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isRollbackCompleted")
-	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
 // GeneratePrepManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for Prep stage of an ImageBasedUpgrade
-func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade, manifests []mwv1.Manifest) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
 	ibu.Spec.Stage = lcav1.Stages.Prep
 	jsonPaths := []mwv1.JsonPath{
 		{
@@ -118,8 +118,8 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 			Path: `.status.conditions[?(@.type=="PrepCompleted")].message`,
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isPrepCompleted")
-	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu)
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1+len(manifests), "isPrepCompleted")
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, manifests)
 }
 
 // GeneratePermissionsManifestWorkReplicaset returns a ManifestWorkReplicaset for permissions required for work agent to access IBU
@@ -139,7 +139,7 @@ func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alp
 			},
 		},
 	}
-	crBytes, err := clusterRoleToBytes(clusterRole)
+	crBytes, err := ObjectToByteArray(clusterRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
 	}
@@ -167,26 +167,8 @@ func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alp
 	return mwrs, nil
 }
 
-func clusterRoleToBytes(cr *rbac.ClusterRole) ([]byte, error) {
-	scheme := runtime.NewScheme()
-	rbac.AddToScheme(scheme)
-	s := serializer.NewSerializerWithOptions(serializer.DefaultMetaFactory, scheme, scheme, serializer.SerializerOptions{})
-	gvks, isUnversioned, err := scheme.ObjectKinds(cr)
-	if err != nil {
-		return []byte{}, err
-	}
-	if !isUnversioned && len(gvks) == 1 {
-		cr.TypeMeta = metav1.TypeMeta{
-			Kind:       gvks[0].Kind,
-			APIVersion: gvks[0].GroupVersion().Identifier(),
-		}
-	}
-	var dst bytes.Buffer
-	s.Encode(cr, &dst)
-	return dst.Bytes(), nil
-}
-
-func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, jsonPaths []mwv1.JsonPath, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
+	jsonPaths []mwv1.JsonPath, ibu *lcav1.ImageBasedUpgrade, extraManifests []mwv1.Manifest) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
 	ibuRaw, err := ibuToBytes(ibu)
 	if err != nil {
 		return nil, err
@@ -206,7 +188,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 			},
 		},
 	}
-	crBytes, err := clusterRoleToBytes(clusterRole)
+	crBytes, err := ObjectToByteArray(clusterRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
 	}
@@ -225,6 +207,10 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 			},
 		},
 	}
+	manifests := append(extraManifests,
+		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: crBytes}},
+		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: ibuRaw}})
+
 	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{
 		ObjectMeta: v1.ObjectMeta{
 			Name:      name,
@@ -241,10 +227,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string, js
 			},
 			ManifestWorkTemplate: mwv1.ManifestWorkSpec{
 				Workload: mwv1.ManifestsTemplate{
-					Manifests: []mwv1.Manifest{
-						{RawExtension: runtime.RawExtension{Raw: crBytes}},
-						{RawExtension: runtime.RawExtension{Raw: ibuRaw}},
-					},
+					Manifests: manifests,
 				},
 				DeleteOption:    &mwv1.DeleteOption{PropagationPolicy: mwv1.DeletePropagationPolicyTypeOrphan},
 				ManifestConfigs: manifestConfigs,
