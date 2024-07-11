@@ -97,10 +97,16 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+                x-kubernetes-validations:
+                - message: clusterLabelSelectors is immutable
+                  rule: self == oldSelf
               clusters:
                 items:
                   type: string
                 type: array
+                x-kubernetes-validations:
+                - message: clusters is immutable
+                  rule: self == oldSelf
               ibuSpec:
                 description: ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
                 properties:
@@ -182,12 +188,16 @@ spec:
                     - Rollback
                     type: string
                 type: object
+                x-kubernetes-validations:
+                - message: ibuSpec is immutable
+                  rule: self == oldSelf
               plan:
                 items:
                   properties:
                     actions:
                       items:
                         type: string
+                      maxItems: 4
                       type: array
                     rolloutStrategy:
                       description: RolloutStrategy defines how to rollout ibu
@@ -204,7 +214,33 @@ spec:
                   - actions
                   - rolloutStrategy
                   type: object
+                maxItems: 4
                 type: array
+                x-kubernetes-validations:
+                - message: plan is append only
+                  rule: oldSelf.all(element, element in self)
+                - message: invalid combinations of actions in the plan
+                  rule: '[[[''Prep'']], [[''Prep''], [''Upgrade'']], [[''Prep'', ''Upgrade'']],
+                    [[''Prep''], [''Upgrade''], [''Finalize'']], [[''Prep''], [''Upgrade'',
+                    ''Finalize'']], [[''Prep'', ''Upgrade''], [''Finalize'']], [[''Prep'',
+                    ''Upgrade'', ''Finalize'']], [[''Rollback'']], [[''Rollback''],
+                    [''Finalize'']], [[''Rollback'', ''Finalize'']], [[''Upgrade'']],
+                    [[''Upgrade''], [''Finalize'']], [[''Upgrade'', ''Finalize'']],
+                    [[''Finalize'']], [[''Abort'']], [[''Prep''], [''Abort'']], [[''Prep'',
+                    ''Abort'']], [[''Prep''], [''Upgrade''], [''Rollback'']], [[''Prep''],
+                    [''Upgrade'', ''Rollback'']], [[''Prep'', ''Upgrade''], [''Rollback'']],
+                    [[''Prep'', ''Upgrade'', ''Rollback'']], [[''Prep''], [''Upgrade''],
+                    [''Rollback''], [''Finalize'']], [[''Prep''], [''Upgrade''], [''Rollback'',
+                    ''Finalize'']], [[''Prep''], [''Upgrade'', ''Rollback''], [''Finalize'']],
+                    [[''Prep''], [''Upgrade'', ''Rollback'', ''Finalize'']], [[''Prep'',
+                    ''Upgrade''], [''Rollback''], [''Finalize'']], [[''Prep'', ''Upgrade''],
+                    [''Rollback'', ''Finalize'']], [[''Prep'', ''Upgrade'', ''Rollback''],
+                    [''Finalize'']], [[''Prep'', ''Upgrade'', ''Rollback'', ''Finalize'']],
+                    [[''Upgrade''], [''Rollback'']], [[''Upgrade'', ''Rollback'']],
+                    [[''Upgrade''], [''Rollback''], [''Finalize'']], [[''Upgrade''],
+                    [''Rollback'', ''Finalize'']], [[''Upgrade'', ''Rollback''], [''Finalize'']],
+                    [[''Upgrade'', ''Rollback'', ''Finalize'']]].exists(x, x==self.map(y,
+                    y.actions))'
             required:
             - ibuSpec
             - plan
