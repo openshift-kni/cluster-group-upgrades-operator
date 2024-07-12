@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/go-logr/logr"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -42,6 +43,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -199,7 +201,8 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		switch action {
 		case ibguv1alpha1.Prep:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Prep))
-			mwrs, err = utils.GeneratePrepManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
+			manifests := r.getConfigMapManifests(ctx, ibgu)
+			mwrs, err = utils.GeneratePrepManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu, manifests)
 		case ibguv1alpha1.Upgrade:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Upgrade))
 			mwrs, err = utils.GenerateUpgradeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
@@ -267,6 +270,33 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		blockingCGUs = append(blockingCGUs, getCGUNameForPlanItem(ibgu, &planItem))
 	}
 	return nil
+}
+
+func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) []mwv1.Manifest {
+	manifests := []mwv1.Manifest{}
+	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent {
+		cm := &corev1.ConfigMap{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      cmRef.Name,
+			Namespace: cmRef.Namespace,
+		}, cm); err != nil {
+			r.Log.Info("[WARN] configmap does not exist on hub. Skip adding it to manifests",
+				"configmap name", cmRef.Name, "configmap namespace", cmRef.Namespace)
+			continue
+		}
+		cm.ResourceVersion = ""
+		cm.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
+		cm.ObjectMeta.CreationTimestamp = metav1.Time{}
+		cm.UID = ""
+		cmBytes, err := utils.ObjectToByteArray(cm)
+		if err != nil {
+			r.Log.Info("[WARN] failed to convert configmap to []bytes",
+				"configmap name", cmRef.Name, "configmap namespace", cmRef.Namespace)
+			continue
+		}
+		manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: cmBytes}})
+	}
+	return manifests
 }
 
 func (r *IBGUReconciler) updateStatus(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {

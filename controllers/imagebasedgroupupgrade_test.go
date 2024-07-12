@@ -12,6 +12,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
@@ -358,6 +359,67 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
+		})
+	}
+}
+
+func TestGetConfigMapManifests(t *testing.T) {
+	tests := []struct {
+		name         string
+		cm           corev1.ConfigMap
+		expectedJson string
+	}{
+		{
+			name: "simple configmap",
+			cm: corev1.ConfigMap{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Data: map[string]string{
+					"klusterlet.yaml": "data",
+				},
+			},
+			expectedJson: `{"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"name","namespace":"namespace","creationTimestamp":null},"data":{"klusterlet.yaml":"data"}}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+					IBUSpec: lcav1.ImageBasedUpgradeSpec{
+						SeedImageRef: lcav1.SeedImageRef{
+							Version: "version",
+							Image:   "image",
+						},
+						OADPContent: []lcav1.ConfigMapRef{
+							{
+								Name:      test.cm.Name,
+								Namespace: test.cm.Namespace,
+							},
+						},
+					},
+				},
+			}
+
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			err = fakeClient.Create(context.TODO(), &test.cm)
+			if err != nil {
+				panic(err)
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			manifests := reconciler.getConfigMapManifests(context.TODO(), ibgu)
+			assert.Equal(t, 1, len(manifests))
+			assert.NoError(t, err)
+			assert.JSONEq(t, test.expectedJson, string(manifests[0].Raw))
 		})
 	}
 }
