@@ -7,9 +7,16 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
 // GetMinOf3 return the minimum of 3 numbers.
@@ -102,6 +109,24 @@ func Difference(a, b []string) []string {
 		}
 	}
 	return diff
+}
+
+func ObjectToJSON(obj runtime.Object) (string, error) {
+	scheme := runtime.NewScheme()
+	mwv1alpha1.AddToScheme(scheme)
+	v1alpha1.AddToScheme(scheme)
+	corev1.AddToScheme(scheme)
+	rbac.AddToScheme(scheme)
+	lcav1.AddToScheme(scheme)
+	outUnstructured := &unstructured.Unstructured{}
+	scheme.Convert(obj, outUnstructured, nil)
+	json, err := outUnstructured.MarshalJSON()
+	return string(json), err
+}
+
+func ObjectToByteArray(obj runtime.Object) ([]byte, error) {
+	json, err := ObjectToJSON(obj)
+	return []byte(json), err
 }
 
 // Contains check if str is in slice

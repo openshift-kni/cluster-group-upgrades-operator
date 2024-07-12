@@ -10,6 +10,7 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -74,7 +75,7 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 
 	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, []string{})
 
-	json, _ := objToJSON(cgu)
+	json, _ := ObjectToJSON(cgu)
 	expected := `
     {
   "apiVersion": "ran.openshift.io/v1alpha1",
@@ -253,7 +254,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
   }
 }
     `
-	json, err := objToJSON(mwrs)
+	json, err := ObjectToJSON(mwrs)
 	if err != nil {
 		panic(err)
 	}
@@ -393,7 +394,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
   }
 }
     `
-	json, err := objToJSON(mwrs)
+	json, err := ObjectToJSON(mwrs)
 	if err != nil {
 		panic(err)
 	}
@@ -532,7 +533,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
   }
 }
     `
-	json, err := objToJSON(mwrs)
+	json, err := ObjectToJSON(mwrs)
 	if err != nil {
 		panic(err)
 	}
@@ -672,7 +673,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
   }
 }
     `
-	json, err := objToJSON(mwrs)
+	json, err := ObjectToJSON(mwrs)
 	if err != nil {
 		panic(err)
 	}
@@ -690,7 +691,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
 			},
 		},
 	}
-	mwrs, _ := GeneratePrepManifestWorkReplicaset("ibu-prep", "namespace", ibu)
+	mwrs, _ := GeneratePrepManifestWorkReplicaset("ibu-prep", "namespace", ibu, []mwv1.Manifest{})
 	expectedRaw := `
 {
   "apiVersion": "work.open-cluster-management.io/v1alpha1",
@@ -810,7 +811,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
     }
   }
 }`
-	json, err := objToJSON(mwrs)
+	json, err := ObjectToJSON(mwrs)
 	if err != nil {
 		panic(err)
 	}
