@@ -287,7 +287,6 @@ func GenerateClusterGroupUpgradeForPlanItem(
 		},
 		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
 			ClusterLabelSelectors: ibgu.Spec.ClusterLabelSelectors,
-			Clusters:              ibgu.Spec.Clusters,
 			Enable:                &enable,
 			ManifestWorkTemplates: templateNames,
 			RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{

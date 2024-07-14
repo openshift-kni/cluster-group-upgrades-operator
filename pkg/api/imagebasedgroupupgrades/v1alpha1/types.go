@@ -34,9 +34,6 @@ type ImageBasedGroupUpgradeSpec struct {
 	//+kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="ibuSpec is immutable"
 	IBUSpec lcav1.ImageBasedUpgradeSpec `json:"ibuSpec"`
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Clusters",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
-	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="clusters is immutable"
-	Clusters []string `json:"clusters,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="clusterLabelSelectors is immutable"
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`

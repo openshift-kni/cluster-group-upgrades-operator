@@ -97,10 +97,6 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
-              clusters:
-                items:
-                  type: string
-                type: array
               ibuSpec:
                 description: ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
                 properties:
