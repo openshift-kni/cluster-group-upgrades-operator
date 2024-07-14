@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"encoding/json"
 	"testing"
 
 	"github.com/go-logr/logr"
@@ -14,6 +15,7 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
@@ -426,11 +428,11 @@ func TestGetConfigMapManifests(t *testing.T) {
 
 func TestEnsureManifests(t *testing.T) {
 	tests := []struct {
-		name         string
-		plan         []ibguv1alpha1.PlanItem
-		expectedMWRS []string
-		CGUs         []v1alpha1.ClusterGroupUpgrade
-		expectedCGUs []v1alpha1.ClusterGroupUpgrade
+		name             string
+		plan             []ibguv1alpha1.PlanItem
+		expectedMWRS     []string
+		CGUs             []v1alpha1.ClusterGroupUpgrade
+		expectedCGUJsons []string
 	}{
 		{
 			name: "without append",
@@ -440,12 +442,171 @@ func TestEnsureManifests(t *testing.T) {
 				},
 			},
 			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
-			expectedCGUs: []v1alpha1.ClusterGroupUpgrade{
+			expectedCGUJsons: []string{
+				`
+{
+  "apiVersion": "ran.openshift.io/v1alpha1",
+  "kind": "ClusterGroupUpgrade",
+  "metadata": {
+    "creationTimestamp": null,
+    "labels": {
+      "ibgu": "name"
+    },
+    "name": "name-prep-upgrade-finalize",
+    "namespace": "namespace",
+    "ownerReferences": [
+      {
+        "apiVersion": "lcm.openshift.io/v1alpha1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "ImageBasedGroupUpgrade",
+        "name": "name",
+        "uid": ""
+      }
+    ],
+    "resourceVersion": "1"
+  },
+  "spec": {
+    "actions": {
+      "afterCompletion": {
+        "removeClusterAnnotations": [
+          "import.open-cluster-management.io/disable-auto-import"
+        ]
+      },
+      "beforeEnable": {
+        "addClusterAnnotations": {
+          "import.open-cluster-management.io/disable-auto-import": "true"
+        }
+      }
+    },
+    "clusterLabelSelectors": [
+      {
+        "matchLabels": {
+          "common": "true"
+        }
+      }
+    ],
+    "enable": true,
+    "manifestWorkTemplates": [
+      "name-prep",
+      "name-upgrade",
+      "name-finalize"
+    ],
+    "preCachingConfigRef": {},
+    "remediationStrategy": {
+      "maxConcurrency": 0
+    }
+  },
+  "status": {
+    "status": {
+      "completedAt": null,
+      "currentBatchStartedAt": null,
+      "startedAt": null
+    }
+  }
+}
+                `,
+			},
+		},
+		{
+			name: "append abort to prep",
+			plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{ibguv1alpha1.Prep},
+				},
+				{
+					Actions: []string{ibguv1alpha1.Abort},
+				},
+			},
+			expectedMWRS: []string{"name-abort"},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name: "name-prep-upgrade-finalize",
+						Name:      "name-prep",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{
+							"name-prep",
+						},
 					},
 				},
+			},
+			expectedCGUJsons: []string{
+				`
+{
+  "apiVersion": "ran.openshift.io/v1alpha1",
+  "kind": "ClusterGroupUpgrade",
+  "metadata": {
+    "creationTimestamp": null,
+    "labels": {
+      "ibgu": "name"
+    },
+    "annotations" : {
+      "ran.openshift.io/blocking-cgu-cluster-filtering": "false",
+      "ran.openshift.io/blocking-cgu-completion-mode": "partial"
+    },
+    "name": "name-abort",
+    "namespace": "namespace",
+    "ownerReferences": [
+      {
+        "apiVersion": "lcm.openshift.io/v1alpha1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "ImageBasedGroupUpgrade",
+        "name": "name",
+        "uid": ""
+      }
+    ],
+    "resourceVersion": "1"
+  },
+  "spec": {
+    "actions": {
+      "afterCompletion": {
+        "removeClusterAnnotations": [
+          "import.open-cluster-management.io/disable-auto-import"
+        ]
+      },
+      "beforeEnable": {
+        "addClusterAnnotations": {
+          "import.open-cluster-management.io/disable-auto-import": "true"
+        }
+      }
+    },
+    "blockingCRs": [
+      {
+        "name": "name-prep",
+        "namespace": "namespace"
+      }
+    ],
+    "clusterLabelSelectors": [
+      {
+        "matchLabels": {
+          "common": "true"
+        }
+      }
+    ],
+    "enable": true,
+    "manifestWorkTemplates": [
+      "name-abort"
+    ],
+    "preCachingConfigRef": {},
+    "remediationStrategy": {
+      "maxConcurrency": 0
+    }
+  },
+  "status": {
+    "status": {
+      "completedAt": null,
+      "currentBatchStartedAt": null,
+      "startedAt": null
+    }
+  }
+}
+                `,
 			},
 		},
 		{
@@ -475,37 +636,79 @@ func TestEnsureManifests(t *testing.T) {
 					},
 				},
 			},
-			expectedCGUs: []v1alpha1.ClusterGroupUpgrade{
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep",
-						Namespace: "namespace",
-					},
-					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{
-							"name-ibu-permissions",
-							"name-prep",
-						},
-					},
-				},
-				{
-					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-upgrade-finalize",
-						Namespace: "namespace",
-					},
-					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{
-							"name-upgrade",
-							"name-finalize",
-						},
-						BlockingCRs: []v1alpha1.BlockingCR{
-							{
-								Name:      "name-prep",
-								Namespace: "namespace",
-							},
-						},
-					},
-				},
+			expectedCGUJsons: []string{
+				`
+{
+  "apiVersion": "ran.openshift.io/v1alpha1",
+  "kind": "ClusterGroupUpgrade",
+  "metadata": {
+    "creationTimestamp": null,
+    "labels": {
+      "ibgu": "name"
+    },
+    "annotations" : {
+      "ran.openshift.io/blocking-cgu-cluster-filtering": "true",
+      "ran.openshift.io/blocking-cgu-completion-mode": "partial"
+    },
+    "name": "name-upgrade-finalize",
+    "namespace": "namespace",
+    "ownerReferences": [
+      {
+        "apiVersion": "lcm.openshift.io/v1alpha1",
+        "blockOwnerDeletion": true,
+        "controller": true,
+        "kind": "ImageBasedGroupUpgrade",
+        "name": "name",
+        "uid": ""
+      }
+    ],
+    "resourceVersion": "1"
+  },
+  "spec": {
+    "actions": {
+      "afterCompletion": {
+        "removeClusterAnnotations": [
+          "import.open-cluster-management.io/disable-auto-import"
+        ]
+      },
+      "beforeEnable": {
+        "addClusterAnnotations": {
+          "import.open-cluster-management.io/disable-auto-import": "true"
+        }
+      }
+    },
+    "blockingCRs": [
+      {
+        "name": "name-prep",
+        "namespace": "namespace"
+      }
+    ],
+    "clusterLabelSelectors": [
+      {
+        "matchLabels": {
+          "common": "true"
+        }
+      }
+    ],
+    "enable": true,
+    "manifestWorkTemplates": [
+      "name-upgrade",
+      "name-finalize"
+    ],
+    "preCachingConfigRef": {},
+    "remediationStrategy": {
+      "maxConcurrency": 0
+    }
+  },
+  "status": {
+    "status": {
+      "completedAt": null,
+      "currentBatchStartedAt": null,
+      "startedAt": null
+    }
+  }
+}
+                `,
 			},
 		},
 	}
@@ -563,10 +766,17 @@ func TestEnsureManifests(t *testing.T) {
 			}
 
 			cgu := &v1alpha1.ClusterGroupUpgrade{}
-			for _, expected := range test.expectedCGUs {
-				err = reconciler.Get(context.TODO(), types.NamespacedName{Name: expected.Name, Namespace: "namespace"}, cgu)
+			for _, expected := range test.expectedCGUJsons {
+				c := &unstructured.Unstructured{}
+				err := json.Unmarshal([]byte(expected), &c.Object)
 				assert.NoError(t, err)
-				assert.Equal(t, expected.Spec.BlockingCRs, cgu.Spec.BlockingCRs)
+
+				name, _, _ := unstructured.NestedString(c.Object, "metadata", "name")
+				err = reconciler.Get(context.TODO(), types.NamespacedName{Name: name, Namespace: "namespace"}, cgu)
+				assert.NoError(t, err)
+				json, err := utils.ObjectToJSON(cgu)
+				assert.NoError(t, err)
+				assert.JSONEq(t, expected, json)
 			}
 		})
 	}
