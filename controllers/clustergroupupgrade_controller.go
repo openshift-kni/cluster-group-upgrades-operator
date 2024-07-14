@@ -449,7 +449,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				return
 			}
 
-			if clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUCompletionModeAnn] == utils.PartialBlockingCGUCompletion {
+			if clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUCompletionModeAnn] == utils.PartialBlockingCGUCompletion && clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUClusterFiltering] == "true" {
 				clusters, err = r.filterNonCompletedClustersInBlockingCRs(ctx, clusterGroupUpgrade, clusters)
 				if err != nil {
 					r.Log.Error(err, "filterNonCompletedClustersInBlockingCRs")
