@@ -215,6 +215,9 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		case ibguv1alpha1.Rollback:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Rollback))
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
+		case ibguv1alpha1.Idle:
+			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Idle))
+			mwrs, err = utils.GenerateIdleManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
 		if err != nil {
 			return fmt.Errorf("Error generating manifestworkreplicaset: %w", err)

@@ -8,10 +8,7 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	mwv1 "open-cluster-management.io/api/work/v1"
-	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
 var ibu = &lcav1.ImageBasedUpgrade{
@@ -24,16 +21,6 @@ var ibu = &lcav1.ImageBasedUpgrade{
 			Version: "14.4.0-rc.2",
 		},
 	},
-}
-
-func objToJSON(obj runtime.Object) (string, error) {
-	scheme := runtime.NewScheme()
-	mwv1alpha1.AddToScheme(scheme)
-	v1alpha1.AddToScheme(scheme)
-	outUnstructured := &unstructured.Unstructured{}
-	scheme.Convert(obj, outUnstructured, nil)
-	json, err := outUnstructured.MarshalJSON()
-	return string(json), err
 }
 
 func TestGenerateCGUForPlanItem(t *testing.T) {
@@ -132,6 +119,135 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 	assert.JSONEq(t, expected, json)
 }
 
+func TestIdleManifestworkReplicaset(t *testing.T) {
+	mwrs, _ := GenerateIdleManifestWorkReplicaset("ibu-idle", "namespace", ibu)
+	expectedRaw := `
+    {
+  "apiVersion": "work.open-cluster-management.io/v1alpha1",
+  "kind": "ManifestWorkReplicaSet",
+  "metadata": {
+    "annotations": {
+      "openshift-cluster-group-upgrades/expectedValues": "[{\"manifestIndex\":1,\"name\":\"isIdle\",\"value\":\"True\"}]"
+    },
+    "creationTimestamp": null,
+    "name": "ibu-idle",
+    "namespace": "namespace"
+  },
+  "spec": {
+    "manifestWorkTemplate": {
+      "deleteOption": {
+        "propagationPolicy": "Orphan"
+      },
+      "manifestConfigs": [
+        {
+          "feedbackRules": [
+            {
+              "jsonPaths": [
+                {
+                  "name": "isIdle",
+                  "path": ".status.conditions[?(@.type==\"Idle\")].status"
+                },
+                {
+                  "name": "idleConditionReason",
+                  "path": ".status.conditions[?(@.type==\"Idle\")].reason"
+                },
+                {
+                  "name": "idleConditionMessages",
+                  "path": ".status.conditions[?(@.type==\"Idle\")].message"
+                }
+              ],
+              "type": "JSONPaths"
+            }
+          ],
+          "resourceIdentifier": {
+            "group": "lca.openshift.io",
+            "name": "upgrade",
+            "namespace": "",
+            "resource": "imagebasedupgrades"
+          }
+        }
+      ],
+      "workload": {
+        "manifests": [
+          {
+            "apiVersion": "rbac.authorization.k8s.io/v1",
+            "kind": "ClusterRole",
+            "metadata": {
+              "creationTimestamp": null,
+              "labels": {
+                "open-cluster-management.io/aggregate-to-work": "true"
+              },
+              "name": "open-cluster-management:klusterlet-work:ibu-role"
+            },
+            "rules": [
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              }
+            ]
+          },
+          {
+            "apiVersion": "lca.openshift.io/v1",
+            "kind": "ImageBasedUpgrade",
+            "metadata": {
+              "creationTimestamp": null,
+              "name": "upgrade"
+            },
+            "spec": {
+              "seedImageRef": {
+                "image": "quay.io/image/version:tag",
+                "version": "14.4.0-rc.2"
+              },
+              "stage": "Idle"
+            },
+            "status": {
+              "completedAt": null,
+              "rollbackAvailabilityExpiration": null,
+              "startedAt": null
+            }
+          }
+        ]
+      }
+    },
+    "placementRefs": [
+      {
+        "name": "dummy",
+        "rolloutStrategy": {}
+      }
+    ]
+  },
+  "status": {
+    "placementSummary": null,
+    "summary": {
+      "Applied": 0,
+      "available": 0,
+      "degraded": 0,
+      "progressing": 0,
+      "total": 0
+    }
+  }
+}
+    `
+	json, err := ObjectToJSON(mwrs)
+	if err != nil {
+		panic(err)
+	}
+	assert.JSONEq(t, expectedRaw, json)
+}
+
 func TestUpgradeManifestworkReplicaset(t *testing.T) {
 	mwrs, _ := GenerateUpgradeManifestWorkReplicaset("ibu-upgrade", "namespace", ibu)
 	expectedRaw := `
@@ -162,7 +278,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "upgradeInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"UpgradeInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"UpgradeInProgress\")].message"
                 },
                 {
                   "name": "upgradeCompletedConditionMessages",
@@ -302,7 +418,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "idleConditionReason",
-                  "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
+                  "path": ".status.conditions[?(@.type==\"Idle\")].reason"
                 },
                 {
                   "name": "idleConditionMessages",
@@ -441,7 +557,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "idleConditionReason",
-                  "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
+                  "path": ".status.conditions[?(@.type==\"Idle\")].reason"
                 },
                 {
                   "name": "idleConditionMessages",
@@ -581,7 +697,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "rollbackInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"RollbackInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"RollbackInProgress\")].message"
                 },
                 {
                   "name": "rollbackCompletedConditionMessages",
@@ -720,7 +836,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "prepInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"PrepInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"PrepInProgress\")].message"
                 },
                 {
                   "name": "prepCompletedConditionMessages",

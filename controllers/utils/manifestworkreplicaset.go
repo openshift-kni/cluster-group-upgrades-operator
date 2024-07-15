@@ -27,7 +27,28 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.Imag
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
+			Path: `.status.conditions[?(@.type=="Idle")].reason`,
+		},
+		{
+			Name: "idleConditionMessages",
+			Path: `.status.conditions[?(@.type=="Idle")].message`,
+		},
+	}
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
+	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
+}
+
+// GenerateIdleManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for abort stage of an ImageBasedUpgrade
+func GenerateIdleManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	ibu.Spec.Stage = lcav1.Stages.Idle
+	jsonPaths := []mwv1.JsonPath{
+		{
+			Name: "isIdle",
+			Path: `.status.conditions[?(@.type=="Idle")].status`,
+		},
+		{
+			Name: "idleConditionReason",
+			Path: `.status.conditions[?(@.type=="Idle")].reason`,
 		},
 		{
 			Name: "idleConditionMessages",
@@ -48,7 +69,7 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
+			Path: `.status.conditions[?(@.type=="Idle")].reason`,
 		},
 		{
 			Name: "idleConditionMessages",
@@ -69,7 +90,7 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.Im
 		},
 		{
 			Name: "upgradeInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="UpgradeInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="UpgradeInProgress")].message`,
 		},
 		{
 			Name: "upgradeCompletedConditionMessages",
@@ -90,7 +111,7 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 		{
 			Name: "rollbackInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="RollbackInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="RollbackInProgress")].message`,
 		},
 		{
 			Name: "rollbackCompletedConditionMessages",
@@ -111,7 +132,7 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 		},
 		{
 			Name: "prepInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="PrepInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="PrepInProgress")].message`,
 		},
 		{
 			Name: "prepCompletedConditionMessages",
@@ -308,6 +329,7 @@ func GetActionFromMWRSName(mwrsName string) string {
 	last := splitted[len(splitted)-1]
 	actions := []string{
 		ibguv1alpha1.Abort, ibguv1alpha1.Finalize, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.Prep,
+		ibguv1alpha1.Idle,
 	}
 	for _, action := range actions {
 		if strings.EqualFold(last, action) {
