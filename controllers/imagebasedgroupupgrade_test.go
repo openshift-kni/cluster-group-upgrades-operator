@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
@@ -420,6 +421,201 @@ func TestGetConfigMapManifests(t *testing.T) {
 			assert.Equal(t, 1, len(manifests))
 			assert.NoError(t, err)
 			assert.JSONEq(t, test.expectedJson, string(manifests[0].Raw))
+		})
+	}
+}
+
+func TestEnsureClusterLabels(t *testing.T) {
+	tests := []struct {
+		name                    string
+		managedClusters         []clusterv1.ManagedCluster
+		expectedManagedClusters []clusterv1.ManagedCluster
+		clusterStates           []ibguv1alpha1.ClusterState
+	}{
+		{
+			name: "failed prep, upgrade and abort",
+			managedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:   "cluster1",
+						Labels: map[string]string{},
+					},
+				},
+			},
+			clusterStates: []ibguv1alpha1.ClusterState{
+				{
+					Name: "cluster1",
+					FailedActions: []ibguv1alpha1.ActionMessage{
+						{
+							Action: ibguv1alpha1.Prep,
+						},
+						{
+							Action: ibguv1alpha1.Upgrade,
+						},
+						{
+							Action: ibguv1alpha1.Abort,
+						},
+					},
+					CompletedActions: []ibguv1alpha1.ActionMessage{},
+				},
+			},
+			expectedManagedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+						Labels: map[string]string{
+							"lcm.openshift.io/ibgu-name-Abort":   "failed",
+							"lcm.openshift.io/ibgu-name-Upgrade": "failed",
+							"lcm.openshift.io/ibgu-name-Prep":    "failed",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "abort completed",
+			managedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+						Labels: map[string]string{
+							"lcm.openshift.io/ibgu-name-Prep": "failed",
+						},
+					},
+				},
+			},
+			clusterStates: []ibguv1alpha1.ClusterState{
+				{
+					Name: "cluster1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{
+							Action: ibguv1alpha1.Abort,
+						},
+					},
+				},
+			},
+			expectedManagedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+					},
+				},
+			},
+		},
+		{
+			name: "finalize completed",
+			managedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+						Labels: map[string]string{
+							"lcm.openshift.io/ibgu-name-Prep":    "completed",
+							"lcm.openshift.io/ibgu-name-Upgrade": "completed",
+						},
+					},
+				},
+			},
+			clusterStates: []ibguv1alpha1.ClusterState{
+				{
+					Name: "cluster1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{
+							Action: ibguv1alpha1.Prep,
+						},
+						{
+							Action: ibguv1alpha1.Upgrade,
+						},
+						{
+							Action: ibguv1alpha1.Finalize,
+						},
+					},
+				},
+			},
+			expectedManagedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+					},
+				},
+			},
+		},
+		{
+			name: "prep completed",
+			managedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+					},
+				},
+			},
+			clusterStates: []ibguv1alpha1.ClusterState{
+				{
+					Name: "cluster1",
+					CompletedActions: []ibguv1alpha1.ActionMessage{
+						{
+							Action: ibguv1alpha1.Prep,
+						},
+					},
+				},
+			},
+			expectedManagedClusters: []clusterv1.ManagedCluster{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name: "cluster1",
+						Labels: map[string]string{
+							"lcm.openshift.io/ibgu-name-Prep": "completed",
+						},
+					},
+				},
+			},
+		},
+	}
+
+	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name",
+			Namespace: "namespace",
+		},
+		Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+			ClusterLabelSelectors: []v1.LabelSelector{
+
+				{
+					MatchLabels: map[string]string{
+						"common": "true",
+					},
+				},
+			},
+			IBUSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{
+					Version: "version",
+					Image:   "image",
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ibgu.Status.Clusters = test.clusterStates
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			for _, mc := range test.managedClusters {
+				err := fakeClient.Create(context.TODO(), &mc)
+				if err != nil {
+					panic(err)
+				}
+			}
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			err = reconciler.ensureClusterLabels(context.TODO(), ibgu)
+			assert.NoError(t, err)
+			for _, expected := range test.expectedManagedClusters {
+				got := &clusterv1.ManagedCluster{}
+				err := fakeClient.Get(context.TODO(), types.NamespacedName{Namespace: expected.Namespace, Name: expected.Name}, got)
+				assert.NoError(t, err)
+				assert.Equal(t, expected.GetLabels(), got.GetLabels())
+			}
 		})
 	}
 }

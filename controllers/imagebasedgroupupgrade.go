@@ -43,6 +43,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
@@ -59,6 +60,7 @@ type IBGUReconciler struct {
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -103,9 +105,60 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		r.Log.Error(err, "error syncing status with CGUs")
 	}
 
+	err = r.ensureClusterLabels(ctx, ibgu)
+	if err != nil {
+		r.Log.Error(err, "error ensuring cluster labels")
+	}
+
 	// Update status
 	err = r.updateStatus(ctx, ibgu)
 	return
+}
+
+func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	for _, clusterState := range ibgu.Status.Clusters {
+		labelsToAdd := make(map[string]string)
+		for _, action := range clusterState.FailedActions {
+			labelsToAdd[fmt.Sprintf("lcm.openshift.io/ibgu-%s-%s", ibgu.GetName(), action.Action)] = "failed"
+		}
+		removeLabels := false
+		for _, action := range clusterState.CompletedActions {
+			if action.Action == ibguv1alpha1.Finalize || action.Action == ibguv1alpha1.Abort {
+				removeLabels = true
+				break
+			}
+			labelsToAdd[fmt.Sprintf("lcm.openshift.io/ibgu-%s-%s", ibgu.GetName(), action.Action)] = "completed"
+		}
+		if !removeLabels && len(labelsToAdd) == 0 {
+			return nil
+		}
+		cluster := &clusterv1.ManagedCluster{}
+		if err := r.Get(ctx, types.NamespacedName{Name: clusterState.Name}, cluster); err != nil {
+			return fmt.Errorf("failed to get managed cluster: %w", err)
+		}
+		currentLabels := cluster.GetLabels()
+		if currentLabels == nil {
+			currentLabels = make(map[string]string)
+		}
+
+		if removeLabels {
+			for key := range currentLabels {
+				if strings.HasPrefix(key, fmt.Sprintf("lcm.openshift.io/ibgu-%s", ibgu.GetName())) {
+					delete(currentLabels, key)
+				}
+			}
+		} else {
+			for key, value := range labelsToAdd {
+				currentLabels[key] = value
+			}
+		}
+
+		cluster.SetLabels(currentLabels)
+		if err := r.Update(ctx, cluster); err != nil {
+			return fmt.Errorf("failed to update labels for cluster: %s, err: %w", cluster.Name, err)
+		}
+	}
+	return nil
 }
 
 func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
