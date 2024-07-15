@@ -133,11 +133,6 @@ func (in *ImageBasedGroupUpgradeList) DeepCopyObject() runtime.Object {
 func (in *ImageBasedGroupUpgradeSpec) DeepCopyInto(out *ImageBasedGroupUpgradeSpec) {
 	*out = *in
 	in.IBUSpec.DeepCopyInto(&out.IBUSpec)
-	if in.Clusters != nil {
-		in, out := &in.Clusters, &out.Clusters
-		*out = make([]string, len(*in))
-		copy(*out, *in)
-	}
 	if in.ClusterLabelSelectors != nil {
 		in, out := &in.ClusterLabelSelectors, &out.ClusterLabelSelectors
 		*out = make([]v1.LabelSelector, len(*in))

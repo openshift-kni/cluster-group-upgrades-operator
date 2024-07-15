@@ -100,13 +100,6 @@ spec:
                 x-kubernetes-validations:
                 - message: clusterLabelSelectors is immutable
                   rule: self == oldSelf
-              clusters:
-                items:
-                  type: string
-                type: array
-                x-kubernetes-validations:
-                - message: clusters is immutable
-                  rule: self == oldSelf
               ibuSpec:
                 description: ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
                 properties:
