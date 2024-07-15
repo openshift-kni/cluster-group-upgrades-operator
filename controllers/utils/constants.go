@@ -170,6 +170,7 @@ const SoakAnnotation = "ran.openshift.io/soak-seconds"
 // the original CR is only partially completed
 const (
 	BlockingCGUCompletionModeAnn = "ran.openshift.io/blocking-cgu-completion-mode"
+	BlockingCGUClusterFiltering  = "ran.openshift.io/blocking-cgu-cluster-filtering"
 	PartialBlockingCGUCompletion = "partial"
 )
 
