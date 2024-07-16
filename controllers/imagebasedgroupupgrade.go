@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -194,6 +195,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		},
 		Spec: ibgu.Spec.IBUSpec,
 	}
+	filterBlockingCGUs := true
 	for _, action := range planItem.Actions {
 		templateName := ""
 		var mwrs *mwv1alpha1.ManifestWorkReplicaSet
@@ -207,12 +209,14 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Upgrade))
 			mwrs, err = utils.GenerateUpgradeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Abort:
+			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Abort))
 			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Finalize:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Finalize))
 			mwrs, err = utils.GenerateFinalizeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Rollback:
+			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Rollback))
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
@@ -239,7 +243,14 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			r.Log.Info("ManifestWorkReplicaSet already exist", "ManifestWorkReplicaSet", mwrs.Name)
 		}
 	}
-	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(cguName, ibgu, planItem, manifestWorkReplicaSetsNames, blockingCGUs)
+	annotations := make(map[string]string)
+	if len(blockingCGUs) > 0 {
+		annotations["ran.openshift.io/blocking-cgu-completion-mode"] = "partial"
+		annotations["ran.openshift.io/blocking-cgu-cluster-filtering"] = strconv.FormatBool(filterBlockingCGUs)
+	}
+	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, blockingCGUs, annotations,
+	)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {

@@ -219,21 +219,14 @@ spec:
                     ''Upgrade'', ''Finalize'']], [[''Rollback'']], [[''Rollback''],
                     [''Finalize'']], [[''Rollback'', ''Finalize'']], [[''Upgrade'']],
                     [[''Upgrade''], [''Finalize'']], [[''Upgrade'', ''Finalize'']],
-                    [[''Finalize'']], [[''Abort'']], [[''Prep''], [''Abort'']], [[''Prep'',
-                    ''Abort'']], [[''Prep''], [''Upgrade''], [''Rollback'']], [[''Prep''],
-                    [''Upgrade'', ''Rollback'']], [[''Prep'', ''Upgrade''], [''Rollback'']],
-                    [[''Prep'', ''Upgrade'', ''Rollback'']], [[''Prep''], [''Upgrade''],
-                    [''Rollback''], [''Finalize'']], [[''Prep''], [''Upgrade''], [''Rollback'',
-                    ''Finalize'']], [[''Prep''], [''Upgrade'', ''Rollback''], [''Finalize'']],
-                    [[''Prep''], [''Upgrade'', ''Rollback'', ''Finalize'']], [[''Prep'',
-                    ''Upgrade''], [''Rollback''], [''Finalize'']], [[''Prep'', ''Upgrade''],
-                    [''Rollback'', ''Finalize'']], [[''Prep'', ''Upgrade'', ''Rollback''],
-                    [''Finalize'']], [[''Prep'', ''Upgrade'', ''Rollback'', ''Finalize'']],
-                    [[''Upgrade''], [''Rollback'']], [[''Upgrade'', ''Rollback'']],
-                    [[''Upgrade''], [''Rollback''], [''Finalize'']], [[''Upgrade''],
-                    [''Rollback'', ''Finalize'']], [[''Upgrade'', ''Rollback''], [''Finalize'']],
-                    [[''Upgrade'', ''Rollback'', ''Finalize'']]].exists(x, x==self.map(y,
-                    y.actions))'
+                    [[''Finalize'']], [[''Abort'']], [[''Prep''], [''Abort'']], [[''Prep''],
+                    [''Upgrade''], [''Rollback'']], [[''Prep'', ''Upgrade''], [''Rollback'']],
+                    [[''Prep''], [''Upgrade''], [''Rollback''], [''Finalize'']], [[''Prep''],
+                    [''Upgrade''], [''Rollback'', ''Finalize'']], [[''Prep'', ''Upgrade''],
+                    [''Rollback''], [''Finalize'']], [[''Prep'', ''Upgrade''], [''Rollback'',
+                    ''Finalize'']], [[''Upgrade''], [''Rollback'']], [[''Upgrade''],
+                    [''Rollback''], [''Finalize'']], [[''Upgrade''], [''Rollback'',
+                    ''Finalize'']]].exists(x, x==self.map(y, y.actions))'
             required:
             - ibuSpec
             - plan
