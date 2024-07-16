@@ -259,7 +259,8 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 // GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
-	templateNames, blockingCGUs []string) *ranv1alpha1.ClusterGroupUpgrade {
+	templateNames, blockingCGUs []string, annotations map[string]string,
+) *ranv1alpha1.ClusterGroupUpgrade {
 	blockingCRs := []ranv1alpha1.BlockingCR{}
 	for _, cguName := range blockingCGUs {
 		blockingCRs = append(blockingCRs, ranv1alpha1.BlockingCR{
@@ -279,8 +280,9 @@ func GenerateClusterGroupUpgradeForPlanItem(
 
 	return &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      name,
-			Namespace: ibgu.GetNamespace(),
+			Name:        name,
+			Namespace:   ibgu.GetNamespace(),
+			Annotations: annotations,
 			Labels: map[string]string{
 				CGUOwnerIBGULabel: ibgu.GetName(),
 			},
