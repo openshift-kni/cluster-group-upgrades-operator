@@ -124,7 +124,8 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 		}
 		removeLabels := false
 		for _, action := range clusterState.CompletedActions {
-			if action.Action == ibguv1alpha1.Finalize || action.Action == ibguv1alpha1.Abort {
+			if action.Action == ibguv1alpha1.Finalize ||
+				action.Action == ibguv1alpha1.Abort {
 				removeLabels = true
 				break
 			}
@@ -226,18 +227,14 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	planItem *ibguv1alpha1.PlanItem,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 	blockingCGUs []string,
-) error {
+) (bool, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem)
-	found := false
 	for _, cgu := range cguList.Items {
 		if cgu.GetName() == cguName {
-			found = true
-			break
+			completed := utils.IsStatusConditionPresent(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded))
+			r.Log.Info("CGU already exist for plan item", "cgu name", cguName, "completed", completed)
+			return completed, nil
 		}
-	}
-	if found {
-		r.Log.Info("CGU already exist for plan item", "cgu name", cguName)
-		return nil
 	}
 
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
@@ -274,7 +271,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
 		if err != nil {
-			return fmt.Errorf("Error generating manifestworkreplicaset: %w", err)
+			return false, fmt.Errorf("Error generating manifestworkreplicaset: %w", err)
 		}
 		manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
@@ -287,10 +284,10 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			ctrl.SetControllerReference(ibgu, mwrs, r.Scheme)
 			err = r.Create(ctx, mwrs)
 			if err != nil {
-				return fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
+				return false, fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
 			}
 		} else if err != nil {
-			return fmt.Errorf("error getting ManifestWorkReplicaSet: %w", err)
+			return false, fmt.Errorf("error getting ManifestWorkReplicaSet: %w", err)
 		} else {
 			// TODO: is it necessary to check if the two mwrs are different
 			r.Log.Info("ManifestWorkReplicaSet already exist", "ManifestWorkReplicaSet", mwrs.Name)
@@ -307,13 +304,13 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
-		return fmt.Errorf("error setting owner reference for cgu: %w", err)
+		return false, fmt.Errorf("error setting owner reference for cgu: %w", err)
 	}
 	err = r.Create(ctx, cgu)
 	if err != nil {
-		return fmt.Errorf("error creating CGU: %w", err)
+		return false, fmt.Errorf("error creating CGU: %w", err)
 	}
-	return nil
+	return false, nil
 }
 
 func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
@@ -327,9 +324,14 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	}
 	blockingCGUs := make([]string, 0)
 	for _, planItem := range ibgu.Spec.Plan {
-		err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList, blockingCGUs)
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList, blockingCGUs)
 		if err != nil {
 			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
+		}
+		if !completed {
+			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
+				"planItem actions", planItem.Actions)
+			return nil
 		}
 		blockingCGUs = append(blockingCGUs, getCGUNameForPlanItem(ibgu, &planItem))
 	}
