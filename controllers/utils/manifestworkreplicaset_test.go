@@ -7,11 +7,9 @@ import (
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	mwv1 "open-cluster-management.io/api/work/v1"
-	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
 var ibu = &lcav1.ImageBasedUpgrade{
@@ -26,16 +24,6 @@ var ibu = &lcav1.ImageBasedUpgrade{
 	},
 }
 
-func objToJSON(obj runtime.Object) (string, error) {
-	scheme := runtime.NewScheme()
-	mwv1alpha1.AddToScheme(scheme)
-	v1alpha1.AddToScheme(scheme)
-	outUnstructured := &unstructured.Unstructured{}
-	scheme.Convert(obj, outUnstructured, nil)
-	json, err := outUnstructured.MarshalJSON()
-	return string(json), err
-}
-
 func TestGenerateCGUForPlanItem(t *testing.T) {
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
@@ -48,7 +36,7 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 					Actions: []string{
 						ibguv1alpha1.Prep,
 						ibguv1alpha1.Upgrade,
-						ibguv1alpha1.Finalize,
+						ibguv1alpha1.FinalizeUpgrade,
 					},
 					RolloutStrategy: ibguv1alpha1.RolloutStrategy{
 						Timeout:        50,
@@ -827,11 +815,11 @@ func TestGetActionsFromCGU(t *testing.T) {
 		{
 			name: "hi",
 			templates: []string{
-				"name-ibu-permissions", "name-prep", "name-upgrade", "name-finalize", "name-abort", "name-gd-rollback",
+				"name-prep", "name-upgrade", "name-finalizeupgrade", "name-abort", "name-gd-rollback",
 			},
 			expected: []ibguv1alpha1.ActionMessage{
 				{Action: ibguv1alpha1.Prep},
-				{Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+				{Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.FinalizeUpgrade},
 				{Action: ibguv1alpha1.Abort}, {Action: ibguv1alpha1.Rollback},
 			},
 		},
@@ -845,6 +833,93 @@ func TestGetActionsFromCGU(t *testing.T) {
 			}
 			got := GetAllActionMessagesFromCGU(cgu)
 			assert.Equal(t, test.expected, got)
+		})
+	}
+}
+
+func TestGetLabelSelectorForPlanItem(t *testing.T) {
+	tests := []struct {
+		name           string
+		currentSelctor []metav1.LabelSelector
+		expected       []metav1.LabelSelector
+		planItem       ibguv1alpha1.PlanItem
+	}{
+		{
+			name: "no extra selector",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.Prep},
+			},
+		},
+		{
+			name: "finalizeUpgrade",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true",
+						"lcm.openshift.io/ibgu-upgrade-completed": ""},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.FinalizeUpgrade},
+			},
+		},
+		{
+			name: "abortOnFailure",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true",
+						"lcm.openshift.io/ibgu-upgrade-failed": ""},
+				},
+				{
+					MatchLabels: map[string]string{"common": "true",
+						"lcm.openshift.io/ibgu-prep-failed": ""},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.AbortOnFailure},
+			},
+		},
+		{
+			name: "finalizeRollback",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true",
+						"lcm.openshift.io/ibgu-rollback-completed": ""},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.FinalizeRollback},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := getLabelSelectorForPlanItem(test.currentSelctor, &test.planItem)
+			assert.ElementsMatch(t, test.expected, got)
 		})
 	}
 }

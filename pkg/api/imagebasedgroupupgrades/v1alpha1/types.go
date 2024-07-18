@@ -8,16 +8,13 @@ import (
 // +kubebuilder:object:generate=true
 
 const (
-	// Prep defines the preparing stage for image based upgrade
-	Prep = "Prep"
-	// Upgrade defines the upgrading stage for image based upgrade
-	Upgrade = "Upgrade"
-	// Rollback defines the rollback stage for image based upgrade
-	Rollback = "Rollback"
-	// Finalize defines the finalizing stage for image based upgrade
-	Finalize = "Finalize"
-	// Abort defines the aborting stage for image based upgrade
-	Abort = "Abort"
+	Prep             = "Prep"
+	Upgrade          = "Upgrade"
+	Rollback         = "Rollback"
+	Abort            = "Abort"
+	AbortOnFailure   = "AbortOnFailure"
+	FinalizeRollback = "FinalizeRollback"
+	FinalizeUpgrade  = "FinalizeUpgrade"
 )
 
 // RolloutStrategy defines how to rollout ibu
@@ -39,7 +36,7 @@ type ImageBasedGroupUpgradeSpec struct {
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
 	// +kubebuilder:validation:MaxItems=4
 	// +kubebuilder:validation:XValidation:rule="oldSelf.all(element, element in self)",message="plan is append only"
-	// +kubebuilder:validation:XValidation:rule="[[['Prep']], [['Prep'], ['Upgrade']], [['Prep', 'Upgrade']], [['Prep'], ['Upgrade'], ['Finalize']], [['Prep'], ['Upgrade', 'Finalize']], [['Prep', 'Upgrade'], ['Finalize']], [['Prep', 'Upgrade', 'Finalize']], [['Rollback']], [['Rollback'], ['Finalize']], [['Rollback', 'Finalize']], [['Upgrade']], [['Upgrade'], ['Finalize']], [['Upgrade', 'Finalize']], [['Finalize']], [['Abort']], [['Prep'], ['Abort']], [['Prep'], ['Upgrade'], ['Rollback']], [['Prep', 'Upgrade'], ['Rollback']], [['Prep'], ['Upgrade'], ['Rollback'], ['Finalize']], [['Prep'], ['Upgrade'], ['Rollback', 'Finalize']], [['Prep', 'Upgrade'], ['Rollback'], ['Finalize']], [['Prep', 'Upgrade'], ['Rollback', 'Finalize']], [['Upgrade'], ['Rollback']], [['Upgrade'], ['Rollback'], ['Finalize']], [['Upgrade'], ['Rollback', 'Finalize']]].exists(x, x==self.map(y, y.actions))",message="invalid combinations of actions in the plan"
+	// +kubebuilder:validation:XValidation:rule="[[['Prep']], [['Prep'], ['Upgrade']], [['Prep', 'Upgrade']], [['Prep'], ['Upgrade'], ['FinalizeUpgrade']], [['Prep'], ['Upgrade', 'FinalizeUpgrade']], [['Prep', 'Upgrade'], ['FinalizeUpgrade']], [['Prep', 'Upgrade', 'FinalizeUpgrade']], [['Rollback']], [['Rollback'], ['FinalizeRollback']], [['Rollback', 'FinalizeRollback']], [['Upgrade']], [['Upgrade'], ['FinalizeUpgrade']], [['Upgrade', 'FinalizeUpgrade']], [['FinalizeUpgrade']],[['FinalizeRollback']], [['Abort']],[['AbortOnFailure']], [['Prep'], ['Abort']], [['Prep', 'Upgrade'], ['Rollback']], [['Prep'], ['Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Prep'], ['Upgrade'], ['Rollback', 'FinalizeRollback']], [['Prep', 'Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Prep', 'Upgrade'], ['Rollback', 'FinalizeRollback']], [['Upgrade'], ['Rollback']], [['Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Upgrade'], ['Rollback', 'FinalizeRollback']],[['Prep'], ['AbortOnFailure']],[['Prep'], ['AbortOnFailure'], ['Upgrade']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure']],[['Prep'], ['Upgrade'], ['AbortOnFailure']],[['Prep', 'Upgrade'], ['AbortOnFailure']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']]].exists(x, x==self.map(y, y.actions))",message="invalid combinations of actions in the plan"
 	Plan []PlanItem `json:"plan"`
 }
 

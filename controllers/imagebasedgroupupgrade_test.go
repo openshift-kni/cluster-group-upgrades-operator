@@ -33,7 +33,7 @@ func init() {
 func TestSyncStatusWithCGUs(t *testing.T) {
 	errorMsg := "error message"
 	cmw := &v1alpha1.ManifestWorkStatus{
-		Name: "ibu-finalize",
+		Name: "ibu-finalizeupgrade",
 		Status: mwv1.ManifestResourceStatus{
 			Manifests: []mwv1.ManifestCondition{
 				{
@@ -54,7 +54,6 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 	}
 
 	two := 2
-	one := 1
 	tests := []struct {
 		name                   string
 		CGUs                   []v1alpha1.ClusterGroupUpgrade
@@ -88,14 +87,14 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-finalize",
+						Name:      "name-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
 						},
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{"name-finalize"},
+						ManifestWorkTemplates: []string{"name-finalizeupgrade"},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Clusters: []v1alpha1.ClusterState{
@@ -115,7 +114,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
 					},
 					FailedActions: []ibguv1alpha1.ActionMessage{
-						{Action: ibguv1alpha1.Finalize, Message: "error message"},
+						{Action: ibguv1alpha1.FinalizeUpgrade, Message: "error message"},
 					},
 				},
 			},
@@ -125,14 +124,14 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-finalize",
+						Name:      "name-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
 						},
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{"name-finalize"},
+						ManifestWorkTemplates: []string{"name-finalizeupgrade"},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Clusters: []v1alpha1.ClusterState{
@@ -168,7 +167,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				{
 					Name: "spoke1",
 					CompletedActions: []ibguv1alpha1.ActionMessage{
-						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.FinalizeUpgrade},
 					},
 				},
 			},
@@ -198,14 +197,14 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-finalize",
+						Name:      "name-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
 						},
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{"name-finalize"},
+						ManifestWorkTemplates: []string{"name-finalizeupgrade"},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Status: v1alpha1.UpgradeStatus{
@@ -225,7 +224,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					CompletedActions: []ibguv1alpha1.ActionMessage{
 						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
 					},
-					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.FinalizeUpgrade},
 				},
 			},
 		},
@@ -241,13 +240,13 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 						},
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{"ibu-permissions", "name-prep"},
+						ManifestWorkTemplates: []string{"name-prep"},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Status: v1alpha1.UpgradeStatus{
 							CurrentBatchRemediationProgress: map[string]*v1alpha1.ClusterRemediationProgress{
 								"spoke6": {
-									ManifestWorkIndex: &one,
+									ManifestWorkIndex: new(int),
 									State:             "InProgress",
 								},
 							},
@@ -267,14 +266,14 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep-upgrade-finalize",
+						Name:      "name-prep-upgrade-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
 						},
 					},
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
-						ManifestWorkTemplates: []string{"name-prep", "name-upgrade", "name-finalize"},
+						ManifestWorkTemplates: []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
 						Clusters: []v1alpha1.ClusterState{
@@ -302,18 +301,18 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				{
 					Name: "spoke1",
 					CompletedActions: []ibguv1alpha1.ActionMessage{
-						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.FinalizeUpgrade},
 					},
 				},
 				{
 					Name: "spoke4",
 					CompletedActions: []ibguv1alpha1.ActionMessage{
-						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.Finalize},
+						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.FinalizeUpgrade},
 					},
 				},
 				{
 					Name:          "spoke6",
-					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Finalize},
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.FinalizeUpgrade},
 					CompletedActions: []ibguv1alpha1.ActionMessage{
 						{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade},
 					},
@@ -466,9 +465,9 @@ func TestEnsureClusterLabels(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							"lcm.openshift.io/ibgu-name-Abort":   "failed",
-							"lcm.openshift.io/ibgu-name-Upgrade": "failed",
-							"lcm.openshift.io/ibgu-name-Prep":    "failed",
+							"lcm.openshift.io/ibgu-abort-failed":   "",
+							"lcm.openshift.io/ibgu-upgrade-failed": "",
+							"lcm.openshift.io/ibgu-prep-failed":    "",
 						},
 					},
 				},
@@ -481,7 +480,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							"lcm.openshift.io/ibgu-name-Prep": "failed",
+							"lcm.openshift.io/ibgu-prep-failed": "",
 						},
 					},
 				},
@@ -511,8 +510,8 @@ func TestEnsureClusterLabels(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							"lcm.openshift.io/ibgu-name-Prep":    "completed",
-							"lcm.openshift.io/ibgu-name-Upgrade": "completed",
+							"lcm.openshift.io/ibgu-prep-completed":    "",
+							"lcm.openshift.io/ibgu-upgrade-completed": "",
 						},
 					},
 				},
@@ -528,7 +527,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 							Action: ibguv1alpha1.Upgrade,
 						},
 						{
-							Action: ibguv1alpha1.Finalize,
+							Action: ibguv1alpha1.FinalizeUpgrade,
 						},
 					},
 				},
@@ -565,7 +564,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 					ObjectMeta: v1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
-							"lcm.openshift.io/ibgu-name-Prep": "completed",
+							"lcm.openshift.io/ibgu-prep-completed": "",
 						},
 					},
 				},
@@ -634,10 +633,10 @@ func TestEnsureManifests(t *testing.T) {
 			name: "without append",
 			plan: []ibguv1alpha1.PlanItem{
 				{
-					Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Finalize},
+					Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade},
 				},
 			},
-			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalize"},
+			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
 			expectedCGUJsons: []string{
 				`
 {
@@ -648,7 +647,7 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "name": "name-prep-upgrade-finalize",
+    "name": "name-prep-upgrade-finalizeupgrade",
     "namespace": "namespace",
     "ownerReferences": [
       {
@@ -686,7 +685,7 @@ func TestEnsureManifests(t *testing.T) {
     "manifestWorkTemplates": [
       "name-prep",
       "name-upgrade",
-      "name-finalize"
+      "name-finalizeupgrade"
     ],
     "preCachingConfigRef": {},
     "remediationStrategy": {
@@ -819,10 +818,10 @@ func TestEnsureManifests(t *testing.T) {
 					Actions: []string{ibguv1alpha1.Prep},
 				},
 				{
-					Actions: []string{ibguv1alpha1.Upgrade, ibguv1alpha1.Finalize},
+					Actions: []string{ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade},
 				},
 			},
-			expectedMWRS: []string{"name-upgrade", "name-finalize"},
+			expectedMWRS: []string{"name-upgrade", "name-finalizeupgrade"},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
@@ -860,7 +859,7 @@ func TestEnsureManifests(t *testing.T) {
       "ran.openshift.io/blocking-cgu-cluster-filtering": "true",
       "ran.openshift.io/blocking-cgu-completion-mode": "partial"
     },
-    "name": "name-upgrade-finalize",
+    "name": "name-upgrade-finalizeupgrade",
     "namespace": "namespace",
     "ownerReferences": [
       {
@@ -896,14 +895,15 @@ func TestEnsureManifests(t *testing.T) {
     "clusterLabelSelectors": [
       {
         "matchLabels": {
-          "common": "true"
-        }
+          "common": "true",
+          "lcm.openshift.io/ibgu-prep-completed": ""
+        } 
       }
     ],
     "enable": true,
     "manifestWorkTemplates": [
       "name-upgrade",
-      "name-finalize"
+      "name-finalizeupgrade"
     ],
     "preCachingConfigRef": {},
     "remediationStrategy": {
