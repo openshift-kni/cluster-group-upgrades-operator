@@ -352,12 +352,20 @@ func GetConditionMessageFromManifestWorkStatus(status *ranv1alpha1.ManifestWorkS
 	if len(status.Status.Manifests) == 0 {
 		return ""
 	}
-	for _, value := range status.Status.Manifests[0].StatusFeedbacks.Values {
-		if strings.Contains(value.Name, "CompletedConditionMessages") {
-			if value.Value.String != nil {
-				return *value.Value.String
+	msgs := []string{}
+	for _, manifest := range status.Status.Manifests {
+		for _, value := range manifest.StatusFeedbacks.Values {
+			if strings.Contains(value.Name, "ConditionMessage") {
+				if value.Value.String != nil {
+					msgs = append(msgs, *value.Value.String)
+				}
+			}
+			if strings.Contains(value.Name, "ConditionReason") {
+				if value.Value.String != nil {
+					msgs = append(msgs, *value.Value.String)
+				}
 			}
 		}
 	}
-	return ""
+	return strings.Join(msgs, "\n")
 }

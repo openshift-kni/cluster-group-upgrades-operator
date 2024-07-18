@@ -729,6 +729,13 @@ func TestEnsureManifests(t *testing.T) {
 							"name-prep",
 						},
 					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type: string(utils.ConditionTypes.Succeeded),
+							},
+						},
+					},
 				},
 			},
 			expectedCGUJsons: []string{
@@ -828,6 +835,13 @@ func TestEnsureManifests(t *testing.T) {
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
 						ManifestWorkTemplates: []string{
 							"name-prep",
+						},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type: string(utils.ConditionTypes.Succeeded),
+							},
 						},
 					},
 				},
