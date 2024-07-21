@@ -207,7 +207,7 @@ spec:
                   - actions
                   - rolloutStrategy
                   type: object
-                maxItems: 4
+                maxItems: 6
                 type: array
                 x-kubernetes-validations:
                 - message: plan is append only
