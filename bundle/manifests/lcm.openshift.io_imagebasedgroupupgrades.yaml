@@ -184,7 +184,7 @@ spec:
                     actions:
                       items:
                         type: string
-                      maxItems: 4
+                      maxItems: 6
                       type: array
                     rolloutStrategy:
                       description: RolloutStrategy defines how to rollout ibu
