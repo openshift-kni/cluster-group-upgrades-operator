@@ -177,3 +177,8 @@ const (
 // CGUOwnerIBGULabel is a label that is set on CGUs that are created for IBGUs. It denotes which IBGU is the
 // owner of this CGU
 const CGUOwnerIBGULabel = "ibgu"
+
+const (
+	IBGUActionCompletedLabelTemplate = "lcm.openshift.io/ibgu-%s-completed"
+	IBGUActionFailedLabelTemplate    = "lcm.openshift.io/ibgu-%s-failed"
+)

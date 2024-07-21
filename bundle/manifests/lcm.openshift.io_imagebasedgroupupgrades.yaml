@@ -201,7 +201,7 @@ spec:
                   - actions
                   - rolloutStrategy
                   type: object
-                maxItems: 4
+                maxItems: 6
                 type: array
             required:
             - ibuSpec
