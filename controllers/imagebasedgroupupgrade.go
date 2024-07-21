@@ -19,6 +19,8 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 
@@ -120,16 +122,16 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 	for _, clusterState := range ibgu.Status.Clusters {
 		labelsToAdd := make(map[string]string)
 		for _, action := range clusterState.FailedActions {
-			labelsToAdd[fmt.Sprintf("lcm.openshift.io/ibgu-%s-%s", ibgu.GetName(), action.Action)] = "failed"
+			labelsToAdd[fmt.Sprintf(utils.IBGUActionFailedLabelTemplate, strings.ToLower(action.Action))] = ""
 		}
 		removeLabels := false
 		for _, action := range clusterState.CompletedActions {
-			if action.Action == ibguv1alpha1.Finalize ||
-				action.Action == ibguv1alpha1.Abort {
+			if slices.Contains([]string{ibguv1alpha1.AbortOnFailure, ibguv1alpha1.Abort,
+				ibguv1alpha1.FinalizeUpgrade, ibguv1alpha1.FinalizeRollback}, action.Action) {
 				removeLabels = true
 				break
 			}
-			labelsToAdd[fmt.Sprintf("lcm.openshift.io/ibgu-%s-%s", ibgu.GetName(), action.Action)] = "completed"
+			labelsToAdd[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
 		}
 		if !removeLabels && len(labelsToAdd) == 0 {
 			return nil
@@ -144,8 +146,10 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 		}
 
 		if removeLabels {
+			pattern := `lcm\.openshift\.io/ibgu-[a-zA-Z]+-(completed|failed)`
+			re := regexp.MustCompile(pattern)
 			for key := range currentLabels {
-				if strings.HasPrefix(key, fmt.Sprintf("lcm.openshift.io/ibgu-%s", ibgu.GetName())) {
+				if re.MatchString(key) {
 					delete(currentLabels, key)
 				}
 			}
@@ -183,7 +187,8 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 				m[cluster.Name] = &ibguv1alpha1.ClusterState{Name: cluster.Name}
 			}
 			if cluster.State == utils.ClusterRemediationComplete {
-				m[cluster.Name].CompletedActions = append(m[cluster.Name].CompletedActions, utils.GetAllActionMessagesFromCGU(&cgu)...)
+				m[cluster.Name].CompletedActions = append(m[cluster.Name].CompletedActions,
+					utils.GetAllActionMessagesFromCGU(&cgu)...)
 			} else if cluster.State == utils.ClusterRemediationTimedout {
 				if cluster.CurrentManifestWork != nil {
 					action := utils.GetActionFromMWRSName(cluster.CurrentManifestWork.Name)
@@ -262,8 +267,15 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Abort))
 			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
-		case ibguv1alpha1.Finalize:
-			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Finalize))
+		case ibguv1alpha1.AbortOnFailure:
+			filterBlockingCGUs = false
+			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.AbortOnFailure))
+			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
+		case ibguv1alpha1.FinalizeRollback:
+			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.FinalizeRollback))
+			mwrs, err = utils.GenerateFinalizeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
+		case ibguv1alpha1.FinalizeUpgrade:
+			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.FinalizeUpgrade))
 			mwrs, err = utils.GenerateFinalizeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Rollback:
 			filterBlockingCGUs = false

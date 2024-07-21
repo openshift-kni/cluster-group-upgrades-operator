@@ -256,6 +256,43 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	return dst.Bytes(), nil
 }
 
+func getLabelSelectorForPlanItem(
+	currentSelector []metav1.LabelSelector, planItem *ibguv1alpha1.PlanItem,
+) []metav1.LabelSelector {
+	result := []metav1.LabelSelector{}
+	switch planItem.Actions[0] {
+	case ibguv1alpha1.FinalizeUpgrade:
+		for _, m := range currentSelector {
+			upgradeCompleted := m.DeepCopy()
+			upgradeCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
+			result = append(result, *upgradeCompleted)
+		}
+	case ibguv1alpha1.FinalizeRollback:
+		for _, m := range currentSelector {
+			rollbackCompleted := m.DeepCopy()
+			rollbackCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Rollback))] = ""
+			result = append(result, *rollbackCompleted)
+		}
+	case ibguv1alpha1.AbortOnFailure:
+		for _, m := range currentSelector {
+			upgradeFailed := m.DeepCopy()
+			prepFailed := m.DeepCopy()
+			upgradeFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
+			prepFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
+			result = append(result, *prepFailed, *upgradeFailed)
+		}
+	case ibguv1alpha1.Upgrade:
+		for _, m := range currentSelector {
+			prepCompleted := m.DeepCopy()
+			prepCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
+			result = append(result, *prepCompleted)
+		}
+	default:
+		return currentSelector
+	}
+	return result
+}
+
 // GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
@@ -288,7 +325,7 @@ func GenerateClusterGroupUpgradeForPlanItem(
 			},
 		},
 		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
-			ClusterLabelSelectors: ibgu.Spec.ClusterLabelSelectors,
+			ClusterLabelSelectors: getLabelSelectorForPlanItem(ibgu.Spec.ClusterLabelSelectors, planItem),
 			Enable:                &enable,
 			ManifestWorkTemplates: templateNames,
 			RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{
@@ -309,7 +346,9 @@ func GetActionFromMWRSName(mwrsName string) string {
 	splitted := strings.Split(mwrsName, "-")
 	last := splitted[len(splitted)-1]
 	actions := []string{
-		ibguv1alpha1.Abort, ibguv1alpha1.Finalize, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.Prep,
+		ibguv1alpha1.Abort, ibguv1alpha1.FinalizeUpgrade, ibguv1alpha1.Upgrade,
+		ibguv1alpha1.FinalizeRollback, ibguv1alpha1.AbortOnFailure,
+		ibguv1alpha1.Rollback, ibguv1alpha1.Prep,
 	}
 	for _, action := range actions {
 		if strings.EqualFold(last, action) {

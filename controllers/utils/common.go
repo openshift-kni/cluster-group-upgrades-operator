@@ -167,16 +167,28 @@ func SortCGUListByIBUAction(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
 		if strings.EqualFold(jLast, ibguv1alpha1.Rollback) {
 			return false
 		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Finalize) {
+		if strings.EqualFold(iLast, ibguv1alpha1.FinalizeUpgrade) {
 			return true
 		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Finalize) {
+		if strings.EqualFold(jLast, ibguv1alpha1.FinalizeUpgrade) {
+			return false
+		}
+		if strings.EqualFold(iLast, ibguv1alpha1.FinalizeRollback) {
+			return true
+		}
+		if strings.EqualFold(jLast, ibguv1alpha1.FinalizeRollback) {
 			return false
 		}
 		if strings.EqualFold(iLast, ibguv1alpha1.Abort) {
 			return true
 		}
 		if strings.EqualFold(jLast, ibguv1alpha1.Abort) {
+			return false
+		}
+		if strings.EqualFold(iLast, ibguv1alpha1.AbortOnFailure) {
+			return true
+		}
+		if strings.EqualFold(jLast, ibguv1alpha1.AbortOnFailure) {
 			return false
 		}
 		return true
