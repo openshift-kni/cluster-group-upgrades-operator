@@ -264,19 +264,31 @@ func getLabelSelectorForPlanItem(
 	case ibguv1alpha1.FinalizeUpgrade:
 		for _, m := range currentSelector {
 			upgradeCompleted := m.DeepCopy()
+			if upgradeCompleted.MatchLabels == nil {
+				upgradeCompleted.MatchLabels = make(map[string]string)
+			}
 			upgradeCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
 			result = append(result, *upgradeCompleted)
 		}
 	case ibguv1alpha1.FinalizeRollback:
 		for _, m := range currentSelector {
 			rollbackCompleted := m.DeepCopy()
+			if rollbackCompleted.MatchLabels == nil {
+				rollbackCompleted.MatchLabels = make(map[string]string)
+			}
 			rollbackCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Rollback))] = ""
 			result = append(result, *rollbackCompleted)
 		}
 	case ibguv1alpha1.AbortOnFailure:
 		for _, m := range currentSelector {
 			upgradeFailed := m.DeepCopy()
+			if upgradeFailed.MatchLabels == nil {
+				upgradeFailed.MatchLabels = make(map[string]string)
+			}
 			prepFailed := m.DeepCopy()
+			if prepFailed.MatchLabels == nil {
+				prepFailed.MatchLabels = make(map[string]string)
+			}
 			upgradeFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
 			prepFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
 			result = append(result, *prepFailed, *upgradeFailed)
@@ -284,6 +296,9 @@ func getLabelSelectorForPlanItem(
 	case ibguv1alpha1.Upgrade:
 		for _, m := range currentSelector {
 			prepCompleted := m.DeepCopy()
+			if prepCompleted.MatchLabels == nil {
+				prepCompleted.MatchLabels = make(map[string]string)
+			}
 			prepCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
 			result = append(result, *prepCompleted)
 		}
