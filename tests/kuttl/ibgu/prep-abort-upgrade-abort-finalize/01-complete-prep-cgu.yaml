@@ -1,0 +1,7 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  #Start the upgrade by enabling the UOCR.
+  - command: ../../../../deploy/ibgu/patch-cgu-status.sh default upgrade-4.15.0-prep-0 prep-complete-spoke-1-and-4.json
+    ignoreFailure: false

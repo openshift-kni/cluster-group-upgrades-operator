@@ -1,0 +1,137 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+  name: upgrade-4.15.0
+  namespace: default
+spec:
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+  plan:
+  - actions:
+    - Prep
+    rolloutStrategy:
+      maxConcurrency: 2
+      timeout: 2400
+  - actions:
+    - AbortOnFailure
+    rolloutStrategy:
+      maxConcurrency: 5
+      timeout: 10
+  - actions:
+    - Upgrade
+    rolloutStrategy:
+      maxConcurrency: 2
+      timeout: 30
+  - actions:
+    - AbortOnFailure
+    rolloutStrategy:
+      maxConcurrency: 5
+      timeout: 10
+status:
+  clusters:
+  - completedActions:
+    - action: Prep
+    currentAction:
+      action: AbortOnFailure
+    failedActions:
+    - action: Upgrade
+    name: spoke1
+  - completedActions:
+    - action: Prep
+    - action: Upgrade
+    name: spoke4
+  - completedActions:
+    - action: AbortOnFailure
+    failedActions:
+    - action: Prep
+    name: spoke6
+---
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+  labels:
+    ibgu: upgrade-4.15.0
+  name: upgrade-4.15.0-abortonfailure-3
+  namespace: default
+  ownerReferences:
+  - apiVersion: lcm.openshift.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ImageBasedGroupUpgrade
+    name: upgrade-4.15.0
+spec:
+  actions:
+    afterCompletion:
+      deleteObjects: true
+      removeClusterAnnotations:
+      - import.open-cluster-management.io/disable-auto-import
+    beforeEnable:
+      addClusterAnnotations:
+        import.open-cluster-management.io/disable-auto-import: "true"
+  backup: false
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    matchLabels:
+      lcm.openshift.io/ibgu-prep-failed: ""
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    matchLabels:
+      lcm.openshift.io/ibgu-upgrade-failed: ""
+  enable: true
+  manifestWorkTemplates:
+  - upgrade-4.15.0-abortonfailure
+  preCaching: false
+  preCachingConfigRef: {}
+  remediationStrategy:
+    maxConcurrency: 5
+    timeout: 10
+status:
+  computedMaxConcurrency: 1
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Rolling out manifestworks
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  remediationPlan:
+  - - spoke1
+  safeResourceNames:
+    /default.upgrade-4.15.0-abortonfailure: default.upgrade-4.15.0-abortonfailure-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        manifestWorkIndex: 0
+        state: InProgress

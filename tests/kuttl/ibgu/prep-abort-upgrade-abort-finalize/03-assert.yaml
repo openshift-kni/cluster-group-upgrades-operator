@@ -1,0 +1,46 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+  name: upgrade-4.15.0
+  namespace: default
+spec:
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+  plan:
+  - actions:
+    - Prep
+    rolloutStrategy:
+      maxConcurrency: 2
+      timeout: 2400
+  - actions:
+    - AbortOnFailure
+    rolloutStrategy:
+      maxConcurrency: 5
+      timeout: 10
+status:
+  clusters:
+  - completedActions:
+    - action: Prep
+    name: spoke1
+  - completedActions:
+    - action: Prep
+    name: spoke4
+  - completedActions:
+    - action: AbortOnFailure
+    failedActions:
+    - action: Prep
+    name: spoke6
+
+

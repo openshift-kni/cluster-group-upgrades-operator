@@ -8,7 +8,8 @@ commands:
     namespaced: true
 
 testDirs:
-- tests/kuttl/tests/
+- tests/kuttl/cgu/
+- tests/kuttl/ibgu/
 crdDir: ./config/crd/bases/
 timeout: 25
 parallel: 1
