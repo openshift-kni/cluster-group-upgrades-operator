@@ -311,15 +311,8 @@ func getLabelSelectorForPlanItem(
 // GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
-	templateNames, blockingCGUs []string, annotations map[string]string,
+	templateNames []string, annotations map[string]string,
 ) *ranv1alpha1.ClusterGroupUpgrade {
-	blockingCRs := []ranv1alpha1.BlockingCR{}
-	for _, cguName := range blockingCGUs {
-		blockingCRs = append(blockingCRs, ranv1alpha1.BlockingCR{
-			Name:      cguName,
-			Namespace: ibgu.GetNamespace(),
-		})
-	}
 	enable := true
 	beforeEnable := ranv1alpha1.BeforeEnable{
 		AddClusterAnnotations: map[string]string{
@@ -332,9 +325,8 @@ func GenerateClusterGroupUpgradeForPlanItem(
 
 	return &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
-			Name:        name,
-			Namespace:   ibgu.GetNamespace(),
-			Annotations: annotations,
+			Name:      name,
+			Namespace: ibgu.GetNamespace(),
 			Labels: map[string]string{
 				CGUOwnerIBGULabel: ibgu.GetName(),
 			},
@@ -347,7 +339,6 @@ func GenerateClusterGroupUpgradeForPlanItem(
 				MaxConcurrency: planItem.RolloutStrategy.MaxConcurrency,
 				Timeout:        planItem.RolloutStrategy.Timeout,
 			},
-			BlockingCRs: blockingCRs,
 			Actions: ranv1alpha1.Actions{
 				BeforeEnable:    &beforeEnable,
 				AfterCompletion: &afterCompletion,
