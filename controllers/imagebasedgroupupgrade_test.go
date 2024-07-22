@@ -124,7 +124,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-finalizeupgrade",
+						Name:      "name-finalizeupgrade-1",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -144,7 +144,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep-upgrade",
+						Name:      "name-prep-upgrade-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -647,7 +647,7 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "name": "name-prep-upgrade-finalizeupgrade",
+    "name": "name-prep-upgrade-finalizeupgrade-0",
     "namespace": "namespace",
     "ownerReferences": [
       {
@@ -717,7 +717,7 @@ func TestEnsureManifests(t *testing.T) {
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep",
+						Name:      "name-prep-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -747,7 +747,7 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "name": "name-abort",
+    "name": "name-abort-1",
     "namespace": "namespace",
     "ownerReferences": [
       {
@@ -815,7 +815,7 @@ func TestEnsureManifests(t *testing.T) {
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep",
+						Name:      "name-prep-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -845,7 +845,7 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "name": "name-upgrade-finalizeupgrade",
+    "name": "name-upgrade-finalizeupgrade-1",
     "namespace": "namespace",
     "ownerReferences": [
       {

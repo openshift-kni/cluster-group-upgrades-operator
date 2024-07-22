@@ -9,7 +9,6 @@ import (
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
-	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -141,56 +140,14 @@ func Contains(s []string, str string) bool {
 	return false
 }
 
-// SortCGUListByIBUAction orders the CGUs by the last action in the name of cgu
+// SortCGUListByPlanIndex orders the CGUs by the last action in the name of cgu
 // with following order prep-upgrade-rollback-finalize-abort
-func SortCGUListByIBUAction(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
+func SortCGUListByPlanIndex(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
 	sort.Slice(cguList.Items, func(i, j int) bool {
 		iSplitted := strings.Split(cguList.Items[i].GetName(), "-")
 		jSplitted := strings.Split(cguList.Items[j].GetName(), "-")
 		iLast := iSplitted[len(iSplitted)-1]
 		jLast := jSplitted[len(jSplitted)-1]
-		if strings.EqualFold(iLast, ibguv1alpha1.Prep) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Prep) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Upgrade) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Upgrade) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Rollback) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Rollback) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.FinalizeUpgrade) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.FinalizeUpgrade) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.FinalizeRollback) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.FinalizeRollback) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.Abort) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.Abort) {
-			return false
-		}
-		if strings.EqualFold(iLast, ibguv1alpha1.AbortOnFailure) {
-			return true
-		}
-		if strings.EqualFold(jLast, ibguv1alpha1.AbortOnFailure) {
-			return false
-		}
-		return true
+		return iLast < jLast
 	})
 }
