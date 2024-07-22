@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
+	"sort"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -179,7 +180,7 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 		return nil
 	}
 	m := make(map[string]*ibguv1alpha1.ClusterState)
-	utils.SortCGUListByIBUAction(cguList)
+	utils.SortCGUListByPlanIndex(cguList)
 	for _, cgu := range cguList.Items {
 		for _, cluster := range cgu.Status.Clusters {
 			if _, exist := m[cluster.Name]; !exist {
@@ -216,22 +217,26 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 	for _, value := range m {
 		clusters = append(clusters, *value)
 	}
+	sort.Slice(clusters, func(i, j int) bool {
+		return clusters[i].Name < clusters[j].Name
+	})
 	ibgu.Status.Clusters = clusters
 	return nil
 }
 
-func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem) string {
+func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem, planItemIndex int) string {
 	actions := strings.ToLower(strings.Join(planItem.Actions, "-"))
-	return fmt.Sprintf("%s-%s", ibgu.GetName(), actions)
+	return fmt.Sprintf("%s-%s-%d", ibgu.GetName(), actions, planItemIndex)
 }
 
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-	planItem *ibguv1alpha1.PlanItem,
+	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) (bool, error) {
-	cguName := getCGUNameForPlanItem(ibgu, planItem)
+	cguName := getCGUNameForPlanItem(ibgu, planItem, planItemIndex)
+
 	for _, cgu := range cguList.Items {
 		if cgu.GetName() == cguName {
 			completed := utils.IsStatusConditionPresent(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded))
@@ -300,6 +305,9 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		}
 	}
 	annotations := make(map[string]string)
+	if suffix, exists := ibgu.ObjectMeta.Annotations[utils.NameSuffixAnnotation]; exists {
+		annotations[utils.NameSuffixAnnotation] = suffix
+	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
 		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations,
 	)
@@ -324,8 +332,8 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	if err != nil {
 		return fmt.Errorf("error listing cgus for ibgu")
 	}
-	for _, planItem := range ibgu.Spec.Plan {
-		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList)
+	for i, planItem := range ibgu.Spec.Plan {
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList)
 		if err != nil {
 			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
