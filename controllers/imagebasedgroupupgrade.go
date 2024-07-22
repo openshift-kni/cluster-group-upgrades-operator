@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"regexp"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/go-logr/logr"
@@ -231,7 +230,6 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	planItem *ibguv1alpha1.PlanItem,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-	blockingCGUs []string,
 ) (bool, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem)
 	for _, cgu := range cguList.Items {
@@ -250,7 +248,6 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		},
 		Spec: ibgu.Spec.IBUSpec,
 	}
-	filterBlockingCGUs := true
 	for _, action := range planItem.Actions {
 		templateName := ""
 		var mwrs *mwv1alpha1.ManifestWorkReplicaSet
@@ -264,11 +261,9 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Upgrade))
 			mwrs, err = utils.GenerateUpgradeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Abort:
-			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Abort))
 			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.AbortOnFailure:
-			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.AbortOnFailure))
 			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.FinalizeRollback:
@@ -278,7 +273,6 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.FinalizeUpgrade))
 			mwrs, err = utils.GenerateFinalizeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		case ibguv1alpha1.Rollback:
-			filterBlockingCGUs = false
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Rollback))
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
@@ -306,12 +300,8 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		}
 	}
 	annotations := make(map[string]string)
-	if len(blockingCGUs) > 0 {
-		annotations["ran.openshift.io/blocking-cgu-completion-mode"] = "partial"
-		annotations["ran.openshift.io/blocking-cgu-cluster-filtering"] = strconv.FormatBool(filterBlockingCGUs)
-	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
-		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, blockingCGUs, annotations,
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations,
 	)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
@@ -334,9 +324,8 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	if err != nil {
 		return fmt.Errorf("error listing cgus for ibgu")
 	}
-	blockingCGUs := make([]string, 0)
 	for _, planItem := range ibgu.Spec.Plan {
-		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList, blockingCGUs)
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, cguList)
 		if err != nil {
 			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
@@ -345,7 +334,6 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				"planItem actions", planItem.Actions)
 			return nil
 		}
-		blockingCGUs = append(blockingCGUs, getCGUNameForPlanItem(ibgu, &planItem))
 	}
 	return nil
 }
