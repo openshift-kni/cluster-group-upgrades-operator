@@ -747,10 +747,6 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "annotations" : {
-      "ran.openshift.io/blocking-cgu-cluster-filtering": "false",
-      "ran.openshift.io/blocking-cgu-completion-mode": "partial"
-    },
     "name": "name-abort",
     "namespace": "namespace",
     "ownerReferences": [
@@ -778,12 +774,6 @@ func TestEnsureManifests(t *testing.T) {
         }
       }
     },
-    "blockingCRs": [
-      {
-        "name": "name-prep",
-        "namespace": "namespace"
-      }
-    ],
     "clusterLabelSelectors": [
       {
         "matchLabels": {
@@ -855,10 +845,6 @@ func TestEnsureManifests(t *testing.T) {
     "labels": {
       "ibgu": "name"
     },
-    "annotations" : {
-      "ran.openshift.io/blocking-cgu-cluster-filtering": "true",
-      "ran.openshift.io/blocking-cgu-completion-mode": "partial"
-    },
     "name": "name-upgrade-finalizeupgrade",
     "namespace": "namespace",
     "ownerReferences": [
@@ -886,12 +872,6 @@ func TestEnsureManifests(t *testing.T) {
         }
       }
     },
-    "blockingCRs": [
-      {
-        "name": "name-prep",
-        "namespace": "namespace"
-      }
-    ],
     "clusterLabelSelectors": [
       {
         "matchLabels": {
