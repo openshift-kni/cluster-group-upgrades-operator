@@ -310,8 +310,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		annotations[utils.NameSuffixAnnotation] = suffix
 	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
-		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations,
-	)
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {

@@ -29,8 +29,8 @@ fi
 
 # Install kind if needed.
 if [ "$env" == "$KIND_ENV" ] && ! [ -x "$(command -v kind)" ]; then
-    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH"
-    curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH
+    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.23.0/kind-$(uname)-$_GOARCH"
+    curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.23.0/kind-$(uname)-$_GOARCH
     mv ./kind ./bin/
     chmod 755 ./bin/kind
 else

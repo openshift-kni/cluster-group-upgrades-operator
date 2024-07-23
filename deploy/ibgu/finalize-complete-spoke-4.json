@@ -1,0 +1,29 @@
+[
+  {
+    "op": "add",
+    "path": "/status/conditions",
+    "value": [
+      {
+        "lastTransitionTime": "2024-02-28T15:19:23Z",
+        "message": "All manifestworks rolled out successfully on all clusters",
+        "reason": "Completed",
+        "status": "True",
+        "type": "Succeeded"
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/status/clusters",
+    "value": [
+      {
+        "name": "spoke4",
+        "state": "complete"
+      }
+    ]
+  },
+  {
+    "op": "remove",
+    "path": "/status/status"
+  }
+]

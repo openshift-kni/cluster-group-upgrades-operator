@@ -330,6 +330,7 @@ func GenerateClusterGroupUpgradeForPlanItem(
 			Labels: map[string]string{
 				CGUOwnerIBGULabel: ibgu.GetName(),
 			},
+			Annotations: annotations,
 		},
 		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
 			ClusterLabelSelectors: getLabelSelectorForPlanItem(ibgu.Spec.ClusterLabelSelectors, planItem),

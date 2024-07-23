@@ -1,0 +1,15 @@
+[
+    {
+        "op": "add",
+        "path": "/spec/plan/-",
+        "value": {
+            "actions": [
+                "Upgrade"
+            ],
+            "rolloutStrategy": {
+                "maxConcurrency": 2,
+                "timeout": 30
+            }
+        }
+    }
+]

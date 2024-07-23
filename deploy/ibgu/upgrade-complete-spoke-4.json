@@ -1,0 +1,61 @@
+[
+  {
+    "op": "add",
+    "path": "/status/conditions",
+    "value": [
+      {
+        "lastTransitionTime": "2024-02-28T15:19:23Z",
+        "message": "Manifestwork rollout took too long",
+        "reason": "TimedOut",
+        "status": "False",
+        "type": "Succeeded"
+      }
+    ]
+  },
+  {
+    "op": "add",
+    "path": "/status/clusters",
+    "value": [
+      {
+        "name": "spoke1",
+        "state": "timedout",
+        "currentManifestWork": {
+          "status": {
+            "manifests": [
+              {
+                "conditions": [
+                  {
+                    "lastTransitionTime": "2024-02-28T15:19:23Z",
+                    "message": "Failed to apply",
+                    "reason": "Failed",
+                    "status": "False",
+                    "type": "Applied"
+                  }
+                ],
+                "resourceMeta": {
+                  "group": "lca.openshift.io",
+                  "kind": "ImageBasedUpgrade",
+                  "name": "upgrade",
+                  "namespace": "",
+                  "ordinal": 0,
+                  "resource": "imagebasedupgrades",
+                  "version": "v1alpha1"
+                },
+                "statusFeedback": {}
+              }
+            ]
+          },
+          "name": "upgrade-4.15.0-upgrade"
+        }
+      },
+      {
+        "name": "spoke4",
+        "state": "complete"
+      }
+    ]
+  },
+  {
+    "op": "remove",
+    "path": "/status/status"
+  }
+]
