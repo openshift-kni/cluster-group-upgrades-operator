@@ -1,0 +1,111 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+  name: upgrade-4.15.0
+  namespace: default
+spec:
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+  plan:
+  - actions:
+    - Prep
+    rolloutStrategy:
+      maxConcurrency: 2
+      timeout: 2400
+status:
+  clusters:
+  - currentAction:
+      action: Prep
+    name: spoke1
+  - currentAction:
+      action: Prep
+    name: spoke4
+  conditions:
+  - message: All manifests are created
+    reason: Completed
+    status: "True"
+    type: ManifestsCreated
+---
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  labels:
+    ibgu: upgrade-4.15.0
+  name: upgrade-4.15.0-prep-0
+  namespace: default
+  ownerReferences:
+  - apiVersion: lcm.openshift.io/v1alpha1
+    blockOwnerDeletion: true
+    controller: true
+    kind: ImageBasedGroupUpgrade
+    name: upgrade-4.15.0
+spec:
+  actions:
+    afterCompletion:
+      deleteObjects: true
+      removeClusterAnnotations:
+      - import.open-cluster-management.io/disable-auto-import
+    beforeEnable:
+      addClusterAnnotations:
+        import.open-cluster-management.io/disable-auto-import: "true"
+  backup: false
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+  enable: true
+  manifestWorkTemplates:
+  - upgrade-4.15.0-prep
+  preCaching: false
+  preCachingConfigRef: {}
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 2400
+status:
+  computedMaxConcurrency: 2
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Rolling out manifestworks
+    reason: InProgress
+    status: "True"
+    type: Progressing
+  remediationPlan:
+  - - spoke1
+    - spoke4
+  - - spoke6
+  safeResourceNames:
+    /default.upgrade-4.15.0-prep: default.upgrade-4.15.0-prep-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        manifestWorkIndex: 0
+        state: InProgress
+      spoke4:
+        manifestWorkIndex: 0
+        state: InProgress
+
+

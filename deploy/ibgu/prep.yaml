@@ -3,10 +3,17 @@ kind: ImageBasedGroupUpgrade
 metadata:
   name: upgrade-4.15.0
   namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
 spec:
   clusterLabelSelectors:
-    - matchLabels:
-        common: "true"
+    - matchExpressions:
+        - key: "name"
+          operator: In
+          values:
+            - "spoke1"
+            - "spoke4"
+            - "spoke6"        
   ibuSpec:
     seedImageRef:
       image: quay.io/seed/image:4.15.0-rc.5
@@ -14,13 +21,5 @@ spec:
   plan:
     - actions: ["Prep"]
       rolloutStrategy:
-        maxConcurrency: 200
+        maxConcurrency: 2
         timeout: 2400
-    - actions: ["Upgrade"]
-      rolloutStrategy:
-        maxConcurrency: 100
-        timeout: 30
-    - actions: ["Finalize"]
-      rolloutStrategy:
-        maxConcurrency: 500
-        timeout: 10

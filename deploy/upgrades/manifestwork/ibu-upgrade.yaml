@@ -3,7 +3,7 @@ kind: ClusterGroupUpgrade
 metadata:
   name: ibu-upgrade
   annotations:
-    cluster-group-upgrades-operator/name-suffix: kuttl      
+    cluster-group-upgrades-operator/name-suffix: kuttl
 spec:
   clusters:
   - spoke1
