@@ -406,6 +406,8 @@ spec:
           resources:
           - manifestworkreplicasets
           verbs:
+          - create
+          - delete
           - get
           - list
           - watch
