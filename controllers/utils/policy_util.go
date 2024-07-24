@@ -178,8 +178,6 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 
 		switch {
 		case objectTemplatePresent && objectTemplateRawPresent:
-			return containsStatus, &PolicyErr{policyName, ConfigPlcMissAnyObjTmpl}
-		case !objectTemplatePresent && !objectTemplateRawPresent:
 			return containsStatus, &PolicyErr{policyName, ConfigPlcHasBothObjTmpl}
 		case objectTemplatePresent:
 			configPlcTmpls = plcTmplDefSpec[ObjectTemplates].([]interface{})
