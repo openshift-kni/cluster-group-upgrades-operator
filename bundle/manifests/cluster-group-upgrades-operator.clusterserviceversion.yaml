@@ -53,8 +53,9 @@ spec:
         path: actions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: This field determines whether the cluster would be running a
-          backup prior to the upgrade.
+      - description: 'This field determines whether the cluster would be running a
+          backup prior to the upgrade. Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade
+          instead for SNO upgrades with built-in backup/rollback functionality'
         displayName: Backup
         path: backup
         x-descriptors:

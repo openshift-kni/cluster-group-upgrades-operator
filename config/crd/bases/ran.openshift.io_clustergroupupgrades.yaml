@@ -142,8 +142,9 @@ spec:
                 type: object
               backup:
                 default: false
-                description: This field determines whether the cluster would be running
-                  a backup prior to the upgrade.
+                description: |-
+                  This field determines whether the cluster would be running a backup prior to the upgrade.
+                  Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
                 type: boolean
               batchTimeoutAction:
                 description: |-
