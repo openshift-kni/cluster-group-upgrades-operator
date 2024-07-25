@@ -115,6 +115,8 @@ type ClusterGroupUpgradeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// This field determines whether the cluster would be running a backup prior to the upgrade.
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.Backup is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality"
 	//+kubebuilder:default=false
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Backup",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
 	Backup bool `json:"backup,omitempty"`
@@ -148,7 +150,7 @@ type ClusterGroupUpgradeSpec struct {
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
 	// Deprecated: Use ClusterLabelSelectors instead
-	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated"
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated, use ClusterLabelSelectors instead"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ClusterSelector []string `json:"clusterSelector,omitempty"`
 	// This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
