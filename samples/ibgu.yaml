@@ -20,7 +20,7 @@ spec:
       rolloutStrategy:
         maxConcurrency: 100
         timeout: 30
-    - actions: ["Finalize"]
+    - actions: ["FinalizeUpgrade"]
       rolloutStrategy:
         maxConcurrency: 500
         timeout: 10
