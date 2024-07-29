@@ -97,6 +97,9 @@ spec:
                   type: object
                   x-kubernetes-map-type: atomic
                 type: array
+                x-kubernetes-validations:
+                - message: clusterLabelSelectors is immutable
+                  rule: self == oldSelf
               ibuSpec:
                 description: ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
                 properties:
@@ -178,6 +181,9 @@ spec:
                     - Rollback
                     type: string
                 type: object
+                x-kubernetes-validations:
+                - message: ibuSpec is immutable
+                  rule: self == oldSelf
               plan:
                 items:
                   properties:
@@ -203,6 +209,43 @@ spec:
                   type: object
                 maxItems: 6
                 type: array
+                x-kubernetes-validations:
+                - message: plan is append only
+                  rule: oldSelf.all(element, element in self)
+                - message: invalid combinations of actions in the plan
+                  rule: '[[[''Prep'']], [[''Prep''], [''Upgrade'']], [[''Prep'', ''Upgrade'']],
+                    [[''Prep''], [''Upgrade''], [''FinalizeUpgrade'']], [[''Prep''],
+                    [''Upgrade'', ''FinalizeUpgrade'']], [[''Prep'', ''Upgrade''],
+                    [''FinalizeUpgrade'']], [[''Prep'', ''Upgrade'', ''FinalizeUpgrade'']],
+                    [[''Rollback'']], [[''Rollback''], [''FinalizeRollback'']], [[''Rollback'',
+                    ''FinalizeRollback'']], [[''Upgrade'']], [[''Upgrade''], [''FinalizeUpgrade'']],
+                    [[''Upgrade'', ''FinalizeUpgrade'']], [[''FinalizeUpgrade'']],[[''FinalizeRollback'']],
+                    [[''Abort'']],[[''AbortOnFailure'']], [[''Prep''], [''Abort'']],
+                    [[''Prep'', ''Upgrade''], [''Rollback'']], [[''Prep''], [''Upgrade''],
+                    [''Rollback''], [''FinalizeRollback'']], [[''Prep''], [''Upgrade''],
+                    [''Rollback'', ''FinalizeRollback'']], [[''Prep'', ''Upgrade''],
+                    [''Rollback''], [''FinalizeRollback'']], [[''Prep'', ''Upgrade''],
+                    [''Rollback'', ''FinalizeRollback'']], [[''Upgrade''], [''Rollback'']],
+                    [[''Upgrade''], [''Rollback''], [''FinalizeRollback'']], [[''Upgrade''],
+                    [''Rollback'', ''FinalizeRollback'']],[[''Prep''], [''AbortOnFailure'']],[[''Prep''],
+                    [''AbortOnFailure''], [''Upgrade'']],[[''Prep''], [''AbortOnFailure''],
+                    [''Upgrade''], [''AbortOnFailure'']],[[''Prep''], [''Upgrade''],
+                    [''AbortOnFailure'']],[[''Prep'', ''Upgrade''], [''AbortOnFailure'']],[[''Prep''],
+                    [''AbortOnFailure''], [''Upgrade''], [''AbortOnFailure''], [''FinalizeUpgrade'']],[[''Prep''],
+                    [''Upgrade''], [''AbortOnFailure''], [''FinalizeUpgrade'']],[[''Prep'',
+                    ''Upgrade''], [''AbortOnFailure''], [''FinalizeUpgrade'']],[[''Prep''],
+                    [''AbortOnFailure''], [''Upgrade''], [''AbortOnFailure''], [''Rollback'']],[[''Prep''],
+                    [''Upgrade''], [''AbortOnFailure''], [''Rollback'']],[[''Prep'',
+                    ''Upgrade''], [''AbortOnFailure''], [''Rollback'']],[[''Prep''],
+                    [''AbortOnFailure''], [''Upgrade''], [''AbortOnFailure''], [''Rollback''],
+                    [''FinalizeRollback'']],[[''Prep''], [''Upgrade''], [''AbortOnFailure''],
+                    [''Rollback''], [''FinalizeRollback'']],[[''Prep'', ''Upgrade''],
+                    [''AbortOnFailure''], [''Rollback''], [''FinalizeRollback'']],[[''Prep''],
+                    [''AbortOnFailure''], [''Upgrade''], [''AbortOnFailure''], [''Rollback'',
+                    ''FinalizeRollback'']],[[''Prep''], [''Upgrade''], [''AbortOnFailure''],
+                    [''Rollback'', ''FinalizeRollback'']],[[''Prep'', ''Upgrade''],
+                    [''AbortOnFailure''], [''Rollback'', ''FinalizeRollback'']]].exists(x,
+                    x==self.map(y, y.actions))'
             required:
             - ibuSpec
             - plan
@@ -334,6 +377,9 @@ spec:
                 type: string
             type: object
         type: object
+        x-kubernetes-validations:
+        - message: Name length must be less than 230 characters
+          rule: size(self.metadata.name) < 230
     served: true
     storage: true
     subresources:
