@@ -27,13 +27,14 @@ type RolloutStrategy struct {
 
 // ImageBasedGroupUpgradeSpec defines the desired state of ImageBasedGroupUpgrade
 type ImageBasedGroupUpgradeSpec struct {
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="IBU Spec"
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="IBU Spec",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	//+kubebuilder:validation:Required
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="ibuSpec is immutable"
 	IBUSpec lcav1.ImageBasedUpgradeSpec `json:"ibuSpec"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Label Selectors",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="clusterLabelSelectors is immutable"
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Plan",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	// +kubebuilder:validation:MaxItems=6
 	// +kubebuilder:validation:XValidation:rule="oldSelf.all(element, element in self)",message="plan is append only"
 	// +kubebuilder:validation:XValidation:rule="[[['Prep']], [['Prep'], ['Upgrade']], [['Prep', 'Upgrade']], [['Prep'], ['Upgrade'], ['FinalizeUpgrade']], [['Prep'], ['Upgrade', 'FinalizeUpgrade']], [['Prep', 'Upgrade'], ['FinalizeUpgrade']], [['Prep', 'Upgrade', 'FinalizeUpgrade']], [['Rollback']], [['Rollback'], ['FinalizeRollback']], [['Rollback', 'FinalizeRollback']], [['Upgrade']], [['Upgrade'], ['FinalizeUpgrade']], [['Upgrade', 'FinalizeUpgrade']], [['FinalizeUpgrade']],[['FinalizeRollback']], [['Abort']],[['AbortOnFailure']], [['Prep'], ['Abort']], [['Prep', 'Upgrade'], ['Rollback']], [['Prep'], ['Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Prep'], ['Upgrade'], ['Rollback', 'FinalizeRollback']], [['Prep', 'Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Prep', 'Upgrade'], ['Rollback', 'FinalizeRollback']], [['Upgrade'], ['Rollback']], [['Upgrade'], ['Rollback'], ['FinalizeRollback']], [['Upgrade'], ['Rollback', 'FinalizeRollback']],[['Prep'], ['AbortOnFailure']],[['Prep'], ['AbortOnFailure'], ['Upgrade']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure']],[['Prep'], ['Upgrade'], ['AbortOnFailure']],[['Prep', 'Upgrade'], ['AbortOnFailure']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['FinalizeUpgrade']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback'], ['FinalizeRollback']],[['Prep'], ['AbortOnFailure'], ['Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']],[['Prep'], ['Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']],[['Prep', 'Upgrade'], ['AbortOnFailure'], ['Rollback', 'FinalizeRollback']]].exists(x, x==self.map(y, y.actions))",message="invalid combinations of actions in the plan"
@@ -80,6 +81,7 @@ type ImageBasedGroupUpgradeStatus struct {
 // +kubebuilder:validation:XValidation:message="Name length must be less than 230 characters", rule="size(self.metadata.name) < 230"
 
 // ImageBasedGroupUpgrade is the schema for upgrading a group of clusters using IBU
+// +operator-sdk:csv:customresourcedefinitions:displayName="Image-Based Group Upgrade",resources={{Namespace, v1},{Deployment,apps/v1}}
 type ImageBasedGroupUpgrade struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
