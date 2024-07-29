@@ -63,6 +63,12 @@ status:
     failedActions:
     - action: Prep
     name: spoke6
+  conditions:
+  - message: Waiting for plan step 4 to be completed 
+    reason: InProgress
+    status: "True"
+    type: Progressing
+
 ---
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade

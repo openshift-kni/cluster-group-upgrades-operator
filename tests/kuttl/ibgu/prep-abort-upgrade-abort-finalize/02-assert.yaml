@@ -43,10 +43,10 @@ status:
     - action: Prep
     name: spoke6
   conditions:
-  - message: All manifests are created
-    reason: Completed
+  - message: Waiting for plan step 1 to be completed
+    reason: InProgress
     status: "True"
-    type: ManifestsCreated
+    type: Progressing
   observedGeneration: 2
 ---
 apiVersion: ran.openshift.io/v1alpha1
