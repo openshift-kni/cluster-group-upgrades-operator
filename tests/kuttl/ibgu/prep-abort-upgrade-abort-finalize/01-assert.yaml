@@ -36,7 +36,7 @@ status:
     - action: Prep
     name: spoke6
   conditions:
-  - message: All manifests are created
+  - message: All plan steps are completed
     reason: Completed
-    status: "True"
-    type: ManifestsCreated
+    status: "False"
+    type: Progressing

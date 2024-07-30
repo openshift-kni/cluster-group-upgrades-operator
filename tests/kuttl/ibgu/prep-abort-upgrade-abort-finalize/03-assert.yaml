@@ -42,5 +42,9 @@ status:
     failedActions:
     - action: Prep
     name: spoke6
-
+  conditions:
+  - message: All plan steps are completed
+    reason: Completed
+    status: "False"
+    type: Progressing
 

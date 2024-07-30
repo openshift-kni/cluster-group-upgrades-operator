@@ -98,11 +98,6 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 	}
-	utils.SetStatusCondition(&ibgu.Status.Conditions,
-		utils.ConditionTypes.ManifestsCreated,
-		utils.ConditionReasons.Completed,
-		metav1.ConditionTrue,
-		"All manifests are created")
 
 	err = r.syncStatusWithCGUs(ctx, ibgu)
 	if err != nil {
@@ -340,9 +335,21 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		if !completed {
 			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
 				"planItem actions", planItem.Actions)
+			utils.SetStatusCondition(&ibgu.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.InProgress,
+				metav1.ConditionTrue,
+				fmt.Sprintf("Waiting for plan step %d to be completed", i))
 			return nil
 		}
 	}
+
+	utils.SetStatusCondition(&ibgu.Status.Conditions,
+		utils.ConditionTypes.Progressing,
+		utils.ConditionReasons.Completed,
+		metav1.ConditionFalse,
+		"All plan steps are completed")
+
 	return nil
 }
 

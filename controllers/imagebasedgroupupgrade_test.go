@@ -14,6 +14,7 @@ import (
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -623,11 +624,12 @@ func TestEnsureClusterLabels(t *testing.T) {
 
 func TestEnsureManifests(t *testing.T) {
 	tests := []struct {
-		name             string
-		plan             []ibguv1alpha1.PlanItem
-		expectedMWRS     []string
-		CGUs             []v1alpha1.ClusterGroupUpgrade
-		expectedCGUJsons []string
+		name               string
+		plan               []ibguv1alpha1.PlanItem
+		expectedMWRS       []string
+		CGUs               []v1alpha1.ClusterGroupUpgrade
+		expectedCGUJsons   []string
+		expectedConditions []metav1.Condition
 	}{
 		{
 			name: "without append",
@@ -637,6 +639,14 @@ func TestEnsureManifests(t *testing.T) {
 				},
 			},
 			expectedMWRS: []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    string(utils.ConditionTypes.Progressing),
+					Reason:  string(utils.ConditionReasons.InProgress),
+					Message: "Waiting for plan step 0 to be completed",
+					Status:  metav1.ConditionTrue,
+				},
+			},
 			expectedCGUJsons: []string{
 				`
 {
@@ -714,6 +724,14 @@ func TestEnsureManifests(t *testing.T) {
 				},
 			},
 			expectedMWRS: []string{"name-abort"},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    string(utils.ConditionTypes.Progressing),
+					Reason:  string(utils.ConditionReasons.InProgress),
+					Message: "Waiting for plan step 1 to be completed",
+					Status:  metav1.ConditionTrue,
+				},
+			},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
 					ObjectMeta: v1.ObjectMeta{
@@ -802,6 +820,46 @@ func TestEnsureManifests(t *testing.T) {
 			},
 		},
 		{
+			name: "all completed",
+			plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{ibguv1alpha1.Prep},
+				},
+			},
+			expectedMWRS: []string{},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name-prep-0",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{
+							"name-prep",
+						},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type: string(utils.ConditionTypes.Succeeded),
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    string(utils.ConditionTypes.Progressing),
+					Reason:  string(utils.ConditionReasons.Completed),
+					Message: "All plan steps are completed",
+					Status:  metav1.ConditionFalse,
+				},
+			},
+		},
+		{
 			name: "append",
 			plan: []ibguv1alpha1.PlanItem{
 				{
@@ -833,6 +891,14 @@ func TestEnsureManifests(t *testing.T) {
 							},
 						},
 					},
+				},
+			},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    string(utils.ConditionTypes.Progressing),
+					Reason:  string(utils.ConditionReasons.InProgress),
+					Message: "Waiting for plan step 1 to be completed",
+					Status:  metav1.ConditionTrue,
 				},
 			},
 			expectedCGUJsons: []string{
@@ -954,6 +1020,13 @@ func TestEnsureManifests(t *testing.T) {
 			for _, expected := range test.expectedMWRS {
 				assert.Contains(t, mwrsNames, expected)
 			}
+
+			conditions := []metav1.Condition{}
+			for _, c := range ibgu.Status.Conditions {
+				c.LastTransitionTime = metav1.Time{}
+				conditions = append(conditions, c)
+			}
+			assert.ElementsMatch(t, test.expectedConditions, conditions)
 
 			cgu := &v1alpha1.ClusterGroupUpgrade{}
 			for _, expected := range test.expectedCGUJsons {
