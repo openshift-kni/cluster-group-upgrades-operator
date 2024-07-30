@@ -19,9 +19,6 @@ var ConditionTypes = struct {
 	Progressing        ConditionType
 	Succeeded          ConditionType
 	Validated          ConditionType
-
-	// IBGU
-	ManifestsCreated ConditionType
 }{
 	BackupSuceeded:     "BackupSuceeded",
 	ClustersSelected:   "ClustersSelected",
@@ -30,7 +27,6 @@ var ConditionTypes = struct {
 	Progressing:        "Progressing",
 	Succeeded:          "Succeeded",
 	Validated:          "Validated",
-	ManifestsCreated:   "ManifestsCreated",
 }
 
 // ConditionReason is a string representing the condition's reason
