@@ -61,6 +61,9 @@ func (r *ClusterGroupUpgradeReconciler) getNextManifestWorkForCluster(
 func (r *ClusterGroupUpgradeReconciler) updateManifestWorkForCurrentBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	for clusterName, clusterProgress := range clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress {
+		if clusterProgress.State == ranv1alpha1.Completed {
+			continue
+		}
 		currentIndex := *clusterProgress.ManifestWorkIndex
 		if currentIndex > 0 {
 			_, err := utils.GetManifestWorkForCluster(ctx, r.Client, clusterGroupUpgrade, currentIndex-1, clusterName)
