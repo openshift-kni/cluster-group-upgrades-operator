@@ -86,14 +86,6 @@ metadata:
     kind: ImageBasedGroupUpgrade
     name: upgrade-4.15.0
 spec:
-  actions:
-    afterCompletion:
-      deleteObjects: true
-      removeClusterAnnotations:
-      - import.open-cluster-management.io/disable-auto-import
-    beforeEnable:
-      addClusterAnnotations:
-        import.open-cluster-management.io/disable-auto-import: "true"
   backup: false
   clusterLabelSelectors:
   - matchExpressions:

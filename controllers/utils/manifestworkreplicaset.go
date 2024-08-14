@@ -311,16 +311,20 @@ func getLabelSelectorForPlanItem(
 // GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
-	templateNames []string, annotations map[string]string,
+	templateNames []string, annotations map[string]string, disableAutoImport bool,
 ) *ranv1alpha1.ClusterGroupUpgrade {
 	enable := true
-	beforeEnable := ranv1alpha1.BeforeEnable{
-		AddClusterAnnotations: map[string]string{
-			"import.open-cluster-management.io/disable-auto-import": "true",
-		},
-	}
-	afterCompletion := ranv1alpha1.AfterCompletion{
-		RemoveClusterAnnotations: []string{"import.open-cluster-management.io/disable-auto-import"},
+	beforeEnable := ranv1alpha1.BeforeEnable{}
+	afterCompletion := ranv1alpha1.AfterCompletion{}
+	if disableAutoImport {
+		beforeEnable = ranv1alpha1.BeforeEnable{
+			AddClusterAnnotations: map[string]string{
+				"import.open-cluster-management.io/disable-auto-import": "true",
+			},
+		}
+		afterCompletion = ranv1alpha1.AfterCompletion{
+			RemoveClusterAnnotations: []string{"import.open-cluster-management.io/disable-auto-import"},
+		}
 	}
 
 	return &ranv1alpha1.ClusterGroupUpgrade{

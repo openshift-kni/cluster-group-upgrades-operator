@@ -61,7 +61,7 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 		},
 	}
 
-	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, map[string]string{})
+	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, map[string]string{}, true)
 
 	json, _ := ObjectToJSON(cgu)
 	expected := `
