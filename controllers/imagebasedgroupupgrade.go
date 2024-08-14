@@ -249,6 +249,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		},
 		Spec: ibgu.Spec.IBUSpec,
 	}
+	disableAutoImport := false
 	for _, action := range planItem.Actions {
 		templateName := ""
 		var mwrs *mwv1alpha1.ManifestWorkReplicaSet
@@ -261,6 +262,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		case ibguv1alpha1.Upgrade:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Upgrade))
 			mwrs, err = utils.GenerateUpgradeManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
+			disableAutoImport = true
 		case ibguv1alpha1.Abort:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Abort))
 			mwrs, err = utils.GenerateAbortManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
@@ -305,7 +307,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		annotations[utils.NameSuffixAnnotation] = suffix
 	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
-		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations)
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations, disableAutoImport)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {

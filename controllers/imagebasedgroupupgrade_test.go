@@ -781,16 +781,8 @@ func TestEnsureManifests(t *testing.T) {
   },
   "spec": {
     "actions": {
-      "afterCompletion": {
-        "removeClusterAnnotations": [
-          "import.open-cluster-management.io/disable-auto-import"
-        ]
-      },
-      "beforeEnable": {
-        "addClusterAnnotations": {
-          "import.open-cluster-management.io/disable-auto-import": "true"
-        }
-      }
+      "afterCompletion": {},
+      "beforeEnable": {}
     },
     "clusterLabelSelectors": [
       {
