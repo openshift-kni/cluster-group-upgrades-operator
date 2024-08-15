@@ -20,6 +20,10 @@ status:
   clusters:
   - name: spoke1
     state: complete
+  - name: spoke4
+    state: complete
+  - name: spoke6
+    state: complete
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
@@ -29,23 +33,16 @@ status:
     reason: ValidationCompleted
     status: 'True'
     type: Validated
-  - message: Rolling out manifestworks
-    reason: InProgress
-    status: "True"
+  - message: All manifestworks rolled out successfully on all clusters
+    reason: Completed
+    status: "False"
     type: Progressing
-  safeResourceNames:
-    /default.ibu-prep: default.ibu-prep-kuttl
-    /default.ibu-upgrade: default.ibu-upgrade-kuttl
-    /default.ibu-finalize: default.ibu-finalize-kuttl
+  - message: All manifestworks rolled out successfully on all clusters
+    reason: Completed
+    status: "True"
+    type: Succeeded
   remediationPlan:
   - - spoke1
     - spoke4
   - - spoke6
-  status:
-    currentBatch: 1
-    currentBatchRemediationProgress:
-      spoke1:
-        state: Completed
-      spoke4:
-        manifestWorkIndex: 2
-        state: InProgress
+
