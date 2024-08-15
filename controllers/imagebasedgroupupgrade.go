@@ -92,25 +92,32 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 			return
 		}
 		r.Log.Error(err, "Failed to get IBGU")
-		return
+		return requeueWithError(err)
 	}
 	err = r.ensureManifests(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
+		return requeueWithError(err)
 	}
 
 	err = r.syncStatusWithCGUs(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error syncing status with CGUs")
+		return requeueWithError(err)
 	}
 
 	err = r.ensureClusterLabels(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensuring cluster labels")
+		return requeueWithError(err)
 	}
 
-	// Update status
 	err = r.updateStatus(ctx, ibgu)
+	if err != nil {
+		r.Log.Error(err, "error updating ibgu status")
+		return requeueWithError(err)
+	}
+
 	return
 }
 
@@ -189,6 +196,9 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 				if cluster.CurrentManifestWork != nil {
 					action := utils.GetActionFromMWRSName(cluster.CurrentManifestWork.Name)
 					msg := utils.GetConditionMessageFromManifestWorkStatus(cluster.CurrentManifestWork)
+					if msg == "" {
+						msg = "Action did not successfully complete before the timeout specified in the rolloutStrategy"
+					}
 					m[cluster.Name].FailedActions = append(m[cluster.Name].FailedActions,
 						ibguv1alpha1.ActionMessage{Action: action, Message: msg})
 				}
