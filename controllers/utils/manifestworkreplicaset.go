@@ -416,6 +416,12 @@ func GetConditionMessageFromManifestWorkStatus(status *ranv1alpha1.ManifestWorkS
 				}
 			}
 		}
+
+		for _, condition := range manifest.Conditions {
+			if condition.Type == "Applied" && condition.Status == "False" {
+				msgs = append(msgs, condition.Message)
+			}
+		}
 	}
 	return strings.Join(msgs, "\n")
 }

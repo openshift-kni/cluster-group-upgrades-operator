@@ -24,6 +24,96 @@ var ibu = &lcav1.ImageBasedUpgrade{
 	},
 }
 
+func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
+	e := "some err"
+	tests := []struct {
+		name     string
+		status   v1alpha1.ManifestWorkStatus
+		expected string
+	}{
+		{
+			name:     "failed condition",
+			expected: "failed to apply",
+			status: v1alpha1.ManifestWorkStatus{
+				Name: "manifest",
+				Status: mwv1.ManifestResourceStatus{
+					Manifests: []mwv1.ManifestCondition{
+						{
+							Conditions: []v1.Condition{
+								{
+									Type:    "Applied",
+									Message: "failed to apply",
+									Status:  "False",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfull apply",
+			expected: "",
+			status: v1alpha1.ManifestWorkStatus{
+				Name: "manifest",
+				Status: mwv1.ManifestResourceStatus{
+					Manifests: []mwv1.ManifestCondition{
+						{
+							Conditions: []v1.Condition{
+								{
+									Type:   "Applied",
+									Status: "True",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name:     "successfull apply",
+			expected: "some err\nsome err",
+			status: v1alpha1.ManifestWorkStatus{
+				Name: "manifest",
+				Status: mwv1.ManifestResourceStatus{
+					Manifests: []mwv1.ManifestCondition{
+						{
+							Conditions: []v1.Condition{
+								{
+									Type:   "Applied",
+									Status: "True",
+								},
+							},
+							StatusFeedbacks: mwv1.StatusFeedbackResult{
+								Values: []mwv1.FeedbackValue{
+									{
+										Name: "ConditionReason",
+										Value: mwv1.FieldValue{
+											String: &e,
+										},
+									},
+									{
+										Name: "ConditionMessage",
+										Value: mwv1.FieldValue{
+											String: &e,
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			got := GetConditionMessageFromManifestWorkStatus(&test.status)
+			assert.Equal(t, test.expected, got)
+		})
+	}
+}
+
 func TestGenerateCGUForPlanItem(t *testing.T) {
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
