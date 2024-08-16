@@ -1,5 +1,11 @@
 apiVersion: work.open-cluster-management.io/v1
 kind: ManifestWork
 metadata:
-  name: default.ibu-prep-kuttl
-  namespace: spoke6
+  name: default.ibu-finalize-kuttl
+  namespace: spoke4
+---
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  name: default.ibu-finalize-kuttl
+  namespace: spoke1
