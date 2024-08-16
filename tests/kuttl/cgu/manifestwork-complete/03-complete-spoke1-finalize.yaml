@@ -4,5 +4,3 @@ kind: TestStep
 commands:
   - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke1 default.ibu-finalize-kuttl idle-mw-completed-status.json
     ignoreFailure: false
-  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke4 default.ibu-finalize-kuttl idle-mw-completed-status.json
-    ignoreFailure: false

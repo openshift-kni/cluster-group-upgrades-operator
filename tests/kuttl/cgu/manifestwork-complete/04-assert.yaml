@@ -47,7 +47,7 @@ status:
     currentBatch: 2
     currentBatchRemediationProgress:
       spoke6:
-        manifestWorkIndex: 1
+        manifestWorkIndex: 0
         state: InProgress
 ---
 apiVersion: work.open-cluster-management.io/v1
@@ -55,11 +55,11 @@ kind: ManifestWork
 metadata:
   annotations:
     openshift-cluster-group-upgrades/expectedValues: |
-      [{"manifestIndex":0,"name":"isUpgradeCompleted","value":"True"}]
+      [{"manifestIndex":0,"name":"isPrepCompleted","value":"True"}]
   labels:
     openshift-cluster-group-upgrades/clusterGroupUpgrade: ibu-upgrade
     openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
-  name: default.ibu-upgrade-kuttl
+  name: default.ibu-prep-kuttl
   namespace: spoke6
 spec:
   deleteOption:
@@ -67,12 +67,12 @@ spec:
   manifestConfigs:
   - feedbackRules:
     - jsonPaths:
-      - name: isUpgradeCompleted
-        path: .status.conditions[?(@.type=="UpgradeCompleted")].status
-      - name: upgradeInProgressConditionMessage
-        path: .status.conditions[?(@.type=="UpgradeInProgress")].message
-      - name: upgradeCompletedConditionMessage
-        path: .status.conditions[?(@.type=="UpgradeCompleted")].message
+      - name: isPrepCompleted
+        path: .status.conditions[?(@.type=="PrepCompleted")].status
+      - name: prepInProgressConditionMessage
+        path: .status.conditions[?(@.type=="PrepInProgress")].message
+      - name: prepCompletedConditionMessage
+        path: .status.conditions[?(@.type=="PrepCompleted")].message
       type: JSONPaths
     resourceIdentifier:
       group: lca.openshift.io
@@ -93,4 +93,4 @@ spec:
         seedImageRef:
           image: quay.io/angwang/lca-seed-cnfdf20:4.15.0-rc.5-v4
           version: 4.15.0-rc.5
-        stage: Upgrade
+        stage: Prep
