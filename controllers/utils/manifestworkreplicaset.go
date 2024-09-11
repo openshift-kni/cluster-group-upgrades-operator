@@ -260,50 +260,40 @@ func getLabelSelectorForPlanItem(
 	currentSelector []metav1.LabelSelector, planItem *ibguv1alpha1.PlanItem,
 ) []metav1.LabelSelector {
 	result := []metav1.LabelSelector{}
-	switch planItem.Actions[0] {
-	case ibguv1alpha1.FinalizeUpgrade:
-		for _, m := range currentSelector {
-			upgradeCompleted := m.DeepCopy()
-			if upgradeCompleted.MatchLabels == nil {
-				upgradeCompleted.MatchLabels = make(map[string]string)
-			}
-			upgradeCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
-			result = append(result, *upgradeCompleted)
+	for _, m := range currentSelector {
+		selector := m.DeepCopy()
+		if selector.MatchLabels == nil {
+			selector.MatchLabels = make(map[string]string)
 		}
-	case ibguv1alpha1.FinalizeRollback:
-		for _, m := range currentSelector {
-			rollbackCompleted := m.DeepCopy()
-			if rollbackCompleted.MatchLabels == nil {
-				rollbackCompleted.MatchLabels = make(map[string]string)
+		switch planItem.Actions[0] {
+		case ibguv1alpha1.Abort:
+			if selector.MatchExpressions == nil {
+				selector.MatchExpressions = make([]v1.LabelSelectorRequirement, 0)
 			}
-			rollbackCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Rollback))] = ""
-			result = append(result, *rollbackCompleted)
+			selector.MatchExpressions = append(
+				selector.MatchExpressions, v1.LabelSelectorRequirement{
+					Key: fmt.Sprintf(IBGUActionCompletedLabelTemplate,
+						strings.ToLower(ibguv1alpha1.Upgrade)),
+					Operator: metav1.LabelSelectorOpDoesNotExist,
+				})
+		case ibguv1alpha1.Rollback:
+			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
+		case ibguv1alpha1.FinalizeUpgrade:
+			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
+		case ibguv1alpha1.FinalizeRollback:
+			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Rollback))] = ""
+		case ibguv1alpha1.AbortOnFailure:
+			selectorPrep := selector.DeepCopy()
+			selector.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
+			selectorPrep.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
+			result = append(result, *selectorPrep)
+
+		case ibguv1alpha1.Upgrade:
+			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
+		default:
+			return currentSelector
 		}
-	case ibguv1alpha1.AbortOnFailure:
-		for _, m := range currentSelector {
-			upgradeFailed := m.DeepCopy()
-			if upgradeFailed.MatchLabels == nil {
-				upgradeFailed.MatchLabels = make(map[string]string)
-			}
-			prepFailed := m.DeepCopy()
-			if prepFailed.MatchLabels == nil {
-				prepFailed.MatchLabels = make(map[string]string)
-			}
-			upgradeFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
-			prepFailed.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
-			result = append(result, *prepFailed, *upgradeFailed)
-		}
-	case ibguv1alpha1.Upgrade:
-		for _, m := range currentSelector {
-			prepCompleted := m.DeepCopy()
-			if prepCompleted.MatchLabels == nil {
-				prepCompleted.MatchLabels = make(map[string]string)
-			}
-			prepCompleted.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
-			result = append(result, *prepCompleted)
-		}
-	default:
-		return currentSelector
+		result = append(result, *selector)
 	}
 	return result
 }

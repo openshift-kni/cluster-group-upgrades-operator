@@ -1005,6 +1005,52 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 				Actions: []string{ibguv1alpha1.FinalizeRollback},
 			},
 		},
+		{
+			name: "Rollback",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+				{
+					MatchLabels: map[string]string{"group": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true",
+						"lcm.openshift.io/ibgu-upgrade-completed": ""},
+				},
+				{
+					MatchLabels: map[string]string{"group": "true",
+						"lcm.openshift.io/ibgu-upgrade-completed": ""},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.Rollback},
+			},
+		},
+		{
+			name: "Abort",
+			currentSelctor: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+				},
+			},
+			expected: []v1.LabelSelector{
+				{
+					MatchLabels: map[string]string{"common": "true"},
+					MatchExpressions: []v1.LabelSelectorRequirement{
+						{
+							Key:      "lcm.openshift.io/ibgu-upgrade-completed",
+							Operator: metav1.LabelSelectorOpDoesNotExist,
+						},
+					},
+				},
+			},
+			planItem: ibguv1alpha1.PlanItem{
+				Actions: []string{ibguv1alpha1.Abort},
+			},
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
