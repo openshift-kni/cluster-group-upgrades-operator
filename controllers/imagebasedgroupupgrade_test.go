@@ -788,7 +788,11 @@ func TestEnsureManifests(t *testing.T) {
       {
         "matchLabels": {
           "common": "true"
-        }
+        },
+        "matchExpressions": [{
+          "key": "lcm.openshift.io/ibgu-upgrade-completed",
+          "operator": "DoesNotExist"
+        }]
       }
     ],
     "enable": true,
