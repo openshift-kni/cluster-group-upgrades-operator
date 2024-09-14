@@ -753,7 +753,7 @@ func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context
 				// Remove it as we have created a new one and updated the map
 				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetKind())
 				err := r.Client.Delete(ctx, newResource)
-				if err != nil {
+				if !errors.IsNotFound(err) {
 					return childResourceNames, err
 				}
 				return childResourceNames, nil
