@@ -42,7 +42,7 @@ spec:
 
 $ oc create configmap oadp-cm -n openshift-adp --from-file oadp.yaml
 ```
-Notice that `.metadata.annotations["lca.openshitio.io/apply-label"]` has one more item compared to normal IBU platfrom backup.
+Notice that `.metadata.annotations["lca.openshift.io/apply-label"]` has one more item compared to normal IBU platfrom backup.
 `rbac.authorization.k8s.io/v1/clusterroles/open-cluster-management:klusterlet-work:ibu-role` this object is used by manifest work agent to access IBU object and it should be restored after pivot or else CGU can not see the status of IBU.
 
 ## Step by step
