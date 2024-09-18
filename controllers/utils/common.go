@@ -3,23 +3,20 @@ package utils
 import (
 	"fmt"
 	"regexp"
+	"sort"
+	"strings"
 	"unicode/utf8"
 
+	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
+	corev1 "k8s.io/api/core/v1"
+	rbac "k8s.io/api/rbac/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
-
-// GetManagedPolicyForUpgradeByIndex return the policy from the list of managedPoliciesForUpgrade
-// by the index.
-func GetManagedPolicyForUpgradeByIndex(
-	policyIndex int, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) *ranv1alpha1.ManagedPolicyForUpgrade {
-	for index, crtPolicy := range clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade {
-		if index == policyIndex {
-			return &crtPolicy
-		}
-	}
-	return nil
-}
 
 // GetMinOf3 return the minimum of 3 numbers.
 func GetMinOf3(number1, number2, number3 int) int {
@@ -96,4 +93,61 @@ func ContainsTemplates(s string) bool {
 	regexpAllTemplates := regexp.MustCompile(`{{.*}}`)
 
 	return regexpAllTemplates.MatchString(s)
+}
+
+// Difference returns the elements in `a` that aren't in `b`.
+func Difference(a, b []string) []string {
+	mb := make(map[string]struct{}, len(b))
+	for _, x := range b {
+		mb[x] = struct{}{}
+	}
+	var diff []string
+	for _, x := range a {
+		if _, found := mb[x]; !found {
+			diff = append(diff, x)
+		}
+	}
+	return diff
+}
+
+func ObjectToJSON(obj runtime.Object) (string, error) {
+	scheme := runtime.NewScheme()
+	mwv1alpha1.AddToScheme(scheme)
+	v1alpha1.AddToScheme(scheme)
+	corev1.AddToScheme(scheme)
+	rbac.AddToScheme(scheme)
+	lcav1.AddToScheme(scheme)
+	outUnstructured := &unstructured.Unstructured{}
+	scheme.Convert(obj, outUnstructured, nil)
+	json, err := outUnstructured.MarshalJSON()
+	return string(json), err
+}
+
+func ObjectToByteArray(obj runtime.Object) ([]byte, error) {
+	json, err := ObjectToJSON(obj)
+	return []byte(json), err
+}
+
+// Contains check if str is in slice
+// can be replaced by slices.Contains when golang is updated to 1.21
+func Contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
+}
+
+// SortCGUListByPlanIndex orders the CGUs by the last action in the name of cgu
+// with following order prep-upgrade-rollback-finalize-abort
+func SortCGUListByPlanIndex(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
+	sort.Slice(cguList.Items, func(i, j int) bool {
+		iSplitted := strings.Split(cguList.Items[i].GetName(), "-")
+		jSplitted := strings.Split(cguList.Items[j].GetName(), "-")
+		iLast := iSplitted[len(iSplitted)-1]
+		jLast := jSplitted[len(jSplitted)-1]
+		return iLast < jLast
+	})
 }

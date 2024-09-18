@@ -42,6 +42,7 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
   - get
   - list
   - patch
@@ -75,6 +76,32 @@ rules:
   resources:
   - managedclusters/finalizers
   verbs:
+  - update
+- apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - lcm.openshift.io
+  resources:
+  - imagebasedgroupupgrades/status
+  verbs:
+  - get
+  - patch
   - update
 - apiGroups:
   - monitoring.coreos.com
@@ -184,6 +211,30 @@ rules:
   verbs:
   - create
   - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - work.open-cluster-management.io
+  resources:
+  - manifestworkreplicasets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - watch
+- apiGroups:
+  - work.open-cluster-management.io
+  resources:
+  - manifestworks
+  verbs:
+  - create
+  - delete
+  - deletecollection
   - get
   - list
   - patch

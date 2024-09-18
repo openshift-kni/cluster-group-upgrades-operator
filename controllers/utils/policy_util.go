@@ -78,7 +78,7 @@ func DeletePolicies(ctx context.Context, c client.Client, ns string, labels map[
 	}
 
 	for _, policy := range policiesList.Items {
-		if err := c.Delete(ctx, &policy); err != nil {
+		if err := c.Delete(ctx, &policy); client.IgnoreNotFound(err) != nil {
 			return err
 		}
 	}
@@ -97,7 +97,7 @@ func DeletePlacementBindings(ctx context.Context, c client.Client, ns string, la
 		Kind:    "PlacementBinding",
 		Version: "v1",
 	})
-	if err := c.DeleteAllOf(ctx, placementBinding, deleteAllOpts...); err != nil {
+	if err := c.DeleteAllOf(ctx, placementBinding, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 	return nil
@@ -116,7 +116,7 @@ func DeletePlacementRules(ctx context.Context, c client.Client, ns string, label
 		Kind:    "PlacementRule",
 		Version: "v1",
 	})
-	if err := c.DeleteAllOf(ctx, placementRule, deleteAllOpts...); err != nil {
+	if err := c.DeleteAllOf(ctx, placementRule, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 	return nil
@@ -178,8 +178,6 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 
 		switch {
 		case objectTemplatePresent && objectTemplateRawPresent:
-			return containsStatus, &PolicyErr{policyName, ConfigPlcMissAnyObjTmpl}
-		case !objectTemplatePresent && !objectTemplateRawPresent:
 			return containsStatus, &PolicyErr{policyName, ConfigPlcHasBothObjTmpl}
 		case objectTemplatePresent:
 			configPlcTmpls = plcTmplDefSpec[ObjectTemplates].([]interface{})

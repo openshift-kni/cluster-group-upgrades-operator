@@ -1,0 +1,38 @@
+{
+  "status": {
+    "conditions": [
+      {
+        "lastTransitionTime": "2024-02-28T15:19:23Z",
+        "message": "Failed to apply",
+        "observedGeneration": 2,
+        "reason": "Failed",
+        "status": "False",
+        "type": "Applied"
+      }
+    ],
+    "resourceStatus": {
+      "manifests": [
+        {
+          "conditions": [
+            {
+              "lastTransitionTime": "2024-02-28T15:19:23Z",
+              "message": "Failed to apply",
+              "reason": "Failed",
+              "status": "False",
+              "type": "Applied"
+            }
+          ],
+          "resourceMeta": {
+            "group": "lca.openshift.io",
+            "kind": "ImageBasedUpgrade",
+            "name": "upgrade",
+            "namespace": "",
+            "ordinal": 0,
+            "resource": "imagebasedupgrades",
+            "version": "v1alpha1"
+          }
+        }
+      ]
+    }
+  }
+}

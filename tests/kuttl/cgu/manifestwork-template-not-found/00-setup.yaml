@@ -1,0 +1,12 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # Create all the manifestwork templates
+  - command: oc apply -f ../../../../deploy/acm/manifestwork-templates/ibu-prep.yaml
+    namespaced: true
+
+  # Apply the UOCR.
+  - command: oc apply -f ../../../../deploy/upgrades/manifestwork/ibu-upgrade.yaml
+    namespaced: true
+

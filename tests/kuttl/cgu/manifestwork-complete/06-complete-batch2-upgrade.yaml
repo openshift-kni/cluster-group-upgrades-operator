@@ -1,0 +1,6 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/upgrades/manifestwork/update-manifestwork-status.sh spoke6 default.ibu-upgrade-kuttl upgrade-mw-completed-status.json
+    ignoreFailure: false

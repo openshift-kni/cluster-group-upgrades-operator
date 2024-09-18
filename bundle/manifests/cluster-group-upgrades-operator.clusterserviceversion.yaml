@@ -28,7 +28,7 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     olm.skipRange: '>=4.10.0 <4.16.0'
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+    operators.operatorframework.io/builder: operator-sdk-v1.28.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v4.16.0
   namespace: placeholder
@@ -53,15 +53,16 @@ spec:
         path: actions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: This field determines whether the cluster would be running a
-          backup prior to the upgrade.
+      - description: 'This field determines whether the cluster would be running a
+          backup prior to the upgrade. Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade
+          instead for SNO upgrades with built-in backup/rollback functionality'
         displayName: Backup
         path: backup
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
       - description: 'The Batch Timeout Action can be specified to control what happens
           when a batch times out. The default value is `Continue`. The possible values
-          are:   - Continue   - Abort'
+          are: - Continue - Abort'
         displayName: BatchTimeoutAction
         path: batchTimeoutAction
         x-descriptors:
@@ -72,19 +73,18 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a list of expressions or labels that will be
           used to determine what clusters to include in the operation. The expected
-          format is as follows: clusterLabelSelectors:   - matchExpressions:       -
-          key: label1         operator: In         values:           - value1a           -
-          value1b   - matchLabels:       label2: value2   - matchExpressions:       -
-          key: label3         operator: In         values:           - value3     matchLabels:       label4:
-          value4'
+          format is as follows: clusterLabelSelectors: - matchExpressions: - key:
+          label1 operator: In values: - value1a - value1b - matchLabels: label2: value2
+          - matchExpressions: - key: label3 operator: In values: - value3 matchLabels:
+          label4: value4'
         displayName: Cluster Label Selectors
         path: clusterLabelSelectors
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a label common to multiple clusters that will
-          be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   -
-          label2Name=label2Value If the value is empty, then the expected format is:
-          clusterSelector:   - label1Name All the clusters matching the labels specified
+          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
+          - label2Name=label2Value If the value is empty, then the expected format
+          is: clusterSelector: - label1Name All the clusters matching the labels specified
           in clusterSelector will be included in the update plan. Deprecated: Use
           ClusterLabelSelectors instead'
         displayName: Cluster Selector
@@ -105,6 +105,10 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:bool
       - displayName: Managed Policies
         path: managedPolicies
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Manifest Work Templates
+        path: manifestWorkTemplates
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: This field determines whether container image pre-caching will
@@ -161,6 +165,37 @@ spec:
         path: safeResourceNames
       - displayName: Status
         path: status
+      version: v1alpha1
+    - description: ImageBasedGroupUpgrade is the schema for upgrading a group of clusters
+        using IBU
+      displayName: Image-Based Group Upgrade
+      kind: ImageBasedGroupUpgrade
+      name: imagebasedgroupupgrades.lcm.openshift.io
+      resources:
+      - kind: Deployment
+        name: ""
+        version: apps/v1
+      - kind: Namespace
+        name: ""
+        version: v1
+      specDescriptors:
+      - displayName: Cluster Label Selectors
+        path: clusterLabelSelectors
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: IBU Spec
+        path: ibuSpec
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      - displayName: Plan
+        path: plan
+        x-descriptors:
+        - urn:alm:descriptor:com.tectonic.ui:text
+      statusDescriptors:
+      - displayName: Conditions
+        path: conditions
+      - displayName: Status
+        path: observedGeneration
       version: v1alpha1
     - description: PreCachingConfig is the Schema for the precachingconfigs API
       displayName: Pre-caching Config
@@ -219,6 +254,7 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
           - get
           - list
           - patch
@@ -252,6 +288,32 @@ spec:
           resources:
           - managedclusters/finalizers
           verbs:
+          - update
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades/finalizers
+          verbs:
+          - update
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - imagebasedgroupupgrades/status
+          verbs:
+          - get
+          - patch
           - update
         - apiGroups:
           - monitoring.coreos.com
@@ -361,6 +423,30 @@ spec:
           verbs:
           - create
           - delete
+          - deletecollection
+          - get
+          - list
+          - patch
+          - update
+          - watch
+        - apiGroups:
+          - work.open-cluster-management.io
+          resources:
+          - manifestworkreplicasets
+          verbs:
+          - create
+          - delete
+          - get
+          - list
+          - watch
+        - apiGroups:
+          - work.open-cluster-management.io
+          resources:
+          - manifestworks
+          verbs:
+          - create
+          - delete
+          - deletecollection
           - get
           - list
           - patch
@@ -380,7 +466,11 @@ spec:
           - create
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - name: cluster-group-upgrades-controller-manager-v2
+      - label:
+          app.kubernetes.io/component: talm
+          app.kubernetes.io/name: talm-operator
+          control-plane: controller-manager
+        name: cluster-group-upgrades-controller-manager-v2
         spec:
           replicas: 1
           selector:

@@ -1,0 +1,85 @@
+{
+  "status": {
+    "conditions": [
+      {
+        "lastTransitionTime": "2024-02-28T15:19:23Z",
+        "message": "Apply manifest work complete",
+        "observedGeneration": 2,
+        "reason": "AppliedManifestWorkComplete",
+        "status": "True",
+        "type": "Applied"
+      },
+      {
+        "lastTransitionTime": "2024-02-28T15:19:23Z",
+        "message": "All resources are available",
+        "observedGeneration": 2,
+        "reason": "ResourcesAvailable",
+        "status": "True",
+        "type": "Available"
+      }
+    ],
+    "resourceStatus": {
+      "manifests": [
+        {
+          "conditions": [
+            {
+              "lastTransitionTime": "2024-02-28T15:19:23Z",
+              "message": "Apply manifest complete",
+              "reason": "AppliedManifestComplete",
+              "status": "True",
+              "type": "Applied"
+            },
+            {
+              "lastTransitionTime": "2024-02-28T15:19:23Z",
+              "message": "Resource is available",
+              "reason": "ResourceAvailable",
+              "status": "True",
+              "type": "Available"
+            },
+            {
+              "lastTransitionTime": "2024-02-28T15:19:23Z",
+              "message": "",
+              "reason": "StatusFeedbackSynced",
+              "status": "True",
+              "type": "StatusFeedbackSynced"
+            }
+          ],
+          "resourceMeta": {
+            "group": "lca.openshift.io",
+            "kind": "ImageBasedUpgrade",
+            "name": "upgrade",
+            "namespace": "",
+            "ordinal": 0,
+            "resource": "imagebasedupgrades",
+            "version": "v1alpha1"
+          },
+          "statusFeedback": {
+            "values": [
+              {
+                "fieldValue": {
+                  "string": "True",
+                  "type": "String"
+                },
+                "name": "isIdle"
+              },
+              {
+                "fieldValue": {
+                  "string": "Completed",
+                  "type": "String"
+                },
+                "name": "idleConditionReason"
+              },
+              {
+                "fieldValue": {
+                  "string": "Completed",
+                  "type": "String"
+                },
+                "name": "idleConditionMessages"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

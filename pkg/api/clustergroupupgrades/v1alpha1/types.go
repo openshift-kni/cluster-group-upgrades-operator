@@ -18,6 +18,7 @@ package v1alpha1
 
 import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	mwv1 "open-cluster-management.io/api/work/v1"
 )
 
 // EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
@@ -106,12 +107,16 @@ type OperatorUpgradeSpec struct {
 	Namespace string `json:"namespace,omitempty"`
 }
 
+// TODO add validation so manifest templates and managed policies are not used at the same time
+
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
 type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// This field determines whether the cluster would be running a backup prior to the upgrade.
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.Backup is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality"
 	//+kubebuilder:default=false
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Backup",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
 	Backup bool `json:"backup,omitempty"`
@@ -145,7 +150,7 @@ type ClusterGroupUpgradeSpec struct {
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
 	// Deprecated: Use ClusterLabelSelectors instead
-	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated"
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated, use ClusterLabelSelectors instead"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ClusterSelector []string `json:"clusterSelector,omitempty"`
 	// This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
@@ -170,8 +175,12 @@ type ClusterGroupUpgradeSpec struct {
 	ClusterLabelSelectors []metav1.LabelSelector `json:"clusterLabelSelectors,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Remediation Strategy",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	RemediationStrategy *RemediationStrategySpec `json:"remediationStrategy"`
+	//+kubebuilder:validation:Optional
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Managed Policies",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	ManagedPolicies []string `json:"managedPolicies,omitempty"`
+	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Manifest Work Templates",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
+	//+kubebuilder:validation:Optional
+	ManifestWorkTemplates []string `json:"manifestWorkTemplates"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Blocking CRs",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	BlockingCRs []BlockingCR `json:"blockingCRs,omitempty"`
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Actions",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
@@ -184,12 +193,33 @@ type ClusterGroupUpgradeSpec struct {
 	BatchTimeoutAction string `json:"batchTimeoutAction,omitempty"`
 }
 
+// RolloutType is a string representing the rollout type
+type RolloutType string
+
+// RolloutTypes define the supported rollout types
+var RolloutTypes = struct {
+	ManifestWork RolloutType
+	Policy       RolloutType
+}{
+	ManifestWork: "ManifestWork",
+	Policy:       "Policy",
+}
+
+// RolloutType returns the rollout type based on the spec content
+func (cgu ClusterGroupUpgrade) RolloutType() RolloutType {
+	if len(cgu.Spec.ManifestWorkTemplates) > 0 {
+		return RolloutTypes.ManifestWork
+	}
+	return RolloutTypes.Policy
+}
+
 // ClusterRemediationProgress stores the remediation progress of a cluster
 type ClusterRemediationProgress struct {
 	// State should be one of the following: NotStarted, InProgress, Completed
-	State            string      `json:"state,omitempty"`
-	PolicyIndex      *int        `json:"policyIndex,omitempty"`
-	FirstCompliantAt metav1.Time `json:"firstComplaintAt,omitempty"`
+	State             string      `json:"state,omitempty"`
+	ManifestWorkIndex *int        `json:"manifestWorkIndex,omitempty"`
+	PolicyIndex       *int        `json:"policyIndex,omitempty"`
+	FirstCompliantAt  metav1.Time `json:"firstComplaintAt,omitempty"`
 }
 
 // ClusterRemediationProgress possible states
@@ -221,11 +251,18 @@ type PolicyStatus struct {
 	Status string `json:"status,omitempty"`
 }
 
+// ManifestWorkStatus defines the status of a certain ManifestWork
+type ManifestWorkStatus struct {
+	Name   string                      `json:"name"`
+	Status mwv1.ManifestResourceStatus `json:"status,omitempty"`
+}
+
 // ClusterState defines the final state of a cluster
 type ClusterState struct {
-	Name          string        `json:"name"`
-	State         string        `json:"state"`
-	CurrentPolicy *PolicyStatus `json:"currentPolicy,omitempty"`
+	Name                string              `json:"name"`
+	State               string              `json:"state"`
+	CurrentPolicy       *PolicyStatus       `json:"currentPolicy,omitempty"`
+	CurrentManifestWork *ManifestWorkStatus `json:"currentManifestWork,omitempty"`
 }
 
 // PrecachingSpec defines the pre-caching software spec derived from policies

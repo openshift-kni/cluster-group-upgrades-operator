@@ -1,0 +1,26 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  name: upgrade-4.15.0
+  namespace: default
+spec:
+  clusterLabelSelectors:
+    - matchLabels:
+        common: "true"
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+  plan:
+    - actions: ["Prep"]
+      rolloutStrategy:
+        maxConcurrency: 200
+        timeout: 2400
+    - actions: ["Upgrade"]
+      rolloutStrategy:
+        maxConcurrency: 100
+        timeout: 30
+    - actions: ["FinalizeUpgrade"]
+      rolloutStrategy:
+        maxConcurrency: 500
+        timeout: 10

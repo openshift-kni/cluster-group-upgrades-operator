@@ -7,7 +7,8 @@
 *.dylib
 bin
 testbin/*
-
+/bundle_*
+/kubeconfig
 # Test binary, build with `go test -c`
 *.test
 

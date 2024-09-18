@@ -29,8 +29,8 @@ fi
 
 # Install kind if needed.
 if [ "$env" == "$KIND_ENV" ] && ! [ -x "$(command -v kind)" ]; then
-    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH"
-    curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.11.1/kind-$(uname)-$_GOARCH
+    echo "Installing kind... https://github.com/kubernetes-sigs/kind/releases/download/v0.23.0/kind-$(uname)-$_GOARCH"
+    curl -Lo ./kind https://github.com/kubernetes-sigs/kind/releases/download/v0.23.0/kind-$(uname)-$_GOARCH
     mv ./kind ./bin/
     chmod 755 ./bin/kind
 else
@@ -40,8 +40,16 @@ fi
 # Install KUTTL if needed
 if ! [ -x "$(command -v kubectl-kuttl)" ]; then
     echo "Installing kubectl-kuttl..."
-    curl -LO https://github.com/kudobuilder/kuttl/releases/download/v0.11.0/kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH}
-    mv ./kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH} ./bin/kubectl-kuttl
+    if ! curl -LOf https://github.com/kudobuilder/kuttl/releases/download/v0.11.0/kubectl-kuttl_0.11.0_${_GOOS}_${_GOARCH}; then
+        if ! curl -LOf https://github.com/kudobuilder/kuttl/releases/download/v0.11.0/kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH}; then
+            echo "Failed to download kubectl-kuttl binary for ${_GOARCH} or ${_ARCH}"
+            exit 1
+        else
+            mv ./kubectl-kuttl_0.11.0_${_GOOS}_${_ARCH} ./bin/kubectl-kuttl
+        fi
+    else
+        mv ./kubectl-kuttl_0.11.0_${_GOOS}_${_GOARCH} ./bin/kubectl-kuttl
+    fi
     ls ./bin/
     chmod +x ./bin/kubectl-kuttl
 else

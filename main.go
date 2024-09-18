@@ -36,6 +36,7 @@ import (
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -43,6 +44,8 @@ import (
 	viewv1beta1 "github.com/stolostron/cluster-lifecycle-api/view/v1beta1"
 
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	mwv1 "open-cluster-management.io/api/work/v1"
+	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 	//+kubebuilder:scaffold:imports
 )
 
@@ -55,8 +58,11 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
+	utilruntime.Must(mwv1.AddToScheme(scheme))
+	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(policiesv1.AddToScheme(scheme))
 	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(ibguv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(viewv1beta1.AddToScheme(scheme))
 	utilruntime.Must(actionv1beta1.AddToScheme(scheme))
 	utilruntime.Must(operatorsv1alpha1.AddToScheme(scheme))
@@ -124,6 +130,15 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ManagedClusterForCGU")
+		os.Exit(1)
+	}
+
+	if err = (&controllers.IBGUReconciler{
+		Client: mgr.GetClient(),
+		Log:    ctrl.Log.WithName("controllers").WithName("ImageBasedGroupUpgrade"),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "ImageBasedGroupUpgrade")
 		os.Exit(1)
 	}
 

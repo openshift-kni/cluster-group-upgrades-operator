@@ -139,11 +139,6 @@ vet: ## Run go vet against code.
 	@echo "Running go vet"
 	go vet ./...
 
-.PHONY: lint
-lint: ## Run golint against code.
-	@echo "Running golint"
-	hack/lint.sh
-
 .PHONY: unittests
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
@@ -166,7 +161,7 @@ bashate: ## Run bashate
 	hack/bashate.sh
 
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
@@ -181,13 +176,17 @@ non-kind-deps-update: common-deps-update
 	hack/install-integration-tests-deps.sh non-kind
 
 controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.13.0)
+	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0)
 
 OPERATOR_SDK_VERSION = $(shell $(OPERATOR_SDK) version 2>/dev/null | sed 's/^operator-sdk version: "\([^"]*\).*/\1/')
-OPERATOR_SDK_VERSION_REQ = v1.16.0-ocp
+OPERATOR_SDK_VERSION_REQ = v1.28.0-ocp
 operator-sdk: ## Download operator-sdk locally if necessary.
 ifneq ($(OPERATOR_SDK_VERSION_REQ),$(OPERATOR_SDK_VERSION))
-	curl -L https://mirror.openshift.com/pub/openshift-v4/x86_64/clients/operator-sdk/4.10.17/operator-sdk-v1.16.0-ocp-linux-x86_64.tar.gz | tar -xz -C bin/
+	@{ \
+	set -e ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell arch) && \
+	curl -Lv https://mirror.openshift.com/pub/openshift-v4/$${ARCH}/clients/operator-sdk/4.13.11/operator-sdk-v1.28.0-ocp-$${OS}-$${ARCH}.tar.gz | tar --strip-components 2 -xz -C bin/ ;\
+	}
 endif
 
 kustomize: ## Download kustomize locally if necessary.
@@ -269,6 +268,7 @@ bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metada
 	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) RECOVERY_IMG=$(RECOVERY_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
+	sed -i '/^[[:space:]]*createdAt:/d' bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml
 
 .PHONY: bundle-build
 bundle-build: ## Build the bundle image.
@@ -286,7 +286,7 @@ bundle-check: bundle
 
 .PHONY: bundle-run
 bundle-run: # Install bundle on cluster using operator sdk. Index image is require due to upstream issue: https://github.com/operator-framework/operator-registry/issues/984
-	$(OPERATOR_SDK) --index-image=quay.io/operator-framework/opm:v1.23.0 run bundle $(BUNDLE_IMG)
+	$(OPERATOR_SDK) run bundle $(BUNDLE_IMG)
 
 .PHONY: bundle-upgrade
 bundle-upgrade: # Upgrade bundle on cluster using operator sdk.
@@ -305,7 +305,7 @@ ifeq (,$(shell which opm 2>/dev/null))
 	set -e ;\
 	mkdir -p $(dir $(OPM)) ;\
 	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
-	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.15.1/$${OS}-$${ARCH}-opm ;\
+	curl -sSLo $(OPM) https://github.com/operator-framework/operator-registry/releases/download/v1.43.1/$${OS}-$${ARCH}-opm ;\
 	chmod +x $(OPM) ;\
 	}
 else
@@ -369,6 +369,8 @@ install-acm-crds:
 	kubectl apply -f deploy/acm/crds/cluster.open-cluster-management.io_managedclusters.yaml
 	kubectl apply -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
 	kubectl apply -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
+	kubectl apply -f deploy/acm/crds/work.open-cluster-management.io_manifestworks.crd.yaml
+	kubectl apply -f deploy/acm/crds/work.open-cluster-management.io_manifestworkreplicasets.crd.yaml
 
 uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
@@ -378,10 +380,12 @@ uninstall-acm-crds:
 	kubectl delete -f deploy/acm/crds/cluster.open-cluster-management.io_managedclusters.yaml
 	kubectl delete -f deploy/acm/crds/view.open-cluster-management.io_managedclusterviews.yaml
 	kubectl delete -f deploy/acm/crds/action.open-cluster-management.io_managedclusteractions.yaml
+	kubectl delete -f deploy/acm/crds/work.open-cluster-management.io_manifestworks.crd.yaml
+	kubectl delete -f deploy/acm/crds/work.open-cluster-management.io_manifestworkreplicasets.crd.yaml
 
 kuttl-test: ## Run KUTTL tests
 	@echo "Running KUTTL tests"
-	kubectl-kuttl test
+	kubectl-kuttl test --namespace default
 
 start-test-proxy:
 	@echo "Start kubectl proxy for testing"

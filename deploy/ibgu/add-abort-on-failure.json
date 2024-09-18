@@ -1,0 +1,15 @@
+[
+    {
+        "op": "add",
+        "path": "/spec/plan/-",
+        "value": {
+            "actions": [
+                "AbortOnFailure"
+            ],
+            "rolloutStrategy": {
+                "maxConcurrency": 5,
+                "timeout": 10
+            }
+        }
+    }
+]

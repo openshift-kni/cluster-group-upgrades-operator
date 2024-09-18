@@ -1,0 +1,19 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: ibu-upgrade
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  manifestWorkTemplates:
+  - ibu-prep
+  - ibu-upgrade
+  - ibu-finalize
+  remediationStrategy:
+    maxConcurrency: 2
+    timeout: 240

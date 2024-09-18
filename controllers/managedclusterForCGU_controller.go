@@ -188,7 +188,7 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 	for _, cPolicy := range childPolicies {
 		// Ignore policies with remediationAction enforce
 		if strings.EqualFold(string(cPolicy.Spec.RemediationAction), "enforce") {
-			r.Log.Info("Ignoring policy " + cPolicy.Name + " with remediationAction enforce")
+			r.Log.Info("Ignoring policy with remediationAction enforce", "policy", cPolicy.Name)
 			continue
 		}
 
@@ -201,7 +201,7 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 			}
 			policyName, err := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())
 			if err != nil {
-				r.Log.Info("Ignoring policy " + cPolicy.Name + " with invalid name")
+				r.Log.Info("Ignoring policy with invalid name", "policy", cPolicy.Name)
 				continue
 			}
 			policyWaveMap[policyName[1]] = deployWaveInt

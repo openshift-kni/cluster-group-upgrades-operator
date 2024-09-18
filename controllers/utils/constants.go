@@ -165,3 +165,20 @@ const SpaceRequiredForPrecache = "35 GiB"
 // SoakAnnotation is the annotation that can be set on policies, which indicates the least number of seconds
 // which policies should be compliant before the cgu moves on from that policy
 const SoakAnnotation = "ran.openshift.io/soak-seconds"
+
+// BlockingCGUCompletionModeAnn is an annotation that can be set on CGU, in order to continue with dependent CGU even if
+// the original CR is only partially completed
+const (
+	BlockingCGUCompletionModeAnn = "ran.openshift.io/blocking-cgu-completion-mode"
+	BlockingCGUClusterFiltering  = "ran.openshift.io/blocking-cgu-cluster-filtering"
+	PartialBlockingCGUCompletion = "partial"
+)
+
+// CGUOwnerIBGULabel is a label that is set on CGUs that are created for IBGUs. It denotes which IBGU is the
+// owner of this CGU
+const CGUOwnerIBGULabel = "ibgu"
+
+const (
+	IBGUActionCompletedLabelTemplate = "lcm.openshift.io/ibgu-%s-completed"
+	IBGUActionFailedLabelTemplate    = "lcm.openshift.io/ibgu-%s-failed"
+)
