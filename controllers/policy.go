@@ -356,7 +356,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 				utils.ExcludeFromClusterBackup:                                  "true",
 			},
 			"annotations": map[string]interface{}{
-				utils.DesiredResourceName: utils.PrefixNameWithNamespace(clusterGroupUpgrade.Namespace, desiredName),
+				utils.DesiredResourceName: utils.PrefixNameWithNamespace(policyNamespace, desiredName),
 			},
 		},
 		"spec": map[string]interface{}{
@@ -511,7 +511,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 				utils.ExcludeFromClusterBackup:                                  "true",
 			},
 			"annotations": map[string]interface{}{
-				utils.DesiredResourceName: utils.PrefixNameWithNamespace(clusterGroupUpgrade.Namespace, desiredName),
+				utils.DesiredResourceName: utils.PrefixNameWithNamespace(policyNamespace, desiredName),
 			},
 		},
 		// With subFilter option set to restricted and bindingOverrides.remediationAction
