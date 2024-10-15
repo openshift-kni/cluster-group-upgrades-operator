@@ -71,8 +71,8 @@ status:
   safeResourceNames:
     /cgu-default-subscription-performance-addon-operator: cgu-default-subscription-performance-addon-operator-kuttl
     default/cgu-policy1-common-cluster-version-policy-placement: cgu-policy1-common-cluster-version-policy-placement-kuttl
-    default/cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
-    default/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
+    aaa/cgu-policy2-common-pao-sub-policy-placement: cgu-policy2-common-pao-sub-policy-placement-kuttl
+    bbb/cgu-policy3-common-ptp-sub-policy-placement: cgu-policy3-common-ptp-sub-policy-placement-kuttl
     default/cgu-policy4-common-sriov-sub-policy-placement: cgu-policy4-common-sriov-sub-policy-placement-kuttl
   status:
     currentBatch: 1
