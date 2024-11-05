@@ -59,6 +59,8 @@ type IBGUReconciler struct {
 	Recorder record.EventRecorder
 }
 
+const LcaAnnotationSuffix = "lca.openshift.io"
+
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/finalizers,verbs=update
@@ -235,6 +237,22 @@ func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *
 	return fmt.Sprintf("%s-%s-%d", ibgu.GetName(), actions, planItemIndex)
 }
 
+func createIBU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *lcav1.ImageBasedUpgrade {
+	ibu := &lcav1.ImageBasedUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:        "upgrade",
+			Annotations: make(map[string]string),
+		},
+		Spec: ibgu.Spec.IBUSpec,
+	}
+	for n, v := range ibgu.ObjectMeta.Annotations {
+		if strings.Contains(n, LcaAnnotationSuffix) {
+			ibu.ObjectMeta.Annotations[n] = v
+		}
+	}
+	return ibu
+}
+
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
@@ -253,12 +271,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
 	manifestWorkReplicaSetsNames := []string{}
-	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
-			Name: "upgrade",
-		},
-		Spec: ibgu.Spec.IBUSpec,
-	}
+	ibu := createIBU(ibgu)
 	disableAutoImport := false
 	for _, action := range planItem.Actions {
 		templateName := ""
