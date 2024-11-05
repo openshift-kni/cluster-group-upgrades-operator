@@ -99,5 +99,129 @@ status:
       spoke4:
         manifestWorkIndex: 0
         state: InProgress
-
-
+---
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    openshift-cluster-group-upgrades/expectedValues: '[{"manifestIndex":1,"name":"isPrepCompleted","value":"True"}]'
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: upgrade-4.15.0-prep-0
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
+  name: default.upgrade-4.15.0-prep-kuttl
+  namespace: spoke1
+spec:
+  deleteOption:
+    propagationPolicy: Orphan
+  manifestConfigs:
+  - feedbackRules:
+    - jsonPaths:
+      - name: isPrepCompleted
+        path: .status.conditions[?(@.type=="PrepCompleted")].status
+      - name: prepInProgressConditionMessage
+        path: .status.conditions[?(@.type=="PrepInProgress")].message'
+      - name: prepCompletedConditionMessages
+        path: .status.conditions[?(@.type=="PrepCompleted")].message
+      type: JSONPaths
+    resourceIdentifier:
+      group: lca.openshift.io
+      name: upgrade
+      namespace: ""
+      resource: imagebasedupgrades
+  workload:
+    manifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          open-cluster-management.io/aggregate-to-work: "true"
+        name: open-cluster-management:klusterlet-work:ibu-role
+      rules:
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - imagebasedupgrades
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+    - apiVersion: lca.openshift.io/v1
+      kind: ImageBasedUpgrade
+      metadata:
+        annotations:
+          auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+          auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
+          auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
+        name: upgrade
+      spec:
+        seedImageRef:
+          image: quay.io/seed/image:4.15.0-rc.5
+          version: 4.15.0-rc.5
+        stage: Prep
+---
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    openshift-cluster-group-upgrades/expectedValues: '[{"manifestIndex":1,"name":"isPrepCompleted","value":"True"}]'
+  labels:
+    openshift-cluster-group-upgrades/clusterGroupUpgrade: upgrade-4.15.0-prep-0
+    openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace: default
+  name: default.upgrade-4.15.0-prep-kuttl
+  namespace: spoke4
+spec:
+  deleteOption:
+    propagationPolicy: Orphan
+  manifestConfigs:
+  - feedbackRules:
+    - jsonPaths:
+      - name: isPrepCompleted
+        path: .status.conditions[?(@.type=="PrepCompleted")].status
+      - name: prepInProgressConditionMessage
+        path: .status.conditions[?(@.type=="PrepInProgress")].message'
+      - name: prepCompletedConditionMessages
+        path: .status.conditions[?(@.type=="PrepCompleted")].message
+      type: JSONPaths
+    resourceIdentifier:
+      group: lca.openshift.io
+      name: upgrade
+      namespace: ""
+      resource: imagebasedupgrades
+  workload:
+    manifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          open-cluster-management.io/aggregate-to-work: "true"
+        name: open-cluster-management:klusterlet-work:ibu-role
+      rules:
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - imagebasedupgrades
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+    - apiVersion: lca.openshift.io/v1
+      kind: ImageBasedUpgrade
+      metadata:
+        annotations:
+          auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+          auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
+          auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
+        name: upgrade
+      spec:
+        seedImageRef:
+          image: quay.io/seed/image:4.15.0-rc.5
+          version: 4.15.0-rc.5
+        stage: Prep
