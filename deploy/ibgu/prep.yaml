@@ -5,6 +5,9 @@ metadata:
   namespace: default
   annotations:
     cluster-group-upgrades-operator/name-suffix: kuttl
+    auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
+    auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
+    auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
 spec:
   clusterLabelSelectors:
     - matchExpressions:
