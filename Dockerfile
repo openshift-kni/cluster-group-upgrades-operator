@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM registry.hub.docker.com/library/golang:1.23 as builder
+FROM quay.io/projectquay/golang:1.23 as builder
 
 WORKDIR /workspace
 
