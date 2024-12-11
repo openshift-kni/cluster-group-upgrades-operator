@@ -94,6 +94,12 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		r.Log.Error(err, "Failed to get IBGU")
 		return requeueWithError(err)
 	}
+	err = r.ensureClusterLabels(ctx, ibgu)
+	if err != nil {
+		r.Log.Error(err, "error ensuring cluster labels")
+		return requeueWithError(err)
+	}
+
 	err = r.ensureManifests(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
@@ -122,6 +128,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 }
 
 func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	failedClusters := []string{}
 	for _, clusterState := range ibgu.Status.Clusters {
 		labelsToAdd := make(map[string]string)
 		for _, action := range clusterState.FailedActions {
@@ -137,37 +144,52 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 			labelsToAdd[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
 		}
 		if !removeLabels && len(labelsToAdd) == 0 {
-			return nil
+			continue
 		}
 		cluster := &clusterv1.ManagedCluster{}
 		if err := r.Get(ctx, types.NamespacedName{Name: clusterState.Name}, cluster); err != nil {
-			return fmt.Errorf("failed to get managed cluster: %w", err)
+			r.Log.Error(err, "failed to get managed cluster")
+			failedClusters = append(failedClusters, clusterState.Name)
+			continue
 		}
 		currentLabels := cluster.GetLabels()
 		if currentLabels == nil {
 			currentLabels = make(map[string]string)
 		}
 
+		needToUpdate := false
 		if removeLabels {
 			pattern := `lcm\.openshift\.io/ibgu-[a-zA-Z]+-(completed|failed)`
 			re := regexp.MustCompile(pattern)
 			for key := range currentLabels {
 				if re.MatchString(key) {
+					needToUpdate = true
 					delete(currentLabels, key)
 				}
 			}
 		} else {
 			for key, value := range labelsToAdd {
+				if _, exist := currentLabels[key]; exist {
+					continue
+				}
 				currentLabels[key] = value
+				needToUpdate = true
 			}
 		}
 
-		cluster.SetLabels(currentLabels)
-		if err := r.Update(ctx, cluster); err != nil {
-			return fmt.Errorf("failed to update labels for cluster: %s, err: %w", cluster.Name, err)
+		if needToUpdate {
+			cluster.SetLabels(currentLabels)
+			if err := r.Update(ctx, cluster); err != nil {
+				r.Log.Error(err, "failed to update labels for cluster")
+				failedClusters = append(failedClusters, cluster.Name)
+				continue
+			}
 		}
 	}
-	return nil
+	if len(failedClusters) == 0 {
+		return nil
+	}
+	return fmt.Errorf("failed to ensure cluster labels for %v", failedClusters)
 }
 
 func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
