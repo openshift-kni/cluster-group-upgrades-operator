@@ -248,6 +248,14 @@ spec:
           - update
           - watch
         - apiGroups:
+          - ""
+          resources:
+          - secrets
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - action.open-cluster-management.io
           resources:
           - managedclusteractions

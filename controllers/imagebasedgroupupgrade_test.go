@@ -366,6 +366,58 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 	}
 }
 
+func TestGetSecretManifest(t *testing.T) {
+	tests := []struct {
+		name         string
+		expectedJson string
+		secret       corev1.Secret
+	}{
+		{
+			name: "simple secret",
+			secret: corev1.Secret{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "secret",
+					Namespace: "namespace",
+				},
+			},
+			expectedJson: `{"apiVersion":"v1","kind":"Secret","metadata":{"creationTimestamp":null,"name":"secret","namespace":"openshift-lifecycle-agent"}}`,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			pull := lcav1.PullSecretRef{Name: "secret"}
+			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+					IBUSpec: lcav1.ImageBasedUpgradeSpec{
+						SeedImageRef: lcav1.SeedImageRef{
+							Version:       "version",
+							Image:         "image",
+							PullSecretRef: &pull,
+						},
+					},
+				},
+			}
+
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			err = fakeClient.Create(context.TODO(), &test.secret)
+			if err != nil {
+				panic(err)
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			manifest := reconciler.getSecretManifest(context.TODO(), ibgu)
+			assert.JSONEq(t, test.expectedJson, string(manifest.Raw))
+		})
+	}
+}
+
 func TestGetConfigMapManifests(t *testing.T) {
 	tests := []struct {
 		name         string
