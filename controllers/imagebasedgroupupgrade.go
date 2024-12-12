@@ -65,6 +65,7 @@ const LcaAnnotationSuffix = "lca.openshift.io"
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;update;patch
 //+kubebuilder:rbac:groups=work.open-cluster-management.io,resources=manifestworkreplicasets,verbs=create;get;list;watch;delete
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
@@ -281,6 +282,10 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		case ibguv1alpha1.Prep:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Prep))
 			manifests := r.getConfigMapManifests(ctx, ibgu)
+			secretManifest := r.getSecretManifest(ctx, ibgu)
+			if secretManifest != nil {
+				manifests = append(manifests, *secretManifest)
+			}
 			mwrs, err = utils.GeneratePrepManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu, manifests)
 		case ibguv1alpha1.Upgrade:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Upgrade))
@@ -376,6 +381,35 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		"All plan steps are completed")
 
 	return nil
+}
+
+func (r *IBGUReconciler) getSecretManifest(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+) *mwv1.Manifest {
+	if ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef == nil {
+		r.Log.Info("No PullSecretRef in IBGU. Skip adding secret to IBGU manifests")
+		return nil
+	}
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name,
+		Namespace: ibgu.GetNamespace(),
+	}, secret); err != nil {
+		r.Log.Info("[WARN] pullsecret does not exist on hub. Skip adding it to manifests, secret name ",
+			ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name, " namespace ", ibgu.GetNamespace())
+		return nil
+	}
+	secret.ResourceVersion = ""
+	secret.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
+	secret.CreationTimestamp = metav1.Time{}
+	secret.UID = ""
+	secret.Namespace = "openshift-lifecycle-agent"
+	secretBytes, err := utils.ObjectToByteArray(secret)
+	if err != nil {
+		r.Log.Info("[WARN] failed to convert secret to []bytes")
+		return nil
+	}
+	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}
 }
 
 func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) []mwv1.Manifest {
