@@ -128,16 +128,39 @@ type PullSecretRef struct {
 
 // ImageBasedUpgradeStatus defines the observed state of ImageBasedUpgrade
 type ImageBasedUpgradeStatus struct {
-	ObservedGeneration int64       `json:"observedGeneration,omitempty"`
-	StartedAt          metav1.Time `json:"startedAt,omitempty"`
-	CompletedAt        metav1.Time `json:"completedAt,omitempty"`
+	ObservedGeneration int64 `json:"observedGeneration,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Conditions",xDescriptors={"urn:alm:descriptor:io.kubernetes.conditions"}
 	Conditions []metav1.Condition `json:"conditions,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Valid Next Stage"
 	ValidNextStages []ImageBasedUpgradeStage `json:"validNextStages,omitempty"`
-	// RollbackAvailabilityExpiration reflects the point at which rolling back may require manual recovery from expired control plane certficates.
+	// RollbackAvailabilityExpiration reflects the point at which rolling back may require manual recovery from expired control plane certificates.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	RollbackAvailabilityExpiration metav1.Time `json:"rollbackAvailabilityExpiration,omitempty"`
+	// History stores timing info of different IBU stages and their important phases
+	// +optional
+	History []*History `json:"history,omitempty"`
+}
+
+type History struct {
+	// Stage The desired stage name read from spec
+	Stage ImageBasedUpgradeStage `json:"stage,omitempty"`
+	// Phase Allows for a more granular view of the important tasks that are performed when moving a desired Stage
+	Phases []*Phase `json:"phases,omitempty"`
+	// StartTime A timestamp to indicate the Stage has started
+	StartTime metav1.Time `json:"startTime,omitempty"`
+	// CompletionTime A timestamp indicating the Stage completed.
+	// This is only available when a Stage completes successfully
+	CompletionTime metav1.Time `json:"completionTime,omitempty"`
+}
+
+type Phase struct {
+	// Phase current phase within a Stage
+	Phase string `json:"phase,omitempty"`
+	// StartTime A timestamp indicating the Phase has started
+	StartTime metav1.Time `json:"startTime,omitempty"`
+	// CompletionTime A timestamp indicating the phase completed.
+	// This is only available when a Phase completes successfully
+	CompletionTime metav1.Time `json:"completionTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true

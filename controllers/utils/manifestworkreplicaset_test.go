@@ -305,9 +305,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
               "stage": "Upgrade"
             },
             "status": {
-              "completedAt": null,
-              "rollbackAvailabilityExpiration": null,
-              "startedAt": null
+              "rollbackAvailabilityExpiration": null
             }
           }
         ]
@@ -445,9 +443,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
               "stage": "Idle"
             },
             "status": {
-              "completedAt": null,
-              "rollbackAvailabilityExpiration": null,
-              "startedAt": null
+              "rollbackAvailabilityExpiration": null
             }
           }
         ]
@@ -584,9 +580,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
               "stage": "Idle"
             },
             "status": {
-              "completedAt": null,
-              "rollbackAvailabilityExpiration": null,
-              "startedAt": null
+              "rollbackAvailabilityExpiration": null
             }
           }
         ]
@@ -724,9 +718,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
               "stage": "Rollback"
             },
             "status": {
-              "completedAt": null,
-              "rollbackAvailabilityExpiration": null,
-              "startedAt": null
+              "rollbackAvailabilityExpiration": null
             }
           }
         ]
@@ -863,9 +855,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
               "stage": "Prep"
             },
             "status": {
-              "completedAt": null,
-              "rollbackAvailabilityExpiration": null,
-              "startedAt": null
+              "rollbackAvailabilityExpiration": null
             }
           }
         ]
