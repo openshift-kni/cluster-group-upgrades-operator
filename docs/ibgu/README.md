@@ -204,7 +204,7 @@ IBGU goes through all plan items in the ibgu and generates the corresponding cgu
 - if the cgu does not exist, create the cgu
 ### Creating cgu for plan item
 for every action in the plan item, generate the corresponding IBU. Create a manifestworkreplicaset that contains the ibu and the clusterrole that allows manifestwork agent to modify ibu.
-For prep, the manifestworkreplicaset also conatins the manifests in the `oadpContent`.
+For prep, the manifestworkreplicaset also conatins the manifests in the `oadpContent`. Also if the seed image pull secret is present on the hub, in the same namespace as the IBGU CR, controller will add the secret to manifest list. The secret will be recreated on the spokes in the `openshift-lifectcycle-agent` namespace.
 After creating all the manifestworkreplicasets create a cgu containing the manifestworkreplicasets. If the upgrade action is in the plan item, the cgu will disable auto import before start and re enables it after completion.
 
 ## Sync status
