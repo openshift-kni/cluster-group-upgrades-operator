@@ -807,7 +807,7 @@ func (r *ClusterGroupUpgradeReconciler) updateChildResourceNamesInStatus(ctx con
 	return nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) rootPolicyHandlerOnUpdate(ctx context.Context, e event.UpdateEvent, q workqueue.RateLimitingInterface) {
+func (r *ClusterGroupUpgradeReconciler) rootPolicyHandlerOnUpdate(ctx context.Context, e event.UpdateEvent, q workqueue.TypedRateLimitingInterface[reconcile.Request]) {
 	oldPolicy := e.ObjectOld.(*policiesv1.Policy)
 	newPolicy := e.ObjectNew.(*policiesv1.Policy)
 
