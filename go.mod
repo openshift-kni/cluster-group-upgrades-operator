@@ -11,8 +11,8 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.8.1
 	github.com/stretchr/testify v1.10.0
-	k8s.io/api v0.31.4
-	k8s.io/apimachinery v0.31.4
+	k8s.io/api v0.31.5
+	k8s.io/apimachinery v0.31.5
 	k8s.io/client-go v0.31.4
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.15.0
