@@ -126,10 +126,15 @@ func requeueWithCustomInterval(interval time.Duration) ctrl.Result {
 func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 	r.Log.Info("Start reconciling CGU", "name", req.NamespacedName)
 	defer func() {
-		if nextReconcile.RequeueAfter > 0 {
-			r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueAfter", nextReconcile.RequeueAfter.Seconds())
+		if err != nil {
+			r.Log.Info("Failed reconciling CGU", "name", req.NamespacedName, "err", err)
+			nextReconcile = doNotRequeue()
 		} else {
-			r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueRightAway", nextReconcile.Requeue)
+			if nextReconcile.RequeueAfter > 0 {
+				r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueAfter", nextReconcile.RequeueAfter.Seconds())
+			} else {
+				r.Log.Info("Finish reconciling CGU", "name", req.NamespacedName, "requeueRightAway", nextReconcile.Requeue)
+			}
 		}
 	}()
 
@@ -831,7 +836,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRules(ctx context.Context
 
 	for index, clusterNames := range policiesToUpdate {
 		placementRuleName := utils.GetResourceName(clusterGroupUpgrade, clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[index].Name+"-placement")
-		if safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[utils.PrefixNameWithNamespace(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[index].Namespace, placementRuleName)]; ok {
+		if safeName, ok := clusterGroupUpgrade.Status.SafeResourceNames[utils.PrefixNameWithNamespace(clusterGroupUpgrade.Namespace, placementRuleName)]; ok {
 			err := r.updatePlacementRuleWithClusters(ctx, clusterGroupUpgrade, clusterNames, safeName)
 			if err != nil {
 				return err
@@ -1120,7 +1125,7 @@ func (r *ClusterGroupUpgradeReconciler) copyManagedInformPolicy(
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	annotations[utils.DesiredResourceName] = utils.PrefixNameWithNamespace(managedPolicy.GetNamespace(), name)
+	annotations[utils.DesiredResourceName] = utils.PrefixNameWithNamespace(newPolicy.GetNamespace(), name)
 	newPolicy.SetAnnotations(annotations)
 
 	// Set new policy remediationAction.
@@ -1280,7 +1285,7 @@ func (r *ClusterGroupUpgradeReconciler) createNewPolicyFromStructure(
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName string, managedPolicy *unstructured.Unstructured) (string, error) {
 
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
-	safeName := utils.GetSafeResourceName(name, managedPolicy.GetNamespace(), clusterGroupUpgrade, utils.MaxObjectNameLength)
+	safeName := utils.GetSafeResourceName(name, clusterGroupUpgrade.GetNamespace(), clusterGroupUpgrade, utils.MaxObjectNameLength)
 	pr := r.newBatchPlacementRule(clusterGroupUpgrade, policyName, safeName, name)
 
 	if err := controllerutil.SetControllerReference(clusterGroupUpgrade, pr, r.Scheme); err != nil {
@@ -1448,7 +1453,7 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, placementRuleName string, managedPolicy *unstructured.Unstructured) error {
 	name := utils.GetResourceName(clusterGroupUpgrade, managedPolicy.GetName()+"-placement")
-	safeName := utils.GetSafeResourceName(name, managedPolicy.GetNamespace(), clusterGroupUpgrade, utils.MaxObjectNameLength)
+	safeName := utils.GetSafeResourceName(name, clusterGroupUpgrade.GetNamespace(), clusterGroupUpgrade, utils.MaxObjectNameLength)
 	// Ensure batch placement bindings.
 	pb := r.newBatchPlacementBinding(clusterGroupUpgrade, policyName, placementRuleName, safeName, name)
 
