@@ -1,5 +1,6 @@
 # Build the aztp binary
-FROM quay.io/projectquay/golang:1.23 as builder
+ARG GOLANG_BUILDER_IMAGE
+FROM ${GOLANG_BUILDER_IMAGE} AS builder
 
 WORKDIR /workspace
 

@@ -53,6 +53,19 @@ PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
 RECOVERY_IMG ?= $(IMAGE_TAG_BASE)-recovery:$(VERSION)
 AZTP_IMG ?= $(IMAGE_TAG_BASE)-aztp:$(VERSION)
 
+# If USE_KONFLUX_IMAGES is overridden to true then we want to use the Konflux golang builder
+# GOLANG_BUILDER_IMAGE will be provided to the container build using --build-arg
+# This switch is useful because the Konflux images require authentication to pull
+USE_KONFLUX_IMAGES ?= false
+ifeq ($(USE_KONFLUX_IMAGES), true)
+	include build_args_golang_konflux.conf
+else
+	include build_args_golang_default.conf
+endif
+
+# Always include the ubi conf
+include build_args_ubi.conf
+
 CRD_OPTIONS ?= "crd"
 
 # By default we build the same architecture we are running
@@ -242,25 +255,25 @@ debug: manifests generate fmt vet ## Run a controller from your host that accept
 	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go
 
 docker-build: ## Build container image with the manager.
-	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
+	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} --build-arg GOLANG_BUILDER_IMAGE=${GOLANG_BUILDER_IMAGE} -f Dockerfile .
 
 docker-push: ## Push container image with the manager.
 	${ENGINE} push ${IMG}
 
 docker-build-precache: ## Build pre-cache workload container image.
-	${ENGINE} build -t ${PRECACHE_IMG} -f Dockerfile.precache .
+	${ENGINE} build -t ${PRECACHE_IMG} --build-arg BASE_UBI_IMAGE=${BASE_UBI_IMAGE} -f Dockerfile.precache .
 
 docker-push-precache: ## push pre-cache workload container image.
 	${ENGINE} push ${PRECACHE_IMG}
 
 docker-build-recovery: ## Build recovery container image
-	${ENGINE} build -t ${RECOVERY_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.recovery .
+	${ENGINE} build -t ${RECOVERY_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} --build-arg GOLANG_BUILDER_IMAGE=${GOLANG_BUILDER_IMAGE} -f Dockerfile.recovery .
 
 docker-push-recovery: ## Push recovery container image.
 	${ENGINE} push ${RECOVERY_IMG}
 
 docker-build-aztp: ## Build aztp container image
-	${ENGINE} build -t ${AZTP_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.aztp .
+	${ENGINE} build -t ${AZTP_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} --build-arg GOLANG_BUILDER_IMAGE=${GOLANG_BUILDER_IMAGE} -f Dockerfile.aztp .
 
 docker-push-aztp: ## Push recovery container image.
 	${ENGINE} push ${AZTP_IMG}
