@@ -1,5 +1,6 @@
 # Build the manager binary
-FROM quay.io/projectquay/golang:1.23 AS builder
+ARG GOLANG_BUILDER_IMAGE=quay.io/projectquay/golang:1.23
+FROM ${GOLANG_BUILDER_IMAGE} AS builder
 
 WORKDIR /workspace
 

@@ -28,6 +28,7 @@ spec:
     value: 5d
   - name: dockerfile
     value: bundle.Dockerfile
+  # bundle uses FROM scratch so no build-args-file required
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while reducing network traffic.
