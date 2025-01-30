@@ -29,6 +29,6 @@ updates:
       # sigs.k8s.io moved to go 1.23 in v0.20, so ignore major/minor updates until this repo is 1.23-based
       - dependency-name: "sigs.k8s.io/*"
         update-types: ["version-update:semver-major","version-update:semver-minor"]
-      - dependency-name: ""github.com/onsi/*"
+      - dependency-name: "github.com/onsi/*"
         update-types: ["version-update:semver-patch"]
       - dependency-name: "k8s.io/code-generator"
