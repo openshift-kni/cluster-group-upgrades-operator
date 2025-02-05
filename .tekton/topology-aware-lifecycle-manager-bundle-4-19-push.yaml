@@ -25,6 +25,8 @@ spec:
     value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19:{{revision}}
   - name: dockerfile
     value: bundle.Dockerfile
+  - name: build-args-file
+    value: build_args_golang_konflux.conf
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while reducing network traffic.
