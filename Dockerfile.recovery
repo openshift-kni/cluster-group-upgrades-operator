@@ -1,5 +1,5 @@
 # Build the recovery image
-ARG GOLANG_BUILDER_IMAGE=quay.io/projectquay/golang:1.23
+ARG GOLANG_BUILDER_IMAGE=quay.io/projectquay/golang:1.24
 FROM ${GOLANG_BUILDER_IMAGE} AS builder
 
 WORKDIR /workspace
