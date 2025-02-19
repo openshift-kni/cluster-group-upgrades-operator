@@ -1,5 +1,8 @@
-ARG BASE_UBI_IMAGE=registry.access.redhat.com/ubi9-minimal:9.4
-FROM ${BASE_UBI_IMAGE}
+# Distroless is not enough here so use the UBI for the runtime
+ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9-minimal:9.4
+
+# Create the runtime image
+FROM ${RUNTIME_IMAGE}
 
 RUN mkdir /opt/precache
 
