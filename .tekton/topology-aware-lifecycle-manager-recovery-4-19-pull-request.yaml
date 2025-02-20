@@ -30,6 +30,12 @@ spec:
       value: Dockerfile.recovery
     - name: build-args-file
       value: build_args_konflux.conf
+    - name: hermetic
+      value: "true"
+    - name: prefetch-input
+      value: "gomod"
+    - name: build-source-image
+      value: "true"
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while reducing network traffic.
