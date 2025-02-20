@@ -198,8 +198,8 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.6-0.20210604193023-d5e0c0615ace
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stolostron/cluster-lifecycle-api v0.0.0-20240109072430-f5fe6043d1f8
-## explicit; go 1.19
+# github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
+## explicit; go 1.22.0
 github.com/stolostron/cluster-lifecycle-api/action/v1beta1
 github.com/stolostron/cluster-lifecycle-api/view/v1beta1
 # github.com/stolostron/kubernetes-dependency-watches v0.10.0
