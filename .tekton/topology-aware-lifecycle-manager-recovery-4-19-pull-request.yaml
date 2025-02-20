@@ -29,7 +29,7 @@ spec:
     - name: dockerfile
       value: Dockerfile.recovery
     - name: build-args-file
-      value: build_args_golang_konflux.conf
+      value: build_args_konflux.conf
   pipelineSpec:
     description: |
       This pipeline is ideal for building container images from a Containerfile while reducing network traffic.
