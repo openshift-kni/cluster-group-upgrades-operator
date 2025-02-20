@@ -190,6 +190,26 @@ spec:
             workspace: workspace
           - name: basic-auth
             workspace: git-auth
+      - name: generate-labels
+        params:
+          - name: label-templates
+            value:
+              - "build-date=$SOURCE_DATE"
+              - "short-commit=$(tasks.clone-repository.results.short-commit)"
+              - "version=v4.19-$SOURCE_DATE_EPOCH"
+          - name: source-date-epoch
+            value: '$(tasks.clone-repository.results.commit-timestamp)'
+        runAfter:
+          - clone-repository
+        taskRef:
+          params:
+            - name: name
+              value: generate-labels
+            - name: bundle
+              value: quay.io/konflux-ci/tekton-catalog/task-generate-labels:0.1@sha256:3f1951bb9a2bc1360e3aa70d96142563c078cba40440ccdd7bf670678f5c84f5
+            - name: kind
+              value: task
+          resolver: bundles
       - name: prefetch-dependencies
         params:
           - name: input
@@ -238,8 +258,24 @@ spec:
               - $(params.build-args[*])
           - name: BUILD_ARGS_FILE
             value: $(params.build-args-file)
+          - name: LABELS
+            value:
+              - $(tasks.generate-labels.results.labels[*])
+              - "com.redhat.component=topology-aware-lifecycle-manager-recovery-container"
+              - "description=topology-aware-lifecycle-manager-recovery"
+              - "distribution-scope=public"
+              - "io.k8s.description=topology-aware-lifecycle-manager-recovery"
+              - "name=openshift4/topology-aware-lifecycle-manager-rhel9-recovery"
+              - "release=4.19"
+              - "url=https://github.com/openshift-kni/cluster-group-upgrades-operator"
+              - "vendor=Red Hat, Inc."
+              - "io.k8s.display-name=topology-aware-lifecycle-manager-recovery"
+              - "io.openshift.tags=operator"
+              - "summary=topology-aware-lifecycle-manager-recovery"
+              - "maintainer=rauherna@redhat.com,sskeard@redhat.com"
         runAfter:
           - prefetch-dependencies
+          - generate-labels
         taskRef:
           params:
             - name: name
@@ -478,7 +514,7 @@ spec:
             - name: name
               value: coverity-availability-check
             - name: bundle
-              value: quay.io/konflux-ci/tekton-catalog/task-coverity-availability-check-oci-ta:0.2@sha256:069ea5f9dd1d3117d4199c6dd22fa58e8820b91623571d9eafe0e4f28106760b
+              value: quay.io/konflux-ci/tekton-catalog/task-coverity-availability-check:0.2@sha256:91ba738df7ec548d4127163e07a88de06568a350fbf581405cc8fc8498f6153c
             - name: kind
               value: task
           resolver: bundles
