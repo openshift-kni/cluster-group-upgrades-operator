@@ -338,6 +338,8 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	for _, mwrs := range manifestWorkReplicaSets {
 		foundMWRS := &mwv1alpha1.ManifestWorkReplicaSet{}
 		err := r.Get(ctx, types.NamespacedName{Name: mwrs.Name, Namespace: mwrs.Namespace}, foundMWRS)
+
+		// nolint: gocritic
 		if err != nil && errors.IsNotFound(err) {
 			r.Log.Info("Creating ManifestWorkReplicaSet", "ManifestWorkReplicaSet", mwrs.Name)
 			ctrl.SetControllerReference(ibgu, mwrs, r.Scheme)

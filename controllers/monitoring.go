@@ -226,14 +226,15 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 			r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
 			return nil
 		}
-		if installPlanStatus == utils.InstallPlanCannotBeApproved {
+		switch installPlanStatus {
+		case utils.InstallPlanCannotBeApproved:
 			r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", object.Name)
 			return nil
-		} else if installPlanStatus == utils.MultiCloudPendingStatus {
+		case utils.MultiCloudPendingStatus:
 			r.Log.Info("InstallPlan for subscription could not be approved due to a MultiCloud object pending status, "+
 				"retry again later", "subscription name", object.Name)
 			return nil
-		} else if installPlanStatus == utils.InstallPlanWasApproved {
+		case utils.InstallPlanWasApproved:
 			r.Log.Info("InstallPlan for subscription was approved", "subscription name", object.Name)
 		}
 

@@ -153,7 +153,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	// Get the platform image spec from the policies
 	image, err := r.extractOCPImageFromPolicies(policies)
 	if err != nil {
-		return *new(ranv1alpha1.PrecachingSpec), err
+		return ranv1alpha1.PrecachingSpec{}, err
 	}
 	spec.PlatformImage = image
 	r.Log.Info("[extractPrecachingSpecFromPolicies]", "ClusterVersion image", spec.PlatformImage)
