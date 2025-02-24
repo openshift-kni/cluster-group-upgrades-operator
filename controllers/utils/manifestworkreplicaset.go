@@ -207,6 +207,8 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 			},
 		},
 	}
+
+	// nolint: gocritic
 	manifests := append(extraManifests,
 		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: crBytes}},
 		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: ibuRaw}})
