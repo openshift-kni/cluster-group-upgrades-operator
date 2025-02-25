@@ -177,8 +177,13 @@ bashate: ## Run bashate
 	@echo "Running bashate"
 	hack/bashate.sh
 
+.PHONY: yamllint
+yamllint: ## Run yamllint
+	@echo "Running yamllint"
+	hack/yamllint.sh
+
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate yamllint bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
