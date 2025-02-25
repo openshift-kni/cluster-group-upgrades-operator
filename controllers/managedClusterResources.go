@@ -444,7 +444,7 @@ func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 			break
 		}
 	}
-	return UnforeseenCondition, fmt.Errorf(string(btJobStatus))
+	return UnforeseenCondition, fmt.Errorf("%s", string(btJobStatus))
 }
 
 // getStartingConditions gets the pre-caching starting conditions
