@@ -1,6 +1,12 @@
-# Build the recovery image
-ARG GOLANG_BUILDER_IMAGE=quay.io/projectquay/golang:1.23
-FROM ${GOLANG_BUILDER_IMAGE} AS builder
+# Builder image requires golang to compile
+ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.23
+
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+ARG RUNTIME_IMAGE=gcr.io/distroless/static:nonroot
+
+# Build the recovery binary
+FROM ${BUILDER_IMAGE} AS builder
 
 WORKDIR /workspace
 
@@ -13,9 +19,8 @@ COPY recovery/ recovery/
 ARG GOARCH
 RUN CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Create the runtime image
+FROM ${RUNTIME_IMAGE}
 
 COPY --from=builder /workspace/upgrade-recovery /usr/bin/
 
