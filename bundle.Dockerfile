@@ -7,13 +7,15 @@ ARG KONFLUX=false
 # Run the overlay in a container
 FROM ${RUNTIME_IMAGE} AS overlay
 
+ENV KONFLUX=${KONFLUX}
+
 # Copy manifests into the container
 COPY bundle/manifests /manifests/
 
 # Check if this is a Konflux build to overlay the clusterserviceversion
 COPY konflux_clusterserviceversion_overlay.sh /
 COPY konflux_clusterserviceversion_overlay.data /
-RUN /konflux_clusterserviceversion_overlay.sh /konflux_clusterserviceversion_overlay.yaml
+RUN /konflux_clusterserviceversion_overlay.sh
 
 FROM scratch
 
