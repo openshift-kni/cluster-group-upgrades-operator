@@ -12,7 +12,7 @@ updates:
     open-pull-requests-limit: 5
     groups:
       k8s:
-        patterns: [ "k8s.io/*", "sig.k8s.io/*" ]
+        patterns: [ "k8s.io/*", "sigs.k8s.io/*" ]
         update-types: [ "major", "minor", "patch" ]
       golang:
         patterns: [ "golang.org/*" ]
