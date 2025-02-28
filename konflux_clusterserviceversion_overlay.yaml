@@ -1,6 +1,17 @@
 ---
-"quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.19.0": quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-19@sha256:1f2c23244ed8dee41e4d5aed83eed2f4952bf3f9b288368759f61f83b2b50ebe
-"quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.19.0": quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:a41730bf7e4ab0fc8871c874a578dedf73be75bef4edeb83a5eb7994d5146857
-"quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.19.0": quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-19@sha256:3c2048b4d911b4b5e61d6c72d0a8769a699f43c8f338275ff6b985fa5b9aadf7
-"quay.io/openshift-kni/cluster-group-upgrades-operator:4.19.0": quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-19@sha256:88120bbbeff07f7b94866c667346fede7a9edd430cbaf5937c61866849a4f6be
-"quay.io/openshift/origin-kube-rbac-proxy:4.19": quay.io/openshift/origin-kube-rbac-proxy@sha256:bad68b0fc57804550e903a557562e7b430f1786e9636d971343a65bd2bf17883
+replaces:
+  - name: "cluster-group-upgrades-operator-aztp"
+    old: "quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.19.0"
+    new: "quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-19@sha256:1f2c23244ed8dee41e4d5aed83eed2f4952bf3f9b288368759f61f83b2b50ebe"
+  - name: "cluster-group-upgrades-operator-precache"
+    old: "quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.19.0"
+    new: "quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:a41730bf7e4ab0fc8871c874a578dedf73be75bef4edeb83a5eb7994d5146857"
+  - name: "cluster-group-upgrades-operator-recovery"
+    old: "quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.19.0"
+    new: "quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-19@sha256:88120bbbeff07f7b94866c667346fede7a9edd430cbaf5937c61866849a4f6be"
+  - name: "cluster-group-upgrades-operator"
+    old: "quay.io/openshift-kni/cluster-group-upgrades-operator:4.19.0"
+    new: "quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-19@sha256:3c2048b4d911b4b5e61d6c72d0a8769a699f43c8f338275ff6b985fa5b9aadf7"
+  - name: "kube-rbac-proxy"
+    old: "quay.io/openshift/origin-kube-rbac-proxy:4.19"
+    new: "quay.io/openshift/origin-kube-rbac-proxy@sha256:bad68b0fc57804550e903a557562e7b430f1786e9636d971343a65bd2bf17883"
