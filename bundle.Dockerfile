@@ -1,5 +1,5 @@
 # Runtime image is used to overlay clusterserviceversion.yaml for Konflux
-ARG RUNTIME_IMAGE=registry.redhat.io/rhel9-4-els/rhel-minimal:9.4-149
+ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9-minimal:9.4
 
 # By default, do not do the konflux overlay
 ARG KONFLUX=false
@@ -7,15 +7,14 @@ ARG KONFLUX=false
 # Run the overlay in a container
 FROM ${RUNTIME_IMAGE} AS overlay
 
-# Copy files into the container
-COPY bundle/manifests /
-COPY bundle/metadata /
-COPY bundle/tests/scorecard /
+# Copy manifests into the container
+COPY bundle/manifests /manifests/
 
 # Check if this is a Konflux build to overlay the clusterserviceversion
 COPY konflux_clusterserviceversion_overlay.sh /
-COPY konflux_clusterserviceversion_overlay.yaml /
-RUN /konflux_clusterserviceversion_overlay.sh /konflux_clusterserviceversion_overlay.yaml
+COPY konflux_clusterserviceversion_overlay.data /
+RUN ls /manifests && \
+    /konflux_clusterserviceversion_overlay.sh /konflux_clusterserviceversion_overlay.yaml
 
 FROM scratch
 
@@ -34,6 +33,6 @@ LABEL operators.operatorframework.io.test.mediatype.v1=scorecard+v1
 LABEL operators.operatorframework.io.test.config.v1=tests/scorecard/
 
 # Copy files to locations specified by labels.
-COPY --from=overlay /bundle/manifests /manifests/
-COPY --from=overlay /bundle/metadata /metadata/
-COPY --from=overlay /bundle/tests/scorecard /tests/scorecard/
+COPY --from=overlay /manifests /manifests/
+COPY bundle/metadata /metadata/
+COPY bundle/tests/scorecard /tests/scorecard/
