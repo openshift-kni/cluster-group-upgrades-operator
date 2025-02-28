@@ -1,2 +1,7 @@
 #!/usr/bin/env bash
-which yq
+
+while read line
+do
+    read -ra array <<<"${line}"
+    sed -i "s,${array[0]},${array[1]},g" bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml
+done < konflux_clusterserviceversion_overlay.data
