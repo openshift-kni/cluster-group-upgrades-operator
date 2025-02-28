@@ -13,8 +13,7 @@ COPY bundle/manifests /manifests/
 # Check if this is a Konflux build to overlay the clusterserviceversion
 COPY konflux_clusterserviceversion_overlay.sh /
 COPY konflux_clusterserviceversion_overlay.data /
-RUN ls /manifests && \
-    /konflux_clusterserviceversion_overlay.sh /konflux_clusterserviceversion_overlay.yaml
+RUN /konflux_clusterserviceversion_overlay.sh /konflux_clusterserviceversion_overlay.yaml
 
 FROM scratch
 

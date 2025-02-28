@@ -3,10 +3,11 @@
     "kubernetes": {
         "fileMatch": [
             "\\.yaml$",
-            "\\.yml$"
+            "\\.yml$",
+            "\\.data$"
         ],
         "includePaths": [
-            "konflux_clusterserviceversion_overlay.yaml"
+            "konflux_clusterserviceversion_overlay.data"
         ]
     }
 }
