@@ -6,7 +6,7 @@ metadata:
     build.appstudio.openshift.io/repo: https://github.com/openshift-kni/cluster-group-upgrades-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    build.appstudio.openshift.io/build-nudge-files: "konflux_clusterserviceversion_overlay"
+    build.appstudio.openshift.io/build-nudge-files: ".*Dockerfile.*, .*.yaml, .*Containerfile.*, konflux_clusterserviceversion_overlay"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
   creationTimestamp: null
