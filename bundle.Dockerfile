@@ -7,6 +7,8 @@ ARG KONFLUX=false
 # Run the overlay in a container
 FROM ${RUNTIME_IMAGE} AS overlay
 
+# Set KONFLUX to env from args
+# It will checked by the overlay script
 ENV KONFLUX=${KONFLUX}
 
 # Copy manifests into the container
