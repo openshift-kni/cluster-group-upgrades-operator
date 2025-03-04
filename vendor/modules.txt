@@ -69,8 +69,8 @@ github.com/google/gnostic-models/extensions
 github.com/google/gnostic-models/jsonschema
 github.com/google/gnostic-models/openapiv2
 github.com/google/gnostic-models/openapiv3
-# github.com/google/go-cmp v0.6.0
-## explicit; go 1.13
+# github.com/google/go-cmp v0.7.0
+## explicit; go 1.21
 github.com/google/go-cmp/cmp
 github.com/google/go-cmp/cmp/internal/diff
 github.com/google/go-cmp/cmp/internal/flags
@@ -147,7 +147,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-kni/lifecycle-agent v0.0.0-20250219141829-478955537316
+# github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 ## explicit; go 1.22.4
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
 # github.com/openshift/build-machinery-go v0.0.0-20250211133638-a00a772ae1a2
