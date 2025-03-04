@@ -148,9 +148,7 @@ func CreateManifestWorkForCluster(ctx context.Context, client client.Client, clu
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
 			},
-			Annotations: map[string]string{
-				manifestWorkExpectedValuesAnnotation: mwrs.Annotations[manifestWorkExpectedValuesAnnotation],
-			},
+			Annotations: mwrs.GetAnnotations(),
 		},
 		Spec: mwrs.Spec.ManifestWorkTemplate,
 	}

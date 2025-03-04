@@ -7,6 +7,7 @@ import (
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -37,7 +38,27 @@ func (r *ClusterGroupUpgradeReconciler) getNextManifestWorkForCluster(
 	if err == nil {
 		completed, err := utils.IsManifestWorkCompleted(currentManifestWork)
 		if completed {
-			return startIndex + 1, false, nil
+			_, ok := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName]
+			if !ok {
+				return 0, false, nil
+			}
+			mwUnstructured, err := utils.ObjectToUnstructured(currentManifestWork)
+			if err != nil {
+				return 0, false, fmt.Errorf("failed to convert ManifestWork to unstructured: %w", err)
+			}
+			shouldSoak, err := utils.ShouldSoak(mwUnstructured, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
+			if err != nil {
+				return 0, false, fmt.Errorf("failed to determine soaking status: %w", err)
+			}
+			if !shouldSoak {
+				return startIndex + 1, false, nil
+			}
+
+			if clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt.IsZero() {
+				clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Now()
+			}
+			r.Log.Info("ManifestWork is applied but should be soaked", "cluster name", clusterName, "manifestWorkName", currentManifestWork.GetName())
+			return startIndex, true, nil
 		}
 		return startIndex, false, err
 	} else if errors.IsNotFound(err) {
