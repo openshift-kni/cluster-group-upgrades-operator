@@ -454,6 +454,8 @@ spec:
             values:
               - "false"
       - name: sast-coverity-check
+        # This task is optional per Product Security
+        onError: continue
         params:
           - name: image-url
             value: $(tasks.build-image-index.results.IMAGE_URL)
