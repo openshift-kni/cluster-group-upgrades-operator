@@ -29,7 +29,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.32.0
 	open-cluster-management.io/config-policy-controller v0.15.0
-	sigs.k8s.io/structured-merge-diff/v4 v4.5.0
+	sigs.k8s.io/structured-merge-diff/v4 v4.6.0
 	sigs.k8s.io/yaml v1.4.0
 )
 
