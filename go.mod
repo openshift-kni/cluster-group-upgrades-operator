@@ -15,8 +15,8 @@ require (
 	k8s.io/apimachinery v0.32.0
 	k8s.io/client-go v0.32.0
 	k8s.io/klog v1.0.0
-	open-cluster-management.io/api v0.16.0
-	open-cluster-management.io/governance-policy-propagator v0.15.0
+	open-cluster-management.io/api v0.16.1
+	open-cluster-management.io/governance-policy-propagator v0.16.0
 	sigs.k8s.io/controller-runtime v0.19.6
 )
 
@@ -28,7 +28,7 @@ require (
 	golang.org/x/sys v0.31.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.32.0
-	open-cluster-management.io/config-policy-controller v0.15.0
+	open-cluster-management.io/config-policy-controller v0.16.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.5.0
 	sigs.k8s.io/yaml v1.4.0
 )
