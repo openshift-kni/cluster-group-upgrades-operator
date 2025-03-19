@@ -223,8 +223,8 @@ open-cluster-management.io/api v0.16.0 h1:fToANqblBmWCn8f6JD4uRHFYJVVaN/usp9PeiR
 open-cluster-management.io/api v0.16.0/go.mod h1:9erZEWEn4bEqh0nIX2wA7f/s3KCuFycQdBrPrRzi0QM=
 open-cluster-management.io/config-policy-controller v0.15.0 h1:tDuIVT2L/luKLvLIz7/wkbskTZqWypLkwjyVMxPqhsI=
 open-cluster-management.io/config-policy-controller v0.15.0/go.mod h1:IFGPJBb+zKC7V1lavwMUApxLnbfrANpidBTohsu4z6Q=
-open-cluster-management.io/governance-policy-propagator v0.15.0 h1:tSDJcq8p/UQHBDMFZmYhPstaBevPCnMJPuYiOH7MPbo=
-open-cluster-management.io/governance-policy-propagator v0.15.0/go.mod h1:I1LbX78mavWMv6W3YAeSjCq2YBfSS0RpOBWOskpbLng=
+open-cluster-management.io/governance-policy-propagator v0.16.0 h1:2oBWdVYgJXcx75d8RS4Ttsic5SIaE5ioG+mug4RAPqI=
+open-cluster-management.io/governance-policy-propagator v0.16.0/go.mod h1:bLA1TlVhKm6f14f4ZgqvTFqGSN3buBYVjbqZ6CQ63zM=
 sigs.k8s.io/controller-runtime v0.19.6 h1:fuq53qTLQ7aJTA7aNsklNnu7eQtSFqJUomOyM+phPLk=
 sigs.k8s.io/controller-runtime v0.19.6/go.mod h1:iRmWllt8IlaLjvTTDLhRBXIEtkCK6hwVBJJsYS9Ajf4=
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 h1:/Rv+M11QRah1itp8VhT6HoVx1Ray9eB4DBr+K+/sCJ8=

@@ -4,6 +4,7 @@
 package v1
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,24 +30,32 @@ var (
 func (r *Policy) SetupWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr).
 		For(r).
+		WithValidator(&PolicyCustomValidator{}).
 		Complete()
 }
 
-//+kubebuilder:webhook:path=/validate-policy-open-cluster-management-io-v1-policy,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=policy.open-cluster-management.io,resources=policies,verbs=create,versions=v1,name=policy.open-cluster-management.io.webhook,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-policy-open-cluster-management-io-v1-policy,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=policy.open-cluster-management.io,resources=policies,verbs=create,versions=v1,name=policy.open-cluster-management.io.webhook,admissionReviewVersions=v1
+// +kubebuilder:object:generate=false
+type PolicyCustomValidator struct{}
 
-var _ webhook.Validator = &Policy{}
+var _ webhook.CustomValidator = &PolicyCustomValidator{}
 
-// ValidateCreate implements webhook.Validator so a webhook will be registered for the type
-func (r *Policy) ValidateCreate() (admission.Warnings, error) {
-	log := policylog.WithValues("policyName", r.Name, "policyNamespace", r.Namespace)
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the type
+func (r *PolicyCustomValidator) ValidateCreate(_ context.Context, obj runtime.Object) (admission.Warnings, error) {
+	policy, ok := obj.(*Policy)
+	if !ok {
+		return nil, fmt.Errorf("expected a Policy object but got %T", obj)
+	}
+
+	log := policylog.WithValues("policyName", policy.Name, "policyNamespace", policy.Namespace)
 	log.V(1).Info("Validate policy creation request")
 
-	err := r.validateName()
+	err := policy.validateName()
 	if err != nil {
 		return nil, err
 	}
 
-	err = r.validateRemediationAction()
+	err = policy.validateRemediationAction()
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +63,19 @@ func (r *Policy) ValidateCreate() (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateUpdate implements webhook.Validator so a webhook will be registered for the type
-func (r *Policy) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
-	log := policylog.WithValues("policyName", r.Name, "policyNamespace", r.Namespace)
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the type
+func (r *PolicyCustomValidator) ValidateUpdate(
+	_ context.Context, _, newObj runtime.Object,
+) (admission.Warnings, error) {
+	policy, ok := newObj.(*Policy)
+	if !ok {
+		return nil, fmt.Errorf("expected a Policy object but got %T", newObj)
+	}
+
+	log := policylog.WithValues("policyName", policy.Name, "policyNamespace", policy.Namespace)
 	log.V(1).Info("Validate policy update request")
 
-	err := r.validateRemediationAction()
+	err := policy.validateRemediationAction()
 	if err != nil {
 		return nil, err
 	}
@@ -67,8 +83,8 @@ func (r *Policy) ValidateUpdate(_ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
-// ValidateDelete implements webhook.Validator so a webhook will be registered for the type
-func (r *Policy) ValidateDelete() (admission.Warnings, error) {
+// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the type
+func (r *PolicyCustomValidator) ValidateDelete(_ context.Context, _ runtime.Object) (admission.Warnings, error) {
 	return nil, nil
 }
 
