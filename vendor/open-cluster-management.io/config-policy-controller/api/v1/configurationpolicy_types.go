@@ -70,35 +70,29 @@ type Severity string
 type PruneObjectBehavior string
 
 type Target struct {
+	*metav1.LabelSelector `json:",inline"`
+
 	// Include is an array of filepath expressions to include objects by name.
 	Include []NonEmptyString `json:"include,omitempty"`
 
 	// Exclude is an array of filepath expressions to exclude objects by name.
 	Exclude []NonEmptyString `json:"exclude,omitempty"`
+}
 
-	// MatchLabels is a map of {key,value} pairs matching objects by label.
-	MatchLabels *map[string]string `json:"matchLabels,omitempty"`
-
-	// MatchExpressions is an array of label selector requirements matching objects by label.
-	MatchExpressions *[]metav1.LabelSelectorRequirement `json:"matchExpressions,omitempty"`
+// IsEmpty returns whether the defined Target would always return no objects.
+func (t Target) IsEmpty() bool {
+	return t.LabelSelector == nil && len(t.Include) == 0
 }
 
 // Define String() so that the LabelSelector is dereferenced in the logs
 func (t Target) String() string {
 	fmtSelectorStr := "{include:%s,exclude:%s,matchLabels:%+v,matchExpressions:%+v}"
-	if t.MatchLabels == nil && t.MatchExpressions == nil {
+
+	if t.LabelSelector == nil {
 		return fmt.Sprintf(fmtSelectorStr, t.Include, t.Exclude, nil, nil)
 	}
 
-	if t.MatchLabels == nil {
-		return fmt.Sprintf(fmtSelectorStr, t.Include, t.Exclude, nil, *t.MatchExpressions)
-	}
-
-	if t.MatchExpressions == nil {
-		return fmt.Sprintf(fmtSelectorStr, t.Include, t.Exclude, *t.MatchLabels, nil)
-	}
-
-	return fmt.Sprintf(fmtSelectorStr, t.Include, t.Exclude, *t.MatchLabels, *t.MatchExpressions)
+	return fmt.Sprintf(fmtSelectorStr, t.Include, t.Exclude, t.MatchLabels, t.MatchExpressions)
 }
 
 // EvaluationInterval configures the minimum elapsed time before a configuration policy is
@@ -246,6 +240,10 @@ type ObjectTemplate struct {
 	// `OAuthAuthorizeTokens`, `Route`, and `Secret`, or when a templated `objectDefinition`
 	// references sensitive data. For all other kinds, the default value is `InStatus`.
 	RecordDiff RecordDiff `json:"recordDiff,omitempty"`
+
+	// ObjectSelector defines the label selector for objects defined in the `objectDefinition`. If
+	// there is an object name defined in the `objectDefinition`, the `objectSelector` is ignored.
+	ObjectSelector *metav1.LabelSelector `json:"objectSelector,omitempty"`
 }
 
 // RecordDiffWithDefault parses the `objectDefinition` in the policy for the kind and returns the
@@ -281,8 +279,9 @@ func (o *ObjectTemplate) RecordDiffWithDefault() RecordDiff {
 // ConfigurationPolicySpec defines the desired configuration of objects on the cluster, along with
 // how the controller should handle when the cluster doesn't match the configuration policy.
 type ConfigurationPolicySpec struct {
-	CustomMessage      CustomMessage      `json:"customMessage,omitempty"`
-	Severity           Severity           `json:"severity,omitempty"`
+	CustomMessage CustomMessage `json:"customMessage,omitempty"`
+	Severity      Severity      `json:"severity,omitempty"`
+	// +kubebuilder:default=inform
 	RemediationAction  RemediationAction  `json:"remediationAction"`
 	EvaluationInterval EvaluationInterval `json:"evaluationInterval,omitempty"`
 	// +kubebuilder:default:=None
@@ -292,7 +291,8 @@ type ConfigurationPolicySpec struct {
 	// `spec["object-templates"]`. All selector rules are combined. If 'include' is not provided but
 	// `matchLabels` and/or `matchExpressions` are, `include` will behave as if `['*']` were given. If
 	// `matchExpressions` and `matchLabels` are both not provided, `include` must be provided to
-	// retrieve namespaces.
+	// retrieve namespaces. If there is a namespace defined in the `objectDefinition`, the
+	// `namespaceSelector` is ignored.
 	NamespaceSelector Target `json:"namespaceSelector,omitempty"`
 
 	// The `object-templates` is an array of object configurations for the configuration policy to
@@ -318,7 +318,7 @@ type ComplianceState string
 const (
 	Compliant         ComplianceState = "Compliant"
 	NonCompliant      ComplianceState = "NonCompliant"
-	UnknownCompliancy ComplianceState = "UnknownCompliancy"
+	UnknownCompliancy ComplianceState = ""
 	Terminating       ComplianceState = "Terminating"
 )
 
@@ -379,11 +379,11 @@ type ObjectMetadata struct {
 type ObjectResource struct {
 	Metadata ObjectMetadata `json:"metadata,omitempty"`
 
-	// Kind of the related object.
-	Kind string `json:"kind,omitempty"`
-
 	// API version of the related object.
 	APIVersion string `json:"apiVersion,omitempty"`
+
+	// Kind of the related object.
+	Kind string `json:"kind,omitempty"`
 }
 
 // ObjectResourceFromObj mutates a Kubernetes object into an ObjectResource type to populate the
