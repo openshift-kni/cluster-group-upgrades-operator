@@ -33,7 +33,7 @@ spec:
     - name: hermetic
       value: "true"
     - name: prefetch-input
-      value: "gomod"
+      value: gomod
     - name: build-source-image
       value: "true"
   pipelineRef:

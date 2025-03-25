@@ -3,10 +3,10 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
+    build.appstudio.openshift.io/build-nudge-files: .*Dockerfile.*, .*.yaml, .*Containerfile.*, bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml
     build.appstudio.openshift.io/repo: https://github.com/openshift-kni/cluster-group-upgrades-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    build.appstudio.openshift.io/build-nudge-files: ".*Dockerfile.*, .*.yaml, .*Containerfile.*, bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main"
   creationTimestamp: null
@@ -37,7 +37,7 @@ spec:
     - name: skip-preflight
       value: "true"
   pipelineRef:
-      name: build-pipeline
+    name: build-pipeline
   taskRunTemplate: {}
   workspaces:
     - name: workspace
