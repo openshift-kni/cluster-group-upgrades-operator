@@ -225,8 +225,8 @@ open-cluster-management.io/config-policy-controller v0.16.0 h1:hIrgTvJXYRuYZ+Gph
 open-cluster-management.io/config-policy-controller v0.16.0/go.mod h1:NEl+/esHnMIbRRwndgBqzILqL+nro2mbrcDowZHSMZk=
 open-cluster-management.io/governance-policy-propagator v0.16.0 h1:2oBWdVYgJXcx75d8RS4Ttsic5SIaE5ioG+mug4RAPqI=
 open-cluster-management.io/governance-policy-propagator v0.16.0/go.mod h1:bLA1TlVhKm6f14f4ZgqvTFqGSN3buBYVjbqZ6CQ63zM=
-sigs.k8s.io/controller-runtime v0.20.3 h1:I6Ln8JfQjHH7JbtCD2HCYHoIzajoRxPNuvhvcDbZgkI=
-sigs.k8s.io/controller-runtime v0.20.3/go.mod h1:xg2XB0K5ShQzAgsoujxuKN4LNXR2LfwwHsPj7Iaw+XY=
+sigs.k8s.io/controller-runtime v0.20.4 h1:X3c+Odnxz+iPTRobG4tp092+CvBU9UK0t/bRf+n0DGU=
+sigs.k8s.io/controller-runtime v0.20.4/go.mod h1:xg2XB0K5ShQzAgsoujxuKN4LNXR2LfwwHsPj7Iaw+XY=
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3 h1:/Rv+M11QRah1itp8VhT6HoVx1Ray9eB4DBr+K+/sCJ8=
 sigs.k8s.io/json v0.0.0-20241010143419-9aa6b5e7a4b3/go.mod h1:18nIHnGi6636UCz6m8i4DhaJ65T6EruyzmoQqI2BVDo=
 sigs.k8s.io/randfill v0.0.0-20250304075658-069ef1bbf016 h1:kXv6kKdoEtedwuqMmkqhbkgvYKeycVbC8+iPCP9j5kQ=
