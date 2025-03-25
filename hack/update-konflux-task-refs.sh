@@ -7,7 +7,7 @@ command -v skopeo >/dev/null 2>&1 || { echo >&2 "'skopeo' is required but it's n
 
 PIPELINE_FILE=""
 
-function update_manifest_if_outdated() {
+function update_manifest_if_outdated {
     image=$(echo $1 | cut -d '@' -f 1)
     manifest=$(echo $1 | cut -d '@' -f 2)
 
@@ -29,12 +29,11 @@ function update_manifest_if_outdated() {
     fi
 }
 
-function update_manifest() {
+function update_manifest {
     image=$1
     old_manifest=$2
     new_manifest=$3
 
-    ret=0
     if [[ "$OSTYPE" == "darwin"* ]]; then
         sed -i '' -e "s%${image}@${old_manifest}%${image}@${new_manifest}%g" $PIPELINE_FILE
     else
@@ -50,7 +49,7 @@ for PIPELINE_FILE in "$@"; do
     # Fetch the manifests that are currently used in our pipelines
     IFS=$'\n' read -r -d '' -a active_manifests < <( yq '.spec.tasks[].taskRef.params | filter(.name == "bundle") | .[].value' $PIPELINE_FILE && printf '\0' )
 
-    for manifest in ${active_manifests[@]}; do
+    for manifest in "${active_manifests[@]}"; do
         update_manifest_if_outdated $manifest
     done
 done
