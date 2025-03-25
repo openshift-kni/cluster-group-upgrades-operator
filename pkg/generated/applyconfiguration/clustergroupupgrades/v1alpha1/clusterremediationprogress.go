@@ -27,7 +27,7 @@ type ClusterRemediationProgressApplyConfiguration struct {
 	State             *string  `json:"state,omitempty"`
 	ManifestWorkIndex *int     `json:"manifestWorkIndex,omitempty"`
 	PolicyIndex       *int     `json:"policyIndex,omitempty"`
-	FirstCompliantAt  *v1.Time `json:"firstComplaintAt,omitempty"`
+	FirstCompliantAt  *v1.Time `json:"firstCompliantAt,omitempty"`
 }
 
 // ClusterRemediationProgressApplyConfiguration constructs an declarative configuration of the ClusterRemediationProgress type for use with
