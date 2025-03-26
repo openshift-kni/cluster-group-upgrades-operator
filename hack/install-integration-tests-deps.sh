@@ -57,5 +57,10 @@ else
 fi
 
 echo "Installing ginkgo and gomega..."
-go get github.com/onsi/ginkgo/v2
-go get github.com/onsi/gomega/...
+
+GINKGO_MOD="github.com/onsi/ginkgo/v2"
+GINKGO_VERSION=$(go mod edit -json | jq -r ".Require[] | select(.Path == \"$GINKGO_MOD\") | .Version")
+GOMEGA_MOD="github.com/onsi/gomega"
+GOMEGA_VERSION=$(go mod edit -json | jq -r ".Require[] | select(.Path == \"$GOMEGA_MOD\") | .Version")
+go get ${GINKGO_MOD}@${GINKGO_VERSION}
+go get ${GOMEGA_MOD}...@${GOMEGA_VERSION}
