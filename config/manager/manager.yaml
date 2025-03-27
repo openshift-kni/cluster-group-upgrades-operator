@@ -37,10 +37,19 @@ spec:
         - /manager
         args:
         - --leader-elect
+        - --metrics-bind-address=:6443
+        - --metrics-tls-cert-dir=/secrets/tls/metrics
         image: controller:latest
         name: manager
         securityContext:
           allowPrivilegeEscalation: false
+        ports:
+        - containerPort: 6443
+          protocol: TCP
+          name: https
+        volumeMounts:
+        - name: metrics-tls
+          mountPath: /secrets/tls/metrics
         livenessProbe:
           httpGet:
             path: /healthz
@@ -59,3 +68,8 @@ spec:
             memory: 20Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
+      volumes:
+      - name: metrics-tls
+        secret:
+          defaultMode: 420
+          secretName: controller-manager-metrics-tls
