@@ -27,7 +27,6 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -164,6 +163,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		return
 	}
 	if reconcileTime == utils.ReconcileNow {
+		r.sendEventCGUCreated(clusterGroupUpgrade)
 		nextReconcile = requeueImmediately()
 		return
 	} else if reconcileTime == utils.StopReconciling {
@@ -184,9 +184,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if suceededCondition.Status == metav1.ConditionTrue {
-				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeNormal, suceededCondition.Reason, suceededCondition.Message)
+				r.sendEventCGUSuccess(clusterGroupUpgrade)
 			} else {
-				r.Recorder.Event(clusterGroupUpgrade, corev1.EventTypeWarning, suceededCondition.Reason, suceededCondition.Message)
+				r.sendEventCGUTimedout(clusterGroupUpgrade)
 			}
 			// Set completion time only after post actions are executed with no errors
 			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
@@ -199,15 +199,21 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		var allManagedPoliciesExist, allManifestWorkTemplatesExist bool
 		var managedPoliciesInfo policiesInfo
 		var clusters, missingTemplates []string
+		var missingClusters []string
 		var reconcile bool
-		clusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
+		clusters, missingClusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
 		if err != nil {
+			condMsg := fmt.Sprintf("Unable to select clusters: %s", err)
+			cond := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.ClustersSelected))
+			if cond == nil || cond.Message != condMsg {
+				r.sendEventCGUValidationFailureMissingClusters(clusterGroupUpgrade, missingClusters)
+			}
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
 				utils.ConditionTypes.ClustersSelected,
 				utils.ConditionReasons.ClusterNotFound,
 				metav1.ConditionFalse,
-				fmt.Sprintf("Unable to select clusters: %s", err),
+				condMsg,
 			)
 			nextReconcile = requeueWithLongInterval()
 			err = r.updateStatus(ctx, clusterGroupUpgrade)
@@ -281,14 +287,17 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			var statusMessage string
 			var conditionReason utils.ConditionReason
 
+			validationFailureType := CGUValidationErrorMsgNone
 			if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
 				conditionReason = utils.ConditionReasons.NotAllManagedPoliciesExist
 				if len(managedPoliciesInfo.missingPolicies) != 0 {
 					statusMessage = fmt.Sprintf("Missing managed policies: %s ", managedPoliciesInfo.missingPolicies)
+					validationFailureType = CGUValidationErrorMsgMissingPolicies
 				}
 
 				if len(managedPoliciesInfo.invalidPolicies) != 0 {
 					statusMessage = fmt.Sprintf("Invalid managed policies: %s ", managedPoliciesInfo.invalidPolicies)
+					validationFailureType = CGUValidationErrorMsgInvalidPolicies
 				}
 
 				if len(managedPoliciesInfo.duplicatedPoliciesNs) != 0 {
@@ -296,11 +305,19 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					statusMessage = fmt.Sprintf(
 						"Managed policy name should be unique, but was found in multiple namespaces: %s ", jsonData)
 					conditionReason = utils.ConditionReasons.AmbiguousManagedPoliciesNames
+					validationFailureType = CGUValidationErrorMsgAmbiguousPolicies
 				}
 			} else {
 				conditionReason = utils.ConditionReasons.NotAllManifestTemplatesExist
 				statusMessage = fmt.Sprintf("Missing manifest templates: %s", missingTemplates)
 			}
+
+			// Send the validation failure event only if this validation error is new.
+			cond := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Validated))
+			if cond == nil || cond.Message != statusMessage {
+				r.sendEventCGUVPoliciesValidationFailure(clusterGroupUpgrade, validationFailureType, managedPoliciesInfo)
+			}
+
 			// If there are errors regarding the managedPolicies, update the Status accordingly.
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
@@ -377,6 +394,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			r.updateStatus(ctx, clusterGroupUpgrade)
 			return
 		}
+
+		r.sendEventCGUStarted(clusterGroupUpgrade)
 
 		if clusterGroupUpgrade.Status.Status.StartedAt.IsZero() {
 			clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
@@ -554,6 +573,8 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 			// Set the time for when the batch started updating.
 			clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
+
+			r.sendEventCGUBatchUpgradeStarted(clusterGroupUpgrade)
 		}
 
 		// Check whether we have time left on the cgu timeout
@@ -648,6 +669,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							if err != nil {
 								return
 							}
+
 							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
 							case ranv1alpha1.BatchTimeoutAction.Abort:
 								// If the value was abort then we need to fail out
@@ -738,18 +760,21 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 		return nil
 	}
 
+	emitTimedoutEvt := false
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		clusterFinalState := ranv1alpha1.ClusterState{
 			Name: batchClusterName, State: utils.ClusterRemediationComplete}
 		// In certain edge cases we need to be careful to avoid a nil pointer on this access
 		clusterStatus := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
 		if clusterStatus == nil {
+			emitTimedoutEvt = true
 			// Assume the cluster timed out if the status was not defined when it should have been
 			// This implies that this batch did not even get a chance to start
 			clusterFinalState.State = utils.ClusterRemediationTimedout
 			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		} else if clusterStatus.State == ranv1alpha1.InProgress {
+			emitTimedoutEvt = true
 			clusterFinalState.State = utils.ClusterRemediationTimedout
 			switch clusterGroupUpgrade.RolloutType() {
 			case ranv1alpha1.RolloutTypes.Policy:
@@ -764,6 +789,11 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		}
 	}
+
+	if emitTimedoutEvt {
+		r.sendEventCGUBatchUpgradeTimedout(clusterGroupUpgrade)
+	}
+
 	return nil
 }
 
@@ -808,6 +838,10 @@ func (r *ClusterGroupUpgradeReconciler) updateCurrentBatchProgress(
 		}
 	}
 
+	if isBatchComplete {
+		r.sendEventCGUBatchUpgradeSuccess(clusterGroupUpgrade)
+	}
+
 	r.Log.Info("[updateCurrentBatchProgress]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)
 	return isBatchComplete, isSoaking, isProgressing, nil
 }
@@ -839,6 +873,8 @@ func (r *ClusterGroupUpgradeReconciler) updateClusterProgress(
 		*index = new(int)
 		**index = 0
 		*clusterProgressState = ranv1alpha1.InProgress
+
+		r.sendEventCGUClusterUpgradeStarted(clusterGroupUpgrade, clusterName)
 	} else if *clusterProgressState == ranv1alpha1.Completed {
 		return true, false, false, nil
 	}
@@ -853,6 +889,9 @@ func (r *ClusterGroupUpgradeReconciler) updateClusterProgress(
 		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].PolicyIndex = nil
 		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].ManifestWorkIndex = nil
 		*clusterProgressState = ranv1alpha1.Completed
+
+		r.sendEventCGUClusterUpgradeSuccess(clusterGroupUpgrade, clusterName)
+
 		err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, clusterName)
 		if err != nil {
 			return false, false, false, err
@@ -1202,20 +1241,25 @@ func (r *ClusterGroupUpgradeReconciler) blockingCRsNotCompleted(ctx context.Cont
 	return blockingCRsNotCompleted, blockingCRsMissing, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, bool, error) {
+func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, []string, bool, error) {
 	reconcile := false
 	// Validate clusters in spec are ManagedCluster objects
 	clusters, err := r.getAllClustersForUpgrade(ctx, clusterGroupUpgrade)
 	if err != nil {
-		return nil, reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
+		return nil, nil, reconcile, fmt.Errorf("cannot obtain all the details about the clusters in the CR: %s", err)
 	}
 
+	allMissingClusters := []string{}
 	for _, cluster := range clusters {
 		managedCluster := &clusterv1.ManagedCluster{}
 		err := r.Client.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
 		if err != nil {
-			return nil, reconcile, fmt.Errorf("cluster %s is not a ManagedCluster", cluster)
+			allMissingClusters = append(allMissingClusters, cluster)
 		}
+	}
+
+	if len(allMissingClusters) > 0 {
+		return nil, allMissingClusters, reconcile, fmt.Errorf("cluster %s is not a ManagedCluster", allMissingClusters[0])
 	}
 
 	// Validate the canaries are in the list of clusters.
@@ -1229,7 +1273,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 				}
 			}
 			if !foundCanary {
-				return nil, reconcile, fmt.Errorf("canary cluster %s is not in the list of clusters", canary)
+				return nil, nil, reconcile, fmt.Errorf("canary cluster %s is not in the list of clusters", canary)
 			}
 		}
 	}
@@ -1248,12 +1292,12 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 		err = r.updateStatus(ctx, clusterGroupUpgrade)
 		if err != nil {
 			r.Log.Info("Error updating Cluster Group Upgrade")
-			return nil, reconcile, err
+			return nil, nil, reconcile, err
 		}
 		reconcile = true
 	}
 
-	return clusters, reconcile, nil
+	return clusters, nil, reconcile, nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
