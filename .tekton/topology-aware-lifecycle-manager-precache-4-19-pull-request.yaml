@@ -29,7 +29,7 @@ spec:
     - name: dockerfile
       value: Dockerfile.precache
     - name: build-args-file
-      value: build_args_konflux.conf
+      value: konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input

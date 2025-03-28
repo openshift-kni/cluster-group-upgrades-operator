@@ -27,9 +27,9 @@ spec:
     - name: image-expires-after
       value: 5d
     - name: dockerfile
-      value: bundle.Dockerfile
+      value: bundle.konflux.Dockerfile
     - name: build-args-file
-      value: build_args_konflux.conf
+      value: konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input

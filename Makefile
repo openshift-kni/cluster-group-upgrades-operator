@@ -187,7 +187,7 @@ konflux-update: konflux-task-manifest-updates
 
 .PHONY: konflux-task-manifest-updates
 konflux-task-manifest-updates:
-	hack/update-konflux-task-refs.sh .tekton/build-pipeline.yaml
+	hack/konflux_update_task_refs.sh .tekton/build-pipeline.yaml
 
 .PHONY: ci-job
 ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate yamllint bundle-check
