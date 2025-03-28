@@ -12,10 +12,10 @@ import (
 
 // CGU Event Reasons
 const (
-	CGUEventReasonCreated = "CguCreated"
-	CGUEventReasonStarted = "CguStarted"
-	CGUEventReasonSuccess = "CguSuccess"
-	CGUEventReasonTimeout = "CguTimeout"
+	CGUEventReasonCreated  = "CguCreated"
+	CGUEventReasonStarted  = "CguStarted"
+	CGUEventReasonSuccess  = "CguSuccess"
+	CGUEventReasonTimedout = "CguTimedout"
 
 	CGUEventReasonValidationFailure = "CguValidationFailure"
 )
@@ -25,7 +25,7 @@ const (
 	CGUEventMsgFmtCreated           = "New ClusterGroupUpgrade found: %s"
 	CGUEventMsgFmtStarted           = "ClusterGroupUpgrade %s started remediating policies"
 	CGUEventMsgFmtUpgradeSuccess    = "ClusterGroupUpgrade %s succeeded remediating policies"
-	CGUEventMsgFmtUpgradeTimeout    = "ClusterGroupUpgrade %s timed-out remediating policies"
+	CGUEventMsgFmtUpgradeTimedout   = "ClusterGroupUpgrade %s timed-out remediating policies"
 	CGUEventMsgFmtValidationFailure = "ClusterGroupUpgrade %s: validation failure (%s): %s"
 
 	CGUEventMsgFmtBatchUpgradeStarted  = "ClusterGroupUpgrade %s: batch index %d upgrade started"
@@ -135,7 +135,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.Clu
 }
 
 func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
-	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeTimeout, cgu.Name)
+	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeTimedout, cgu.Name)
 
 	// Iterate through all clusters to get a list of the timed-out ones.
 	timedoutClusters := []string{}
@@ -149,6 +149,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.Cl
 		CGUEventAnnotationKeyEvType:                CGUAnnEventGlobalUpgrade,
 		CGUEventAnnotationKeyTimedoutClustersCount: fmt.Sprint(len(timedoutClusters)),
 		CGUEventAnnotationKeyTimedoutClustersList:  strings.Join(timedoutClusters, ","),
+		CGUEventAnnotationKeyTotalClustersCount:    fmt.Sprint(getTotalClustersNum(cgu)),
 	}
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
@@ -156,7 +157,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.Cl
 	r.Recorder.AnnotatedEventf(cgu,
 		evAnns,
 		corev1.EventTypeWarning,
-		CGUEventReasonTimeout, evMsg)
+		CGUEventReasonTimedout, evMsg)
 }
 
 func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade) {
@@ -211,20 +212,25 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cgu
 func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeTimedout, cgu.Name, cgu.Status.Status.CurrentBatch)
 
-	// Iterate through all clusters to get a list of the timed-out ones.
+	// Iterate through the batch clusters to get a list of the timed-out ones.
+	batchClustersCount := 0
 	timedoutClusters := []string{}
-	for _, clusterState := range cgu.Status.Clusters {
-		if clusterState.State == utils.ClusterRemediationTimedout {
-			timedoutClusters = append(timedoutClusters, clusterState.Name)
+	for clusterName, clusterProgress := range cgu.Status.Status.CurrentBatchRemediationProgress {
+		batchClustersCount++
+		if clusterProgress.State == cguv1alpha1.InProgress {
+			timedoutClusters = append(timedoutClusters, clusterName)
 		}
 	}
 
 	timedoutClustersCount := len(timedoutClusters)
+	totalClustersCount := getTotalClustersNum(cgu)
 
 	evAnns := map[string]string{
 		CGUEventAnnotationKeyEvType:                CGUAnnEventBatchUpgrade,
 		CGUEventAnnotationKeyTimedoutClustersCount: fmt.Sprint(timedoutClustersCount),
 		CGUEventAnnotationKeyTimedoutClustersList:  strings.Join(timedoutClusters, ","),
+		CGUEventAnnotationKeyBatchClustersCount:    fmt.Sprint(batchClustersCount),
+		CGUEventAnnotationKeyTotalClustersCount:    fmt.Sprint(totalClustersCount),
 	}
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
@@ -232,7 +238,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cg
 	r.Recorder.AnnotatedEventf(cgu,
 		evAnns,
 		corev1.EventTypeWarning,
-		CGUEventReasonTimeout, evMsg)
+		CGUEventReasonTimedout, evMsg)
 }
 
 func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
@@ -280,7 +286,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *c
 // 	r.Recorder.AnnotatedEventf(cgu,
 // 		evAnns,
 // 		corev1.EventTypeNormal,
-// 		CGUEventReasonTimeout, evMsg)
+// 		CGUEventReasonTimedout, evMsg)
 // }
 
 func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClusters(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterNames []string) {

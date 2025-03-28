@@ -594,9 +594,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				utils.TimeoutMessages[clusterGroupUpgrade.RolloutType()],
 			)
 			err = r.handleBatchTimeout(ctx, clusterGroupUpgrade)
-
-			r.sendEventCGUBatchUpgradeTimedout(clusterGroupUpgrade)
-
 			nextReconcile = requeueImmediately()
 		} else if clusterGroupUpgrade.Status.Status.CurrentBatch < len(clusterGroupUpgrade.Status.RemediationPlan) {
 			// Check if current policies have become compliant and if new policies have to be applied.
@@ -670,8 +667,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 							if err != nil {
 								return
 							}
-
-							r.sendEventCGUBatchUpgradeTimedout(clusterGroupUpgrade)
 
 							switch clusterGroupUpgrade.Spec.BatchTimeoutAction {
 							case ranv1alpha1.BatchTimeoutAction.Abort:
@@ -763,18 +758,21 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 		return nil
 	}
 
+	emitTimedoutEvt := false
 	for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
 		clusterFinalState := ranv1alpha1.ClusterState{
 			Name: batchClusterName, State: utils.ClusterRemediationComplete}
 		// In certain edge cases we need to be careful to avoid a nil pointer on this access
 		clusterStatus := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[batchClusterName]
 		if clusterStatus == nil {
+			emitTimedoutEvt = true
 			// Assume the cluster timed out if the status was not defined when it should have been
 			// This implies that this batch did not even get a chance to start
 			clusterFinalState.State = utils.ClusterRemediationTimedout
 			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		} else if clusterStatus.State == ranv1alpha1.InProgress {
+			emitTimedoutEvt = true
 			clusterFinalState.State = utils.ClusterRemediationTimedout
 			switch clusterGroupUpgrade.RolloutType() {
 			case ranv1alpha1.RolloutTypes.Policy:
@@ -789,6 +787,11 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		}
 	}
+
+	if emitTimedoutEvt {
+		r.sendEventCGUBatchUpgradeTimedout(clusterGroupUpgrade)
+	}
+
 	return nil
 }
 
