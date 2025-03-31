@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: talm-operator
+    app.kubernetes.io/component: talm
+    control-plane: controller-manager
+  annotations:
+    service.beta.openshift.io/serving-cert-secret-name: controller-manager-metrics-tls
+  name: controller-manager-metrics-service
+  namespace: system
+spec:
+  ports:
+  - name: https
+    port: 8443
+    targetPort: https
+    protocol: TCP
+  selector:
+    app.kubernetes.io/name: talm-operator
+    app.kubernetes.io/component: talm
+    control-plane: controller-manager
