@@ -3,7 +3,7 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
-    build.appstudio.openshift.io/build-nudge-files: .*Dockerfile.*, .*.yaml, .*Containerfile.*, bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml
+    build.appstudio.openshift.io/build-nudge-files: .*Dockerfile.*, .*.yaml, .*Containerfile.*, konflux_clusterserviceversion_overlay.data
     build.appstudio.openshift.io/repo: https://github.com/openshift-kni/cluster-group-upgrades-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
@@ -25,9 +25,9 @@ spec:
     - name: output-image
       value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19:{{revision}}
     - name: dockerfile
-      value: bundle.Dockerfile
+      value: bundle.konflux.Dockerfile
     - name: build-args-file
-      value: build_args_konflux.conf
+      value: konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input
