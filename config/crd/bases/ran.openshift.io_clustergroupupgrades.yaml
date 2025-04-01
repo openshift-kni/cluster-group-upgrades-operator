@@ -721,7 +721,7 @@ spec:
                       description: ClusterRemediationProgress stores the remediation
                         progress of a cluster
                       properties:
-                        firstComplaintAt:
+                        firstCompliantAt:
                           format: date-time
                           type: string
                         manifestWorkIndex:
