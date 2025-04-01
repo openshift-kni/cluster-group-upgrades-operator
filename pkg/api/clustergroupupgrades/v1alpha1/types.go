@@ -219,7 +219,7 @@ type ClusterRemediationProgress struct {
 	State             string      `json:"state,omitempty"`
 	ManifestWorkIndex *int        `json:"manifestWorkIndex,omitempty"`
 	PolicyIndex       *int        `json:"policyIndex,omitempty"`
-	FirstCompliantAt  metav1.Time `json:"firstComplaintAt,omitempty"`
+	FirstCompliantAt  metav1.Time `json:"firstCompliantAt,omitempty"`
 }
 
 // ClusterRemediationProgress possible states
