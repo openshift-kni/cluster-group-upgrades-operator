@@ -1,0 +1,11 @@
+dependencies:
+  - type: olm.gvk
+    value:
+      group: work.open-cluster-management.io
+      kind: ManifestWork
+      version: v1
+  - type: olm.package
+    value:
+      packageName: advanced-cluster-management
+      version: ">1.12.0"
+

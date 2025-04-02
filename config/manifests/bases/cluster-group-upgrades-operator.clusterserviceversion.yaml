@@ -194,6 +194,13 @@ spec:
       - displayName: Status
         path: observedGeneration
       version: v1alpha1
+    required:
+    - description: ManifestWork represents a manifests workload that hub wants to
+        deploy on the managed cluster.
+      displayName: Manifest Work
+      kind: ManifestWork
+      name: manifestworks.work.open-cluster-management.io
+      version: v1
   description: cluster-group-upgrades-operator is an operator that facilitates platform
     upgrades of group of clusters
   displayName: cluster-group-upgrades-operator
