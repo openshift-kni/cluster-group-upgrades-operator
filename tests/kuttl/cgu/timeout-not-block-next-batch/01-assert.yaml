@@ -1,0 +1,83 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240
+status:
+  clusters:
+  - name: spoke6
+    state: complete
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: 'True'
+    type: Progressing
+  managedPoliciesContent:
+    policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+  placementBindings:
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+  placementRules:
+  - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+  remediationPlan:
+  - - spoke1
+  - - spoke4
+  safeResourceNames:
+    default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ''
+  name: spoke6
