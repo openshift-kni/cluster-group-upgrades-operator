@@ -1,0 +1,49 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 0
+    timeout: 1
+status:
+  clusters:
+  - name: spoke6
+    state: complete
+  - currentPolicy:
+      name: policy1-common-cluster-version-policy
+      status: NonCompliant
+    name: spoke1
+    state: timedout
+  - name: spoke4
+    state: complete
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ''
+  name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ''
+  name: spoke6
