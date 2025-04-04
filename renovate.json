@@ -1,16 +1,27 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-    "kubernetes": {
+    "docker": {
+        "_comment": "We want to make sure all the docker/container files including the build args get digest upates",
         "fileMatch": [
-            "\\.conf$",
-            "\\.data$",
-            "\\.yaml$",
-            "\\.yml$"
+            "\\.*Dockerfile\\.*",
+            "\\.*Containerfile\\.*",
+            "\\.*konflux_build_args.conf\\.*"
         ],
         "includePaths": [
-            "./konflux_build_args.conf",
-            "./konflux_clusterserviceversion_overlay.data",
-            ".tekton/"
+            "."
         ]
+    },
+    "extends": [
+        "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json?raw=true"
+    ],
+    "tekton": {
+        "_comment": "We want the Tekton Mintmaker PRs to merge automatically because they would otherwise be very noisy",
+        "automerge": true,
+        "automergeStrategy": "rebase",
+        "automergeType": "pr",
+        "enabled": true,
+        "ignoreTests": false,
+        "platformAutomerge": true,
+        "schedule": ["0 1 * * *"]
     }
 }
