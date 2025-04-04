@@ -1,14 +1,12 @@
 {
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "docker": {
-        "_comment": "We want to make sure all the docker/container files including the build args get digest upates",
+        "_comment": "We want to make sure the image digests in the build args get updates",
         "fileMatch": [
-            "\\.*Dockerfile\\.*",
-            "\\.*Containerfile\\.*",
-            "\\.*konflux_build_args.conf\\.*"
+            "\\.conf$"
         ],
         "includePaths": [
-            "."
+            "./konflux_build_args.conf"
         ]
     },
     "extends": [
