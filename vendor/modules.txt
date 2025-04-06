@@ -249,7 +249,7 @@ github.com/stoewer/go-strcase
 ## explicit; go 1.22.0
 github.com/stolostron/cluster-lifecycle-api/action/v1beta1
 github.com/stolostron/cluster-lifecycle-api/view/v1beta1
-# github.com/stolostron/kubernetes-dependency-watches v0.10.0
+# github.com/stolostron/kubernetes-dependency-watches v0.10.1
 ## explicit; go 1.22.0
 github.com/stolostron/kubernetes-dependency-watches/client
 # github.com/stretchr/testify v1.10.0

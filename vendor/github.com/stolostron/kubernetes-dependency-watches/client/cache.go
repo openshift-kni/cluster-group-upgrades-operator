@@ -4,6 +4,7 @@ package client
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -293,6 +294,12 @@ func (o *objectCache) GVKToGVR(gvk schema.GroupVersionKind) (ScopedGVR, error) {
 
 	for _, apiRes := range resources.APIResources {
 		if apiRes.Kind == gvk.Kind {
+			if !strings.Contains(apiRes.Verbs.String(), "watch") {
+				klog.V(2).Infof("Excluding API resource because it does not support watch: %v", apiRes)
+
+				continue
+			}
+
 			klog.V(2).Infof("Found the API resource: %v", apiRes)
 
 			gv := gvk.GroupVersion()
