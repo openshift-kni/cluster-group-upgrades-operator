@@ -1130,7 +1130,7 @@ open-cluster-management.io/config-policy-controller/api/v1
 # open-cluster-management.io/governance-policy-propagator v0.16.0
 ## explicit; go 1.22.0
 open-cluster-management.io/governance-policy-propagator/api/v1
-# sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.31.0
+# sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.32.0
 ## explicit; go 1.21
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client/pkg/client/metrics
