@@ -1,0 +1,13 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/acm/policies/upgrade_complete/patch-policies-status-batch3.sh default default
+    ignoreFailure: false
+
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-upgrade-complete --patch '{"spec":{"remediationStrategy":{"timeout":1}}}' --type=merge
+
+  - command: sleep 30
+
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-upgrade-complete --patch '{"spec":{"remediationStrategy":{"maxConcurrency":0}}}' --type=merge
+  

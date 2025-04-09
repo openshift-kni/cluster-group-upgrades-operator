@@ -403,9 +403,14 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 			continue
 		}
 
+		// after all batches are finished, controller goes through all previous batches to see
+		// if policies are still compliant; in this case some cluster will not be present in
+		// CurrentBatchRemediationProgress and there is no need to check soaking or modify
+		// FirstCompliantAt
+		_, clusterInBatch := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName]
+
 		if clusterStatus == utils.ClusterStatusCompliant {
-			_, ok := clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName]
-			if !ok {
+			if !clusterInBatch {
 				continue
 			}
 			shouldSoak, err := utils.ShouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
@@ -426,7 +431,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 			break
 		}
 
-		if clusterStatus == utils.ClusterStatusNonCompliant {
+		if clusterInBatch && clusterStatus == utils.ClusterStatusNonCompliant {
 			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Time{}
 			break
 		}
