@@ -26,3 +26,12 @@ updates:
       - dependency-name: "github.com/onsi/*"
         update-types: ["version-update:semver-patch"]
       - dependency-name: "k8s.io/code-generator"
+  - package-ecosystem: "gomod"
+    groups:
+      # Group security updates for golang dependencies
+      # into a single pull request
+      golang:
+        applies-to: security-updates
+        patterns:
+          - "golang.org*"
+    target-brach: "release-4.18"
