@@ -1,8 +1,7 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
 go 1.22.0
-
-toolchain go1.22.4
+toolchain go1.24.1
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -27,7 +26,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.19.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20240624133429-f23bb798197c
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240109072430-f5fe6043d1f8
-	golang.org/x/sys v0.21.0
+	golang.org/x/sys v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.29.5
 	open-cluster-management.io/config-policy-controller v0.12.0
