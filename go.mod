@@ -1,8 +1,7 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
 go 1.22.0
-
-toolchain go1.22.4
+toolchain go1.24.1
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -78,7 +77,7 @@ require (
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/oauth2 v0.20.0 // indirect
-	golang.org/x/sync v0.7.0 // indirect
+	golang.org/x/sync v0.13.0 // indirect
 	golang.org/x/term v0.21.0 // indirect
 	golang.org/x/text v0.16.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
