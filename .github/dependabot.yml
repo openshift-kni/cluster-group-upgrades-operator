@@ -26,12 +26,23 @@ updates:
       - dependency-name: "github.com/onsi/*"
         update-types: ["version-update:semver-patch"]
       - dependency-name: "k8s.io/code-generator"
+    assignees:
+      - "jc-rh"
+      - "sudomakeinstall2"
   - package-ecosystem: "gomod" # Release branch
     directory: "/"
     target-branch: "release-4.18"
+    groups:
+      golang:
+        applies-to: security-updates
+        patterns:
+          - "golang.org*"
     schedule:
       interval: "daily"
     labels:
       - "release-4.18"
     allow:
       - dependency-name: "golang.org*"
+    assignees:
+      - "jc-rh"
+      - "sudomakeinstall2"
