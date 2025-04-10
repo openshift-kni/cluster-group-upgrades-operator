@@ -29,6 +29,11 @@ updates:
   - package-ecosystem: "gomod" # Release branch
     directory: "/"
     target-branch: "release-4.18"
+    groups:
+      golang:
+        applies-to: security-updates
+        patterns:
+          - "golang.org*"
     schedule:
       interval: "daily"
     labels:
