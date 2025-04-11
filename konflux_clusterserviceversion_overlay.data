@@ -2,7 +2,7 @@
 # The script will strip out empty lines and comments automatically
 
 # aztp
-aztp_img quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.19.0 quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:957f994dc3cd4f26f99a6610714dcd8af0c07f6ce57032aca4c340722f423f7b
+aztp_img quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.19.0 quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:7161ec5124c6e58c2b80c1ff5916cbb134517ed8296a2706259c88d1a9b0a3e1
 #
 
 # precache
