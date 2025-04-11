@@ -24,6 +24,9 @@ spec:
       value: '{{revision}}'
     - name: output-image
       value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-19:{{revision}}
+    - name: build-platforms
+      value:
+        - linux/x86_64
     - name: dockerfile
       value: Dockerfile.recovery
     - name: build-args-file
@@ -38,17 +41,6 @@ spec:
     name: build-pipeline
   taskRunTemplate: {}
   workspaces:
-    - name: workspace
-      volumeClaimTemplate:
-        metadata:
-          creationTimestamp: null
-        spec:
-          accessModes:
-            - ReadWriteOnce
-          resources:
-            requests:
-              storage: 1Gi
-        status: {}
     - name: git-auth
       secret:
         secretName: '{{ git_auth_secret }}'
