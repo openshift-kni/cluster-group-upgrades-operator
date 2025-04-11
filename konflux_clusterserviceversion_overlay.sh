@@ -19,7 +19,9 @@ function overlay_image_pinning {
         # Replace all old references with pinned ones
         echo "Replacing '${array[1]}' with '${array[2]}'"
         sed -i "s,${array[1]},${array[2]},g" "${CLUSTER_SERVICE_VERSION_FILE}"
-    done < ${KONFLUX_DATA_FILE}
+
+    done < <(sed 's/#.*//' "${KONFLUX_DATA_FILE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^\s*$')
+
     echo "All replacements completed"
     echo ""
 }
@@ -47,7 +49,7 @@ function add_related_images {
         echo "      - image: \"${array[1]}\"" >> "${yaml_file}"
         echo "        name: ${array[0]}" >> "${yaml_file}"
 
-    done < ${KONFLUX_DATA_FILE}
+    done < <(sed 's/#.*//' "${KONFLUX_DATA_FILE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^\s*$')
 
     echo "Generated file contents:"
     echo "---"
