@@ -72,3 +72,42 @@ metadata:
   labels:
     ztp-done: ""
   name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: some clusters in the batch index
+  1 timed out remediating policies'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: batch
+    cgu.openshift.io/timedout-clusters: spoke4
+  namespace: default
+reason: CguTimedout
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Warning
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: ClusterGroupUpgrade cgu-upgrade-complete timed-out remediating policies
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+    cgu.openshift.io/timedout-clusters: spoke4
+  namespace: default
+reason: CguTimedout
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Warning

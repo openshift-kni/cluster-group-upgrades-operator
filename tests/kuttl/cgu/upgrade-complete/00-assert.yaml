@@ -86,3 +86,22 @@ subjects:
 - apiGroup: policy.open-cluster-management.io
   kind: Policy
   name: policy2-common-pao-sub-policy
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+kind: Event
+message: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguCreated
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
