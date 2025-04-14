@@ -82,3 +82,22 @@ metadata:
   labels:
     ztp-done: ''
   name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade finished
+  successfully'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguSuccess
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
