@@ -13,7 +13,7 @@ spec:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   remediationStrategy:
-    maxConcurrency: 0
+    maxConcurrency: 1
     timeout: 1
 status:
   clusters:
@@ -35,8 +35,14 @@ status:
     reason: ValidationCompleted
     status: "True"
     type: Validated
-  - status: "True"
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
     type: Progressing
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Succeeded
 ---
 apiVersion: cluster.open-cluster-management.io/v1
 kind: ManagedCluster
