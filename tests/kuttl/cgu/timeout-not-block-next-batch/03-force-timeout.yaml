@@ -1,0 +1,8 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: sleep 30
+
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-upgrade-complete --patch '{"spec":{"remediationStrategy":{"maxConcurrency":1}}}' --type=merge
+  
