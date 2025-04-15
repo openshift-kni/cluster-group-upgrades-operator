@@ -431,8 +431,10 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 			break
 		}
 
-		if clusterInBatch && clusterStatus == utils.ClusterStatusNonCompliant {
-			clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Time{}
+		if clusterStatus == utils.ClusterStatusNonCompliant {
+			if clusterInBatch {
+				clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Time{}
+			}
 			break
 		}
 	}
