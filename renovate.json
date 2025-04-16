@@ -4,15 +4,13 @@
     "automergeType": "pr",
     "customManagers": [
         {
-            "currentValueTemplate": "{{currentDigest}}",
             "customType": "regex",
             "datasourceTemplate": "docker",
-            "depNameTemplate": "{{depName}}:{{tag}}",
             "fileMatch": [
                 "^konflux_build_args.conf$"
             ],
             "matchStrings": [
-                ".*=(?<depName>[^:]+):(?<tag>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
+                ".*=(?<depName>[^:]+):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
             ],
             "versioningTemplate": "docker"
         }
