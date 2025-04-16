@@ -82,3 +82,79 @@ metadata:
   labels:
     ztp-done: ''
   name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade finished
+  successfully'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguSuccess
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: all clusters in the batch index
+  1 are compliant with managed policies'
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/event-type: batch
+  namespace: default
+reason: CguSuccess
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: batch index 2 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke4
+    cgu.openshift.io/event-type: batch
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke4 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal

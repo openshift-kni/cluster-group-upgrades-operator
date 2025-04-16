@@ -2,7 +2,8 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
-
+  - command: oc delete events --all
+    namespaced: true
   # Recreate spokes for label verification
   - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml 
     namespaced: true

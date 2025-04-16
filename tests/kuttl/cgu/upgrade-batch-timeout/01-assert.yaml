@@ -81,3 +81,58 @@ metadata:
   labels:
     ztp-done: ''
   name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: ClusterGroupUpgrade cgu-upgrade-complete started remediating policies
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: batch index 1 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/event-type: batch
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+reportingInstance: ""
+source:
+  component: ClusterGroupUpgrade
+type: Normal

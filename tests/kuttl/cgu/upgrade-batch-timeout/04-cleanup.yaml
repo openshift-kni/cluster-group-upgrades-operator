@@ -14,3 +14,5 @@ commands:
   # Delete the UOCR
   - command: oc delete -f ../../../../deploy/upgrades/upgrade-complete/cgu-upgrade-complete.yaml
     namespaced: true
+  - command: oc delete events --all
+    namespaced: true
