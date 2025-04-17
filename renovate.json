@@ -10,28 +10,7 @@
                 "^konflux_build_args.conf$"
             ],
             "matchStrings": [
-                "BUILDER_IMAGE=(?<depName>[^:]+):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
-            ],
-            "versioningTemplate": "docker"
-        },
-        {
-            "customType": "regex",
-            "datasourceTemplate": "docker",
-            "fileMatch": [
-                "^konflux_build_args.conf$"
-            ],
-            "matchStrings": [
-                "RUNTIME_IMAGE=(?<depName>[^:]+):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
-            ],
-            "versioningTemplate": "docker"
-        },        {
-            "customType": "regex",
-            "datasourceTemplate": "docker",
-            "fileMatch": [
-                "^konflux_build_args.conf$"
-            ],
-            "matchStrings": [
-                "YQ_IMAGE=(?<depName>[^:]+):(?<currentValue>[^\\s@]+)(@(?<currentDigest>sha256:[0-9a-f]+))?"
+                "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
             ],
             "versioningTemplate": "docker"
         }
