@@ -15,9 +15,6 @@
             "versioningTemplate": "docker"
         }
     ],
-    "extends": [
-        "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json?raw=true"
-    ],
     "packageRules": [
         {
             "autoApprove": true,
@@ -30,8 +27,8 @@
             "platformAutomerge": true
         }
     ],
+    "prConcurrentLimit": 0,
     "pruneBranchAfterAutomerge": true,
-    "pruneStaleBranches": true,
     "tekton": {
         "autoApprove": true,
         "automerge": true,
