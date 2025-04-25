@@ -32,7 +32,7 @@ spec:
     - name: dockerfile
       value: Dockerfile.aztp
     - name: build-args-file
-      value: konflux_build_args.conf
+      value: .konflux/konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input

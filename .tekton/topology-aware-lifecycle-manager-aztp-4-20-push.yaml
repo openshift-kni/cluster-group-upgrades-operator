@@ -8,7 +8,7 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && files.all != ["konflux_clusterserviceversion_overlay.data"]
+    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && files.all != [".konflux/overlay/pin_images.in.yaml"]
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
@@ -30,7 +30,7 @@ spec:
     - name: dockerfile
       value: Dockerfile.aztp
     - name: build-args-file
-      value: konflux_build_args.conf
+      value: .konflux/konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input
