@@ -11,10 +11,10 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && files.all != ["konflux_clusterserviceversion_overlay.data"]
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-19
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-aztp-4-19
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-precache-4-20
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-aztp-4-19-on-push
+  name: topology-aware-lifecycle-manager-precache-4-20-on-push
   namespace: telco-5g-tenant
 spec:
   params:
@@ -23,18 +23,18 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19:{{revision}}
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20:{{revision}}
     - name: build-platforms
       value:
         - linux/x86_64
     - name: dockerfile
-      value: Dockerfile.aztp
+      value: Dockerfile.precache
     - name: build-args-file
       value: konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input
-      value: gomod
+      value: ""
     - name: build-source-image
       value: "true"
   pipelineRef:
