@@ -24,7 +24,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.23.3
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
+	github.com/stolostron/cluster-lifecycle-api 874816736d44
 	golang.org/x/sys v0.32.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.32.2
