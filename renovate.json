@@ -15,6 +15,9 @@
             "versioningTemplate": "docker"
         }
     ],
+    "gomod": {
+        "enabled": false
+    },
     "packageRules": [
         {
             "autoApprove": true,
