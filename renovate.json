@@ -42,26 +42,13 @@
         "automerge": true,
         "enabled": true,
         "fileMatch": [
-            "\\.conf$"
+            "\\.yaml$",
+            "\\.yml$"
         ],
-        "includePaths": [
-            "./konflux_build_args.conf"
-        ]
-    },
-    "extends": [
-        "https://github.com/konflux-ci/mintmaker/blob/main/config/renovate/renovate.json?raw=true"
-    ],
-    "pruneBranchAfterAutomerge": true,
-    "pruneStaleBranches": true,
-    "branchPrefix": "konflux/mintmaker/",
-    "additionalBranchPrefix": "{{baseBranch}}/",
-    "tekton": {
-        "automerge": true,
-        "automergeStrategy": "rebase",
-        "automergeType": "pr",
-        "enabled": true,
         "ignoreTests": false,
-        "platformAutomerge": true,
-        "schedule": ["at any time"]
+        "includePaths": [
+            ".tekton/**"
+        ],
+        "platformAutomerge": true
     }
 }
