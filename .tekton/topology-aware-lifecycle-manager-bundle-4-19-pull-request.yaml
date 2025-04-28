@@ -30,9 +30,9 @@ spec:
       value:
         - linux/x86_64
     - name: dockerfile
-      value: bundle.konflux.Dockerfile
+      value: .konflux/bundle.konflux.Dockerfile
     - name: build-args-file
-      value: konflux_build_args.conf
+      value: .konflux/konflux_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input
