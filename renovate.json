@@ -11,9 +11,6 @@
                 "\\.yaml$",
                 "\\.yml$"
             ],
-            "includePaths": [
-                ".konflux/**"
-            ],
             "matchStrings": [
                 "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
             ],
@@ -31,6 +28,9 @@
             "ignoreTests": false,
             "matchManagers": [
                 "custom.regex"
+            ],
+            "includePaths": [
+                ".konflux/**"
             ],
             "platformAutomerge": true
         }
