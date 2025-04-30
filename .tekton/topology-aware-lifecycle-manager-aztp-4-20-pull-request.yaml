@@ -8,7 +8,21 @@ metadata:
     build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "pull_request" && target_branch == "main"
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "pull_request" &&
+      target_branch == "main" && 
+      (
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.konflux/konflux_build_args.conf'.pathChanged() ||
+        'config/***'.pathChanged() ||
+        'hack/***'.pathChanged() ||
+        'pkg/***'.pathChanged() ||
+        'vendor/***'.pathChanged() ||
+        'go.mod'.pathChanged() ||
+        'go.sum'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-aztp-4-20-pull-request.yaml'.pathChanged() ||
+        'Dockerfile.aztp'.pathChanged()
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
