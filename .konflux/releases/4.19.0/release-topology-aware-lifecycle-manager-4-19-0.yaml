@@ -1,0 +1,26 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Release
+metadata:
+  name: release-topology-aware-lifecycle-manager-4-19-0
+  namespace: telco-5g-tenant
+  labels:
+    release.appstudio.openshift.io/author: 'sskeard'
+spec:
+  releasePlan: releaseplan-topology-aware-lifecycle-manager-prod-4-19
+  # The snapshot name must match the adjacent snapshot yaml
+  snapshot: snapshot-topology-aware-lifecycle-manager-4-19-0
+  data:
+    releaseNotes:
+      type: RHSA
+      cves:
+        - key: CVE-2025-00001
+          component: topology-aware-lifecycle-manager-4-19
+    # The final tag value should be copied from the tested version from staging
+    defaults:
+      pushSourceContainer: true
+      tags:
+        - "{{ git_sha }}"
+        - "{{ git_short_sha }}"
+        - "v4.19"
+        - "v4.19.0"
+        - "v4.19.0-37"
