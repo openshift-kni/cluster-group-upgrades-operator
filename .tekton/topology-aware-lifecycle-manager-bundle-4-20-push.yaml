@@ -56,6 +56,8 @@ spec:
       value: "false"
     - name: image-append-platform
       value: "false"
+    - name: skip-sast-coverity
+      value: "true"
   pipelineRef:
     name: build-pipeline
   taskRunTemplate: {}
