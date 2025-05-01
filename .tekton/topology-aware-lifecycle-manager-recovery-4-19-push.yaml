@@ -8,7 +8,22 @@ metadata:
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
-    pipelinesascode.tekton.dev/on-cel-expression: event == "push" && target_branch == "main" && files.all != [".konflux/overlay/pin_images.in.yaml"]
+    pipelinesascode.tekton.dev/on-cel-expression: |
+      event == "pull_request" &&
+      target_branch == "release-4.19" && 
+      (
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.konflux/konflux_build_args.conf'.pathChanged() ||
+        'config/***'.pathChanged() ||
+        'hack/***'.pathChanged() ||
+        'pkg/***'.pathChanged() ||
+        'recovery/***'.pathChanged() ||
+        'vendor/***'.pathChanged() ||
+        'go.mod'.pathChanged() ||
+        'go.sum'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-recovery-4-19-push.yaml'.pathChanged() ||
+        'Dockerfile.recovery'.pathChanged()
+      )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-19
