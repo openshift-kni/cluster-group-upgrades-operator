@@ -52,6 +52,10 @@ spec:
       value: "true"
     - name: skip-preflight
       value: "true"
+    - name: build-image-index
+      value: "false"
+    - name: image-append-platform
+      value: "false"
   pipelineRef:
     name: build-pipeline
   taskRunTemplate: {}
