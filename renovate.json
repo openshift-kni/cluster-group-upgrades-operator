@@ -7,9 +7,7 @@
             "customType": "regex",
             "datasourceTemplate": "docker",
             "fileMatch": [
-                "\\.conf$",
-                "\\.yaml$",
-                "\\.yml$"
+                "konflux_build_args.conf$"
             ],
             "matchStrings": [
                 "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
