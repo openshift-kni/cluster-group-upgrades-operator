@@ -53,6 +53,8 @@ spec:
       value: gomod
     - name: build-source-image
       value: "true"
+    - name: skip-sast-coverity
+      value: "true"
   pipelineRef:
     name: build-pipeline
   taskRunTemplate: {}
