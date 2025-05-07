@@ -25,7 +25,7 @@ metadata:
         'main.go'.pathChanged() ||
         '.tekton/topology-aware-lifecycle-manager-4-20-pull-request.yaml'.pathChanged() ||
         'Dockerfile'.pathChanged()
-      )
+      ) 
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
