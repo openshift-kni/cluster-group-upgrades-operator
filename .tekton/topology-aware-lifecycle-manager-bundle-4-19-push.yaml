@@ -52,6 +52,12 @@ spec:
       value: "true"
     - name: skip-preflight
       value: "true"
+    - name: build-image-index
+      value: "false"
+    - name: image-append-platform
+      value: "false"
+    - name: skip-sast-coverity
+      value: "true"
   pipelineRef:
     name: build-pipeline
   taskRunTemplate: {}

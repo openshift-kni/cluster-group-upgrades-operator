@@ -54,6 +54,10 @@ spec:
       name: skip-preflight
       type: string
     - default: "false"
+      description: Skip the sast coverity check
+      name: skip-sast-coverity
+      type: string
+    - default: "false"
       description: Execute the build with network isolation
       name: hermetic
       type: string
@@ -93,6 +97,10 @@ spec:
       description: List of platforms to build the container images on. The available set of values is determined by the configuration of the multi-platform-controller.
       name: build-platforms
       type: array
+    - default: "true"
+      description: Whether to append the platform string to the end of the build image tag
+      name: image-append-platform
+      type: string
   results:
     - description: ""
       name: IMAGE_URL
@@ -234,7 +242,7 @@ spec:
         - name: CACHI2_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: IMAGE_APPEND_PLATFORM
-          value: "true"
+          value: "$(params.image-append-platform)"
         - name: LABELS
           value:
             - $(tasks.generate-labels.results.labels[*])
@@ -486,6 +494,10 @@ spec:
           operator: in
           values:
             - "false"
+        - input: $(params.skip-sast-coverity)
+          operator: in
+          values:
+            - "false"
         - input: $(tasks.coverity-availability-check.results.STATUS)
           operator: in
           values:
@@ -504,6 +516,10 @@ spec:
         resolver: bundles
       when:
         - input: $(params.skip-checks)
+          operator: in
+          values:
+            - "false"
+        - input: $(params.skip-sast-coverity)
           operator: in
           values:
             - "false"
