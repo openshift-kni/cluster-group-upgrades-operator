@@ -13,7 +13,7 @@ metadata:
       target_branch == "main" && 
       (
         '.tekton/build-pipeline.yaml'.pathChanged() ||
-        '.konflux/konflux_build_args.conf'.pathChanged() ||
+        '.konflux/container_build_args.conf'.pathChanged() ||
         'config/***'.pathChanged() ||
         'controllers/***'.pathChanged() ||
         'deploy/***'.pathChanged() ||
@@ -49,7 +49,7 @@ spec:
     - name: dockerfile
       value: Dockerfile
     - name: build-args-file
-      value: .konflux/konflux_build_args.conf
+      value: .konflux/container_build_args.conf
     - name: hermetic
       value: "true"
     - name: prefetch-input
