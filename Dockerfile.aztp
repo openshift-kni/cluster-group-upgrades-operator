@@ -1,20 +1,41 @@
-# Build the aztp binary
-FROM quay.io/projectquay/golang:1.23 as builder
-
-WORKDIR /workspace
-
-# Copy the Go Modules manifests
-COPY go.mod go.sum ./
-COPY vendor/ vendor/
-
-COPY pkg/aztp/ pkg/aztp/
-
-# Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o aztp pkg/aztp/aztp.go
+# Builder image requires golang to compile
+ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.23
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+ARG RUNTIME_IMAGE=gcr.io/distroless/static:nonroot
+
+# Build the aztp binary
+FROM ${BUILDER_IMAGE} AS builder
+
+# Default Konflux to false
+ARG KONFLUX="false"
+
+# Asssume x86 unless otherwise specified
+ARG GOARCH="amd64"
+
+WORKDIR /workspace
+
+# Bring in the go dependencies before anything else so we can take
+# advantage of caching these layers in future builds.
+COPY go.mod go.sum ./
+COPY vendor/ vendor/
+
+# Copy the go source
+COPY pkg/aztp/ pkg/aztp/
+
+# For Konflux, compile with FIPS enabled
+# Otherwise compile normally
+RUN if [[ "${KONFLUX}" == "true" ]]; then \
+        echo "Compiling with fips" && \
+        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o aztp pkg/aztp/aztp.go; \
+    else \
+        echo "Compiling without fips" && \
+        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o aztp pkg/aztp/aztp.go; \
+    fi
+
+# Create the runtime image
+FROM ${RUNTIME_IMAGE}
 
 WORKDIR /
 
