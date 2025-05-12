@@ -60,7 +60,8 @@ spec:
       value: "true"
   pipelineRef:
     name: build-pipeline
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-bundle-4-20
   workspaces:
     - name: git-auth
       secret:
