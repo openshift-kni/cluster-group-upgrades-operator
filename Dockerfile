@@ -1,5 +1,5 @@
 # Build the manager binary
-FROM mirror.gcr.io/library/golang:1.17 as builder
+FROM mirror.gcr.io/library/golang:1.24 as builder
 
 WORKDIR /workspace
 
