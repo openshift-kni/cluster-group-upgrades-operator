@@ -694,6 +694,7 @@ func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 		crtSubStatusMap := crtSubStatusCrt.(map[string]interface{})
 		// If the cluster is Compliant, return true.
 		if clusterName == crtSubStatusMap["clustername"].(string) {
+			// nolint: gocritic
 			if crtSubStatusMap["compliant"] == utils.ClusterStatusCompliant {
 				return utils.ClusterStatusCompliant
 			} else if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant ||
