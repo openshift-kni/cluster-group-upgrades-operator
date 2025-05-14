@@ -57,7 +57,8 @@ spec:
       value: "true"
   pipelineRef:
     name: build-pipeline
-  taskRunTemplate: {}
+  taskRunTemplate:
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-aztp-4-19
   workspaces:
     - name: git-auth
       secret:
