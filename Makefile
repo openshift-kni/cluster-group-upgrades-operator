@@ -54,6 +54,23 @@ RECOVERY_IMG ?= $(IMAGE_TAG_BASE)-recovery:$(VERSION)
 
 CRD_OPTIONS ?= "crd"
 
+# By default we build the same architecture we are running
+# Override this by specifying a different GOARCH in your environment
+HOST_ARCH ?= $(shell uname -m)
+
+# Convert from uname format to GOARCH format
+ifeq ($(HOST_ARCH),aarch64)
+	HOST_ARCH=arm64
+endif
+ifeq ($(HOST_ARCH),x86_64)
+	HOST_ARCH=amd64
+endif
+
+# Define GOARCH as HOST_ARCH if not otherwise defined
+ifndef GOARCH
+	GOARCH=$(HOST_ARCH)
+endif
+
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
 GOBIN=$(shell go env GOPATH)/bin
@@ -138,11 +155,6 @@ vet: ## Run go vet against code.
 	@echo "Running go vet"
 	go vet ./...
 
-.PHONY: lint
-lint: ## Run golint against code.
-	@echo "Running golint"
-	hack/lint.sh
-
 .PHONY: unittests
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
@@ -164,8 +176,20 @@ bashate: ## Run bashate
 	@echo "Running bashate"
 	hack/bashate.sh
 
+.PHONY: yamllint
+yamllint: ## Run yamllint
+	@echo "Running yamllint"
+	hack/yamllint.sh
+
+.PHONY: konflux-update
+konflux-update: konflux-task-manifest-updates
+
+.PHONY: konflux-task-manifest-updates
+konflux-task-manifest-updates:
+	hack/konflux_update_task_refs.sh .tekton/build-pipeline.yaml
+
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet lint golangci-lint unittests verify-bindata shellcheck bashate bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate yamllint bundle-check
 
 CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
 OPERATOR_SDK = $(shell pwd)/bin/operator-sdk
@@ -225,7 +249,7 @@ debug: manifests generate fmt vet ## Run a controller from your host that accept
 	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go
 
 docker-build: ## Build container image with the manager.
-	${ENGINE} build -t ${IMG} -f Dockerfile .
+	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
 
 docker-push: ## Push container image with the manager.
 	${ENGINE} push ${IMG}
@@ -237,7 +261,7 @@ docker-push-precache: ## push pre-cache workload container image.
 	${ENGINE} push ${PRECACHE_IMG}
 
 docker-build-recovery: ## Build recovery container image
-	${ENGINE} build -t ${RECOVERY_IMG} -f Dockerfile.recovery .
+	${ENGINE} build -t ${RECOVERY_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.recovery .
 
 docker-push-recovery: ## Push recovery container image.
 	${ENGINE} push ${RECOVERY_IMG}
