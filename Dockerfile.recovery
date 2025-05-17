@@ -1,4 +1,18 @@
-FROM registry.hub.docker.com/library/golang:1.19 as builder
+# Builder image requires golang to compile
+ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.19
+
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+ARG RUNTIME_IMAGE=gcr.io/distroless/static:nonroot
+
+# Build the recovery binary
+FROM ${BUILDER_IMAGE} AS builder
+
+# Default Konflux to false
+ARG KONFLUX="false"
+
+# Asssume x86 unless otherwise specified
+ARG GOARCH="amd64"
 
 WORKDIR /workspace
 
@@ -6,13 +20,22 @@ WORKDIR /workspace
 # advantage of caching these layers in future builds.
 COPY go.mod go.sum ./
 COPY vendor/ vendor/
+
+# Copy the go source
 COPY recovery/ recovery/
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go
+# For Konflux, compile with FIPS enabled
+# Otherwise compile normally
+RUN if [[ "${KONFLUX}" == "true" ]]; then \
+        echo "Compiling with fips" && \
+        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o upgrade-recovery recovery/main.go; \
+    else \
+        echo "Compiling without fips" && \
+        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go; \
+    fi
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Create the runtime image
+FROM ${RUNTIME_IMAGE}
 
 COPY --from=builder /workspace/upgrade-recovery /usr/bin/
 

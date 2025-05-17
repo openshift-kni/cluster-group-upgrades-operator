@@ -16,6 +16,8 @@ metadata:
     features.operators.openshift.io/token-auth-gcp: "false"
     olm.skipRange: '>=4.10.0 <4.13.0'
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+    operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
+      Platform Plus"]'
   name: cluster-group-upgrades-operator.v0.0.0
   namespace: placeholder
 spec:
