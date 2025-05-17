@@ -226,6 +226,7 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObject(
 			r.Log.Info("An error occurred trying to approve install plan", "error", err.Error())
 			return nil
 		}
+		// nolint: gocritic
 		if installPlanStatus == utils.InstallPlanCannotBeApproved {
 			r.Log.Info("InstallPlan for subscription could not be approved", "subscription name", object.Name)
 			return nil
