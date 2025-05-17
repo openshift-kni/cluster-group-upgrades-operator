@@ -1,5 +1,5 @@
 # Distroless is not enough here so use the UBI for the runtime
-ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9-minimal:9.4
+ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9-minimal:9.6-1747218906
 
 # Create the runtime image
 FROM ${RUNTIME_IMAGE}
