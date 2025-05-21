@@ -292,7 +292,7 @@ overlay_release()
     # yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
 
     # use this from 4.16.1 onwards
-    yq e -i ".spec.replaces = $replaces" $ARG_CSV_FILE
+    yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
 
     echo "Overlaying release completed!"
 }
