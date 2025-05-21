@@ -266,7 +266,7 @@ parse_args() {
 
 overlay_release()
 {
-    echo "Overlaying relase..."
+    echo "Overlaying release..."
 
     local display_name="cluster-group-upgrades-operator"
     local description="cluster-group-upgrades-operator"
@@ -277,6 +277,7 @@ overlay_release()
     local skip_range=">=4.9.0 <4.20.0"
     local replaces="cluster-group-upgrades-operator.v4.20.0"
     # min_kube_version should match ocp
+    # https://access.redhat.com/solutions/4870701
     export min_kube_version="1.32.0"
 
     yq e -i ".metadata.annotations[\"containerImage\"] = \"${IMAGE_TO_TARGET[$MANAGER_KEY]}\"" $ARG_CSV_FILE
@@ -291,7 +292,7 @@ overlay_release()
     yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
 
     # use this from 4.20.1 onwards
-    # ./yq e -i ".spec.replaces = $replaces)" $ARG_CSV_FILE
+    # yq e -i ".spec.replaces = $replaces" $ARG_CSV_FILE
 
     echo "Overlaying release completed!"
 }
