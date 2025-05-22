@@ -20,15 +20,22 @@
     },
     "packageRules": [
         {
+            "addLabels": [
+                "approved",
+                "lgtm"
+            ],
             "autoApprove": true,
             "automerge": true,
             "enabled": true,
             "ignoreTests": false,
+            "includePaths": [
+                ".konflux/**"
+            ],
             "matchManagers": [
                 "custom.regex"
             ],
-            "includePaths": [
-                ".konflux/**"
+            "matchUpdateTypes": [
+                "digest"
             ],
             "platformAutomerge": true
         }
@@ -46,6 +53,17 @@
         "ignoreTests": false,
         "includePaths": [
             ".tekton/**"
+        ],
+        "packageRules": [
+            {
+                "addLabels": [
+                    "approved",
+                    "lgtm"
+                ],
+                "matchUpdateTypes": [
+                    "digest"
+                ]
+            }
         ],
         "platformAutomerge": true
     }
