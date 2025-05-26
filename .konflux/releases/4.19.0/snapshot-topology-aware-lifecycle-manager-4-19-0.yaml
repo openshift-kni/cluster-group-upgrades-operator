@@ -1,0 +1,40 @@
+apiVersion: appstudio.redhat.com/v1alpha1
+kind: Snapshot
+metadata:
+  name: snapshot-topology-aware-lifecycle-manager-4-19-0
+  namespace: telco-5g-tenant
+spec:
+  application: topology-aware-lifecycle-manager-4-19
+  # The container image digests used here must match the load tested by QE
+  # The bundle referenced here must also contain the other components' image digests in its CSV
+  components:
+    - containerImage: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-19@sha256:31955afdad28e97ac01c886d1423f78118a576018c8f9bebb77c5cab88e20225
+      name: topology-aware-lifecycle-manager-4-19
+      source:
+        git:
+          revision: dfe2d19aab3330e4d0390eb5c8104e2719db13b6
+          url: https://github.com/openshift-kni/cluster-group-upgrades-operator
+    - containerImage: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:aeec2ab6110d120eeee96aa5b7343fc5e6b79356a2ae2871d57719e102af76eb
+      name: topology-aware-lifecycle-manager-aztp-4-19
+      source:
+        git:
+          revision: dfe2d19aab3330e4d0390eb5c8104e2719db13b6
+          url: https://github.com/openshift-kni/cluster-group-upgrades-operator
+    - containerImage: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19@sha256:a5ebd0da84e8c110cc1305004fc45623e7ac928b02b5cb54795018e6045b248c
+      name: topology-aware-lifecycle-manager-bundle-4-19
+      source:
+        git:
+          revision: dfe2d19aab3330e4d0390eb5c8104e2719db13b6
+          url: https://github.com/openshift-kni/cluster-group-upgrades-operator
+    - containerImage: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-19@sha256:ff16df85bd935bd2772b553d0f0d9bd84ad40e6a90064ec8d9a4578c304c5768
+      name: topology-aware-lifecycle-manager-precache-4-19
+      source:
+        git:
+          revision: dfe2d19aab3330e4d0390eb5c8104e2719db13b6
+          url: https://github.com/openshift-kni/cluster-group-upgrades-operator
+    - containerImage: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-19@sha256:d621ed864e422b086d7338a8cd32afc2b1bb79fdb129db97f2f8dac3cd005f19
+      name: topology-aware-lifecycle-manager-recovery-4-19
+      source:
+        git:
+          revision: dfe2d19aab3330e4d0390eb5c8104e2719db13b6
+          url: https://github.com/openshift-kni/cluster-group-upgrades-operator
