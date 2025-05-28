@@ -321,12 +321,12 @@ EXAMPLES
 
    - Pin (sha256) images on 'oran-o2ims.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml':
 
-     $ overlay.bash --set-pinning-file pin_images.in.yaml --set-csv-file oran-o2ims.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-csv-file oran-o2ims.clusterserviceversion.yaml
 
    - Pin (sha256) images on 'oran-o2ims.clusterserviceversion.yaml' according to the configuration on 'pin_images.in.yaml'
      and map them to the production registry according to the configuration on 'map_images.in.yaml':
 
-     $ overlay.bash --set-pinning-file pin_images.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file oran-o2ims.clusterserviceversion.yaml
+     $ $SCRIPT_NAME --set-pinning-file pin_images.in.yaml --set-mapping-file map_images.in.yaml --set-mapping-production --set-csv-file oran-o2ims.clusterserviceversion.yaml
 
 DESCRIPTION
 

@@ -7,9 +7,7 @@
             "customType": "regex",
             "datasourceTemplate": "docker",
             "fileMatch": [
-                "\\.conf$",
-                "\\.yaml$",
-                "\\.yml$"
+                ".*container_build_args\\.conf$"
             ],
             "matchStrings": [
                 "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
@@ -22,15 +20,22 @@
     },
     "packageRules": [
         {
+            "addLabels": [
+                "approved",
+                "lgtm"
+            ],
             "autoApprove": true,
             "automerge": true,
             "enabled": true,
             "ignoreTests": false,
+            "includePaths": [
+                ".konflux/**"
+            ],
             "matchManagers": [
                 "custom.regex"
             ],
-            "includePaths": [
-                ".konflux/**"
+            "matchUpdateTypes": [
+                "digest"
             ],
             "platformAutomerge": true
         }
@@ -48,6 +53,17 @@
         "ignoreTests": false,
         "includePaths": [
             ".tekton/**"
+        ],
+        "packageRules": [
+            {
+                "addLabels": [
+                    "approved",
+                    "lgtm"
+                ],
+                "matchUpdateTypes": [
+                    "digest"
+                ]
+            }
         ],
         "platformAutomerge": true
     }
