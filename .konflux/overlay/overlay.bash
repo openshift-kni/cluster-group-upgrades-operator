@@ -270,11 +270,11 @@ overlay_release()
 
     local display_name="cluster-group-upgrades-operator"
     local description="cluster-group-upgrades-operator"
-    local version="4.15.0"
+    local version="4.15.1"
     local name="cluster-group-upgrades-operator"
     local name_version="$name.v$version"
     local manager="cluster-group-upgrades-operator"
-    local skip_range=">=4.9.0 <4.15.0"
+    local skip_range=">=4.9.0 <4.15.1"
     local replaces="cluster-group-upgrades-operator.v4.15.0"
     # min_kube_version should match ocp
     # https://access.redhat.com/solutions/4870701
@@ -289,10 +289,10 @@ overlay_release()
     yq e -i ".spec.minKubeVersion = \"$min_kube_version\"" $ARG_CSV_FILE
 
     # dont need 'replaces' for first release in a new channel (4.15.0)
-    yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
+    # yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
 
     # use this from 4.15.1 onwards
-    # yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
+    yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
 
     echo "Overlaying release completed!"
 }
