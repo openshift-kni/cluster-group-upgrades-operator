@@ -167,7 +167,7 @@ spec:
           value:
             - build-date=$SOURCE_DATE
             - short-commit=$(tasks.clone-repository.results.short-commit)
-            - version=v4.20-$SOURCE_DATE_EPOCH
+            - version=v4.16-$SOURCE_DATE_EPOCH
         - name: source-date-epoch
           value: $(tasks.clone-repository.results.commit-timestamp)
       runAfter:
@@ -251,7 +251,7 @@ spec:
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
             - name=openshift4/topology-aware-lifecycle-manager-rhel9-operator
-            - release=4.20
+            - release=4.16
             - url=https://github.com/openshift-kni/cluster-group-upgrades-operator
             - vendor=Red Hat, Inc.
             - io.k8s.display-name=topology-aware-lifecycle-manager
