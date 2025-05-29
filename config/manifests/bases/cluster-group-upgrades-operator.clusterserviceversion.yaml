@@ -18,7 +18,7 @@ metadata:
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
     operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
       Platform Plus"]'
-  name: cluster-group-upgrades-operator.v0.0.0
+  name: topology-aware-lifecycle-manager.v0.0.0
   namespace: placeholder
 spec:
   apiservicedefinitions: {}
@@ -221,5 +221,5 @@ spec:
   maturity: alpha
   provider:
     name: Red Hat
-  replaces: cluster-group-upgrades-operator.v4.14.0
+  replaces: topology-aware-lifecycle-manager.v4.14.0
   version: 0.0.0

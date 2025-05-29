@@ -20,7 +20,7 @@ metadata:
         'manifests/***'.pathChanged() ||
         '.konflux/overlay/***'.pathChanged() ||
         '.tekton/topology-aware-lifecycle-manager-bundle-4-18-push.yaml'.pathChanged() ||
-        '.konflux/bundle.Dockerfile'.pathChanged()
+        '.konflux/Dockerfile.bundle'.pathChanged()
       )
   creationTimestamp: null
   labels:
