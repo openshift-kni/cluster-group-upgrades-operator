@@ -1,0 +1,101 @@
+---
+schema: olm.template.basic
+entries:
+  # Default data
+  - defaultChannel: stable
+    icon:
+      base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+      mediatype: image/svg+xml
+    name: topology-aware-lifecycle-manager
+    schema: olm.package
+  # Channel entries for next release
+  - entries:
+      - name: topology-aware-lifecycle-manager.v4.14.0
+        skipRange: '>=4.10.0 <4.14.0'
+      - name: topology-aware-lifecycle-manager.v4.14.1
+        replaces: topology-aware-lifecycle-manager.v4.14.0
+        skipRange: '>=4.9.0 <4.14.1'
+      - name: topology-aware-lifecycle-manager.v4.14.2
+        replaces: topology-aware-lifecycle-manager.v4.14.1
+        skipRange: '>=4.9.0 <4.14.2'
+      - name: topology-aware-lifecycle-manager.v4.14.3
+        replaces: topology-aware-lifecycle-manager.v4.14.2
+        skipRange: '>=4.9.0 <4.14.3'
+      - name: topology-aware-lifecycle-manager.v4.14.4
+        replaces: topology-aware-lifecycle-manager.v4.14.3
+        skipRange: '>=4.9.0 <4.14.4'
+      - name: topology-aware-lifecycle-manager.v4.14.5
+        replaces: topology-aware-lifecycle-manager.v4.14.4
+        skipRange: '>=4.9.0 <4.14.5'
+      - name: topology-aware-lifecycle-manager.v4.14.6
+        replaces: topology-aware-lifecycle-manager.v4.14.5
+        skipRange: '>=4.9.0 <4.14.6'
+      - name: topology-aware-lifecycle-manager.v4.14.7
+        replaces: topology-aware-lifecycle-manager.v4.14.6
+        skipRange: '>=4.9.0 <4.14.7'
+      - name: topology-aware-lifecycle-manager.v4.14.8
+        replaces: topology-aware-lifecycle-manager.v4.14.7
+        skipRange: '>=4.9.0 <4.14.8'
+    name: stable
+    package: topology-aware-lifecycle-manager
+    schema: olm.channel
+  - entries:
+      - name: topology-aware-lifecycle-manager.v4.14.0
+        skipRange: '>=4.10.0 <4.14.0'
+      - name: topology-aware-lifecycle-manager.v4.14.1
+        replaces: topology-aware-lifecycle-manager.v4.14.0
+        skipRange: '>=4.9.0 <4.14.1'
+      - name: topology-aware-lifecycle-manager.v4.14.2
+        replaces: topology-aware-lifecycle-manager.v4.14.1
+        skipRange: '>=4.9.0 <4.14.2'
+      - name: topology-aware-lifecycle-manager.v4.14.3
+        replaces: topology-aware-lifecycle-manager.v4.14.2
+        skipRange: '>=4.9.0 <4.14.3'
+      - name: topology-aware-lifecycle-manager.v4.14.4
+        replaces: topology-aware-lifecycle-manager.v4.14.3
+        skipRange: '>=4.9.0 <4.14.4'
+      - name: topology-aware-lifecycle-manager.v4.14.5
+        replaces: topology-aware-lifecycle-manager.v4.14.4
+        skipRange: '>=4.9.0 <4.14.5'
+      - name: topology-aware-lifecycle-manager.v4.14.6
+        replaces: topology-aware-lifecycle-manager.v4.14.5
+        skipRange: '>=4.9.0 <4.14.6'
+      - name: topology-aware-lifecycle-manager.v4.14.7
+        replaces: topology-aware-lifecycle-manager.v4.14.6
+        skipRange: '>=4.9.0 <4.14.7'
+      - name: topology-aware-lifecycle-manager.v4.14.8
+        replaces: topology-aware-lifecycle-manager.v4.14.7
+        skipRange: '>=4.9.0 <4.14.8'
+    name: "4.14"
+    package: topology-aware-lifecycle-manager
+    schema: olm.channel
+  # v4.14.0 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:7bda597b994f59b42b2cde81f7db508ea9455339a8b67c57faa99fdf7d821b0a
+    schema: olm.bundle
+  # v4.14.1 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:cb57b80362f8642f6c687c24f091536b12c96590d7f5aa53f74d2c81f85de5b3
+    schema: olm.bundle
+  # v4.14.2 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:c8c2ff0c87415278177d8dbf804742367ae92d267da6d8c5d94f5a5edc1f00ff
+    schema: olm.bundle
+  # v4.14.3 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:6b1edf7247da2893855a2f4ef91f81bac1cf1201fc63fa67e9f0d2396a525de3
+    schema: olm.bundle
+  # v4.14.4 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:4e667495a6166d2564c46e1248eee7bc7c51dca6e8146b1bc8f7d434b7052e83
+    schema: olm.bundle
+  # v4.14.5 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5172b7f19adfc48eb24657b890a2c8b550411cb66cf1f0baf3dd26968a6ba0a3
+    schema: olm.bundle
+  # v4.14.6 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5f3107360771684de86d7937448984cd6a8ba25c7bef9a7e79501733ec8c1868
+    schema: olm.bundle
+  # v4.14.7 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:92379505ad3b92c380ec5ddbb348502e1984f153efc4445873138ced2d61d1bb
+    schema: olm.bundle
+  # v4.14.8 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:94e97b49e24c55fd43b1936093e82e589cc95a53c46e663b0ac6f771b8add71e
+    schema: olm.bundle
+  # The url for this last entry is updated by hack/konflux-update-catalog-template.sh automatically
+  - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-14@sha256:4b47aaeaae5c651b5cf8b634ee3f442e92ad49d553ca1eeff702e9dc64ea4293 
+    schema: olm.bundle
