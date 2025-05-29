@@ -165,6 +165,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	suceededCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 	progressingCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Progressing))
 
+	// nolint: gocritic
 	if suceededCondition != nil {
 		if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() {
 			deleteObjects := clusterGroupUpgrade.Spec.Actions.AfterCompletion.DeleteObjects
@@ -373,6 +374,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return
 		}
 
+		// nolint: gocritic
 		if len(blockingCRsMissing) > 0 {
 			// If there are blocking CRs missing, update the message to show which those are.
 			utils.SetStatusCondition(
@@ -511,6 +513,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		}
 
 		// Check whether we have time left on the cgu timeout
+		// nolint: gocritic
 		if time.Since(clusterGroupUpgrade.Status.Status.StartedAt.Time) > time.Duration(clusterGroupUpgrade.Spec.RemediationStrategy.Timeout)*time.Minute {
 			// We are completely out of time
 			utils.SetStatusCondition(
@@ -1815,6 +1818,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
 		var clusterLabels map[string]string
+		// nolint: gocritic
 		if len(selectorList) == 2 {
 			clusterLabels = map[string]string{selectorList[0]: selectorList[1]}
 		} else if len(selectorList) == 1 {
