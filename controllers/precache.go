@@ -150,6 +150,7 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	// Get the platform image spec from the policies
 	image, err := r.extractOCPImageFromPolicies(policies)
 	if err != nil {
+		// nolint: gocritic
 		return *new(ranv1alpha1.PrecachingSpec), err
 	}
 	spec.PlatformImage = image
