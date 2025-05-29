@@ -27,3 +27,6 @@ testbin/*
 
 # Debug binary
 __debug_bin*
+
+# mac files
+**/.DS_Store
