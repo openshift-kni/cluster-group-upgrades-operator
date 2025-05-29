@@ -1,0 +1,62 @@
+# The base image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
+# TODO: Once 4.19 is released, migrate to: registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.19
+ARG OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.19
+
+# yq
+FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e95931b325c9447282a AS parser
+# opm
+FROM ${OPM_IMAGE} AS manager
+
+# build the catalog
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23@sha256:4805e1cb2d1bd9d3c5de5d6986056bbda94ca7b01642f721d83d26579d333c60 AS builder
+
+# set yq in the path
+ENV YQ_BIN=/usr/bin/yq
+COPY --from=parser /usr/bin/yq $YQ_BIN
+RUN chmod +x /usr/bin/yq $YQ_BIN
+
+# set opm in the path
+ENV OPM_BIN=/usr/bin/opm
+COPY --from=manager /usr/bin/opm $OPM_BIN
+RUN chmod +x $OPM_BIN
+
+# create dir structure to generate the catalog
+RUN mkdir -p /app/hack /app/.konflux/catalog
+COPY Makefile /app
+COPY hack/ /app/hack/
+COPY .konflux/catalog/ /app/.konflux/catalog/
+
+# we need to copy the vendor/ folder as the Makefile depends on it
+COPY vendor/ /app/vendor/
+
+# generate the catalog
+
+# debug
+RUN echo "root dir" && ls -lra $HOME
+
+WORKDIR /app
+RUN --mount=type=secret,id=telco-5g-redhat-pull-secret/.dockerconfigjson \
+    mkdir -p $HOME/.docker/ && \
+    cp /run/secrets/telco-5g-redhat-pull-secret/.dockerconfigjson $HOME/.docker/config.json
+
+# debug
+RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra $HOME/.docker/ && cat $HOME/.docker/config.json
+
+ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
+RUN YQ=$YQ_BIN OPM=$OPM_BIN make konflux-generate-catalog-production && \
+    rm $HOME/.docker/config.json
+
+# run the catalog
+FROM ${OPM_IMAGE}
+
+ENTRYPOINT ["/bin/opm"]
+CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
+
+# ensure this correponds to olm.package name
+ENV PACKAGE_NAME=topology-aware-lifecycle-manager
+
+COPY --from=builder /app/.konflux/catalog/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
+# RUN ["/bin/opm", "validate", "/configs/topology-aware-lifecycle-manager"]
+RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
+
+LABEL operators.operatorframework.io.index.configs.v1=/configs
