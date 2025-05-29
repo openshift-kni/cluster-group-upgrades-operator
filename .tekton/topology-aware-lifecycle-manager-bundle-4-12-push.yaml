@@ -58,6 +58,8 @@ spec:
       value: "false"
     - name: skip-sast-coverity
       value: "true"
+    - name: additional-tags
+      value: ["latest"]
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
