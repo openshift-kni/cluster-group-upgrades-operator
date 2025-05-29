@@ -101,6 +101,10 @@ spec:
       description: Whether to append the platform string to the end of the build image tag
       name: image-append-platform
       type: string
+    - default: []
+      description: Additional tags to apply to the built container image
+      name: additional-tags
+      type: array
   results:
     - description: ""
       name: IMAGE_URL
@@ -579,6 +583,8 @@ spec:
       params:
         - name: IMAGE
           value: $(tasks.build-image-index.results.IMAGE_URL)
+        - name: ADDITIONAL_TAGS
+          value: $(params.additional-tags[*])
       runAfter:
         - build-image-index
       taskRef:
