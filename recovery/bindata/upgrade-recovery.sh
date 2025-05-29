@@ -445,6 +445,7 @@ OPTS=$(getopt -o h --long "${LONGOPTS}" --name "$0" -- "$@")
 
 if [ $? -ne 0 ]; then
     usage
+    # shellcheck disable=SC2317
     exit 1
 fi
 
@@ -482,6 +483,7 @@ while :; do
             ;;
         *)
             usage
+            # shellcheck disable=SC2317
             exit 1
             ;;
     esac
@@ -543,8 +545,10 @@ record_progress "started"
 if ! check_progress "restore_files"; then
     restore_files
 
+    # shellcheck disable=SC2317
     if [ "${STEPTHROUGH}" = "yes" ]; then
         echo "##### $(date -u): Stage complete. Use --step option to resume."
+        # shellcheck disable=SC2317
         exit 0
     fi
 fi
@@ -554,6 +558,7 @@ if ! check_progress "restore_cluster"; then
 
     if [ "${STEPTHROUGH}" = "yes" ]; then
         echo "##### $(date -u): Stage complete. Use --step option to resume."
+        # shellcheck disable=SC2317
         exit 0
     fi
 fi

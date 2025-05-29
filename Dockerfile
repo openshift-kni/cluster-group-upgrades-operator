@@ -1,9 +1,23 @@
+# Builder image requires golang to compile
+ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.17
+
+# Use distroless as minimal base image to package the manager binary
+# Refer to https://github.com/GoogleContainerTools/distroless for more details
+ARG RUNTIME_IMAGE=gcr.io/distroless/static:nonroot
+
 # Build the manager binary
-FROM mirror.gcr.io/library/golang:1.17 as builder
+FROM ${BUILDER_IMAGE} AS builder
+
+# Default Konflux to false
+ARG KONFLUX="false"
+
+# Asssume x86 unless otherwise specified
+ARG GOARCH="amd64"
 
 WORKDIR /workspace
 
-# Copy the Go Modules manifests
+# Bring in the go dependencies before anything else so we can take
+# advantage of caching these layers in future builds.
 COPY go.mod go.sum ./
 COPY vendor/ vendor/
 
@@ -12,12 +26,18 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 
-# Build
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 GO111MODULE=on go build -mod=vendor -a -o manager main.go
+# For Konflux, compile with FIPS enabled
+# Otherwise compile normally
+RUN if [[ "${KONFLUX}" == "true" ]]; then \
+        echo "Compiling with fips" && \
+        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o manager main.go; \
+    else \
+        echo "Compiling without fips" && \
+        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o manager main.go; \
+    fi
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
-FROM gcr.io/distroless/static:nonroot
+# Create the runtime image
+FROM ${RUNTIME_IMAGE}
 
 WORKDIR /
 
