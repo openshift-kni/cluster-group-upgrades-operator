@@ -8,20 +8,22 @@ entries:
       mediatype: image/svg+xml
     name: topology-aware-lifecycle-manager
     schema: olm.package
-  # Channel entries for next release
+  # Channel entries should contain all the releases
   - entries:
-      - name: topology-aware-lifecycle-manager.v4.15.1
-        skipRange: '>=4.9.0 <4.15.1'
-        replaces: 'topology-aware-lifecycle-manager.v4.15.0'
+      # Until we release the first build on Konflux, we just want the existing released images
+      # - name: topology-aware-lifecycle-manager.v4.15.1
+      #   skipRange: '>=4.9.0 <4.15.1'
+      #   replaces: 'topology-aware-lifecycle-manager.v4.15.0'
       - name: topology-aware-lifecycle-manager.v4.15.0
         skipRange: '>=4.9.0 <4.15.0'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
   - entries:
-      - name: topology-aware-lifecycle-manager.v4.15.1
-        skipRange: '>=4.9.0 <4.15.1'
-        replaces: 'topology-aware-lifecycle-manager.v4.15.0'
+      # Until we release the first build on Konflux, we just want the existing released images
+      # - name: topology-aware-lifecycle-manager.v4.15.1
+      #   skipRange: '>=4.9.0 <4.15.1'
+      #   replaces: 'topology-aware-lifecycle-manager.v4.15.0'
       - name: topology-aware-lifecycle-manager.v4.15.0
         skipRange: '>=4.9.0 <4.15.0'
     name: "4.15"
@@ -30,6 +32,8 @@ entries:
   # v4.15.0 bundle
   - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:e4f355686cabbf44c7ff749a593c59b53818e09dd34367726d45c5cedf38e501
     schema: olm.bundle
-  # The url for this last entry is updated by hack/konflux-update-catalog-template.sh automatically
-  - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-15@sha256:c0a3ba31d569dc1aa4183a2942f23ccee69f6558369fa7bdb17accfc4f86a91b 
-    schema: olm.bundle
+# The url for this last entry (which is for the next release) is updated by hack/konflux-update-catalog-template.sh automatically
+# It takes the input data from bundle.builds.in.yaml
+# When we are ready for the next release then uncomment this section so the final bundle url is updated correctly
+# - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-15@sha256:c0a3ba31d569dc1aa4183a2942f23ccee69f6558369fa7bdb17accfc4f86a91b
+#   schema: olm.bundle
