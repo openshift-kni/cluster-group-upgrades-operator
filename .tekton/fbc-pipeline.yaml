@@ -202,6 +202,8 @@ spec:
       value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
     - name: IMAGE_APPEND_PLATFORM
       value: "true"
+    - name: ADDITIONAL_SECRET
+      value: telco-5g-redhat-pull-secret
     runAfter:
     - clone-repository
     taskRef:
