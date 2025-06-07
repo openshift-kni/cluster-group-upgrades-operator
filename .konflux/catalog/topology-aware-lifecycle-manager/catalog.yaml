@@ -1,0 +1,2094 @@
+---
+defaultChannel: stable
+icon:
+  base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+  mediatype: image/svg+xml
+name: topology-aware-lifecycle-manager
+schema: olm.package
+---
+entries:
+- name: topology-aware-lifecycle-manager.v4.14.0
+  skipRange: '>=4.10.0 <4.14.0'
+- name: topology-aware-lifecycle-manager.v4.14.1
+  replaces: topology-aware-lifecycle-manager.v4.14.0
+  skipRange: '>=4.9.0 <4.14.1'
+- name: topology-aware-lifecycle-manager.v4.14.2
+  replaces: topology-aware-lifecycle-manager.v4.14.1
+  skipRange: '>=4.9.0 <4.14.2'
+- name: topology-aware-lifecycle-manager.v4.14.3
+  replaces: topology-aware-lifecycle-manager.v4.14.2
+  skipRange: '>=4.9.0 <4.14.3'
+- name: topology-aware-lifecycle-manager.v4.14.4
+  replaces: topology-aware-lifecycle-manager.v4.14.3
+  skipRange: '>=4.9.0 <4.14.4'
+- name: topology-aware-lifecycle-manager.v4.14.5
+  replaces: topology-aware-lifecycle-manager.v4.14.4
+  skipRange: '>=4.9.0 <4.14.5'
+- name: topology-aware-lifecycle-manager.v4.14.6
+  replaces: topology-aware-lifecycle-manager.v4.14.5
+  skipRange: '>=4.9.0 <4.14.6'
+- name: topology-aware-lifecycle-manager.v4.14.7
+  replaces: topology-aware-lifecycle-manager.v4.14.6
+  skipRange: '>=4.9.0 <4.14.7'
+- name: topology-aware-lifecycle-manager.v4.14.8
+  replaces: topology-aware-lifecycle-manager.v4.14.7
+  skipRange: '>=4.9.0 <4.14.8'
+name: "4.14"
+package: topology-aware-lifecycle-manager
+schema: olm.channel
+---
+entries:
+- name: topology-aware-lifecycle-manager.v4.14.0
+  skipRange: '>=4.10.0 <4.14.0'
+- name: topology-aware-lifecycle-manager.v4.14.1
+  replaces: topology-aware-lifecycle-manager.v4.14.0
+  skipRange: '>=4.9.0 <4.14.1'
+- name: topology-aware-lifecycle-manager.v4.14.2
+  replaces: topology-aware-lifecycle-manager.v4.14.1
+  skipRange: '>=4.9.0 <4.14.2'
+- name: topology-aware-lifecycle-manager.v4.14.3
+  replaces: topology-aware-lifecycle-manager.v4.14.2
+  skipRange: '>=4.9.0 <4.14.3'
+- name: topology-aware-lifecycle-manager.v4.14.4
+  replaces: topology-aware-lifecycle-manager.v4.14.3
+  skipRange: '>=4.9.0 <4.14.4'
+- name: topology-aware-lifecycle-manager.v4.14.5
+  replaces: topology-aware-lifecycle-manager.v4.14.4
+  skipRange: '>=4.9.0 <4.14.5'
+- name: topology-aware-lifecycle-manager.v4.14.6
+  replaces: topology-aware-lifecycle-manager.v4.14.5
+  skipRange: '>=4.9.0 <4.14.6'
+- name: topology-aware-lifecycle-manager.v4.14.7
+  replaces: topology-aware-lifecycle-manager.v4.14.6
+  skipRange: '>=4.9.0 <4.14.7'
+- name: topology-aware-lifecycle-manager.v4.14.8
+  replaces: topology-aware-lifecycle-manager.v4.14.7
+  skipRange: '>=4.9.0 <4.14.8'
+name: stable
+package: topology-aware-lifecycle-manager
+schema: olm.channel
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:7bda597b994f59b42b2cde81f7db508ea9455339a8b67c57faa99fdf7d821b0a
+name: topology-aware-lifecycle-manager.v4.14.0
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.0
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.10.0 <4.14.0'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:1dddb0988d1612c996707d43eb839bc49fc7e7554afaf085436eeddb37a12438
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:7bda597b994f59b42b2cde81f7db508ea9455339a8b67c57faa99fdf7d821b0a
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:689fe7d63011e609680913b49c6648ac6fb8faf71f2c4034a1c122f7f0d09bb4
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:7faeea21aa3d79fcddee9151ac3f10b554e2bbb8fd68e62b924aa03884f4392f
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:19baa9674002a51a93a98632fc2f921a2a9ab2604db250522411942f421f45c9
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:cb57b80362f8642f6c687c24f091536b12c96590d7f5aa53f74d2c81f85de5b3
+name: topology-aware-lifecycle-manager.v4.14.1
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.1
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.1'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:f11f71448986aa17abec9caadb568a6cc34ef1a7898e6dc20bc6a512830ba476
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:cb57b80362f8642f6c687c24f091536b12c96590d7f5aa53f74d2c81f85de5b3
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:61bbf40fd77c2321bb18e61808028077559928fff456bef846ace097b2dc1f0f
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:a5d887d548c7c48b6e4ecf8c24a98334db8ea074dcda43260c681be8903c1b6a
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:c386bbedfaa91630f53a61c32f05b1203c8068e9293f421e5795b28d1b52003d
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:c8c2ff0c87415278177d8dbf804742367ae92d267da6d8c5d94f5a5edc1f00ff
+name: topology-aware-lifecycle-manager.v4.14.2
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.2
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.2'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:f11f71448986aa17abec9caadb568a6cc34ef1a7898e6dc20bc6a512830ba476
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:c8c2ff0c87415278177d8dbf804742367ae92d267da6d8c5d94f5a5edc1f00ff
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:0f2a0eb9f6547a37e81611b22427a0799051444e6eb5c3a8ca7e8ff3bcd9716b
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:14991f5034a6b505c3a9c4cf5ff53544d5e6ad7ef5303ddddcf7a737790e56c2
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:4672b4adea484e79a845f1a4d669a75b12187707e8c90a0c6421691dcd3ad2dc
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:6b1edf7247da2893855a2f4ef91f81bac1cf1201fc63fa67e9f0d2396a525de3
+name: topology-aware-lifecycle-manager.v4.14.3
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.3
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.3'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:62c44057a27abd41cf3daf60b8736da59a82dadb65fa6c32bef65d19bd49ea49
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:6b1edf7247da2893855a2f4ef91f81bac1cf1201fc63fa67e9f0d2396a525de3
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:7d5532f9e855a63412c85af27308461a8a47ad096c9475a3c7217839fd757af1
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:ba0d0d9dcbb1e039768add2704c97a8afcf3319f9a74962f385dea0a0d304cb0
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:947f6ce87ed41bf8388bfc83789cec92298a7b088f9b28742094d22635d5ac30
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:4e667495a6166d2564c46e1248eee7bc7c51dca6e8146b1bc8f7d434b7052e83
+name: topology-aware-lifecycle-manager.v4.14.4
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.4
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.4'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:ecbe2c0919df429655d90d0d0a6a795b5ddc5b27984e800555a8fbc2958d4342
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:4e667495a6166d2564c46e1248eee7bc7c51dca6e8146b1bc8f7d434b7052e83
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:9ba451e4729b55cd03bb2da279efa06b1c9a41dc86d952dbc46e71142ad1c98d
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:b2c2d2f0b377eff5b5eb224414a787a3a0748f8e20c8c6259d84333df29adad1
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:bd1cb4ba4225beeb3c747f4884dfdc420f508117896f26102d945ec0c6363418
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5172b7f19adfc48eb24657b890a2c8b550411cb66cf1f0baf3dd26968a6ba0a3
+name: topology-aware-lifecycle-manager.v4.14.5
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.5
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.5'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:b93645bd53122736a39f4fc5a11df6979b535791d996845dad18ab7eff83643d
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5172b7f19adfc48eb24657b890a2c8b550411cb66cf1f0baf3dd26968a6ba0a3
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:35667ee7e0fd3d80d69e1b6e42eca16b9e446af41c89382435c7066eff30fde6
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:4195a8eec1ccaee9a95491a533d97151fe430e0772ef6ad621150dffad257989
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:e43e73c4eac71616e2c0c23adac03f1a2ed2ac6eab76ac9a665bb9a9230583de
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5f3107360771684de86d7937448984cd6a8ba25c7bef9a7e79501733ec8c1868
+name: topology-aware-lifecycle-manager.v4.14.6
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.6
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "false"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.6'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:4488f5fdf6f10a551fe046e62cd4f3d856530cfb15831f7e1e2de531e7f2caeb
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:5f3107360771684de86d7937448984cd6a8ba25c7bef9a7e79501733ec8c1868
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:b3bf910e2f1f91cfd645cdc3afdb6b7451b0ec721f476ad28925f34b079894e9
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:45be1837b107f6e70eefc5bac2511a159a8e1aac78e6aa43694c77f3cb5e9e45
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:ea8a7e26699d06b3d286304ca46e10b86f47c5f22009ee67ac69d39600cc0f49
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:92379505ad3b92c380ec5ddbb348502e1984f153efc4445873138ced2d61d1bb
+name: topology-aware-lifecycle-manager.v4.14.7
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.7
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "true"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.7'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:1fc9d5afd6c486643f127ef8f4f8ef09eb8d206422b496a4cd365f0b4ab0a2c2
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:92379505ad3b92c380ec5ddbb348502e1984f153efc4445873138ced2d61d1bb
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:2598bd8c6b8c218567cc33c00fe741b03db894e1fb8031a05819f30acffa1e57
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:2db1e2fc8311cc690fc59af5a7c08b9971c3a7f77714d95f38d1a5fe637916e7
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:c702611485fe27011a06573dac1fe4d173b46c490f241af0aeaae7efa265f1d0
+  name: manager
+schema: olm.bundle
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:94e97b49e24c55fd43b1936093e82e589cc95a53c46e663b0ac6f771b8add71e
+name: topology-aware-lifecycle-manager.v4.14.8
+package: topology-aware-lifecycle-manager
+properties:
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: ClusterGroupUpgrade
+    version: v1alpha1
+- type: olm.gvk
+  value:
+    group: ran.openshift.io
+    kind: PreCachingConfig
+    version: v1alpha1
+- type: olm.package
+  value:
+    packageName: topology-aware-lifecycle-manager
+    version: 4.14.8
+- type: olm.csv.metadata
+  value:
+    annotations:
+      alm-examples: |-
+        [
+          {
+            "apiVersion": "ran.openshift.io/v1alpha1",
+            "kind": "ClusterGroupUpgrade",
+            "metadata": {
+              "name": "ClusterGroupUpgrade-sample"
+            },
+            "spec": {
+              "preCaching": true
+            }
+          }
+        ]
+      capabilities: Basic Install
+      features.operators.openshift.io/cnf: "false"
+      features.operators.openshift.io/cni: "false"
+      features.operators.openshift.io/csi: "false"
+      features.operators.openshift.io/disconnected: "true"
+      features.operators.openshift.io/fips-compliant: "true"
+      features.operators.openshift.io/proxy-aware: "true"
+      features.operators.openshift.io/tls-profiles: "false"
+      features.operators.openshift.io/token-auth-aws: "false"
+      features.operators.openshift.io/token-auth-azure: "false"
+      features.operators.openshift.io/token-auth-gcp: "false"
+      olm.skipRange: '>=4.9.0 <4.14.8'
+      operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
+      operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
+      operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    apiServiceDefinitions: {}
+    crdDescriptions:
+      owned:
+      - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
+          API
+        displayName: Cluster Group Upgrade
+        kind: ClusterGroupUpgrade
+        name: clustergroupupgrades.ran.openshift.io
+        resources:
+        - kind: Deployment
+          name: ""
+          version: apps/v1
+        - kind: Namespace
+          name: ""
+          version: v1
+        specDescriptors:
+        - displayName: Actions
+          path: actions
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether the cluster would be running
+            a backup prior to the upgrade.
+          displayName: Backup
+          path: backup
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: 'The Batch Timeout Action can be specified to control what
+            happens when a batch times out. The default value is `Continue`. The possible
+            values are:   - Continue   - Abort'
+          displayName: BatchTimeoutAction
+          path: batchTimeoutAction
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Blocking CRs
+          path: blockingCRs
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a list of expressions or labels that will
+            be used to determine what clusters to include in the operation. The expected
+            format is as follows: clusterLabelSelectors:   - matchExpressions:       -
+            key: label1         operator: In         values:           - value1a           -
+            value1b   - matchLabels:       label2: value2   - matchExpressions:       -
+            key: label3         operator: In         values:           - value3     matchLabels:       label4:
+            value4'
+          displayName: Cluster Label Selectors
+          path: clusterLabelSelectors
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: 'This field holds a label common to multiple clusters that
+            will be updated. The expected format is as follows: clusterSelector:   -
+            label1Name=label1Value   - label2Name=label2Value If the value is empty,
+            then the expected format is: clusterSelector:   - label1Name All the clusters
+            matching the labels specified in clusterSelector will be included in the
+            update plan. Deprecated: Use ClusterLabelSelectors instead'
+          displayName: Cluster Selector
+          path: clusterSelector
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Clusters
+          path: clusters
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines when the upgrade starts. While false,
+            the upgrade doesn't start. The policies, placement rules and placement
+            bindings are created, but clusters are not added to the placement rule.
+            Once set to true, the clusters start being upgraded, one batch at a time.
+          displayName: Enable
+          path: enable
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - displayName: Managed Policies
+          path: managedPolicies
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - description: This field determines whether container image pre-caching will
+            be done on all the clusters matching the selector. If required, the pre-caching
+            process starts immediately on all clusters irrespectively of the value
+            of the "enable" flag
+          displayName: PreCaching
+          path: preCaching
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:bool
+        - description: This field specifies a reference to a pre-caching config custom
+            resource that contains the additional pre-caching configurations.
+          displayName: PreCachingConfigRef
+          path: preCachingConfigRef
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        - displayName: Remediation Strategy
+          path: remediationStrategy
+          x-descriptors:
+          - urn:alm:descriptor:com.tectonic.ui:text
+        statusDescriptors:
+        - displayName: Backup
+          path: backup
+        - displayName: Clusters
+          path: clusters
+        - displayName: Computed Maximum Concurrency
+          path: computedMaxConcurrency
+        - displayName: Conditions
+          path: conditions
+        - displayName: Copied Policies
+          path: copiedPolicies
+        - displayName: Managed Policies Compliant Before Upgrade
+          path: managedPoliciesCompliantBeforeUpgrade
+        - displayName: Managed Policies Content
+          path: managedPoliciesContent
+        - description: Contains the managed policies (and the namespaces) that have
+            NonCompliant clusters that require updating.
+          displayName: Managed Policies For Upgrade
+          path: managedPoliciesForUpgrade
+        - displayName: Managed Policies Namespace
+          path: managedPoliciesNs
+        - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of
+            cluster Important: Run "make" to regenerate code after modifying this
+            file'
+          displayName: Placement Bindings
+          path: placementBindings
+        - displayName: Placement Rules
+          path: placementRules
+        - displayName: Precaching
+          path: precaching
+        - displayName: Remediation Plan
+          path: remediationPlan
+        - displayName: Safe Resource Names
+          path: safeResourceNames
+        - displayName: Status
+          path: status
+        version: v1alpha1
+      - description: PreCachingConfig is the Schema for the precachingconfigs API
+        displayName: Pre-caching Config
+        kind: PreCachingConfig
+        name: precachingconfigs.ran.openshift.io
+        resources:
+        - kind: Namespace
+          name: “”
+          version: v1
+        version: v1alpha1
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
+    installModes:
+    - supported: false
+      type: OwnNamespace
+    - supported: false
+      type: SingleNamespace
+    - supported: false
+      type: MultiNamespace
+    - supported: true
+      type: AllNamespaces
+    keywords:
+    - acm lifecyclemanagement upgrades cluster
+    links:
+    - name: Cluster Group Upgrades Operator
+      url: https://topology-aware-lifecycle-manager.domain
+    maturity: alpha
+    provider:
+      name: Red Hat
+relatedImages:
+- image: registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:a47afaa5ae506ec5a2c18818822f8cd626055168ead3183fb41a7e4338f8517e
+  name: kube-rbac-proxy
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:94e97b49e24c55fd43b1936093e82e589cc95a53c46e663b0ac6f771b8add71e
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:43da382febb47be12bf02620938ff2022c4c26d034ff0b391452b86a290c9568
+  name: precache_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:b28f75f707e1e53d8e49d9c7646982fec26f59606707b356d801028063990eca
+  name: recovery_img
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:bdfc5eed6b4afc1584333e9fcbcf36f39fda1245a1257447a57e9be440b14ed4
+  name: manager
+schema: olm.bundle
