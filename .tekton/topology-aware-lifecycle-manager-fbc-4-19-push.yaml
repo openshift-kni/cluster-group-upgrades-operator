@@ -37,6 +37,8 @@ spec:
     - linux/x86_64
   - name: dockerfile
     value: .konflux/Dockerfile.catalog
+  - name: build-args-file
+    value: .konflux/container_build_args.conf
   # We have configured an fbc exception for hermetic builds on the release repo.
   - name: hermetic
     value: "false"
