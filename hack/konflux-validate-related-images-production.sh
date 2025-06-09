@@ -87,6 +87,7 @@ validate_related_images() {
     declare -i i=0
     for ((; i<entries; i++)); do
         local image="${images_parsed[i]}"
+        image=${image//\"}
         # Only allow production (registry.redhat.io) images
         if [[ "$image" =~ ^registry\.redhat\.io/ ]]; then
             echo "Valid production image found: $image"
