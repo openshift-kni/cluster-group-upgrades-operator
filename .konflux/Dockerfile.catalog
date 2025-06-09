@@ -1,23 +1,9 @@
-# The base image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
+# The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
 ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry:v4.12
-
-# yq
-FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e95931b325c9447282a AS parser
-# opm
-FROM ${OPM_IMAGE} AS manager
+ARG BUILDER_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_golang_1.17
 
 # build the catalog
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_golang_1.17@sha256:991828191f30d401e365458164f6ceae51811b85e2591a8b11be7bda41d28d28 AS builder
-
-# set yq in the path
-ENV YQ_BIN=/usr/bin/yq
-COPY --from=parser /usr/bin/yq $YQ_BIN
-RUN chmod +x /usr/bin/yq $YQ_BIN
-
-# set opm in the path
-ENV OPM_BIN=/usr/bin/opm
-COPY --from=manager /usr/bin/opm $OPM_BIN
-RUN chmod +x $OPM_BIN
+FROM ${BUILDER_IMAGE} AS builder
 
 # create dir structure to generate the catalog
 RUN mkdir -p /app/hack /app/.konflux/catalog
@@ -42,7 +28,8 @@ RUN --mount=type=secret,id=telco-5g-redhat-pull-secret/.dockerconfigjson \
 RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra $HOME/.docker/ && cat $HOME/.docker/config.json
 
 ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
-RUN YQ=$YQ_BIN OPM=$OPM_BIN make konflux-generate-catalog-production && \
+# The fbc build is not hermetic, so make will download yq and opm
+RUN make konflux-generate-catalog-production && \
     rm $HOME/.docker/config.json
 
 # run the catalog
