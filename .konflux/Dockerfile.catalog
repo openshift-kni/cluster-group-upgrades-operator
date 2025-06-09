@@ -1,16 +1,17 @@
 # The base image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-#
-# CAVEAT
-#
+
+# TODO: once available, migrate to: registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.y
+ARG OPM_IMAGE_RENDER=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.19
+
 # For <= 4.14, use registry.redhat.io/openshift4/ose-operator-registry:v4.y
 # For >= 4.15, use registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.y
 #
-# TODO: once available, migrate to: registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.y
-ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.15
+ARG OPM_IMAGE_RUN=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.15
+
 # yq
 FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e95931b325c9447282a AS parser
 # opm
-FROM ${OPM_IMAGE} AS manager
+FROM ${OPM_IMAGE_RENDER} AS manager
 
 # build the catalog
 FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23@sha256:4805e1cb2d1bd9d3c5de5d6986056bbda94ca7b01642f721d83d26579d333c60 AS builder
@@ -52,7 +53,7 @@ RUN YQ=$YQ_BIN OPM=$OPM_BIN make konflux-generate-catalog-production && \
     rm $HOME/.docker/config.json
 
 # run the catalog
-FROM ${OPM_IMAGE}
+FROM ${OPM_IMAGE_RUN}
 
 ENTRYPOINT ["/bin/opm"]
 CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
