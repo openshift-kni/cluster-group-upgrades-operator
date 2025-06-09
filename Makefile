@@ -57,8 +57,8 @@ CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 
 # Konflux catalog configuration
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
-CATALOG_TEMPLATE_KONFLUX = .konflux/catalog/catalog-template.in.yaml
-CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
+CATALOG_TEMPLATE_KONFLUX = .konflux/catalog/catalog-template.in.json
+CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.json
 
 # By default we build the same architecture we are running
 # Override this by specifying a different GOARCH in your environment
@@ -167,7 +167,7 @@ unittests: pre-cache-unit-test
 	go test -v ./controllers/...
 	@echo "Running backup unittests"
 	go test -v ./recovery/cmd/...
-	
+
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
 	go mod tidy
@@ -436,7 +436,8 @@ endif
 
 .PHONY: konflux-update-task-refs ## update task images
 konflux-update-task-refs: yq
-	hack/konflux-update-task-refs.sh .tekton/$(PACKAGE_NAME_KONFLUX)-4-19-build.yaml
+	hack/konflux-update-task-refs.sh .tekton/build-pipeline.yaml
+	hack/konflux-update-task-refs.sh .tekton/fbc-pipeline.yaml
 
 .PHONY: konflux-validate-catalog-template-bundle ## validate the last bundle entry on the catalog template file
 konflux-validate-catalog-template-bundle: yq operator-sdk
@@ -457,9 +458,9 @@ konflux-generate-catalog: yq opm
 	hack/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
         # CAVEAT: for < ocp 4.17, use this opm render instead:
         # (OPM) alpha render-template basic --output yaml ./konflux/catalog/catalog-template.yaml > .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
-	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
-    # Hack to replace name for TALM
-	sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
+	$(OPM) alpha render-template basic --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
+        # Hack to replace name for TALM
+	sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX)
 	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
 
 .PHONY: konflux-generate-catalog-production ## generate a registry.redhat.io catalog

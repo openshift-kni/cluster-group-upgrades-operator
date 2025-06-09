@@ -1,0 +1,846 @@
+{
+    "schema": "olm.package",
+    "name": "topology-aware-lifecycle-manager",
+    "defaultChannel": "stable",
+    "icon": {
+        "base64data": "PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=",
+        "mediatype": "image/svg+xml"
+    }
+}
+{
+    "schema": "olm.channel",
+    "name": "4.13",
+    "package": "topology-aware-lifecycle-manager",
+    "entries": [
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.0",
+            "skipRange": ">=4.10.0 <4.13.0"
+        },
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.1",
+            "replaces": "topology-aware-lifecycle-manager.v4.13.0",
+            "skipRange": "x>=4.10.0 <4.13.1"
+        },
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.2",
+            "replaces": "topology-aware-lifecycle-manager.v4.13.1",
+            "skipRange": ">=4.10.0 <4.13.2"
+        }
+    ]
+}
+{
+    "schema": "olm.channel",
+    "name": "stable",
+    "package": "topology-aware-lifecycle-manager",
+    "entries": [
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.0",
+            "skipRange": ">=4.10.0 <4.13.0"
+        },
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.1",
+            "replaces": "topology-aware-lifecycle-manager.v4.13.0",
+            "skipRange": ">=4.10.0 <4.13.1"
+        },
+        {
+            "name": "topology-aware-lifecycle-manager.v4.13.2",
+            "replaces": "topology-aware-lifecycle-manager.v4.13.1",
+            "skipRange": ">=4.10.0 <4.13.2"
+        }
+    ]
+}
+{
+    "schema": "olm.bundle",
+    "name": "topology-aware-lifecycle-manager.v4.13.0",
+    "package": "topology-aware-lifecycle-manager",
+    "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:6adbc00c12329abfcdb5d30b56162678204a87df6df88933b7a8f08b34118722",
+    "properties": [
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "ran.openshift.io",
+                "kind": "ClusterGroupUpgrade",
+                "version": "v1alpha1"
+            }
+        },
+        {
+            "type": "olm.package",
+            "value": {
+                "packageName": "topology-aware-lifecycle-manager",
+                "version": "4.13.0"
+            }
+        },
+        {
+            "type": "olm.csv.metadata",
+            "value": {
+                "annotations": {
+                    "alm-examples": "[\n  {\n    \"apiVersion\": \"ran.openshift.io/v1alpha1\",\n    \"kind\": \"ClusterGroupUpgrade\",\n    \"metadata\": {\n      \"name\": \"ClusterGroupUpgrade-sample\"\n    },\n    \"spec\": {\n      \"preCaching\": true\n    }\n  }\n]",
+                    "capabilities": "Basic Install",
+                    "olm.skipRange": ">=4.10.0 <4.13.0",
+                    "operators.openshift.io/infrastructure-features": "[\"disconnected\"]",
+                    "operators.openshift.io/valid-subscription": "[\n  \"OpenShift Container Platform\",\n  \"OpenShift Platform Plus\"\n]",
+                    "operators.operatorframework.io/builder": "operator-sdk-v1.16.0-ocp",
+                    "operators.operatorframework.io/project_layout": "go.kubebuilder.io/v3"
+                },
+                "apiServiceDefinitions": {},
+                "crdDescriptions": {
+                    "owned": [
+                        {
+                            "name": "clustergroupupgrades.ran.openshift.io",
+                            "version": "v1alpha1",
+                            "kind": "ClusterGroupUpgrade",
+                            "displayName": "Cluster Group Upgrade",
+                            "description": "ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API",
+                            "resources": [
+                                {
+                                    "name": "",
+                                    "kind": "Deployment",
+                                    "version": "apps/v1"
+                                },
+                                {
+                                    "name": "",
+                                    "kind": "Namespace",
+                                    "version": "v1"
+                                }
+                            ],
+                            "statusDescriptors": [
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup"
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters"
+                                },
+                                {
+                                    "path": "computedMaxConcurrency",
+                                    "displayName": "Computed Maximum Concurrency"
+                                },
+                                {
+                                    "path": "conditions",
+                                    "displayName": "Conditions"
+                                },
+                                {
+                                    "path": "copiedPolicies",
+                                    "displayName": "Copied Policies"
+                                },
+                                {
+                                    "path": "managedPoliciesCompliantBeforeUpgrade",
+                                    "displayName": "Managed Policies Compliant Before Upgrade"
+                                },
+                                {
+                                    "path": "managedPoliciesContent",
+                                    "displayName": "Managed Policies Content"
+                                },
+                                {
+                                    "path": "managedPoliciesForUpgrade",
+                                    "displayName": "Managed Policies For Upgrade",
+                                    "description": "Contains the managed policies (and the namespaces) that have NonCompliant clusters that require updating."
+                                },
+                                {
+                                    "path": "managedPoliciesNs",
+                                    "displayName": "Managed Policies Namespace"
+                                },
+                                {
+                                    "path": "placementBindings",
+                                    "displayName": "Placement Bindings",
+                                    "description": "INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run \"make\" to regenerate code after modifying this file"
+                                },
+                                {
+                                    "path": "placementRules",
+                                    "displayName": "Placement Rules"
+                                },
+                                {
+                                    "path": "precaching",
+                                    "displayName": "Precaching"
+                                },
+                                {
+                                    "path": "remediationPlan",
+                                    "displayName": "Remediation Plan"
+                                },
+                                {
+                                    "path": "safeResourceNames",
+                                    "displayName": "Safe Resource Names"
+                                },
+                                {
+                                    "path": "status",
+                                    "displayName": "Status"
+                                }
+                            ],
+                            "specDescriptors": [
+                                {
+                                    "path": "actions",
+                                    "displayName": "Actions",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup",
+                                    "description": "This field determines whether the cluster would be running a backup prior to the upgrade.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "batchTimeoutAction",
+                                    "displayName": "BatchTimeoutAction",
+                                    "description": "The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`. The possible values are:   - Continue   - Abort",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "blockingCRs",
+                                    "displayName": "Blocking CRs",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterLabelSelectors",
+                                    "displayName": "Cluster Label Selectors",
+                                    "description": "This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation. The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       - key: label1         operator: In         values:           - value1a           - value1b   - matchLabels:       label2: value2   - matchExpressions:       - key: label3         operator: In         values:           - value3     matchLabels:       label4: value4",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterSelector",
+                                    "displayName": "Cluster Selector",
+                                    "description": "This field holds a label common to multiple clusters that will be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   - label2Name=label2Value If the value is empty, then the expected format is: clusterSelector:   - label1Name All the clusters matching the labels specified in clusterSelector will be included in the update plan. Deprecated: Use ClusterLabelSelectors instead",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "enable",
+                                    "displayName": "Enable",
+                                    "description": "This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies, placement rules and placement bindings are created, but clusters are not added to the placement rule. Once set to true, the clusters start being upgraded, one batch at a time.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "managedPolicies",
+                                    "displayName": "Managed Policies",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "preCaching",
+                                    "displayName": "PreCaching",
+                                    "description": "This field determines whether container image pre-caching will be done on all the clusters matching the selector. If required, the pre-caching process starts immediately on all clusters irrespectively of the value of the \"enable\" flag",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "remediationStrategy",
+                                    "displayName": "Remediation Strategy",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "description": "Topology Aware Lifecycle Manager is an operator that facilitates platform and operator upgrades of group of clusters",
+                "displayName": "Topology Aware Lifecycle Manager",
+                "installModes": [
+                    {
+                        "type": "OwnNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "SingleNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "MultiNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "AllNamespaces",
+                        "supported": true
+                    }
+                ],
+                "keywords": [
+                    "acm lifecyclemanagement upgrades cluster"
+                ],
+                "links": [
+                    {
+                        "name": "Cluster Group Upgrades Operator",
+                        "url": "https://topology-aware-lifecycle-manager.domain"
+                    }
+                ],
+                "maturity": "alpha",
+                "provider": {
+                    "name": "Red Hat"
+                }
+            }
+        }
+    ],
+    "relatedImages": [
+        {
+            "name": "kube-rbac-proxy",
+            "image": "registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:4564ca3dc5bac80d6faddaf94c817fbbc270698a9399d8a21ee1005d85ceda56"
+        },
+        {
+            "name": "",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:6adbc00c12329abfcdb5d30b56162678204a87df6df88933b7a8f08b34118722"
+        },
+        {
+            "name": "precache_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:95a13f115824a53ec8c613c4f73f1258c7e40a676e02e6db5c5b97a85fd77eab"
+        },
+        {
+            "name": "recovery_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:7e2db64fddf52ec0d867519fa15e825e142bfb01ef872344d179022ff1133aba"
+        },
+        {
+            "name": "manager",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:be7941a1425bf5a8f3c08527cf842a2d2c4ce6b3a2e4bbbac0e17fb007006794"
+        }
+    ]
+}
+{
+    "schema": "olm.bundle",
+    "name": "topology-aware-lifecycle-manager.v4.13.1",
+    "package": "topology-aware-lifecycle-manager",
+    "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:bacc5365ec4112c87eb0b76e8f9d575168aa99632d19640dccf4d4bd0e5af598",
+    "properties": [
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "ran.openshift.io",
+                "kind": "ClusterGroupUpgrade",
+                "version": "v1alpha1"
+            }
+        },
+        {
+            "type": "olm.package",
+            "value": {
+                "packageName": "topology-aware-lifecycle-manager",
+                "version": "4.13.1"
+            }
+        },
+        {
+            "type": "olm.csv.metadata",
+            "value": {
+                "annotations": {
+                    "alm-examples": "[\n  {\n    \"apiVersion\": \"ran.openshift.io/v1alpha1\",\n    \"kind\": \"ClusterGroupUpgrade\",\n    \"metadata\": {\n      \"name\": \"ClusterGroupUpgrade-sample\"\n    },\n    \"spec\": {\n      \"preCaching\": true\n    }\n  }\n]",
+                    "capabilities": "Basic Install",
+                    "olm.skipRange": ">=4.10.0 <4.13.0",
+                    "operators.openshift.io/infrastructure-features": "[\"disconnected\"]",
+                    "operators.openshift.io/valid-subscription": "[\n  \"OpenShift Container Platform\",\n  \"OpenShift Platform Plus\"\n]",
+                    "operators.operatorframework.io/builder": "operator-sdk-v1.16.0-ocp",
+                    "operators.operatorframework.io/project_layout": "go.kubebuilder.io/v3"
+                },
+                "apiServiceDefinitions": {},
+                "crdDescriptions": {
+                    "owned": [
+                        {
+                            "name": "clustergroupupgrades.ran.openshift.io",
+                            "version": "v1alpha1",
+                            "kind": "ClusterGroupUpgrade",
+                            "displayName": "Cluster Group Upgrade",
+                            "description": "ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API",
+                            "resources": [
+                                {
+                                    "name": "",
+                                    "kind": "Deployment",
+                                    "version": "apps/v1"
+                                },
+                                {
+                                    "name": "",
+                                    "kind": "Namespace",
+                                    "version": "v1"
+                                }
+                            ],
+                            "statusDescriptors": [
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup"
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters"
+                                },
+                                {
+                                    "path": "computedMaxConcurrency",
+                                    "displayName": "Computed Maximum Concurrency"
+                                },
+                                {
+                                    "path": "conditions",
+                                    "displayName": "Conditions"
+                                },
+                                {
+                                    "path": "copiedPolicies",
+                                    "displayName": "Copied Policies"
+                                },
+                                {
+                                    "path": "managedPoliciesCompliantBeforeUpgrade",
+                                    "displayName": "Managed Policies Compliant Before Upgrade"
+                                },
+                                {
+                                    "path": "managedPoliciesContent",
+                                    "displayName": "Managed Policies Content"
+                                },
+                                {
+                                    "path": "managedPoliciesForUpgrade",
+                                    "displayName": "Managed Policies For Upgrade",
+                                    "description": "Contains the managed policies (and the namespaces) that have NonCompliant clusters that require updating."
+                                },
+                                {
+                                    "path": "managedPoliciesNs",
+                                    "displayName": "Managed Policies Namespace"
+                                },
+                                {
+                                    "path": "placementBindings",
+                                    "displayName": "Placement Bindings",
+                                    "description": "INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run \"make\" to regenerate code after modifying this file"
+                                },
+                                {
+                                    "path": "placementRules",
+                                    "displayName": "Placement Rules"
+                                },
+                                {
+                                    "path": "precaching",
+                                    "displayName": "Precaching"
+                                },
+                                {
+                                    "path": "remediationPlan",
+                                    "displayName": "Remediation Plan"
+                                },
+                                {
+                                    "path": "safeResourceNames",
+                                    "displayName": "Safe Resource Names"
+                                },
+                                {
+                                    "path": "status",
+                                    "displayName": "Status"
+                                }
+                            ],
+                            "specDescriptors": [
+                                {
+                                    "path": "actions",
+                                    "displayName": "Actions",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup",
+                                    "description": "This field determines whether the cluster would be running a backup prior to the upgrade.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "batchTimeoutAction",
+                                    "displayName": "BatchTimeoutAction",
+                                    "description": "The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`. The possible values are:   - Continue   - Abort",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "blockingCRs",
+                                    "displayName": "Blocking CRs",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterLabelSelectors",
+                                    "displayName": "Cluster Label Selectors",
+                                    "description": "This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation. The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       - key: label1         operator: In         values:           - value1a           - value1b   - matchLabels:       label2: value2   - matchExpressions:       - key: label3         operator: In         values:           - value3     matchLabels:       label4: value4",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterSelector",
+                                    "displayName": "Cluster Selector",
+                                    "description": "This field holds a label common to multiple clusters that will be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   - label2Name=label2Value If the value is empty, then the expected format is: clusterSelector:   - label1Name All the clusters matching the labels specified in clusterSelector will be included in the update plan. Deprecated: Use ClusterLabelSelectors instead",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "enable",
+                                    "displayName": "Enable",
+                                    "description": "This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies, placement rules and placement bindings are created, but clusters are not added to the placement rule. Once set to true, the clusters start being upgraded, one batch at a time.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "managedPolicies",
+                                    "displayName": "Managed Policies",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "preCaching",
+                                    "displayName": "PreCaching",
+                                    "description": "This field determines whether container image pre-caching will be done on all the clusters matching the selector. If required, the pre-caching process starts immediately on all clusters irrespectively of the value of the \"enable\" flag",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "remediationStrategy",
+                                    "displayName": "Remediation Strategy",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "description": "Topology Aware Lifecycle Manager is an operator that facilitates platform and operator upgrades of group of clusters",
+                "displayName": "Topology Aware Lifecycle Manager",
+                "installModes": [
+                    {
+                        "type": "OwnNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "SingleNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "MultiNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "AllNamespaces",
+                        "supported": true
+                    }
+                ],
+                "keywords": [
+                    "acm lifecyclemanagement upgrades cluster"
+                ],
+                "links": [
+                    {
+                        "name": "Cluster Group Upgrades Operator",
+                        "url": "https://topology-aware-lifecycle-manager.domain"
+                    }
+                ],
+                "maturity": "alpha",
+                "provider": {
+                    "name": "Red Hat"
+                }
+            }
+        }
+    ],
+    "relatedImages": [
+        {
+            "name": "kube-rbac-proxy",
+            "image": "registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:deb45c98978f9151d5e5298a2dbc71cd9cfc7f2da801ced3e50d296f154706df"
+        },
+        {
+            "name": "",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:bacc5365ec4112c87eb0b76e8f9d575168aa99632d19640dccf4d4bd0e5af598"
+        },
+        {
+            "name": "precache_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:9268120fad50a281843ca9e0a4ee5b09fc16f2ed0fd39e90984f7d6158a15dc7"
+        },
+        {
+            "name": "recovery_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:d68892538496f3d1c6ed6e0fed2cf13c1ab2e5101a734212dd3b060b5a665c57"
+        },
+        {
+            "name": "manager",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:79dcc7c8b0d25d5a9636cec116db0f1ca56d2dfa1264be1e82e66b0a00157302"
+        }
+    ]
+}
+{
+    "schema": "olm.bundle",
+    "name": "topology-aware-lifecycle-manager.v4.13.2",
+    "package": "topology-aware-lifecycle-manager",
+    "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:fb4565547a067f39ff5442bdab06cceaba2941a37be2ec2e5be78f1f341a716d",
+    "properties": [
+        {
+            "type": "olm.gvk",
+            "value": {
+                "group": "ran.openshift.io",
+                "kind": "ClusterGroupUpgrade",
+                "version": "v1alpha1"
+            }
+        },
+        {
+            "type": "olm.package",
+            "value": {
+                "packageName": "topology-aware-lifecycle-manager",
+                "version": "4.13.2"
+            }
+        },
+        {
+            "type": "olm.csv.metadata",
+            "value": {
+                "annotations": {
+                    "alm-examples": "[\n  {\n    \"apiVersion\": \"ran.openshift.io/v1alpha1\",\n    \"kind\": \"ClusterGroupUpgrade\",\n    \"metadata\": {\n      \"name\": \"ClusterGroupUpgrade-sample\"\n    },\n    \"spec\": {\n      \"preCaching\": true\n    }\n  }\n]",
+                    "capabilities": "Basic Install",
+                    "olm.skipRange": ">=4.10.0 <4.13.0",
+                    "operators.openshift.io/infrastructure-features": "[\"disconnected\"]",
+                    "operators.openshift.io/valid-subscription": "[\n  \"OpenShift Container Platform\",\n  \"OpenShift Platform Plus\"\n]",
+                    "operators.operatorframework.io/builder": "operator-sdk-v1.16.0-ocp",
+                    "operators.operatorframework.io/project_layout": "go.kubebuilder.io/v3"
+                },
+                "apiServiceDefinitions": {},
+                "crdDescriptions": {
+                    "owned": [
+                        {
+                            "name": "clustergroupupgrades.ran.openshift.io",
+                            "version": "v1alpha1",
+                            "kind": "ClusterGroupUpgrade",
+                            "displayName": "Cluster Group Upgrade",
+                            "description": "ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades API",
+                            "resources": [
+                                {
+                                    "name": "",
+                                    "kind": "Deployment",
+                                    "version": "apps/v1"
+                                },
+                                {
+                                    "name": "",
+                                    "kind": "Namespace",
+                                    "version": "v1"
+                                }
+                            ],
+                            "statusDescriptors": [
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup"
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters"
+                                },
+                                {
+                                    "path": "computedMaxConcurrency",
+                                    "displayName": "Computed Maximum Concurrency"
+                                },
+                                {
+                                    "path": "conditions",
+                                    "displayName": "Conditions"
+                                },
+                                {
+                                    "path": "copiedPolicies",
+                                    "displayName": "Copied Policies"
+                                },
+                                {
+                                    "path": "managedPoliciesCompliantBeforeUpgrade",
+                                    "displayName": "Managed Policies Compliant Before Upgrade"
+                                },
+                                {
+                                    "path": "managedPoliciesContent",
+                                    "displayName": "Managed Policies Content"
+                                },
+                                {
+                                    "path": "managedPoliciesForUpgrade",
+                                    "displayName": "Managed Policies For Upgrade",
+                                    "description": "Contains the managed policies (and the namespaces) that have NonCompliant clusters that require updating."
+                                },
+                                {
+                                    "path": "managedPoliciesNs",
+                                    "displayName": "Managed Policies Namespace"
+                                },
+                                {
+                                    "path": "placementBindings",
+                                    "displayName": "Placement Bindings",
+                                    "description": "INSERT ADDITIONAL STATUS FIELD - define observed state of cluster Important: Run \"make\" to regenerate code after modifying this file"
+                                },
+                                {
+                                    "path": "placementRules",
+                                    "displayName": "Placement Rules"
+                                },
+                                {
+                                    "path": "precaching",
+                                    "displayName": "Precaching"
+                                },
+                                {
+                                    "path": "remediationPlan",
+                                    "displayName": "Remediation Plan"
+                                },
+                                {
+                                    "path": "safeResourceNames",
+                                    "displayName": "Safe Resource Names"
+                                },
+                                {
+                                    "path": "status",
+                                    "displayName": "Status"
+                                }
+                            ],
+                            "specDescriptors": [
+                                {
+                                    "path": "actions",
+                                    "displayName": "Actions",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "backup",
+                                    "displayName": "Backup",
+                                    "description": "This field determines whether the cluster would be running a backup prior to the upgrade.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "batchTimeoutAction",
+                                    "displayName": "BatchTimeoutAction",
+                                    "description": "The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`. The possible values are:   - Continue   - Abort",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "blockingCRs",
+                                    "displayName": "Blocking CRs",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterLabelSelectors",
+                                    "displayName": "Cluster Label Selectors",
+                                    "description": "This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation. The expected format is as follows: clusterLabelSelectors:   - matchExpressions:       - key: label1         operator: In         values:           - value1a           - value1b   - matchLabels:       label2: value2   - matchExpressions:       - key: label3         operator: In         values:           - value3     matchLabels:       label4: value4",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusterSelector",
+                                    "displayName": "Cluster Selector",
+                                    "description": "This field holds a label common to multiple clusters that will be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   - label2Name=label2Value If the value is empty, then the expected format is: clusterSelector:   - label1Name All the clusters matching the labels specified in clusterSelector will be included in the update plan. Deprecated: Use ClusterLabelSelectors instead",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "clusters",
+                                    "displayName": "Clusters",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "enable",
+                                    "displayName": "Enable",
+                                    "description": "This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies, placement rules and placement bindings are created, but clusters are not added to the placement rule. Once set to true, the clusters start being upgraded, one batch at a time.",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "managedPolicies",
+                                    "displayName": "Managed Policies",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                },
+                                {
+                                    "path": "preCaching",
+                                    "displayName": "PreCaching",
+                                    "description": "This field determines whether container image pre-caching will be done on all the clusters matching the selector. If required, the pre-caching process starts immediately on all clusters irrespectively of the value of the \"enable\" flag",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:bool"
+                                    ]
+                                },
+                                {
+                                    "path": "remediationStrategy",
+                                    "displayName": "Remediation Strategy",
+                                    "x-descriptors": [
+                                        "urn:alm:descriptor:com.tectonic.ui:text"
+                                    ]
+                                }
+                            ]
+                        }
+                    ]
+                },
+                "description": "Topology Aware Lifecycle Manager is an operator that facilitates platform and operator upgrades of group of clusters",
+                "displayName": "Topology Aware Lifecycle Manager",
+                "installModes": [
+                    {
+                        "type": "OwnNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "SingleNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "MultiNamespace",
+                        "supported": false
+                    },
+                    {
+                        "type": "AllNamespaces",
+                        "supported": true
+                    }
+                ],
+                "keywords": [
+                    "acm lifecyclemanagement upgrades cluster"
+                ],
+                "links": [
+                    {
+                        "name": "Cluster Group Upgrades Operator",
+                        "url": "https://topology-aware-lifecycle-manager.domain"
+                    }
+                ],
+                "maturity": "alpha",
+                "provider": {
+                    "name": "Red Hat"
+                }
+            }
+        }
+    ],
+    "relatedImages": [
+        {
+            "name": "kube-rbac-proxy",
+            "image": "registry.redhat.io/openshift4/ose-kube-rbac-proxy@sha256:8307f2210206acdcb87f2a44952d5464f059fe6f763b6b11d24739d58c804057"
+        },
+        {
+            "name": "",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:fb4565547a067f39ff5442bdab06cceaba2941a37be2ec2e5be78f1f341a716d"
+        },
+        {
+            "name": "precache_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8@sha256:05168fde9b8aecc46f76b2adaa27364565770a4d12cd3aed5649c9e9c375de75"
+        },
+        {
+            "name": "recovery_img",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8@sha256:1940e860bb359803659a2b65dad69b3b6827f51f9db1ee742a5d99037321ef94"
+        },
+        {
+            "name": "manager",
+            "image": "registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator@sha256:816dc77c064084f8d5df30243917d924c98f71d434bcb2bd6b3ec5f7ff2eba5a"
+        }
+    ]
+}
