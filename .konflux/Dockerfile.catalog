@@ -1,12 +1,5 @@
 # The base image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-#
-# CAVEAT
-#
-# For <= 4.14, use registry.redhat.io/openshift4/ose-operator-registry:v4.y
-# For >= 4.15, use registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.y
-#
-# TODO: once available, migrate to: registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.y
-ARG OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry:v4.15
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry:v4.15
 
 # yq
 FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e95931b325c9447282a AS parser
