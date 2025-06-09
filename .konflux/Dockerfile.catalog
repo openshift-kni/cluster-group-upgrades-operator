@@ -1,5 +1,5 @@
 # The base image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry:v4.15
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.15
 
 # yq
 FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e95931b325c9447282a AS parser
@@ -7,7 +7,7 @@ FROM quay.io/konflux-ci/yq@sha256:8068ee12171e5be43d60d5a34e3372e68ba7d935f3592e
 FROM ${OPM_IMAGE} AS manager
 
 # build the catalog
-FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_golang_1.20@sha256:90b226a5f20428abba8a68b5ac61d17d96f3f8f4313d7a0b7f3960534a973a2c AS builder
+FROM brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.20@sha256:bfa059102226f9d30a599ee6b20a0fbb708dc3cd06a5bea49aa4b3d020cfed80 AS builder
 
 # set yq in the path
 ENV YQ_BIN=/usr/bin/yq
