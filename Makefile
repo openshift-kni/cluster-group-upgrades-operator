@@ -459,7 +459,7 @@ konflux-generate-catalog: yq opm
 	hack/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
         # CAVEAT: for < ocp 4.17, use this opm render instead:
         # (OPM) alpha render-template basic --output yaml ./konflux/catalog/catalog-template.yaml > .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
-	$(OPM) alpha render-template basic --output yaml --migrate-level bundle-object-to-csv-metadata $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX) > $(CATALOG_KONFLUX)
         # Hack to replace name for TALM
 	sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX)
 	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
