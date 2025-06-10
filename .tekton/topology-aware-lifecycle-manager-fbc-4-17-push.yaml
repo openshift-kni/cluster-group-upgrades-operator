@@ -39,6 +39,8 @@ spec:
     value: .konflux/Dockerfile.catalog
   - name: build-args-file
     value: .konflux/container_build_args.conf
+  - name: additional-tags
+    value: ["latest"]
   # We have configured an fbc exception for hermetic builds on the release repo.
   - name: hermetic
     value: "false"
