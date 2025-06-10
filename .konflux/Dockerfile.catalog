@@ -9,7 +9,7 @@
 ARG OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.17
 
 # yq
-FROM quay.io/konflux-ci/yq@sha256:7a5039c24795582613f2889806b16fdd1ddc971f11594a983b9a6e6f027fcb32 AS parser
+FROM quay.io/konflux-ci/yq@sha256:13a172e5390b87074e7e4515d3d5cb34025714e7efc8244e46029cfad40bf7b3 AS parser
 # opm
 FROM ${OPM_IMAGE} AS manager
 
