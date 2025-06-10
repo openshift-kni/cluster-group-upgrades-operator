@@ -1,0 +1,48 @@
+# The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry:v4.13
+ARG BUILDER_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_8_golang_1.19
+
+# build the catalog
+FROM ${BUILDER_IMAGE} AS builder
+
+# create dir structure to generate the catalog
+RUN mkdir -p /app/hack /app/.konflux/catalog
+COPY Makefile /app
+COPY hack/ /app/hack/
+COPY .konflux/catalog/ /app/.konflux/catalog/
+
+# we need to copy the vendor/ folder as the Makefile depends on it
+COPY vendor/ /app/vendor/
+
+# generate the catalog
+
+# debug
+RUN echo "root dir" && ls -lra $HOME
+
+WORKDIR /app
+RUN --mount=type=secret,id=telco-5g-redhat-pull-secret/.dockerconfigjson \
+    mkdir -p $HOME/.docker/ && \
+    cp /run/secrets/telco-5g-redhat-pull-secret/.dockerconfigjson $HOME/.docker/config.json
+
+# debug
+RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra $HOME/.docker/ && cat $HOME/.docker/config.json
+
+ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
+# The fbc build is not hermetic, so make will download yq and opm
+RUN make konflux-generate-catalog-production && \
+    rm $HOME/.docker/config.json
+
+# run the catalog
+FROM ${OPM_IMAGE}
+
+ENTRYPOINT ["/bin/opm"]
+CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
+
+# ensure this correponds to olm.package name
+ENV PACKAGE_NAME=topology-aware-lifecycle-manager
+
+COPY --from=builder /app/.konflux/catalog/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
+# RUN ["/bin/opm", "validate", "/configs/topology-aware-lifecycle-manager"]
+RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
+
+LABEL operators.operatorframework.io.index.configs.v1=/configs
