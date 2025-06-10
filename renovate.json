@@ -38,6 +38,10 @@
                 "digest"
             ],
             "platformAutomerge": true
+        },
+        {
+            "matchUpdateTypes": ["minor"],
+            "enabled": false
         }
     ],
     "prConcurrentLimit": 0,
