@@ -26,15 +26,8 @@ COPY main.go main.go
 COPY api/ api/
 COPY controllers/ controllers/
 
-# For Konflux, compile with FIPS enabled
-# Otherwise compile normally
-RUN if [[ "${KONFLUX}" == "true" ]]; then \
-        echo "Compiling with fips" && \
-        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o manager main.go; \
-    else \
-        echo "Compiling without fips" && \
-        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o manager main.go; \
-    fi
+# Fips is not required or supported on releases this old
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -a -o manager main.go
 
 # Create the runtime image
 FROM ${RUNTIME_IMAGE}
