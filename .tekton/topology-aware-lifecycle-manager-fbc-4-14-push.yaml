@@ -14,7 +14,8 @@ metadata:
         '.tekton/fbc-pipeline.yaml'.pathChanged() ||
         '.tekton/images-mirror-set.yaml'.pathChanged() ||
         '.tekton/topology-aware-lifecycle-manager-fbc-4-14-push.yaml'.pathChanged() ||
-        '.konflux/catalog/***.conf'.pathChanged() ||
+        '.konflux/catalog/***'.pathChanged() ||
+        '.konflux/container_build_args.conf'.pathChanged() ||
         '.konflux/Dockerfile.catalog'.pathChanged()
       )
   creationTimestamp: null
