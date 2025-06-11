@@ -1,5 +1,5 @@
 ---
-image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:8478063443b900cc4bbdeb1553035342f0641267e2668c5428020dcc85432fdc
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:df0304df673a0dd89373a0c522748e10eb5d8f7a7f6ba93aaf012e9d8c8bf927
 name: topology-aware-lifecycle-manager.v4.20.0
 package: topology-aware-lifecycle-manager
 properties:
@@ -39,7 +39,7 @@ properties:
           }
         ]
       capabilities: Basic Install
-      containerImage: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:bb59732bdd3e0b0a80161a0d74516a49892149385b83bd514c63e1251f709912
+      containerImage: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:2f02fda8f4e552f188cd1e8349e60dd542448cd0052d6895d451f9b03b8df142
       features.operators.openshift.io/cnf: "false"
       features.operators.openshift.io/cni: "false"
       features.operators.openshift.io/csi: "false"
@@ -230,8 +230,10 @@ properties:
           name: “”
           version: v1
         version: v1alpha1
-    description: topology-aware-lifecycle-manager
-    displayName: topology-aware-lifecycle-manager
+    description: |-
+      Topology Aware Lifecycle Manager is an operator that facilitates
+            platform and operator upgrades of group of clusters
+    displayName: Topology Aware Lifecycle Manager
     installModes:
     - supported: false
       type: OwnNamespace
@@ -251,15 +253,15 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:8478063443b900cc4bbdeb1553035342f0641267e2668c5428020dcc85432fdc
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:df0304df673a0dd89373a0c522748e10eb5d8f7a7f6ba93aaf012e9d8c8bf927
   name: ""
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9@sha256:efc572f77ecad2703d8a19d7fe7fe85e7e5bfad3c729d59187e31dd3cf45c1b7
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9@sha256:7474c4ba0e871b9efbc5db1fe313674ac060abf9d1245f3442d054903a8dbd13
   name: aztp_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9@sha256:1a228137c16cb92b86d49f2d4339f2e79b8cb0b59afc4c67e9249a84966d1d2b
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9@sha256:d4c433a163c24c73d0ae28d262bc3ddbe7ef499589517eecf2438a7c1c64470c
   name: precache_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9@sha256:a22bc5ec0fa4d23101b7a96376c24627da70c2e6e18b5d7f2a24ec68e1b3c846
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9@sha256:3c58623f7fb7813e44af54aa6fe52713fe23512af11e95e78c01969464945c44
   name: recovery_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:bb59732bdd3e0b0a80161a0d74516a49892149385b83bd514c63e1251f709912
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:2f02fda8f4e552f188cd1e8349e60dd542448cd0052d6895d451f9b03b8df142
   name: manager
 schema: olm.bundle
 ---
