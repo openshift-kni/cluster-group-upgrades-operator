@@ -1,6 +1,6 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
-go 1.23.0
+go 1.23.6
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -15,7 +15,7 @@ require (
 	k8s.io/apimachinery v0.32.3
 	k8s.io/client-go v0.32.3
 	k8s.io/klog v1.0.0
-	open-cluster-management.io/api v0.16.2
+	open-cluster-management.io/api v1.0.0
 	open-cluster-management.io/governance-policy-propagator v0.16.0
 	sigs.k8s.io/controller-runtime v0.20.4
 )
