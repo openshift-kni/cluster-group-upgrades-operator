@@ -47,8 +47,6 @@
     "prConcurrentLimit": 0,
     "pruneBranchAfterAutomerge": true,
     "tekton": {
-        "autoApprove": true,
-        "automerge": true,
         "enabled": true,
         "fileMatch": [
             "\\.yaml$",
@@ -57,18 +55,6 @@
         "ignoreTests": false,
         "includePaths": [
             ".tekton/**"
-        ],
-        "packageRules": [
-            {
-                "addLabels": [
-                    "approved",
-                    "lgtm"
-                ],
-                "matchUpdateTypes": [
-                    "digest"
-                ]
-            }
-        ],
-        "platformAutomerge": true
+        ]
     }
 }
