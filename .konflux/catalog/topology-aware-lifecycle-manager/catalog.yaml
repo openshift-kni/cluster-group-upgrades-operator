@@ -1,5 +1,26 @@
 ---
-image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:48a8da0954471160e30e0fbf849381936c8d649b01e0e13c28f09fcf6ad00cfa
+defaultChannel: stable
+icon:
+  base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
+  mediatype: image/svg+xml
+name: topology-aware-lifecycle-manager
+schema: olm.package
+---
+entries:
+- name: topology-aware-lifecycle-manager.v4.19.0
+  skipRange: '>=4.9.0 <4.19.0'
+name: "4.19"
+package: topology-aware-lifecycle-manager
+schema: olm.channel
+---
+entries:
+- name: topology-aware-lifecycle-manager.v4.19.0
+  skipRange: '>=4.9.0 <4.19.0'
+name: stable
+package: topology-aware-lifecycle-manager
+schema: olm.channel
+---
+image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:de52e6de266847ba95e36b75dac9ff759707750800fce10d3009b8517aa6349a
 name: topology-aware-lifecycle-manager.v4.19.0
 package: topology-aware-lifecycle-manager
 properties:
@@ -39,7 +60,6 @@ properties:
           }
         ]
       capabilities: Basic Install
-      containerImage: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:ce31f637e54bd1aa36dca64d3dcc7806f6839fec7b916fb7e4c24dfbf7811956
       features.operators.openshift.io/cnf: "false"
       features.operators.openshift.io/cni: "false"
       features.operators.openshift.io/csi: "false"
@@ -52,8 +72,11 @@ properties:
       features.operators.openshift.io/token-auth-gcp: "false"
       olm.skipRange: '>=4.9.0 <4.19.0'
       operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
-      operators.openshift.io/valid-subscription: '["OpenShift Container Platform",
-        "OpenShift Platform Plus"]'
+      operators.openshift.io/valid-subscription: |-
+        [
+          "OpenShift Container Platform",
+          "OpenShift Platform Plus"
+        ]
       operators.operatorframework.io/builder: operator-sdk-v1.28.0-ocp
       operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
     apiServiceDefinitions: {}
@@ -230,9 +253,8 @@ properties:
           name: “”
           version: v1
         version: v1alpha1
-    description: |-
-      Topology Aware Lifecycle Manager is an operator that facilitates
-            platform and operator upgrades of group of clusters
+    description: Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
     displayName: Topology Aware Lifecycle Manager
     installModes:
     - supported: false
@@ -253,35 +275,14 @@ properties:
     provider:
       name: Red Hat
 relatedImages:
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:48a8da0954471160e30e0fbf849381936c8d649b01e0e13c28f09fcf6ad00cfa
-  name: ""
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9@sha256:b15d6eec646928f5859c1856888245e04e52c40ff098ca0ac610ddc3fd2bfec9
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9@sha256:443339b045aaed16021a69619448725fe85cce451aa64901282b9543221923d7
   name: aztp_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9@sha256:a03e8b474a9de7e4dd9f58e6861147432f969057f7c841487a0f185db97d18f2
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:de52e6de266847ba95e36b75dac9ff759707750800fce10d3009b8517aa6349a
+  name: ""
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9@sha256:e2c76abd51c8d5e9101e1d18cc5bfbad4cc86daacef262d85e3eaf968aa38fc8
   name: precache_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9@sha256:1b226196f8111bc4521cc2477df8bee8bce8171a2bb43db7fd7d9c2b612921d4
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9@sha256:7fe80be68c720a760bfb72972e7d39563ca8a046a8143f3fa52eea4ee65f5315
   name: recovery_img
-- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:ce31f637e54bd1aa36dca64d3dcc7806f6839fec7b916fb7e4c24dfbf7811956
+- image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator@sha256:e46bdeab643c60b0355190ae74dc8d5b2418f00c459861e04ac0f568498971cd
   name: manager
 schema: olm.bundle
----
-defaultChannel: stable
-icon:
-  base64data: PHN2ZyBpZD0iTGF5ZXJfMSIgZGF0YS1uYW1lPSJMYXllciAxIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxOTIgMTQ1Ij48ZGVmcz48c3R5bGU+LmNscy0xe2ZpbGw6I2UwMDt9PC9zdHlsZT48L2RlZnM+PHRpdGxlPlJlZEhhdC1Mb2dvLUhhdC1Db2xvcjwvdGl0bGU+PHBhdGggZD0iTTE1Ny43Nyw2Mi42MWExNCwxNCwwLDAsMSwuMzEsMy40MmMwLDE0Ljg4LTE4LjEsMTcuNDYtMzAuNjEsMTcuNDZDNzguODMsODMuNDksNDIuNTMsNTMuMjYsNDIuNTMsNDRhNi40Myw2LjQzLDAsMCwxLC4yMi0xLjk0bC0zLjY2LDkuMDZhMTguNDUsMTguNDUsMCwwLDAtMS41MSw3LjMzYzAsMTguMTEsNDEsNDUuNDgsODcuNzQsNDUuNDgsMjAuNjksMCwzNi40My03Ljc2LDM2LjQzLTIxLjc3LDAtMS4wOCwwLTEuOTQtMS43My0xMC4xM1oiLz48cGF0aCBjbGFzcz0iY2xzLTEiIGQ9Ik0xMjcuNDcsODMuNDljMTIuNTEsMCwzMC42MS0yLjU4LDMwLjYxLTE3LjQ2YTE0LDE0LDAsMCwwLS4zMS0zLjQybC03LjQ1LTMyLjM2Yy0xLjcyLTcuMTItMy4yMy0xMC4zNS0xNS43My0xNi42QzEyNC44OSw4LjY5LDEwMy43Ni41LDk3LjUxLjUsOTEuNjkuNSw5MCw4LDgzLjA2LDhjLTYuNjgsMC0xMS42NC01LjYtMTcuODktNS42LTYsMC05LjkxLDQuMDktMTIuOTMsMTIuNSwwLDAtOC40MSwyMy43Mi05LjQ5LDI3LjE2QTYuNDMsNi40MywwLDAsMCw0Mi41Myw0NGMwLDkuMjIsMzYuMywzOS40NSw4NC45NCwzOS40NU0xNjAsNzIuMDdjMS43Myw4LjE5LDEuNzMsOS4wNSwxLjczLDEwLjEzLDAsMTQtMTUuNzQsMjEuNzctMzYuNDMsMjEuNzdDNzguNTQsMTA0LDM3LjU4LDc2LjYsMzcuNTgsNTguNDlhMTguNDUsMTguNDUsMCwwLDEsMS41MS03LjMzQzIyLjI3LDUyLC41LDU1LC41LDc0LjIyYzAsMzEuNDgsNzQuNTksNzAuMjgsMTMzLjY1LDcwLjI4LDQ1LjI4LDAsNTYuNy0yMC40OCw1Ni43LTM2LjY1LDAtMTIuNzItMTEtMjcuMTYtMzAuODMtMzUuNzgiLz48L3N2Zz4=
-  mediatype: image/svg+xml
-name: topology-aware-lifecycle-manager
-schema: olm.package
----
-entries:
-- name: topology-aware-lifecycle-manager.v4.19.0
-  skipRange: '>=4.9.0 <4.19.0'
-name: "4.19"
-package: topology-aware-lifecycle-manager
-schema: olm.channel
----
-entries:
-- name: topology-aware-lifecycle-manager.v4.19.0
-  skipRange: '>=4.9.0 <4.19.0'
-name: stable
-package: topology-aware-lifecycle-manager
-schema: olm.channel
