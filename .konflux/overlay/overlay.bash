@@ -271,11 +271,11 @@ overlay_release()
     local display_name="Topology Aware Lifecycle Manager"
     local description="Topology Aware Lifecycle Manager is an operator that facilitates
       platform and operator upgrades of group of clusters"
-    local version="4.19.0"
+    local version="4.19.1"
     local name="topology-aware-lifecycle-manager"
     local name_version="$name.v$version"
     local manager="topology-aware-lifecycle-manager"
-    local skip_range=">=4.9.0 <4.19.0"
+    local skip_range=">=4.9.0 <4.19.1"
     local replaces="topology-aware-lifecycle-manager.v4.19.0"
     # min_kube_version should match ocp
     # https://access.redhat.com/solutions/4870701
@@ -290,10 +290,10 @@ overlay_release()
     yq e -i ".spec.minKubeVersion = \"$min_kube_version\"" $ARG_CSV_FILE
 
     # dont need 'replaces' for first release in a new channel (4.19.0)
-    yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
+    # yq e -i "del(.spec.replaces)" $ARG_CSV_FILE
 
     # use this from 4.19.1 onwards
-    # yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
+    yq e -i ".spec.replaces = \"$replaces\"" $ARG_CSV_FILE
 
     echo "Overlaying release completed!"
 }
