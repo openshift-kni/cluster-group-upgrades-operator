@@ -8,7 +8,7 @@ entries:
       mediatype: image/svg+xml
     name: topology-aware-lifecycle-manager
     schema: olm.package
-  # Channel entries should contain all the releases
+  # Channel entries for 'stable' channel
   - entries:
       # v4.13.0
       - name: topology-aware-lifecycle-manager.v4.13.0
@@ -28,6 +28,7 @@ entries:
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
+  # Channel entries for '4.13' channel
   - entries:
       # v4.13.0
       - name: topology-aware-lifecycle-manager.v4.13.0
