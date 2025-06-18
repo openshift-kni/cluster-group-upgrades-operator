@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -34,6 +35,7 @@ type testPolicyReconciler struct {
 	log                      logr.Logger
 	getPolicyByNameFunc      func(ctx context.Context, name string, namespace string) (*unstructured.Unstructured, error)
 	getClusterComplianceFunc func(clusterName string, policy *unstructured.Unstructured) string
+	shouldSoakFunc           func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error)
 }
 
 func (r *testPolicyReconciler) getPolicyByName(ctx context.Context, name string, namespace string) (*unstructured.Unstructured, error) {
@@ -55,6 +57,14 @@ func (r *testPolicyReconciler) getClusterComplianceWithPolicy(clusterName string
 		return r.getClusterComplianceFunc(clusterName, policy)
 	}
 	return utils.ClusterStatusNonCompliant
+}
+
+func (r *testPolicyReconciler) shouldSoak(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+	if r.shouldSoakFunc != nil {
+		return r.shouldSoakFunc(policy, firstCompliantAt)
+	}
+	// Default behavior: call the real utils.ShouldSoak function
+	return utils.ShouldSoak(policy, firstCompliantAt)
 }
 
 // Copy of the method we're testing to allow proper mocking
@@ -90,7 +100,7 @@ func (r *testPolicyReconciler) getNextNonCompliantPolicyForCluster(
 			if !clusterInBatch {
 				continue
 			}
-			shouldSoak, err := utils.ShouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
+			shouldSoak, err := r.shouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
 			if err != nil {
 				r.log.Info(err.Error())
 				continue
@@ -418,55 +428,219 @@ func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 	}
 }
 
-// Additional test for soaking behavior that requires mocking utils.ShouldSoak
+// Comprehensive test for soaking behavior with proper mocking
 func TestGetNextNonCompliantPolicyForCluster_SoakingBehavior(t *testing.T) {
 	ctx := context.Background()
 
-	// This test would require mocking utils.ShouldSoak function
-	// Since utils.ShouldSoak is not easily mockable in the current implementation,
-	// we'll create a basic test structure that could be extended when the function
-	// becomes more testable (e.g., by accepting the ShouldSoak function as a parameter)
-
-	t.Run("cluster soaking behavior placeholder", func(t *testing.T) {
-		// Test case for when cluster is compliant and should be soaking
-		// This would test the soaking logic path where:
-		// 1. Cluster is compliant
-		// 2. Cluster is in current batch
-		// 3. utils.ShouldSoak returns true
-		// 4. FirstCompliantAt is set if it was zero
-		// 5. isSoaking is returned as true
-
-		clusterGroupUpgrade := &ranv1alpha1.ClusterGroupUpgrade{
-			Status: ranv1alpha1.ClusterGroupUpgradeStatus{
-				ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
-					{Name: "policy1", Namespace: "namespace1"},
-				},
-				Status: ranv1alpha1.UpgradeStatus{
-					CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
-						"cluster1": {FirstCompliantAt: metav1.Time{}},
+	tests := []struct {
+		name                        string
+		clusterGroupUpgrade         *ranv1alpha1.ClusterGroupUpgrade
+		clusterName                 string
+		startIndex                  int
+		getClusterComplianceFunc    func(clusterName string, policy *unstructured.Unstructured) string
+		shouldSoakFunc              func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error)
+		expectedIndex               int
+		expectedSoaking             bool
+		expectedError               bool
+		expectFirstCompliantAtSet   bool
+		expectFirstCompliantAtReset bool
+	}{
+		{
+			name: "cluster should soak - sets FirstCompliantAt and returns soaking",
+			clusterGroupUpgrade: &ranv1alpha1.ClusterGroupUpgrade{
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+						{Name: "policy1", Namespace: "namespace1"},
+					},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"cluster1": {FirstCompliantAt: metav1.Time{}}, // Zero time
+						},
 					},
 				},
 			},
-		}
-
-		reconciler := &testPolicyReconciler{
-			log: logr.Discard(),
+			clusterName: "cluster1",
+			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				return utils.ClusterStatusCompliant
 			},
-		}
+			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+				return true, nil // Should soak
+			},
+			expectedIndex:             0,
+			expectedSoaking:           true,
+			expectedError:             false,
+			expectFirstCompliantAtSet: true,
+		},
+		{
+			name: "cluster should soak - already has FirstCompliantAt set",
+			clusterGroupUpgrade: &ranv1alpha1.ClusterGroupUpgrade{
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+						{Name: "policy1", Namespace: "namespace1"},
+					},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"cluster1": {
+								FirstCompliantAt: metav1.Time{Time: metav1.Now().Add(-5 * time.Minute)},
+							},
+						},
+					},
+				},
+			},
+			clusterName: "cluster1",
+			startIndex:  0,
+			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
+				return utils.ClusterStatusCompliant
+			},
+			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+				return true, nil // Should soak
+			},
+			expectedIndex:             0,
+			expectedSoaking:           true,
+			expectedError:             false,
+			expectFirstCompliantAtSet: false, // Already set, shouldn't change
+		},
+		{
+			name: "cluster should not soak - resets FirstCompliantAt and continues",
+			clusterGroupUpgrade: &ranv1alpha1.ClusterGroupUpgrade{
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+						{Name: "policy1", Namespace: "namespace1"},
+						{Name: "policy2", Namespace: "namespace2"},
+					},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"cluster1": {
+								FirstCompliantAt: metav1.Time{Time: metav1.Now().Add(-5 * time.Minute)},
+							},
+						},
+					},
+				},
+			},
+			clusterName: "cluster1",
+			startIndex:  0,
+			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
+				switch policy.GetName() {
+				case "policy1":
+					return utils.ClusterStatusCompliant
+				case "policy2":
+					return utils.ClusterStatusNonCompliant
+				}
+				return utils.ClusterStatusNonCompliant
+			},
+			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+				return false, nil // Should not soak
+			},
+			expectedIndex:               1,
+			expectedSoaking:             false,
+			expectedError:               false,
+			expectFirstCompliantAtReset: true,
+		},
+		{
+			name: "ShouldSoak returns error - logs error and continues",
+			clusterGroupUpgrade: &ranv1alpha1.ClusterGroupUpgrade{
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+						{Name: "policy1", Namespace: "namespace1"},
+						{Name: "policy2", Namespace: "namespace2"},
+					},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"cluster1": {FirstCompliantAt: metav1.Time{}},
+						},
+					},
+				},
+			},
+			clusterName: "cluster1",
+			startIndex:  0,
+			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
+				switch policy.GetName() {
+				case "policy1":
+					return utils.ClusterStatusCompliant
+				case "policy2":
+					return utils.ClusterStatusNonCompliant
+				}
+				return utils.ClusterStatusNonCompliant
+			},
+			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+				return false, errors.New("soaking calculation failed")
+			},
+			expectedIndex:   1,
+			expectedSoaking: false,
+			expectedError:   false, // Error is logged but doesn't propagate
+		},
+		{
+			name: "multiple policies - first soaking, should stop at first",
+			clusterGroupUpgrade: &ranv1alpha1.ClusterGroupUpgrade{
+				Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+					ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+						{Name: "policy1", Namespace: "namespace1"},
+						{Name: "policy2", Namespace: "namespace2"},
+						{Name: "policy3", Namespace: "namespace3"},
+					},
+					Status: ranv1alpha1.UpgradeStatus{
+						CurrentBatchRemediationProgress: map[string]*ranv1alpha1.ClusterRemediationProgress{
+							"cluster1": {FirstCompliantAt: metav1.Time{}},
+						},
+					},
+				},
+			},
+			clusterName: "cluster1",
+			startIndex:  0,
+			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
+				return utils.ClusterStatusCompliant // All policies compliant
+			},
+			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
+				if policy.GetName() == "policy1" {
+					return true, nil // First policy should soak
+				}
+				return false, nil // Others shouldn't soak (but won't be reached)
+			},
+			expectedIndex:             0,
+			expectedSoaking:           true,
+			expectedError:             false,
+			expectFirstCompliantAtSet: true,
+		},
+	}
 
-		// Note: This test is limited because we can't easily mock utils.ShouldSoak
-		// In a real implementation, we'd want to make ShouldSoak injectable or mockable
-		index, isSoaking, err := reconciler.getNextNonCompliantPolicyForCluster(
-			ctx, clusterGroupUpgrade, "cluster1", 0)
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Store original FirstCompliantAt for comparison
+			originalFirstCompliantAt := tt.clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[tt.clusterName].FirstCompliantAt
 
-		assert.NoError(t, err)
-		// The exact behavior depends on the implementation of utils.ShouldSoak
-		// which we can't control in this test
-		assert.GreaterOrEqual(t, index, 0)
-		_ = isSoaking // We can't make strong assertions about soaking without mocking utils.ShouldSoak
-	})
+			reconciler := &testPolicyReconciler{
+				log:                      logr.Discard(),
+				getClusterComplianceFunc: tt.getClusterComplianceFunc,
+				shouldSoakFunc:           tt.shouldSoakFunc,
+			}
+
+			index, isSoaking, err := reconciler.getNextNonCompliantPolicyForCluster(
+				ctx, tt.clusterGroupUpgrade, tt.clusterName, tt.startIndex)
+
+			if tt.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+
+			assert.Equal(t, tt.expectedIndex, index, "Policy index should match expected")
+			assert.Equal(t, tt.expectedSoaking, isSoaking, "Soaking status should match expected")
+
+			// Check FirstCompliantAt behavior
+			currentFirstCompliantAt := tt.clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[tt.clusterName].FirstCompliantAt
+
+			if tt.expectFirstCompliantAtSet {
+				assert.False(t, currentFirstCompliantAt.IsZero(), "FirstCompliantAt should be set")
+				assert.True(t, originalFirstCompliantAt.IsZero(), "Original FirstCompliantAt should have been zero")
+			}
+
+			if tt.expectFirstCompliantAtReset {
+				assert.True(t, currentFirstCompliantAt.IsZero(), "FirstCompliantAt should be reset to zero")
+				assert.False(t, originalFirstCompliantAt.IsZero(), "Original FirstCompliantAt should not have been zero")
+			}
+		})
+	}
 }
 
 func TestGetNextNonCompliantPolicyForCluster_EdgeCases(t *testing.T) {
