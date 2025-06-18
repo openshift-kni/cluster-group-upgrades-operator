@@ -271,12 +271,12 @@ overlay_release()
     local display_name="Topology Aware Lifecycle Manager"
     local description="Topology Aware Lifecycle Manager is an operator that facilitates
       platform and operator upgrades of group of clusters"
-    local version="4.16.4"
+    local version="4.16.5"
     local name="topology-aware-lifecycle-manager"
     local name_version="$name.v$version"
     local manager="topology-aware-lifecycle-manager"
-    local skip_range=">=4.9.0 <4.16.4"
-    local replaces="topology-aware-lifecycle-manager.v4.16.3"
+    local skip_range=">=4.9.0 <4.16.5"
+    local replaces="topology-aware-lifecycle-manager.v4.16.4"
     # min_kube_version should match ocp
     # https://access.redhat.com/solutions/4870701
     export min_kube_version="1.29.0"
