@@ -911,7 +911,7 @@ func (r *ClusterGroupUpgradeReconciler) getClusterProgress(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, bool, error) {
 	switch clusterGroupUpgrade.RolloutType() {
 	case ranv1alpha1.RolloutTypes.Policy:
-		return r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, startIndex)
+		return r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, clusterName, startIndex, nil)
 	default:
 		return r.getNextManifestWorkForCluster(ctx, clusterGroupUpgrade, clusterName, startIndex)
 	}
