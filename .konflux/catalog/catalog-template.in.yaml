@@ -8,72 +8,91 @@ entries:
       mediatype: image/svg+xml
     name: topology-aware-lifecycle-manager
     schema: olm.package
-  # Channel entries should contain all the releases
+  # Channel entries for 'stable' channel
   - entries:
+      # v4.14.0
       - name: topology-aware-lifecycle-manager.v4.14.0
         skipRange: '>=4.10.0 <4.14.0'
+      # v4.14.1
       - name: topology-aware-lifecycle-manager.v4.14.1
         replaces: topology-aware-lifecycle-manager.v4.14.0
         skipRange: '>=4.9.0 <4.14.1'
+      # v4.14.2
       - name: topology-aware-lifecycle-manager.v4.14.2
         replaces: topology-aware-lifecycle-manager.v4.14.1
         skipRange: '>=4.9.0 <4.14.2'
+      # v4.14.3
       - name: topology-aware-lifecycle-manager.v4.14.3
         replaces: topology-aware-lifecycle-manager.v4.14.2
         skipRange: '>=4.9.0 <4.14.3'
+      # v4.14.4
       - name: topology-aware-lifecycle-manager.v4.14.4
         replaces: topology-aware-lifecycle-manager.v4.14.3
         skipRange: '>=4.9.0 <4.14.4'
+      # v4.14.5
       - name: topology-aware-lifecycle-manager.v4.14.5
         replaces: topology-aware-lifecycle-manager.v4.14.4
         skipRange: '>=4.9.0 <4.14.5'
+      # v4.14.6
       - name: topology-aware-lifecycle-manager.v4.14.6
         replaces: topology-aware-lifecycle-manager.v4.14.5
         skipRange: '>=4.9.0 <4.14.6'
+      # v4.14.7
       - name: topology-aware-lifecycle-manager.v4.14.7
         replaces: topology-aware-lifecycle-manager.v4.14.6
         skipRange: '>=4.9.0 <4.14.7'
+      # v4.14.8
       - name: topology-aware-lifecycle-manager.v4.14.8
         replaces: topology-aware-lifecycle-manager.v4.14.7
         skipRange: '>=4.9.0 <4.14.8'
-        # Until we release the first build on Konflux, we just want the existing released images
-        # - name: topology-aware-lifecycle-manager.v4.14.9
-        #   skipRange: '>=4.9.0 <4.14.9'
-        #   replaces: 'topology-aware-lifecycle-manager.v4.14.9'
+      # v4.14.9
+      - name: topology-aware-lifecycle-manager.v4.14.9
+        replaces: topology-aware-lifecycle-manager.v4.14.8
+        skipRange: '>=4.9.0 <4.14.9'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
+  # Channel entries for '4.14' channel
   - entries:
+      # v4.14.0
       - name: topology-aware-lifecycle-manager.v4.14.0
         skipRange: '>=4.10.0 <4.14.0'
+      # v4.14.1
       - name: topology-aware-lifecycle-manager.v4.14.1
         replaces: topology-aware-lifecycle-manager.v4.14.0
         skipRange: '>=4.9.0 <4.14.1'
+      # v4.14.2
       - name: topology-aware-lifecycle-manager.v4.14.2
         replaces: topology-aware-lifecycle-manager.v4.14.1
         skipRange: '>=4.9.0 <4.14.2'
+      # v4.14.3
       - name: topology-aware-lifecycle-manager.v4.14.3
         replaces: topology-aware-lifecycle-manager.v4.14.2
         skipRange: '>=4.9.0 <4.14.3'
+      # v4.14.4
       - name: topology-aware-lifecycle-manager.v4.14.4
         replaces: topology-aware-lifecycle-manager.v4.14.3
         skipRange: '>=4.9.0 <4.14.4'
+      # v4.14.5
       - name: topology-aware-lifecycle-manager.v4.14.5
         replaces: topology-aware-lifecycle-manager.v4.14.4
         skipRange: '>=4.9.0 <4.14.5'
+      # v4.14.6
       - name: topology-aware-lifecycle-manager.v4.14.6
         replaces: topology-aware-lifecycle-manager.v4.14.5
         skipRange: '>=4.9.0 <4.14.6'
+      # v4.14.7
       - name: topology-aware-lifecycle-manager.v4.14.7
         replaces: topology-aware-lifecycle-manager.v4.14.6
         skipRange: '>=4.9.0 <4.14.7'
+      # v4.14.8
       - name: topology-aware-lifecycle-manager.v4.14.8
         replaces: topology-aware-lifecycle-manager.v4.14.7
         skipRange: '>=4.9.0 <4.14.8'
-        # Until we release the first build on Konflux, we just want the existing released images
-        # - name: topology-aware-lifecycle-manager.v4.14.9
-        #   skipRange: '>=4.9.0 <4.14.9'
-        #   replaces: 'topology-aware-lifecycle-manager.v4.14.9'
+      # v4.14.9
+      - name: topology-aware-lifecycle-manager.v4.14.9
+        replaces: topology-aware-lifecycle-manager.v4.14.8
+        skipRange: '>=4.9.0 <4.14.9'
     name: "4.14"
     package: topology-aware-lifecycle-manager
     schema: olm.channel
@@ -104,8 +123,7 @@ entries:
   # v4.14.8 bundle
   - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:94e97b49e24c55fd43b1936093e82e589cc95a53c46e663b0ac6f771b8add71e
     schema: olm.bundle
-# The url for this last entry (which is for the next release) is updated by hack/konflux-update-catalog-template.sh automatically
-# It takes the input data from bundle.builds.in.yaml
-# When we are ready for the next release then uncomment this section so the final bundle url is updated correctly
-# - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-14@sha256:4b47aaeaae5c651b5cf8b634ee3f442e92ad49d553ca1eeff702e9dc64ea4293
-#   schema: olm.bundle
+  # v4.14.9 bundle
+  # The url for this last entry is updated by hack/konflux-update-catalog-template.sh automatically
+  - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-14@sha256:b4ab05819b15666a60ac013e26e2c454e42a39fba2191440e8b750aa6adcca7d
+    schema: olm.bundle
