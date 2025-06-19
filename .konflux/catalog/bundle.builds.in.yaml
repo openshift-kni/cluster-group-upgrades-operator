@@ -1,5 +1,2 @@
 ---
-# After fbc migration, enabling nudging here
-# quay: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19@sha256:48a8da0954471160e30e0fbf849381936c8d649b01e0e13c28f09fcf6ad00cfa
-# For now, pin to released 4.19.0 bundle
-quay: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:de52e6de266847ba95e36b75dac9ff759707750800fce10d3009b8517aa6349a
+quay: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19@sha256:0232be169e7da5b3a4782eb5279ad4e10dcccb7b6b90844071c4445e23730888
