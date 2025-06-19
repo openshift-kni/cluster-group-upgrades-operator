@@ -1,3 +1,2 @@
 ---
-# When we are ready to ship the first Konflux release, replace this with the nudge to the quay build
-quay: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:e4f355686cabbf44c7ff749a593c59b53818e09dd34367726d45c5cedf38e501
+quay: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-15@sha256:65eafd9184084bc0dcf9b0fe97ffde4631787841baebd0cb4c5af0a3ed815f68 

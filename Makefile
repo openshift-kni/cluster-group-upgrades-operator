@@ -133,6 +133,9 @@ all: build
 help: ## Display this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m<target>\033[0m\n"} /^[a-zA-Z_0-9-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
+clean:
+	rm -rf bin/
+
 ##@ Development
 
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -437,7 +440,8 @@ endif
 
 .PHONY: konflux-update-task-refs ## update task images
 konflux-update-task-refs: yq
-	hack/konflux-update-task-refs.sh .tekton/$(PACKAGE_NAME_KONFLUX)-4-19-build.yaml
+	hack/konflux-update-task-refs.sh .tekton/build-pipeline.yaml
+	hack/konflux-update-task-refs.sh .tekton/fbc-pipeline.yaml
 
 .PHONY: konflux-validate-catalog-template-bundle ## validate the last bundle entry on the catalog template file
 konflux-validate-catalog-template-bundle: yq operator-sdk
@@ -456,7 +460,8 @@ konflux-validate-catalog: opm ## validate the current catalog file
 .PHONY: konflux-generate-catalog ## generate a quay.io catalog
 konflux-generate-catalog: yq opm
 	hack/konflux-update-catalog-template.sh --set-catalog-template-file $(CATALOG_TEMPLATE_KONFLUX) --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
-	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX) > .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml	
+	touch $(CATALOG_KONFLUX)
+	$(OPM) alpha render-template basic --output yaml $(CATALOG_TEMPLATE_KONFLUX) > .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
     # Hack to replace name for TALM
 	sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
 	$(OPM) validate .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/
