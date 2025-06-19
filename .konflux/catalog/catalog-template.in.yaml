@@ -15,8 +15,8 @@ entries:
         skipRange: '>=4.9.0 <4.15.0'
       # v4.15.1
       - name: topology-aware-lifecycle-manager.v4.15.1
-        skipRange: '>=4.9.0 <4.15.1'
         replaces: 'topology-aware-lifecycle-manager.v4.15.0'
+        skipRange: '>=4.9.0 <4.15.1'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
@@ -27,8 +27,8 @@ entries:
         skipRange: '>=4.9.0 <4.15.0'
       # v4.15.1
       - name: topology-aware-lifecycle-manager.v4.15.1
-        skipRange: '>=4.9.0 <4.15.1'
         replaces: 'topology-aware-lifecycle-manager.v4.15.0'
+        skipRange: '>=4.9.0 <4.15.1'
     name: "4.15"
     package: topology-aware-lifecycle-manager
     schema: olm.channel
