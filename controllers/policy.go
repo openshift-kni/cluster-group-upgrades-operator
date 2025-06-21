@@ -373,6 +373,13 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementRule(clusterGroupUpgrad
 	return u
 }
 
+// PolicyEvaluationDeps provides dependency injection for policy evaluation functions
+type PolicyEvaluationDeps struct {
+	GetPolicy     func(ctx context.Context, name, namespace string) (*unstructured.Unstructured, error)
+	GetCompliance func(clusterName string, policy *unstructured.Unstructured) string
+	ShouldSoak    func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error)
+}
+
 /*
 getNextNonCompliantPolicyForCluster goes through all the policies in the managedPolicies list, starting with the
 
@@ -382,20 +389,38 @@ getNextNonCompliantPolicyForCluster goes through all the policies in the managed
 	         error/nil
 */
 func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
-	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int) (int, bool, error) {
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string, startIndex int, deps *PolicyEvaluationDeps) (int, bool, error) {
+
+	// Set up dependency functions - use injected dependencies or fallback to defaults
+	getPolicy := r.getPolicyByName
+	getCompliance := r.getClusterComplianceWithPolicy
+	shouldSoak := utils.ShouldSoak
+
+	if deps != nil {
+		if deps.GetPolicy != nil {
+			getPolicy = deps.GetPolicy
+		}
+		if deps.GetCompliance != nil {
+			getCompliance = deps.GetCompliance
+		}
+		if deps.ShouldSoak != nil {
+			shouldSoak = deps.ShouldSoak
+		}
+	}
+
 	isSoaking := false
 	numberOfPolicies := len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade)
 	currentPolicyIndex := startIndex
 	for ; currentPolicyIndex < numberOfPolicies; currentPolicyIndex++ {
 		// Get the name of the managed policy matching the current index.
 		currentManagedPolicyInfo := clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade[currentPolicyIndex]
-		currentManagedPolicy, err := r.getPolicyByName(ctx, currentManagedPolicyInfo.Name, currentManagedPolicyInfo.Namespace)
+		currentManagedPolicy, err := getPolicy(ctx, currentManagedPolicyInfo.Name, currentManagedPolicyInfo.Namespace)
 		if err != nil {
 			return currentPolicyIndex, isSoaking, err
 		}
 
 		// Check if current cluster is compliant or not for its current managed policy.
-		clusterStatus := r.getClusterComplianceWithPolicy(clusterName, currentManagedPolicy)
+		clusterStatus := getCompliance(clusterName, currentManagedPolicy)
 
 		// If the cluster is compliant for the policy or if the cluster is not matched with the policy,
 		// move to the next policy index.
@@ -413,12 +438,12 @@ func (r *ClusterGroupUpgradeReconciler) getNextNonCompliantPolicyForCluster(
 			if !clusterInBatch {
 				continue
 			}
-			shouldSoak, err := utils.ShouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
+			soakResult, err := shouldSoak(currentManagedPolicy, clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt)
 			if err != nil {
 				r.Log.Info(err.Error())
 				continue
 			}
-			if !shouldSoak {
+			if !soakResult {
 				clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].FirstCompliantAt = metav1.Time{}
 				continue
 			}
@@ -738,7 +763,7 @@ func (r *ClusterGroupUpgradeReconciler) arePreviousBatchesCompleteForPolicies(ct
 	for i := 0; i < len(clusterGroupUpgrade.Status.RemediationPlan)-1; i++ {
 		for _, batchClusterName := range clusterGroupUpgrade.Status.RemediationPlan[i] {
 			// Start with policy index 0 as we don't keep progress info from previous batches
-			nextNonCompliantPolicyIndex, isSoaking, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0)
+			nextNonCompliantPolicyIndex, isSoaking, err := r.getNextNonCompliantPolicyForCluster(ctx, clusterGroupUpgrade, batchClusterName, 0, nil)
 			if err != nil || nextNonCompliantPolicyIndex < len(clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade) {
 				return false, isSoaking, err
 			}
