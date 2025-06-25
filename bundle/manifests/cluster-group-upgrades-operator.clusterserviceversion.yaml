@@ -30,8 +30,8 @@ metadata:
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
     operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
       Platform Plus"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.28.0-ocp
-    operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    operators.operatorframework.io/builder: operator-sdk-v1.40.0
+    operators.operatorframework.io/project_layout: go.kubebuilder.io/v4
   name: cluster-group-upgrades-operator.v4.20.0
   namespace: placeholder
 spec:
@@ -55,16 +55,18 @@ spec:
         path: actions
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'This field determines whether the cluster would be running a
-          backup prior to the upgrade. Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade
-          instead for SNO upgrades with built-in backup/rollback functionality'
+      - description: |-
+          This field determines whether the cluster would be running a backup prior to the upgrade.
+          Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
         displayName: Backup
         path: backup
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
-      - description: 'The Batch Timeout Action can be specified to control what happens
-          when a batch times out. The default value is `Continue`. The possible values
-          are: - Continue - Abort'
+      - description: |-
+          The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`.
+          The possible values are:
+            - Continue
+            - Abort
         displayName: BatchTimeoutAction
         path: batchTimeoutAction
         x-descriptors:
@@ -73,22 +75,41 @@ spec:
         path: blockingCRs
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'This field holds a list of expressions or labels that will be
-          used to determine what clusters to include in the operation. The expected
-          format is as follows: clusterLabelSelectors: - matchExpressions: - key:
-          label1 operator: In values: - value1a - value1b - matchLabels: label2: value2
-          - matchExpressions: - key: label3 operator: In values: - value3 matchLabels:
-          label4: value4'
+      - description: |-
+          This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
+          The expected format is as follows:
+          clusterLabelSelectors:
+            - matchExpressions:
+                - key: label1
+                  operator: In
+                  values:
+                    - value1a
+                    - value1b
+            - matchLabels:
+                label2: value2
+            - matchExpressions:
+                - key: label3
+                  operator: In
+                  values:
+                    - value3
+              matchLabels:
+                label4: value4
         displayName: Cluster Label Selectors
         path: clusterLabelSelectors
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: 'This field holds a label common to multiple clusters that will
-          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
-          - label2Name=label2Value If the value is empty, then the expected format
-          is: clusterSelector: - label1Name All the clusters matching the labels specified
-          in clusterSelector will be included in the update plan. Deprecated: Use
-          ClusterLabelSelectors instead'
+      - description: |-
+          This field holds a label common to multiple clusters that will be updated.
+          The expected format is as follows:
+          clusterSelector:
+            - label1Name=label1Value
+            - label2Name=label2Value
+          If the value is empty, then the expected format is:
+          clusterSelector:
+            - label1Name
+          All the clusters matching the labels specified in clusterSelector will be included
+          in the update plan.
+          Deprecated: Use ClusterLabelSelectors instead
         displayName: Cluster Selector
         path: clusterSelector
         x-descriptors:
@@ -97,10 +118,10 @@ spec:
         path: clusters
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: This field determines when the upgrade starts. While false, the
-          upgrade doesn't start. The policies, placement rules and placement bindings
-          are created, but clusters are not added to the placement rule. Once set
-          to true, the clusters start being upgraded, one batch at a time.
+      - description: |-
+          This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
+          placement rules and placement bindings are created, but clusters are not added to the placement rule.
+          Once set to true, the clusters start being upgraded, one batch at a time.
         displayName: Enable
         path: enable
         x-descriptors:
@@ -113,16 +134,18 @@ spec:
         path: manifestWorkTemplates
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
-      - description: This field determines whether container image pre-caching will
-          be done on all the clusters matching the selector. If required, the pre-caching
-          process starts immediately on all clusters irrespectively of the value of
-          the "enable" flag
+      - description: |-
+          This field determines whether container image pre-caching will be done on all the clusters
+          matching the selector.
+          If required, the pre-caching process starts immediately on all clusters irrespectively of
+          the value of the "enable" flag
         displayName: PreCaching
         path: preCaching
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:bool
-      - description: This field specifies a reference to a pre-caching config custom
-          resource that contains the additional pre-caching configurations.
+      - description: |-
+          This field specifies a reference to a pre-caching config custom resource that contains the additional
+          pre-caching configurations.
         displayName: PreCachingConfigRef
         path: preCachingConfigRef
         x-descriptors:
@@ -147,14 +170,16 @@ spec:
         path: managedPoliciesCompliantBeforeUpgrade
       - displayName: Managed Policies Content
         path: managedPoliciesContent
-      - description: Contains the managed policies (and the namespaces) that have
-          NonCompliant clusters that require updating.
+      - description: |-
+          Contains the managed policies (and the namespaces) that have NonCompliant clusters
+          that require updating.
         displayName: Managed Policies For Upgrade
         path: managedPoliciesForUpgrade
       - displayName: Managed Policies Namespace
         path: managedPoliciesNs
-      - description: 'INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-          Important: Run "make" to regenerate code after modifying this file'
+      - description: |-
+          INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+          Important: Run "make" to regenerate code after modifying this file
         displayName: Placement Bindings
         path: placementBindings
       - displayName: Placement Rules
