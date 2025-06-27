@@ -209,13 +209,14 @@ controller-gen: ## Download controller-gen locally if necessary.
 	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0)
 
 OPERATOR_SDK_VERSION = $(shell $(OPERATOR_SDK) version 2>/dev/null | sed 's/^operator-sdk version: "\([^"]*\).*/\1/')
-OPERATOR_SDK_VERSION_REQ = v1.28.0-ocp
+OPERATOR_SDK_VERSION_REQ = v1.40.0
 operator-sdk: ## Download operator-sdk locally if necessary.
 ifneq ($(OPERATOR_SDK_VERSION_REQ),$(OPERATOR_SDK_VERSION))
 	@{ \
 	set -e ;\
-	OS=$(shell go env GOOS) && ARCH=$(shell arch) && \
-	curl -Lv https://mirror.openshift.com/pub/openshift-v4/$${ARCH}/clients/operator-sdk/4.13.11/operator-sdk-v1.28.0-ocp-$${OS}-$${ARCH}.tar.gz | tar --strip-components 2 -xz -C bin/ ;\
+	OS=$(shell go env GOOS) && ARCH=$(shell go env GOARCH) && \
+	curl -Lk  https://github.com/operator-framework/operator-sdk/releases/download/$(OPERATOR_SDK_VERSION_REQ)/operator-sdk_$${OS}_$${ARCH} > $(OPERATOR_SDK) ;\
+	chmod u+x $(OPERATOR_SDK) ;\
 	}
 endif
 
