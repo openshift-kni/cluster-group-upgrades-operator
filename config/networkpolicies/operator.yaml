@@ -1,0 +1,20 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+ name: operator
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/component: talm
+      app.kubernetes.io/name: talm-operator
+      control-plane: controller-manager
+  egress:
+     - {} # Allow egress to all destinations and ports
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9443
+  policyTypes:
+    - Egress
+    - Ingress
