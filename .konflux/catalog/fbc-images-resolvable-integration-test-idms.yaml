@@ -4,6 +4,7 @@ kind: ImageDigestMirrorSet
 metadata:
   name: fbc-images-resolvable-integration-test-idms
 spec:
+  imageDigestMirrors:
   - mirrors:
     - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
     source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
