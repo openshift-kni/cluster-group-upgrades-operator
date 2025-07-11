@@ -1,0 +1,15 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke1
+  labels:
+    finish: "1"  
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke2
+  labels:
+    finish: "1"  
+---
