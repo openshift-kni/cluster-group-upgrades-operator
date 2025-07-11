@@ -6,17 +6,17 @@ metadata:
 spec:
   imageDigestMirrors:
   - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
+    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
+    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
   - mirrors:
     - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
     source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
   - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
+    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
+    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
   - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
+    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
+    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
   - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
+    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
+    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
