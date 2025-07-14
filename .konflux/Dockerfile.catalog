@@ -1,5 +1,5 @@
 # The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-ARG OPM_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-ose-operator-registry-rhel9:v4.19
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.19
 ARG BUILDER_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23
 
 # build the catalog
