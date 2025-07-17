@@ -199,6 +199,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 		var allManagedPoliciesExist, allManifestWorkTemplatesExist bool
 		var managedPoliciesInfo policiesInfo
 		var clusters, missingTemplates []string
+		var compliantClusters []string
 		var missingClusters []string
 		var reconcile bool
 		clusters, missingClusters, reconcile, err = r.validateCR(ctx, clusterGroupUpgrade)
@@ -267,7 +268,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			)
 
 			// Build the upgrade batches.
-			r.buildRemediationPlan(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			compliantClusters = r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
 
 			// Recheck clusters list for any changes to the plan
 			clusters = utils.GetClustersListFromRemediationPlan(clusterGroupUpgrade)
@@ -505,7 +506,10 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			// Rebuild remediation plan since we are about to start the upgrade and want to make sure the non-successful clusters were filtered out
-			r.buildRemediationPlan(ctx, clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			newCompliantClustesrs := r.buildRemediationPlan(clusterGroupUpgrade, clusters, managedPoliciesInfo.presentPolicies)
+			compliantClusters = append(compliantClusters, newCompliantClustesrs...)
+			r.performAfterCompletionActions(
+				ctx, clusterGroupUpgrade, compliantClusters)
 
 			// Take actions before starting upgrade.
 			err = r.takeActionsBeforeEnable(ctx, clusterGroupUpgrade)
@@ -985,9 +989,35 @@ func (r *ClusterGroupUpgradeReconciler) isUpgradeComplete(ctx context.Context, c
 	return isComplete, isSoaking, isProgressing, err
 }
 
-func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPolicies []*unstructured.Unstructured) {
+func (r *ClusterGroupUpgradeReconciler) performAfterCompletionActions(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string,
+) {
+	r.Log.Info("[performAfterCompletionActionsForCompliantClusters]",
+		"cgu", clusterGroupUpgrade.Name, "clusters", clusters)
+	// Make clusters unique
+	clusterSet := make(map[string]struct{}, len(clusters))
+	uniqueClusters := make([]string, 0, len(clusters))
+	for _, c := range clusters {
+		if _, exists := clusterSet[c]; !exists {
+			clusterSet[c] = struct{}{}
+			uniqueClusters = append(uniqueClusters, c)
+		}
+	}
+	clusters = uniqueClusters
+
+	if !*clusterGroupUpgrade.Spec.Enable {
+		return
+	}
+	for i := 0; i < len(clusters); i++ {
+		cluster := clusters[i]
+		r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, cluster)
+	}
+}
+
+func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
+	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string, managedPolicies []*unstructured.Unstructured) []string {
 	var clusterMap map[string]bool
+	compliantClusters := []string{}
 	if len(managedPolicies) > 0 {
 		// Get all clusters from the CR that are non compliant with at least one of the managedPolicies.
 		clusterMap = r.getClustersNonCompliantWithManagedPolicies(clusters, managedPolicies)
@@ -1007,8 +1037,8 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 			if clusterMap[canary] {
 				remediationPlan = append(remediationPlan, []string{canary})
 				isCanary[canary] = true
-			} else if *clusterGroupUpgrade.Spec.Enable {
-				r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, canary)
+			} else {
+				compliantClusters = append(compliantClusters, canary)
 			}
 		}
 	}
@@ -1021,8 +1051,8 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 			if clusterMap[cluster] {
 				batch = append(batch, cluster)
 				clusterCount++
-			} else if *clusterGroupUpgrade.Spec.Enable {
-				r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, cluster)
+			} else {
+				compliantClusters = append(compliantClusters, cluster)
 			}
 		}
 
@@ -1036,6 +1066,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(ctx context.Context
 	}
 	r.Log.Info("Remediation plan", "remediatePlan", remediationPlan)
 	clusterGroupUpgrade.Status.RemediationPlan = remediationPlan
+	return compliantClusters
 }
 
 func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) ([]string, error) {
