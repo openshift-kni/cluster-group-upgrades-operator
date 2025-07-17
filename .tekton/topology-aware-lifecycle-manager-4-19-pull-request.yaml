@@ -63,7 +63,7 @@ spec:
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-recovery-4-19
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-4-19
   workspaces:
     - name: git-auth
       secret:
