@@ -1,3 +1,25 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke1
+  labels:
+    vendor: "auto-detect"  
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke2
+  labels:
+    vendor: "auto-detect"  
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke3
+  labels:
+    vendor: "auto-detect"  
+---
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
@@ -58,8 +80,7 @@ status:
   - cgu-a-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
   remediationPlan:
-  - - spoke1
-  - - spoke2
+  - - spoke3
   safeResourceNames:
     default/cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
     default/cgu-a-policy2-common-pao-sub-policy-placement: cgu-a-policy2-common-pao-sub-policy-placement-kuttl
@@ -198,5 +219,5 @@ status:
     currentBatch: 1
     currentBatchRemediationProgress:
       spoke6:
-        policyIndex: 0
+        policyIndex: 1
         state: InProgress
