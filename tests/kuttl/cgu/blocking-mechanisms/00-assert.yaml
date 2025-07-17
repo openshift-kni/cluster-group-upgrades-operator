@@ -1,3 +1,25 @@
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke1
+  labels:
+    vendor: "auto-detect"
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke2
+  labels:
+    vendor: "auto-detect"
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  name: spoke3
+  labels:
+    vendor: "auto-detect"  
+---
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
 metadata:
@@ -11,7 +33,6 @@ spec:
   - spoke1
   - spoke2
   - spoke3
-  enable: false
   managedPolicies:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
@@ -22,19 +43,6 @@ spec:
     maxConcurrency: 2
     timeout: 240
 status:
-  conditions:
-  - message: All selected clusters are valid
-    reason: ClusterSelectionCompleted
-    status: 'True'
-    type: ClustersSelected
-  - message: Completed validation
-    reason: ValidationCompleted
-    status: 'True'
-    type: Validated
-  - message: Not enabled
-    reason: NotEnabled
-    status: 'False'
-    type: Progressing
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
@@ -58,13 +66,11 @@ status:
   - cgu-a-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
   remediationPlan:
-  - - spoke1
-  - - spoke2
+  - - spoke3
   safeResourceNames:
     default/cgu-a-policy1-common-cluster-version-policy-placement: cgu-a-policy1-common-cluster-version-policy-placement-kuttl
     default/cgu-a-policy2-common-pao-sub-policy-placement: cgu-a-policy2-common-pao-sub-policy-placement-kuttl
     default/cgu-a-policy3-common-ptp-sub-policy-placement: cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
-  status: {}
 ---
 apiVersion: ran.openshift.io/v1alpha1
 kind: ClusterGroupUpgrade
@@ -170,9 +176,6 @@ status:
     reason: NotEnabled
     status: 'False'
     type: Progressing
-  managedPoliciesCompliantBeforeUpgrade:
-  - policy2-common-pao-sub-policy
-  - policy3-common-ptp-sub-policy
   managedPoliciesContent:
     policy4-common-sriov-sub-policy: '[{"kind":"Subscription","name":"sriov-network-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-sriov-network-operator"}]'
   managedPoliciesForUpgrade:
@@ -184,9 +187,6 @@ status:
     policy1-common-cluster-version-policy: default
     policy4-common-sriov-sub-policy: default
   placementBindings:
-  - cgu-c-policy1-common-cluster-version-policy-placement-kuttl
-  - cgu-c-policy4-common-sriov-sub-policy-placement-kuttl
-  placementRules:
   - cgu-c-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-c-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
