@@ -119,7 +119,7 @@ linters-settings:
         files:
           - $all
         # List of allowed packages.
-        #allow:
+        # allow:
         #  - $gostd
         # Packages that are not allowed where the value is a suggestion.
         deny:

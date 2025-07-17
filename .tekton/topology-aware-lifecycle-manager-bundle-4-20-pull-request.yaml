@@ -10,17 +10,19 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "pull_request" &&
-      target_branch == "main" && 
+      target_branch == "main" &&
       (
-        '.tekton/build-pipeline.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.konflux/Dockerfile.bundle'.pathChanged() ||
+        '.konflux/overlay/***'.pathChanged() ||
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-bundle-4-20-pull-request.yaml'.pathChanged() ||
         'bundle/***'.pathChanged() ||
         'config/***'.pathChanged() ||
         'hack/***'.pathChanged() ||
         'manifests/***'.pathChanged() ||
-        '.konflux/overlay/***'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-bundle-4-20-pull-request.yaml'.pathChanged() ||
-        '.konflux/Dockerfile.bundle'.pathChanged()
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:

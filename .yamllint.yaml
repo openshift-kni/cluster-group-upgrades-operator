@@ -1,3 +1,6 @@
+---
+extends: default
+ignore:
+  - vendor/
 rules:
-  line-length:
-    max: 9999
+  line-length: disable

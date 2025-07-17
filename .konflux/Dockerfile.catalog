@@ -7,9 +7,10 @@ FROM ${BUILDER_IMAGE} AS builder
 
 # create dir structure to generate the catalog
 RUN mkdir -p /app/hack /app/.konflux/catalog
-COPY Makefile /app
 COPY hack/ /app/hack/
 COPY .konflux/catalog/ /app/.konflux/catalog/
+COPY telco5g-konflux /app/telco5g-konflux
+COPY Makefile /app/Makefile
 
 # we need to copy the vendor/ folder as the Makefile depends on it
 COPY vendor/ /app/vendor/
@@ -30,7 +31,7 @@ RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra 
 ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
 # The fbc build is not hermetic, so make will download yq and opm
 RUN make konflux-generate-catalog-production && \
-    rm $HOME/.docker/config.json
+    rm -f $HOME/.docker/config.json
 
 # run the catalog
 FROM ${OPM_IMAGE}
