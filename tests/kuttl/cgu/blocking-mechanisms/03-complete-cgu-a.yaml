@@ -1,0 +1,10 @@
+
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: ../../../../deploy/acm/policies/blocking_mechanisms/patch.bash default default default default
+    ignoreFailure: false
+
+  # Just to wake up the controller sooner
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-a --patch '{"spec":{"remediationStrategy":{"timeout":240}}}' --type=merge

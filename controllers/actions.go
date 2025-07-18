@@ -52,6 +52,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, cluster string) error {
 
+	r.Log.Info("[takeActionsAfterCompletion]", "cluster", cluster, "cgu", clusterGroupUpgrade.Name)
 	clusterState := ranv1alpha1.ClusterState{
 		Name: cluster, State: utils.ClusterRemediationComplete}
 	clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterState)

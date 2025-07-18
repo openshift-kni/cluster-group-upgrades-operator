@@ -6,6 +6,12 @@ metadata:
   annotations:
     cluster-group-upgrades-operator/name-suffix: kuttl  
 spec:
+  actions:
+    afterCompletion:
+      deleteClusterLabels:
+        vendor: "auto-detect"
+      addClusterLabels:
+        finish: ""
   managedPolicies:
     - policy1-common-cluster-version-policy
     - policy2-common-pao-sub-policy
@@ -13,7 +19,7 @@ spec:
   blockingCRs:
   - name: cgu-c
     namespace: default
-  enable: false
+  enable: true
   clusters:
   - spoke1
   - spoke2
