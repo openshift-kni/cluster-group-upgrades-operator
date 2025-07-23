@@ -290,7 +290,7 @@ func checkViewProcessing(viewConditions []interface{}) (bool, error) {
 	if message == "" {
 		message = "Processing condition not found in MCV status"
 	}
-	return false, fmt.Errorf("MCV processing error: " + message)
+	return false, fmt.Errorf("MCV processing error: %s", message)
 }
 
 // renderYamlTemplate renders a single yaml template
