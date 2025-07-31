@@ -16,6 +16,9 @@ metadata:
         }
       ]
     capabilities: Basic Install
+    containerImage: quay.io/openshift-kni/cluster-group-upgrades-operator
+    description: The topology aware lifecycle manager is an operator that facilitates
+      platform upgrades of group of clusters
     features.operators.openshift.io/cnf: "false"
     features.operators.openshift.io/cni: "false"
     features.operators.openshift.io/csi: "false"
@@ -27,11 +30,28 @@ metadata:
     features.operators.openshift.io/token-auth-azure: "false"
     features.operators.openshift.io/token-auth-gcp: "false"
     olm.skipRange: '>=4.10.0 <4.15.0'
+    operatorframework.io/suggested-namespace: openshift-operators
+    operatorframework.io/suggested-namespace-template: |-
+      {
+        "apiVersion": "v1",
+        "kind": "Namespace",
+        "metadata": {
+          "name": "openshift-operators",
+          "annotations": {
+            "workload.openshift.io/allowed": "management"
+          }
+        }
+      }
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
     operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
       Platform Plus"]'
     operators.operatorframework.io/builder: operator-sdk-v1.16.0-ocp
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
+    provider: Red Hat
+    repository: https://github.com/openshift-kni/cluster-group-upgrades-operator
+    support: Red Hat
+  labels:
+    operatorframework.io/arch.amd64: supported
   name: cluster-group-upgrades-operator.v4.15.0
   namespace: placeholder
 spec:
