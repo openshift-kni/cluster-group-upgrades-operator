@@ -25,6 +25,6 @@ entries:
     package: topology-aware-lifecycle-manager
     schema: olm.channel
   # v4.20.0 bundle
-  # The url for this last entry is updated by hack/konflux-update-catalog-template.sh automatically
-  - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-20@sha256:df0304df673a0dd89373a0c522748e10eb5d8f7a7f6ba93aaf012e9d8c8bf927
+  # The url for this last entry is updated by telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh automatically
+  - image: placeholder.replaced.by.script.automatically
     schema: olm.bundle
