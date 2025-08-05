@@ -9,6 +9,11 @@ if [ ! -f ${shellcheck} ]; then
         | tar -xJ -C $(go env GOPATH)/bin --strip=1 shellcheck-${scversion}/shellcheck
 fi
 
-find . -name '*.sh' -not -path './vendor/*' -not -path './git/*' \
-    -not -path './bin/*' -not -path './testbin/*' -print0 \
+find . -name '*.sh' \
+    -not -path './bin/*' \
+    -not -path './git/*' \
+    -not -path './telco5g-konflux/*' \
+    -not -path './testbin/*' \
+    -not -path './vendor/*' \
+    -print0 \
     | xargs -0 --no-run-if-empty ${shellcheck} -x
