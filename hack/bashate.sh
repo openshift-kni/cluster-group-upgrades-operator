@@ -22,6 +22,11 @@ source ${VENVDIR}/bin/activate || fatal "Could not activate virtualenv"
 
 pip install bashate==2.1.0 || fatal "Installation of bashate failed"
 
-find . -name '*.sh' -not -path './vendor/*' -not -path './git/*' \
-    -not -path './bin/*' -not -path './testbin/*' -print0 \
+find . -name '*.sh' \
+    -not -path './bin/*' \
+    -not -path './git/*' \
+    -not -path './telco5g-konflux/*' \
+    -not -path './testbin/*' \
+    -not -path './vendor/*' \
+    -print0 \
     | xargs -0 --no-run-if-empty bashate -v -e 'E*' -i E006

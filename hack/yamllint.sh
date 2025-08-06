@@ -22,6 +22,11 @@ source ${VENVDIR}/bin/activate || fatal "Could not activate virtualenv"
 
 pip install yamllint==1.35.1 || fatal "Installation of yamllint failed"
 
-find . -regextype egrep -regex '.*ya{0,1}ml$' -not -path './vendor/*' -not -path './git/*' \
-    -not -path './bin/*' -not -path './testbin/*' -print0 \
+find . -regextype egrep -regex '.*ya{0,1}ml$' \
+    -not -path './bin/*' \
+    -not -path './git/*' \
+    -not -path './telco5g-konflux/*' \
+    -not -path './testbin/*' \
+    -not -path './vendor/*' \
+    -print0 \
     | xargs -0 --no-run-if-empty yamllint -c .yamllint.yaml
