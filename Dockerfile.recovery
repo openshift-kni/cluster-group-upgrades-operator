@@ -1,5 +1,5 @@
 # Builder image requires golang to compile
-ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.23
+ARG BUILDER_IMAGE=quay.io/projectquay/golang:1.24
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
