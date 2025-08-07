@@ -78,11 +78,7 @@ const LcaAnnotationSuffix = "lca.openshift.io"
 func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextReconcile ctrl.Result, err error) {
 	r.Log.Info("Start reconciling IBGU", "name", req.NamespacedName)
 	defer func() {
-		if nextReconcile.RequeueAfter > 0 {
-			r.Log.Info("Finish reconciling IBGU", "name", req.NamespacedName, "requeueAfter", nextReconcile.RequeueAfter.Seconds())
-		} else {
-			r.Log.Info("Finish reconciling IBGU", "name", req.NamespacedName, "requeueRightAway", nextReconcile.Requeue)
-		}
+		r.Log.Info("Finish reconciling IBGU", "name", req.NamespacedName, "requeueAfter", nextReconcile.RequeueAfter.Seconds())
 	}()
 
 	nextReconcile = doNotRequeue()
