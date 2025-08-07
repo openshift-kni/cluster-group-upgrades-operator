@@ -1,6 +1,8 @@
 ---
 extends: default
 ignore:
+  - .konflux/catalog/catalog-template.out.yaml   # This is generated for Konflux builds
+  - .konflux/catalog/topology-aware-lifecycle-manager/catalog.yaml  # This is generated for Konflux builds
   - bin/
   - bundle/  # These are generated files so linting them is problematic
   - config/  # These are generated files so linting them is problematic
