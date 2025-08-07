@@ -1,5 +1,4 @@
 ---
-schema: olm.template.basic
 entries:
   # Default data
   - defaultChannel: stable
@@ -28,3 +27,4 @@ entries:
   # The url for this last entry is updated by hack/konflux-update-catalog-template.sh automatically
   - image: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-20@sha256:df0304df673a0dd89373a0c522748e10eb5d8f7a7f6ba93aaf012e9d8c8bf927
     schema: olm.bundle
+schema: olm.template.basic
