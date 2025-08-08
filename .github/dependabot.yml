@@ -1,48 +1,49 @@
+---
 # To get started with Dependabot version updates, you'll need to specify which
 # package ecosystems to update and where the package manifests are located.
 # Please see the documentation for all configuration options:
 # https://docs.github.com/github/administering-a-repository/configuration-options-for-dependency-updates
 
-version: 2
 updates:
-  - package-ecosystem: "gomod" # See documentation for possible values
-    directory: "/" # Location of package manifests
-    schedule:
-      interval: "daily"
-    open-pull-requests-limit: 5
+  - assignees:
+      - "jc-rh"
+      - "sudomakeinstall2"
+    directory: "/"  # Location of package manifests
     groups:
-      k8s:
-        patterns: [ "k8s.io/*", "sigs.k8s.io/*" ]
-        update-types: [ "major", "minor", "patch" ]
-      golang:
-        patterns: [ "golang.org/*" ]
-        update-types: [ "major", "minor", "patch" ]
       ginkgo:
         patterns: ["github.com/onsi/gomega", "github.com/onsi/ginkgo/v2"]
-        update-types: [ "major", "minor" ]
+        update-types: ["major", "minor"]
+      golang:
+        patterns: ["golang.org/*"]
+        update-types: ["major", "minor", "patch"]
+      k8s:
+        patterns: ["k8s.io/*", "sigs.k8s.io/*"]
+        update-types: ["major", "minor", "patch"]
       ocm:
         patterns: ["open-cluster-management.io/*"]
     ignore:
       - dependency-name: "github.com/onsi/*"
         update-types: ["version-update:semver-patch"]
       - dependency-name: "k8s.io/code-generator"
+    open-pull-requests-limit: 5
+    package-ecosystem: "gomod"  # See documentation for possible values
+    schedule:
+      interval: "daily"
+  - allow:
+      - dependency-name: "golang.org*"
     assignees:
       - "jc-rh"
       - "sudomakeinstall2"
-  - package-ecosystem: "gomod" # Release branch
     directory: "/"
-    target-branch: "release-4.19"
     groups:
       golang:
         applies-to: security-updates
         patterns:
           - "golang.org*"
-    schedule:
-      interval: "daily"
     labels:
       - "release-4.19"
-    allow:
-      - dependency-name: "golang.org*"
-    assignees:
-      - "jc-rh"
-      - "sudomakeinstall2"
+    package-ecosystem: "gomod"  # Release branch
+    schedule:
+      interval: "daily"
+    target-branch: "release-4.19"
+version: 2
