@@ -1,19 +1,17 @@
+---
 apiVersion: kuttl.dev/v1beta1
-kind: TestSuite
-
 commands:
   - command: oc apply -f deploy/acm/managed-clusters/setup-managed-spoke-clusters-namespaces.yaml
     namespaced: true
   - command: oc apply -f deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml
     namespaced: true
-
-testDirs:
-- tests/kuttl/tests/
 crdDir: ./config/crd/bases/
-timeout: 25
-parallel: 1
+kind: TestSuite
 namespace: default
-
-#startControlPlane: true
-#startKIND: true
-#kindNodeCache: true
+parallel: 1
+testDirs:
+  - tests/kuttl/tests/
+timeout: 25
+# startControlPlane: true
+# startKIND: true
+# kindNodeCache: true
