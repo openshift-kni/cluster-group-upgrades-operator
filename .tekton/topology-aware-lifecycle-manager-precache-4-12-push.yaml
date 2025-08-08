@@ -12,17 +12,17 @@ metadata:
       event == "push" &&
       target_branch == "release-4.12" &&
       (
-        '.tekton/build-pipeline.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-precache-4-12-push.yaml'.pathChanged() ||
         'config/***'.pathChanged() ||
+        'Dockerfile.precache'.pathChanged() ||
+        'go.mod'.pathChanged() ||
+        'go.sum'.pathChanged() ||
         'hack/***'.pathChanged() ||
         'pkg/***'.pathChanged() ||
         'pre-cache/***'.pathChanged() ||
-        'vendor/***'.pathChanged() ||
-        'go.mod'.pathChanged() ||
-        'go.sum'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-precache-4-12-push.yaml'.pathChanged() ||
-        'Dockerfile.precache'.pathChanged()
+        'vendor/***'.pathChanged()
       )
   creationTimestamp: null
   labels:

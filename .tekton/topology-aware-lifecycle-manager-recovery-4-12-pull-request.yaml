@@ -12,17 +12,17 @@ metadata:
       event == "pull_request" &&
       target_branch == "release-4.12" &&
       (
-        '.tekton/build-pipeline.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-recovery-4-12-pull-request.yaml'.pathChanged() ||
         'config/***'.pathChanged() ||
+        'Dockerfile.recovery'.pathChanged() ||
+        'go.mod'.pathChanged() ||
+        'go.sum'.pathChanged() ||
         'hack/***'.pathChanged() ||
         'pkg/***'.pathChanged() ||
         'recovery/***'.pathChanged() ||
-        'vendor/***'.pathChanged() ||
-        'go.mod'.pathChanged() ||
-        'go.sum'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-recovery-4-12-pull-request.yaml'.pathChanged() ||
-        'Dockerfile.recovery'.pathChanged()
+        'vendor/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
