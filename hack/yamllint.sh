@@ -22,6 +22,5 @@ source ${VENVDIR}/bin/activate || fatal "Could not activate virtualenv"
 
 pip install yamllint==1.35.1 || fatal "Installation of yamllint failed"
 
-find . -regextype egrep -regex '.*ya{0,1}ml$' -not -path './vendor/*' -not -path './git/*' \
-    -not -path './bin/*' -not -path './testbin/*' -print0 \
-    | xargs -0 --no-run-if-empty yamllint -c .yamllint.yaml
+# File selection for yamllint is done in .yamllint.yaml
+yamllint -c .yamllint.yaml .
