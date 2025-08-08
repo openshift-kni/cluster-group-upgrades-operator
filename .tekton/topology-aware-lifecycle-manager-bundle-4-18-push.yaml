@@ -10,17 +10,17 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push" &&
-      target_branch == "release-4.18" && 
+      target_branch == "release-4.18" &&
       (
-        '.tekton/build-pipeline.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.konflux/Dockerfile.bundle'.pathChanged() ||
+        '.konflux/overlay/***'.pathChanged() ||
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-bundle-4-18-push.yaml'.pathChanged() ||
         'bundle/***'.pathChanged() ||
         'config/***'.pathChanged() ||
         'hack/***'.pathChanged() ||
-        'manifests/***'.pathChanged() ||
-        '.konflux/overlay/***'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-bundle-4-18-push.yaml'.pathChanged() ||
-        '.konflux/Dockerfile.bundle'.pathChanged()
+        'manifests/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
