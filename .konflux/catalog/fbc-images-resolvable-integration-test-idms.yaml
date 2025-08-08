@@ -1,3 +1,4 @@
+---
 # We use this IDMS to check if the images in the FBC are resolvable using the staging or production catalog.
 # https://github.com/konflux-ci/community-catalog/tree/development/pipelines/validate-fbc-images-resolvable
 apiVersion: operator.openshift.io/v1
@@ -6,18 +7,18 @@ metadata:
   name: fbc-images-resolvable-integration-test-idms
 spec:
   imageDigestMirrors:
-  - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
-  - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
-  - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
-  - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
-  - mirrors:
-    - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
+    - mirrors:
+        - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
+    - mirrors:
+        - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
+    - mirrors:
+        - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel8
+    - mirrors:
+        - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
+    - mirrors:
+        - registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
