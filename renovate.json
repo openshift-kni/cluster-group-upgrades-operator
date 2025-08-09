@@ -2,6 +2,10 @@
     "$schema": "https://docs.renovatebot.com/renovate-schema.json",
     "automergeStrategy": "rebase",
     "automergeType": "pr",
+    "baseBranches": [
+        "^main$",
+        "^release-4\\.\\d{2}$"
+    ],
     "customManagers": [
         {
             "customType": "regex",
@@ -11,6 +15,17 @@
             ],
             "matchStrings": [
                 "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
+            ],
+            "versioningTemplate": "docker"
+        },
+        {
+            "customType": "regex",
+            "datasourceTemplate": "docker",
+            "fileMatch": [
+                "^\\.konflux/overlay/pin_images\\.in\\.yaml$"
+            ],
+            "matchStrings": [
+                "(?<depName>registry\\.redhat\\.io/openshift4/ose-kube-rbac-proxy-rhel9):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
             ],
             "versioningTemplate": "docker"
         }
@@ -40,8 +55,10 @@
             "platformAutomerge": true
         },
         {
-            "matchUpdateTypes": ["minor"],
-            "enabled": false
+            "enabled": false,
+            "matchUpdateTypes": [
+                "minor"
+            ]
         }
     ],
     "prConcurrentLimit": 0,

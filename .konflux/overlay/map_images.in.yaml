@@ -1,20 +1,21 @@
+---
 # Manager
 - key: manager
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
 #
 # Aztp
 - key: aztp_img
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
 #
 # Precache
 - key: precache_img
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
 #
 # Recovery
 - key: recovery_img
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
 #

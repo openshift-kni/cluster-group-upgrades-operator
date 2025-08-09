@@ -1,3 +1,17 @@
+---
+extends: default
+ignore:
+  - .konflux/catalog/catalog-template.out.yaml   # This is generated for Konflux builds
+  - .konflux/catalog/topology-aware-lifecycle-manager/catalog.yaml  # This is generated for Konflux builds
+  - bin/
+  - bundle/  # These are generated files so linting them is problematic
+  - config/  # These are generated files so linting them is problematic
+  - deploy/  # There are a lot of errors in these files and I don't want to fix them all just yet
+  - git/
+  - samples/  # There are a lot of errors in these files and I don't want to fix them all just yet
+  - telco5g-konflux/
+  - testbin/
+  - tests/  # There are a lot of errors in these files and I don't want to fix them all just yet
+  - vendor/
 rules:
-  line-length:
-    max: 9999
+  line-length: disable

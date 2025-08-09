@@ -1,3 +1,4 @@
+---
 # We use this IDMS in the Conforma tests to check for fips compliance.
 # https://github.com/konflux-ci/build-definitions/tree/main/task/fbc-fips-check-oci-ta/0.1
 apiVersion: operator.openshift.io/v1
@@ -6,18 +7,18 @@ metadata:
   name: topology-aware-lifecycle-manager-digest-mirror-set
 spec:
   imageDigestMirrors:
-  - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-20
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
-  - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-20
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
-  - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-20
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
-  - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
-  - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-20
-    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
+    - mirrors:
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-20
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
+    - mirrors:
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-20
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
+    - mirrors:
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-20
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
+    - mirrors:
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
+    - mirrors:
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-20
+      source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
