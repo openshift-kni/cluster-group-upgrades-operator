@@ -189,7 +189,7 @@ spec:
       name: precachingconfigs.ran.openshift.io
       resources:
       - kind: Namespace
-        name: “”
+        name: ""
         version: v1
       version: v1alpha1
   description: cluster-group-upgrades-operator is an operator that facilitates platform

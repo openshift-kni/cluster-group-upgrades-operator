@@ -1,3 +1,4 @@
+---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -11,12 +12,12 @@ metadata:
       event == "push" &&
       target_branch == "release-4.15" &&
       (
-        '.tekton/fbc-pipeline.yaml'.pathChanged() ||
-        '.tekton/images-mirror-set.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-fbc-4-15-push.yaml'.pathChanged() ||
         '.konflux/catalog/***'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
-        '.konflux/Dockerfile.catalog'.pathChanged()
+        '.konflux/Dockerfile.catalog'.pathChanged() ||
+        '.tekton/fbc-pipeline.yaml'.pathChanged() ||
+        '.tekton/images-mirror-set.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-fbc-4-15-push.yaml'.pathChanged()
       )
   creationTimestamp: null
   labels:
@@ -27,30 +28,30 @@ metadata:
   namespace: telco-5g-tenant
 spec:
   params:
-  - name: git-url
-    value: '{{source_url}}'
-  - name: revision
-    value: '{{revision}}'
-  - name: output-image
-    value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-4-15:{{revision}}
-  - name: build-platforms
-    value:
-    - linux/x86_64
-  - name: dockerfile
-    value: .konflux/Dockerfile.catalog
-  - name: build-args-file
-    value: .konflux/container_build_args.conf
-  - name: additional-tags
-    value: ["latest"]
-  # We have configured an fbc exception for hermetic builds on the release repo.
-  - name: hermetic
-    value: "false"
+    - name: git-url
+      value: '{{source_url}}'
+    - name: revision
+      value: '{{revision}}'
+    - name: output-image
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-4-15:{{revision}}
+    - name: build-platforms
+      value:
+        - linux/x86_64
+    - name: dockerfile
+      value: .konflux/Dockerfile.catalog
+    - name: build-args-file
+      value: .konflux/container_build_args.conf
+    - name: additional-tags
+      value: ["latest"]
+    # We have configured an fbc exception for hermetic builds on the release repo.
+    - name: hermetic
+      value: "false"
   pipelineRef:
     name: fbc-pipeline
   taskRunTemplate:
     serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-fbc-4-15
   workspaces:
-  - name: git-auth
-    secret:
-      secretName: '{{ git_auth_secret }}'
+    - name: git-auth
+      secret:
+        secretName: '{{ git_auth_secret }}'
 status: {}
