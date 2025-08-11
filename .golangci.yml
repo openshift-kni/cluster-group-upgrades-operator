@@ -1,9 +1,4 @@
 ---
-run:
-  concurrency: 6
-  deadline: 5m
-  skip-files:
-    - ".*_test\\.go"
 linters:
   disable-all: true
   enable:
@@ -25,11 +20,6 @@ linters:
     - varcheck
     - gocyclo
 linters-settings:
-  revive:
-    rules:
-      - name: if-return
-        severity: warning
-        disabled: true
   gocritic:
     enabled-checks:
       # Diagnostic
@@ -51,13 +41,11 @@ linters-settings:
       - weakCond
       - octalLiteral
       - sloppyReassign
-
       # Performance
       - equalFold
       - indexAlloc
       - rangeExprCopy
       - appendCombine
-
       # Style
       - assignOp
       - boolExprSimplify
@@ -85,7 +73,6 @@ linters-settings:
       - valSwap
       - yodaStyleExpr
       - wrapperFunc
-
       # Opinionated
       - initClause
       - nestingReduce
@@ -93,3 +80,13 @@ linters-settings:
       - typeUnparen
       - unnecessaryBlock
       - paramTypeCombine
+  revive:
+    rules:
+      - disabled: true
+        name: if-return
+        severity: warning
+run:
+  concurrency: 6
+  deadline: 5m
+  skip-files:
+    - ".*_test\\.go"
