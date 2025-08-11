@@ -1,20 +1,21 @@
+---
 # Manager
 - key: manager
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel8-operator
 #
 # Precache
 - key: precache_img
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel8
 #
 # Recovery
 - key: recovery_img
-  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
   production: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
+  staging: registry.stage.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel8
 #
 # Kube RBAC proxy
 - key: kube_rbac
-  staging: registry.stage.redhat.io/openshift4/ose-kube-rbac-proxy
   production: registry.redhat.io/openshift4/ose-kube-rbac-proxy
+  staging: registry.stage.redhat.io/openshift4/ose-kube-rbac-proxy
 #
