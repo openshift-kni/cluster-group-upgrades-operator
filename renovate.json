@@ -28,6 +28,17 @@
                 "(?<depName>registry\\.redhat\\.io/openshift4/ose-kube-rbac-proxy-rhel9):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
             ],
             "versioningTemplate": "docker"
+        },
+        {
+            "customType": "regex",
+            "datasourceTemplate": "docker",
+            "managerFilePatterns": [
+                "/^\\.konflux/overlay/pin_images\\.in\\.yaml$/"
+            ],
+            "matchStrings": [
+                "(?<depName>registry\\.redhat\\.io/openshift4/ose-kube-rbac-proxy-rhel8):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
+            ],
+            "versioningTemplate": "docker"
         }
     ],
     "gomod": {
