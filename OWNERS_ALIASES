@@ -1,21 +1,16 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 aliases:
-  upgrades-operator-reviewers:
-    - browsell
-    - donpenney
-    - rcarrillocruz
-    - sabbir-47
-    - fedepaol
-    - irinamihai
-    - imiller0
-    - nishant-parekh
-    - serngawy
-    - vitus133
-    - danielmellado
-    - jc-rh
-    - Missxiaoguo
+  konflux-approvers:
+    - abraham2512
     - fontivan
+    - rauhersu
+    - sabbir-47
+    - shajmakh
+    - yanirq
+  konflux-reviewers:
+    - fontivan
+    - rauhersu
   upgrades-operator-approvers:
     - browsell
     - donpenney
@@ -32,6 +27,18 @@ aliases:
     - fontivan
     - sudomakeinstall2
     - sakhoury
-  konflux-approvers:
+  upgrades-operator-reviewers:
+    - browsell
+    - donpenney
+    - rcarrillocruz
+    - sabbir-47
+    - fedepaol
+    - irinamihai
+    - imiller0
+    - nishant-parekh
+    - serngawy
+    - vitus133
+    - danielmellado
+    - jc-rh
+    - Missxiaoguo
     - fontivan
-    - rauhersu

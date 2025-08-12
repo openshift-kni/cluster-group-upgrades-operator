@@ -1,12 +1,37 @@
+---
 # See the OWNERS docs at https://go.k8s.io/owners
 
 component: "Telco Edge"
-subcomponent: "TALO"
-
 filters:
   ".*":
-    reviewers:
-      - upgrades-operator-reviewers
     approvers:
       - upgrades-operator-approvers
-
+    reviewers:
+      - upgrades-operator-reviewers
+  ".konflux/*":
+    approvers:
+      - konflux-approvers
+    reviewers:
+      - konflux-reviewers
+  ".tekton/*":
+    approvers:
+      - konflux-approvers
+    reviewers:
+      - konflux-reviewers
+  ^Dockerfile:
+    reviewers:
+      - rauhersu
+  ^bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml:
+    reviewers:
+      - rauhersu
+  "renovate.json":
+    approvers:
+      - konflux-approvers
+    reviewers:
+      - konflux-reviewers
+  "telco5g-konflux/":
+    approvers:
+      - konflux-approvers
+    reviewers:
+      - konflux-reviewers
+subcomponent: "TALO"
