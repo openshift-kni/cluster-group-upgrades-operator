@@ -3,15 +3,15 @@
     "automergeStrategy": "rebase",
     "automergeType": "pr",
     "baseBranches": [
-        "^main$",
-        "^release-4\\.\\d{2}$"
+        "/^main$/",
+        "/^release-4\\.\\d{2}$/"
     ],
     "customManagers": [
         {
             "customType": "regex",
             "datasourceTemplate": "docker",
-            "fileMatch": [
-                ".*container_build_args\\.conf$"
+            "managerFilePatterns": [
+                "/.*container_build_args\\.conf$/"
             ],
             "matchStrings": [
                 "(?<depName>[\\w\\-\\.\\/]+):?(?<currentValue>[\\w\\-\\.]+)?@(?<currentDigest>sha256:[a-f0-9]+)"
@@ -21,8 +21,8 @@
         {
             "customType": "regex",
             "datasourceTemplate": "docker",
-            "fileMatch": [
-                "^\\.konflux/overlay/pin_images\\.in\\.yaml$"
+            "managerFilePatterns": [
+                "/^\\.konflux/overlay/pin_images\\.in\\.yaml$/"
             ],
             "matchStrings": [
                 "(?<depName>registry\\.redhat\\.io/openshift4/ose-kube-rbac-proxy-rhel9):(?<currentValue>[^@]+)@(?<currentDigest>sha256:[a-f0-9]+)"
@@ -65,13 +65,13 @@
     "pruneBranchAfterAutomerge": true,
     "tekton": {
         "enabled": true,
-        "fileMatch": [
-            "\\.yaml$",
-            "\\.yml$"
-        ],
         "ignoreTests": false,
         "includePaths": [
             ".tekton/**"
+        ],
+        "managerFilePatterns": [
+            "/\\.yaml$/",
+            "/\\.yml$/"
         ]
     }
 }
