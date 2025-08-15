@@ -6,7 +6,7 @@
 VERSION ?= 4.15.0
 
 # OPERATOR_SDK_VERSION defines the operator-sdk version to download from GitHub releases.
-OPERATOR_SDK_VERSION ?= 1.16.0
+OPERATOR_SDK_VERSION ?= 1.21.0
 
 # YQ_VERSION defines the yq version to download from GitHub releases.
 YQ_VERSION ?= v4.45.4
