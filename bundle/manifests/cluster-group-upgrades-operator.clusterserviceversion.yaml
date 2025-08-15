@@ -30,7 +30,7 @@ metadata:
     operators.openshift.io/infrastructure-features: '["disconnected", "proxy-aware"]'
     operators.openshift.io/valid-subscription: '["OpenShift Container Platform", "OpenShift
       Platform Plus"]'
-    operators.operatorframework.io/builder: operator-sdk-v1.16.0
+    operators.operatorframework.io/builder: operator-sdk-v1.21.0
     operators.operatorframework.io/project_layout: go.kubebuilder.io/v3
   name: cluster-group-upgrades-operator.v4.12.0
   namespace: placeholder
@@ -63,7 +63,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:bool
       - description: 'The Batch Timeout Action can be specified to control what happens
           when a batch times out. The default value is `Continue`. The possible values
-          are:   - Continue   - Abort'
+          are: - Continue - Abort'
         displayName: BatchTimeoutAction
         path: batchTimeoutAction
         x-descriptors:
@@ -74,19 +74,18 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a list of expressions or labels that will be
           used to determine what clusters to include in the operation. The expected
-          format is as follows: clusterLabelSelectors:   - matchExpressions:       -
-          key: label1         operator: In         values:           - value1a           -
-          value1b   - matchLabels:       label2: value2   - matchExpressions:       -
-          key: label3         operator: In         values:           - value3     matchLabels:       label4:
-          value4'
+          format is as follows: clusterLabelSelectors: - matchExpressions: - key:
+          label1 operator: In values: - value1a - value1b - matchLabels: label2: value2
+          - matchExpressions: - key: label3 operator: In values: - value3 matchLabels:
+          label4: value4'
         displayName: Cluster Label Selectors
         path: clusterLabelSelectors
         x-descriptors:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: 'This field holds a label common to multiple clusters that will
-          be updated. The expected format is as follows: clusterSelector:   - label1Name=label1Value   -
-          label2Name=label2Value If the value is empty, then the expected format is:
-          clusterSelector:   - label1Name All the clusters matching the labels specified
+          be updated. The expected format is as follows: clusterSelector: - label1Name=label1Value
+          - label2Name=label2Value If the value is empty, then the expected format
+          is: clusterSelector: - label1Name All the clusters matching the labels specified
           in clusterSelector will be included in the update plan. Deprecated: Use
           ClusterLabelSelectors instead'
         displayName: Cluster Selector
@@ -338,7 +337,11 @@ spec:
           - create
         serviceAccountName: cluster-group-upgrades-controller-manager
       deployments:
-      - name: cluster-group-upgrades-controller-manager-v2
+      - label:
+          app.kubernetes.io/component: talm
+          app.kubernetes.io/name: talm-operator
+          control-plane: controller-manager
+        name: cluster-group-upgrades-controller-manager-v2
         spec:
           replicas: 1
           selector:
