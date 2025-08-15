@@ -8,8 +8,8 @@ FROM ${BUILDER_IMAGE} AS builder
 # create dir structure to generate the catalog
 RUN mkdir -p /app/hack /app/.konflux/catalog
 COPY Makefile /app
-COPY hack/ /app/hack/
 COPY .konflux/catalog/ /app/.konflux/catalog/
+COPY telco5g-konflux /app/telco5g-konflux
 
 # we need to copy the vendor/ folder as the Makefile depends on it
 COPY vendor/ /app/vendor/
