@@ -1,0 +1,11 @@
+---
+variables:
+  # PLACEHOLDER_ variables will be substituted by ad-hoc overlay logic
+  containerImage: PLACEHOLDER_CONTAINER_IMAGE
+  description: |
+      Topology Aware Lifecycle Manager is an operator that facilitates
+      platform and operator upgrades of group of clusters
+  display_name: "Topology Aware Lifecycle Manager"
+  manager_version: "topology-aware-lifecycle-manager.v4.17.1"
+  min_kube_version: "1.30.0"
+  version: "4.17.1"
