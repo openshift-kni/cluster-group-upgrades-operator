@@ -12,7 +12,7 @@
 # Recovery
 - key: recovery_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.15.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-15@sha256:2dda9b1e4a3baf874c52df360337e0b7f00311d165b420bde2cf86bb3238c56d
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-15@sha256:37f5a264666972f08141a0e47c23e58b2ff9a4b3bd03ef9e67e196d41226dd41
 #
 # Kube RBAC Proxy
 - key: kube_rbac
