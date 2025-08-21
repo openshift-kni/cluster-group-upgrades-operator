@@ -1,6 +1,6 @@
 # We use this IDMS in the Conforma tests to check for fips compliance.
 # https://github.com/konflux-ci/build-definitions/tree/main/task/fbc-fips-check-oci-ta/0.1
-apiVersion: operator.openshift.io/v1
+apiVersion: config.openshift.io/v1
 kind: ImageDigestMirrorSet
 metadata:
   name: topology-aware-lifecycle-manager-digest-mirror-set

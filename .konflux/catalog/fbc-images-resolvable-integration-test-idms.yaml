@@ -1,6 +1,6 @@
 # We use this IDMS to check if the images in the FBC are resolvable using the staging or production catalog.
 # https://github.com/konflux-ci/community-catalog/tree/development/pipelines/validate-fbc-images-resolvable
-apiVersion: operator.openshift.io/v1
+apiVersion: config.openshift.io/v1
 kind: ImageDigestMirrorSet
 metadata:
   name: fbc-images-resolvable-integration-test-idms
