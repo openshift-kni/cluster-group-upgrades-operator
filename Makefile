@@ -5,14 +5,32 @@
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
 VERSION ?= 4.20.0
 
+# BASHATE_VERSION defines the bashate version to download from GitHub releases.
+BASHATE_VERSION ?= 2.1.1
+
+# CONTROLLER_GEN_VERSION defines the controller-gen version to download from go modules.
+CONTROLLER_GEN_VERSION ?= v0.14.0
+
+# GOLANGCI_LINT_VERSION defines the golangci-lint version to download from GitHub releases.
+GOLANGCI_LINT_VERSION ?= v1.64.8
+
+# KUSTOMIZE_VERSION defines the kustomize version to download from go modules.
+KUSTOMIZE_VERSION ?= v4@v4.5.4
+
 # OPERATOR_SDK_VERSION defines the operator-sdk version to download from GitHub releases.
 OPERATOR_SDK_VERSION ?= 1.40.0
 
-# YQ_VERSION defines the yq version to download from GitHub releases.
-YQ_VERSION ?= v4.45.4
-
 # OPM_VERSION defines the opm version to download from GitHub releases.
 OPM_VERSION ?= v1.52.0
+
+# SHELLCHECK_VERSION defines the shellcheck version to download from GitHub releases.
+SHELLCHECK_VERSION ?= v0.11.0
+
+# YAMLLINT_VERSION defines the yamllint version to download from GitHub releases.
+YAMLLINT_VERSION ?= 1.37.1
+
+# YQ_VERSION defines the yq version to download from GitHub releases.
+YQ_VERSION ?= v4.45.4
 
 # You can use podman or docker as a container engine. Notice that there are some options that might be only valid for one of them.
 ENGINE ?= docker
@@ -98,10 +116,21 @@ else
 GOBIN=$(shell go env GOBIN)
 endif
 
+# Get the directory of the current makefile
+# Trim any trailing slash from the directory path as we will add if when necessary later
+PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
+
+## Location to install dependencies to
+# If you are setting this externally then you must use an aboslute path
+LOCALBIN ?= $(PROJECT_DIR)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
 # Setting SHELL to bash allows bash commands to be executed by recipes.
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
-export PATH  := $(PATH):$(PWD)/bin
+# Prefer binaries in the local bin directory over system binaries.
+export PATH  := $(LOCALBIN):$(PATH)
 GOFLAGS := -mod=mod
 SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
@@ -182,11 +211,16 @@ common-deps-update:	controller-gen kustomize
 .PHONY: ci-job
 ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate yamllint bundle-check
 
-CONTROLLER_GEN = $(shell pwd)/bin/controller-gen
-KUSTOMIZE = $(shell pwd)/bin/kustomize
-OPERATOR_SDK = $(shell which operator-sdk 2>/dev/null || echo "$(shell pwd)/bin/operator-sdk")
-OPM = $(shell which opm 2>/dev/null || echo "$(shell pwd)/bin/opm")
-YQ = $(shell which yq 2>/dev/null || echo "$(shell pwd)/bin/yq")
+# Set the paths to the binaries in the local bin directory
+BASHATE = $(LOCALBIN)/bashate
+CONTROLLER_GEN = $(LOCALBIN)/controller-gen
+GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+KUSTOMIZE = $(LOCALBIN)/kustomize
+OPERATOR_SDK = $(LOCALBIN)/operator-sdk
+OPM = $(LOCALBIN)/opm
+SHELLCHECK = $(LOCALBIN)/shellcheck
+YAMLLINT = $(LOCALBIN)/yamllint
+YQ = $(LOCALBIN)/yq
 
 .PHONY: kind-deps-update
 kind-deps-update: common-deps-update
@@ -196,26 +230,20 @@ kind-deps-update: common-deps-update
 non-kind-deps-update: common-deps-update
 	hack/install-integration-tests-deps.sh non-kind
 
-controller-gen: ## Download controller-gen locally if necessary.
-	$(call go-get-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen@v0.14.0)
+# Download go tools
+.PHONY: controller-gen
+controller-gen: sync-git-submodules $(LOCALBIN) ## Download controller-gen locally if necessary.
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
+		TOOL_NAME=controller-gen \
+		GO_MODULE=sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_GEN_VERSION) \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN)
 
-kustomize: ## Download kustomize locally if necessary.
-	$(call go-get-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v4@v4.5.4)
-
-# go-get-tool will 'go get' any package $2 and install it to $1.
-PROJECT_DIR := $(shell dirname $(abspath $(firstword $(MAKEFILE_LIST))))
-define go-get-tool
-@[ -f $(1) ] || { \
-set -e ;\
-TMP_DIR=$$(mktemp -d) ;\
-cd $$TMP_DIR ;\
-go mod init tmp ;\
-echo "Downloading $(2)" ;\
-GOBIN=$(PROJECT_DIR)/bin go install $(2) ;\
-go mod tidy ;\
-rm -rf $$TMP_DIR ;\
-}
-endef
+.PHONY: kustomize
+kustomize: sync-git-submodules $(LOCALBIN) ## Download kustomize locally if necessary.
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
+		TOOL_NAME=kustomize \
+		GO_MODULE=sigs.k8s.io/kustomize/kustomize/$(KUSTOMIZE_VERSION) \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN)
 
 ENVTEST_ASSETS_DIR=$(shell pwd)/testbin
 test: manifests generate fmt vet ## Run tests. (needs make kind-complete-deployment)
@@ -398,80 +426,91 @@ pre-cache-unit-test: ## Run pre-cache scripts unit tests
 ##@ Tools and linting
 
 .PHONY: lint
-lint: bashate golangci-lint shellcheck yamllint markdownlint yq-sort-and-format
+lint: bashate golangci-lint shellcheck yamllint markdownlint
 
 .PHONY: tools
 tools: opm operator-sdk yq
 
 .PHONY: bashate
-bashate: ## Download bashate and lint bash files in the repository
+bashate: sync-git-submodules $(LOCALBIN) ## Download bashate and lint bash files in the repository
 	@echo "Downloading bashate..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-bashate DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-bashate \
+		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_BASHATE_VERSION=$(BASHATE_VERSION)
 	@echo "Bashate downloaded successfully."
 	@echo "Running bashate on repository bash files..."
-	find . -name '*.sh' \
-		-not -path './vendor/*' \
-		-not -path './*/vendor/*' \
-		-not -path './git/*' \
-		-not -path './bin/*' \
-		-not -path './testbin/*' \
-		-not -path './telco5g-konflux/*' \
+	find $(PROJECT_DIR) -name '*.sh' \
+		-not -path '$(PROJECT_DIR)/vendor/*' \
+		-not -path '$(PROJECT_DIR)/*/vendor/*' \
+		-not -path '$(PROJECT_DIR)/git/*' \
+		-not -path '$(LOCALBIN)/*' \
+		-not -path '$(PROJECT_DIR)/testbin/*' \
+		-not -path '$(PROJECT_DIR)/telco5g-konflux/*' \
 		-print0 \
-		| xargs -0 --no-run-if-empty bashate -v -e 'E*' -i E006
+		| xargs -0 --no-run-if-empty $(BASHATE) -v -e 'E*' -i E006
 	@echo "Bashate linting completed successfully."
 
 .PHONY: golangci-lint
-golangci-lint: ## Run golangci-lint against code.
+golangci-lint: sync-git-submodules $(LOCALBIN) ## Run golangci-lint against code.
 	@echo "Downloading golangci-lint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-golangci-lint DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
+		TOOL_NAME=golangci-lint \
+		GO_MODULE=github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) \
+		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
 	@echo "Golangci-lint downloaded successfully."
 	@echo "Running golangci-lint on repository go files..."
-	golangci-lint run -v
+	$(GOLANGCI_LINT) run -v
 	@echo "Golangci-lint linting completed successfully."
 
-operator-sdk: ## Download operator-sdk locally if necessary.
+operator-sdk: sync-git-submodules $(LOCALBIN) ## Download operator-sdk locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-operator-sdk \
 		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
 		DOWNLOAD_OPERATOR_SDK_VERSION=$(OPERATOR_SDK_VERSION)
 	@echo "Operator sdk downloaded successfully."
 
 .PHONY: opm
-opm: ## Download opm locally if necessary.
+opm: sync-git-submodules $(LOCALBIN) ## Download opm locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-opm \
 		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
 		DOWNLOAD_OPM_VERSION=$(OPM_VERSION)
 	@echo "Opm downloaded successfully."
 
 .PHONY: shellcheck
-shellcheck: ## Download shellcheck and lint bash files in the repository
+shellcheck: sync-git-submodules $(LOCALBIN) ## Download shellcheck and lint bash files in the repository
 	@echo "Downloading shellcheck..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-shellcheck DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-shellcheck \
+		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_SHELLCHECK_VERSION=$(SHELLCHECK_VERSION)
 	@echo "Shellcheck downloaded successfully."
 	@echo "Running shellcheck on repository bash files..."
-	find . -name '*.sh' \
-		-not -path './vendor/*' \
-		-not -path './*/vendor/*' \
-		-not -path './git/*' \
-		-not -path './bin/*' \
-		-not -path './testbin/*' \
-		-not -path './telco5g-konflux/*' \
+	find $(PROJECT_DIR) -name '*.sh' \
+		-not -path '$(PROJECT_DIR)/vendor/*' \
+		-not -path '$(PROJECT_DIR)/*/vendor/*' \
+		-not -path '$(PROJECT_DIR)/git/*' \
+		-not -path '$(LOCALBIN)/*' \
+		-not -path '$(PROJECT_DIR)/testbin/*' \
+		-not -path '$(PROJECT_DIR)/telco5g-konflux/*' \
 		-print0 \
-		| xargs -0 --no-run-if-empty shellcheck -x
+		| xargs -0 --no-run-if-empty $(SHELLCHECK) -x
 	@echo "Shellcheck linting completed successfully."
 
 .PHONY: yamllint
-yamllint: ## Download yamllint and lint YAML files in the repository
+yamllint: sync-git-submodules $(LOCALBIN) ## Download yamllint and lint YAML files in the repository
 	@echo "Downloading yamllint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yamllint DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yamllint \
+		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_YAMLLINT_VERSION=$(YAMLLINT_VERSION)
 	@echo "Yamllint downloaded successfully."
 	@echo "Running yamllint on repository YAML files..."
-	yamllint -c .yamllint.yaml .
+	$(YAMLLINT) -c .yamllint.yaml .
 	@echo "Yamllint linting completed successfully."
 
 .PHONY: yq
-yq: ## Download yq
+yq: sync-git-submodules $(LOCALBIN) ## Download yq
 	@echo "Downloading yq..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yq DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yq \
+		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_YQ_VERSION=$(YQ_VERSION)
 	@echo "Yq downloaded successfully."
 
 .PHONY: yq-sort-and-format
@@ -479,11 +518,21 @@ yq-sort-and-format: yq ## Sort keys/reformat all YAML files in the repository
 	@echo "Sorting keys and reformatting YAML files..."
 	@find . -name "*.yaml" -o -name "*.yml" | grep -v -E "(telco5g-konflux/|target/|vendor/|bin/|\.git/)" | while read file; do \
 		echo "Processing $$file..."; \
-		yq -i '.. |= sort_keys(.)' "$$file"; \
+		$(YQ) -i '.. |= sort_keys(.)' "$$file"; \
 	done
 	@echo "YAML sorting and formatting completed successfully."
 
 ##@ Konflux
+
+.PHONY: sync-git-submodules
+sync-git-submodules:
+	@echo "Checking git submodules"
+	@if [ "$(SKIP_SUBMODULE_SYNC)" != "yes" ]; then \
+		echo "Syncing git submodules"; \
+		git submodule update --init --recursive; \
+	else \
+		echo "Skipping submodule sync"; \
+	fi
 
 .PHONY: konflux-fix-catalog-name
 konflux-fix-catalog-name: ## Fix catalog package name for TALM
