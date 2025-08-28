@@ -494,16 +494,20 @@ shellcheck: sync-git-submodules $(LOCALBIN) ## Download shellcheck and lint bash
 		| xargs -0 --no-run-if-empty $(SHELLCHECK) -x
 	@echo "Shellcheck linting completed successfully."
 
-.PHONY: yamllint
-yamllint: sync-git-submodules $(LOCALBIN) ## Download yamllint and lint YAML files in the repository
+.PHONY: yamllint-download
+yamllint-download: sync-git-submodules $(LOCALBIN) ## Download yamllint locally if necessary and run against yaml files. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading yamllint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yamllint \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-yamllint \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_YAMLLINT_VERSION=$(YAMLLINT_VERSION)
 	@echo "Yamllint downloaded successfully."
+
+.PHONY: yamllint
+yamllint: yamllint-download $(YAMLLINT) ## Lint YAML files in the repository
 	@echo "Running yamllint on repository YAML files..."
-	$(YAMLLINT) -c .yamllint.yaml .
-	@echo "Yamllint linting completed successfully."
+	$(YAMLLINT) -c $(PROJECT_DIR)/.yamllint.yaml $(PROJECT_DIR)
+	@echo "YAML linting completed successfully."
 
 .PHONY: yq
 yq: sync-git-submodules $(LOCALBIN) ## Download yq
