@@ -591,9 +591,10 @@ konflux-generate-catalog-production: yq opm
 	$(MAKE) konflux-validate-catalog
 
 .PHONY: konflux-update-tekton-task-refs
-konflux-update-tekton-task-refs: ## Update task references in Tekton pipeline files
+konflux-update-tekton-task-refs: sync-git-submodules ## Update task references in Tekton pipeline files
 	@echo "Updating task references in Tekton pipeline files..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/tekton update-task-refs PIPELINE_FILES="$(shell find $(PROJECT_DIR)/.tekton -name '*.yaml' -not -name 'OWNERS' | tr '\n' ' ')"
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/tekton update-task-refs \
+		PIPELINE_FILES="$$(find $(PROJECT_DIR)/.tekton -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | xargs -0 -r printf '%s ')"
 	@echo "Task references updated successfully."
 
 .PHONY: konflux-compare-catalog
