@@ -184,7 +184,7 @@ generate: controller-gen generate-code ## Generate code containing DeepCopy, Dee
 
 generate-code: ## Generate code containing Clientset, Informers, Listers
 	@echo "Running generate-code"
-	hack/update-codegen.sh
+	$(PROJECT_DIR)/hack/update-codegen.sh
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -224,11 +224,11 @@ YQ = $(LOCALBIN)/yq
 
 .PHONY: kind-deps-update
 kind-deps-update: common-deps-update
-	hack/install-integration-tests-deps.sh kind
+	$(PROJECT_DIR)/hack/install-integration-tests-deps.sh kind
 
 .PHONY: non-kind-deps-update
 non-kind-deps-update: common-deps-update
-	hack/install-integration-tests-deps.sh non-kind
+	$(PROJECT_DIR)/hack/install-integration-tests-deps.sh non-kind
 
 # Download go tools
 .PHONY: controller-gen
@@ -396,7 +396,7 @@ kuttl-test: ## Run KUTTL tests
 
 start-test-proxy:
 	@echo "Start kubectl proxy for testing"
-	./hack/start_kubectl_proxy.sh
+	$(PROJECT_DIR)/hack/start_kubectl_proxy.sh
 
 stop-test-proxy:
 	@echo "Stop kubectl proxy for testing"
