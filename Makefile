@@ -130,7 +130,7 @@ $(LOCALBIN):
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 # Prefer binaries in the local bin directory over system binaries.
-export PATH  := $(LOCALBIN):$(PATH)
+export PATH := $(abspath $(LOCALBIN)):$(PATH)
 GOFLAGS := -mod=mod
 SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
