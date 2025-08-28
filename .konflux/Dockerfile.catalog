@@ -29,7 +29,8 @@ RUN --mount=type=secret,id=telco-5g-redhat-pull-secret/.dockerconfigjson \
 RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra $HOME/.docker/ && cat $HOME/.docker/config.json
 
 ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
-# The fbc build is not hermetic, so make will download yq and opm
+
+# The Konflux build is not hermetic so it will download the tools (opm, yq, etc) automatically
 # Konflux will externally sync the submodules so we can skip it here
 RUN SKIP_SUBMODULE_SYNC=yes make konflux-generate-catalog-production && \
     rm -f $HOME/.docker/config.json
