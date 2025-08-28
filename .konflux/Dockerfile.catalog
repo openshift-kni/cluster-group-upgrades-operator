@@ -30,8 +30,9 @@ RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra 
 
 ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
 # The fbc build is not hermetic, so make will download yq and opm
-RUN make konflux-generate-catalog-production && \
-    rm $HOME/.docker/config.json
+# Konflux will externally sync the submodules so we can skip it here
+RUN SKIP_SUBMODULE_SYNC=yes make konflux-generate-catalog-production && \
+    rm -f $HOME/.docker/config.json
 
 # run the catalog
 FROM ${OPM_IMAGE}
