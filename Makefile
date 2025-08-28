@@ -121,7 +121,7 @@ endif
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 ## Location to install dependencies to
-# If you are setting this externally then you must use an aboslute path
+# If you are setting this externally then you must use an absolute path
 LOCALBIN ?= $(PROJECT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
