@@ -536,7 +536,7 @@ konflux-fix-catalog-name: ## Fix catalog package name for TALM
 	fi
 
 .PHONY: konflux-validate-catalog-template-bundle
-konflux-validate-catalog-template-bundle: yq operator-sdk sync-git-submodules ## validate the last bundle entry on the catalog template file
+konflux-validate-catalog-template-bundle: sync-git-submodules yq operator-sdk ## validate the last bundle entry on the catalog template file
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-validate-catalog-template-bundle \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
@@ -545,13 +545,13 @@ konflux-validate-catalog-template-bundle: yq operator-sdk sync-git-submodules ##
 		ENGINE=$(ENGINE)
 
 .PHONY: konflux-validate-catalog
-konflux-validate-catalog: opm sync-git-submodules ## validate the current catalog file
+konflux-validate-catalog: sync-git-submodules opm ## validate the current catalog file
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-validate-catalog \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		OPM=$(OPM)
 
 .PHONY: konflux-generate-catalog
-konflux-generate-catalog: yq opm sync-git-submodules ## generate a quay.io catalog
+konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catalog
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-generate-catalog-legacy \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
@@ -564,7 +564,7 @@ konflux-generate-catalog: yq opm sync-git-submodules ## generate a quay.io catal
 	$(MAKE) konflux-validate-catalog
 
 .PHONY: konflux-generate-catalog-production
-konflux-generate-catalog-production: yq opm sync-git-submodules ## generate a registry.redhat.io catalog
+konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a registry.redhat.io catalog
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-generate-catalog-production-legacy \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
