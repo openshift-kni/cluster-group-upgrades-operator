@@ -431,13 +431,17 @@ lint: bashate golangci-lint shellcheck yamllint markdownlint
 .PHONY: tools
 tools: opm operator-sdk yq
 
-.PHONY: bashate
-bashate: sync-git-submodules $(LOCALBIN) ## Download bashate and lint bash files in the repository
+.PHONY: bashate-download
+bashate-download: sync-git-submodules $(LOCALBIN) ## Download bashate locally if necessary and run against bash files. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading bashate..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-bashate \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-bashate \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_BASHATE_VERSION=$(BASHATE_VERSION)
 	@echo "Bashate downloaded successfully."
+
+.PHONY: bashate
+bashate: bashate-download $(BASHATE) ## Lint bash files in the repository
 	@echo "Running bashate on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
 		-not -path '$(PROJECT_DIR)/vendor/*' \
@@ -450,14 +454,18 @@ bashate: sync-git-submodules $(LOCALBIN) ## Download bashate and lint bash files
 		| xargs -0 --no-run-if-empty $(BASHATE) -v -e 'E*' -i E006
 	@echo "Bashate linting completed successfully."
 
-.PHONY: golangci-lint
-golangci-lint: sync-git-submodules $(LOCALBIN) ## Run golangci-lint against code.
+.PHONY: golangci-lint-download
+golangci-lint-download: sync-git-submodules $(LOCALBIN) ## Download golangci-lint locally if necessary. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading golangci-lint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-go-tool \
 		TOOL_NAME=golangci-lint \
 		GO_MODULE=github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN)
 	@echo "Golangci-lint downloaded successfully."
+
+.PHONY: golangci-lint
+golangci-lint: golangci-lint-download $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@echo "Running golangci-lint on repository go files..."
 	$(GOLANGCI_LINT) run -v
 	@echo "Golangci-lint linting completed successfully."
@@ -475,13 +483,17 @@ opm: sync-git-submodules $(LOCALBIN) ## Download opm locally if necessary.
 		DOWNLOAD_OPM_VERSION=$(OPM_VERSION)
 	@echo "Opm downloaded successfully."
 
-.PHONY: shellcheck
-shellcheck: sync-git-submodules $(LOCALBIN) ## Download shellcheck and lint bash files in the repository
+.PHONY: shellcheck-download
+shellcheck-download: sync-git-submodules $(LOCALBIN) ## Download shellcheck locally if necessary. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading shellcheck..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-shellcheck \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-shellcheck \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_SHELLCHECK_VERSION=$(SHELLCHECK_VERSION)
 	@echo "Shellcheck downloaded successfully."
+
+.PHONY: shellcheck
+shellcheck: shellcheck-download $(SHELLCHECK) ## Lint bash files in the repository
 	@echo "Running shellcheck on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
 		-not -path '$(PROJECT_DIR)/vendor/*' \
