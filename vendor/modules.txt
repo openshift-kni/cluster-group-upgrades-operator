@@ -249,7 +249,7 @@ github.com/stolostron/cluster-lifecycle-api/view/v1beta1
 # github.com/stolostron/kubernetes-dependency-watches v0.10.0
 ## explicit; go 1.22.0
 github.com/stolostron/kubernetes-dependency-watches/client
-# github.com/stretchr/testify v1.10.0
+# github.com/stretchr/testify v1.11.0
 ## explicit; go 1.17
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/assert/yaml
