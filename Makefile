@@ -121,7 +121,7 @@ endif
 PROJECT_DIR := $(patsubst %/,%,$(dir $(abspath $(lastword $(MAKEFILE_LIST)))))
 
 ## Location to install dependencies to
-# If you are setting this externally then you must use an aboslute path
+# If you are setting this externally then you must use an absolute path
 LOCALBIN ?= $(PROJECT_DIR)/bin
 $(LOCALBIN):
 	mkdir -p $(LOCALBIN)
@@ -130,7 +130,7 @@ $(LOCALBIN):
 # This is a requirement for 'setup-envtest.sh' in the test target.
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 # Prefer binaries in the local bin directory over system binaries.
-export PATH  := $(LOCALBIN):$(PATH)
+export PATH := $(abspath $(LOCALBIN)):$(PATH)
 GOFLAGS := -mod=mod
 SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
@@ -184,7 +184,7 @@ generate: controller-gen generate-code ## Generate code containing DeepCopy, Dee
 
 generate-code: ## Generate code containing Clientset, Informers, Listers
 	@echo "Running generate-code"
-	hack/update-codegen.sh
+	$(PROJECT_DIR)/hack/update-codegen.sh
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
@@ -224,11 +224,11 @@ YQ = $(LOCALBIN)/yq
 
 .PHONY: kind-deps-update
 kind-deps-update: common-deps-update
-	hack/install-integration-tests-deps.sh kind
+	$(PROJECT_DIR)/hack/install-integration-tests-deps.sh kind
 
 .PHONY: non-kind-deps-update
 non-kind-deps-update: common-deps-update
-	hack/install-integration-tests-deps.sh non-kind
+	$(PROJECT_DIR)/hack/install-integration-tests-deps.sh non-kind
 
 # Download go tools
 .PHONY: controller-gen
@@ -396,7 +396,7 @@ kuttl-test: ## Run KUTTL tests
 
 start-test-proxy:
 	@echo "Start kubectl proxy for testing"
-	./hack/start_kubectl_proxy.sh
+	$(PROJECT_DIR)/hack/start_kubectl_proxy.sh
 
 stop-test-proxy:
 	@echo "Stop kubectl proxy for testing"
@@ -419,13 +419,17 @@ lint: bashate golangci-lint shellcheck yamllint markdownlint
 .PHONY: tools
 tools: opm operator-sdk yq
 
-.PHONY: bashate
-bashate: sync-git-submodules $(LOCALBIN) ## Download bashate and lint bash files in the repository
+.PHONY: bashate-download
+bashate-download: sync-git-submodules $(LOCALBIN) ## Download bashate locally if necessary and run against bash files. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading bashate..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-bashate \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-bashate \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_BASHATE_VERSION=$(BASHATE_VERSION)
 	@echo "Bashate downloaded successfully."
+
+.PHONY: bashate
+bashate: bashate-download $(BASHATE) ## Lint bash files in the repository
 	@echo "Running bashate on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
 		-not -path '$(PROJECT_DIR)/vendor/*' \
@@ -438,38 +442,46 @@ bashate: sync-git-submodules $(LOCALBIN) ## Download bashate and lint bash files
 		| xargs -0 --no-run-if-empty $(BASHATE) -v -e 'E*' -i E006
 	@echo "Bashate linting completed successfully."
 
-.PHONY: golangci-lint
-golangci-lint: sync-git-submodules $(LOCALBIN) ## Run golangci-lint against code.
+.PHONY: golangci-lint-download
+golangci-lint-download: sync-git-submodules $(LOCALBIN) ## Download golangci-lint locally if necessary. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading golangci-lint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-go-tool \
 		TOOL_NAME=golangci-lint \
 		GO_MODULE=github.com/golangci/golangci-lint/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION) \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN)
 	@echo "Golangci-lint downloaded successfully."
+
+.PHONY: golangci-lint
+golangci-lint: golangci-lint-download $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@echo "Running golangci-lint on repository go files..."
 	$(GOLANGCI_LINT) run -v
 	@echo "Golangci-lint linting completed successfully."
 
 operator-sdk: sync-git-submodules $(LOCALBIN) ## Download operator-sdk locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-operator-sdk \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_OPERATOR_SDK_VERSION=$(OPERATOR_SDK_VERSION)
 	@echo "Operator sdk downloaded successfully."
 
 .PHONY: opm
 opm: sync-git-submodules $(LOCALBIN) ## Download opm locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-opm \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_OPM_VERSION=$(OPM_VERSION)
 	@echo "Opm downloaded successfully."
 
-.PHONY: shellcheck
-shellcheck: sync-git-submodules $(LOCALBIN) ## Download shellcheck and lint bash files in the repository
+.PHONY: shellcheck-download
+shellcheck-download: sync-git-submodules $(LOCALBIN) ## Download shellcheck locally if necessary. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading shellcheck..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-shellcheck \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-shellcheck \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_SHELLCHECK_VERSION=$(SHELLCHECK_VERSION)
 	@echo "Shellcheck downloaded successfully."
+
+.PHONY: shellcheck
+shellcheck: shellcheck-download $(SHELLCHECK) ## Lint bash files in the repository
 	@echo "Running shellcheck on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
 		-not -path '$(PROJECT_DIR)/vendor/*' \
@@ -482,22 +494,26 @@ shellcheck: sync-git-submodules $(LOCALBIN) ## Download shellcheck and lint bash
 		| xargs -0 --no-run-if-empty $(SHELLCHECK) -x
 	@echo "Shellcheck linting completed successfully."
 
-.PHONY: yamllint
-yamllint: sync-git-submodules $(LOCALBIN) ## Download yamllint and lint YAML files in the repository
+.PHONY: yamllint-download
+yamllint-download: sync-git-submodules $(LOCALBIN) ## Download yamllint locally if necessary and run against yaml files. If wrong version is installed, it will be removed before downloading.
 	@echo "Downloading yamllint..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yamllint \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download \
+		download-yamllint \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_YAMLLINT_VERSION=$(YAMLLINT_VERSION)
 	@echo "Yamllint downloaded successfully."
+
+.PHONY: yamllint
+yamllint: yamllint-download $(YAMLLINT) ## Lint YAML files in the repository
 	@echo "Running yamllint on repository YAML files..."
-	$(YAMLLINT) -c .yamllint.yaml .
-	@echo "Yamllint linting completed successfully."
+	$(YAMLLINT) -c $(PROJECT_DIR)/.yamllint.yaml $(PROJECT_DIR)
+	@echo "YAML linting completed successfully."
 
 .PHONY: yq
 yq: sync-git-submodules $(LOCALBIN) ## Download yq
 	@echo "Downloading yq..."
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yq \
-		DOWNLOAD_INSTALL_DIR=$(PROJECT_DIR)/bin \
+		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
 		DOWNLOAD_YQ_VERSION=$(YQ_VERSION)
 	@echo "Yq downloaded successfully."
 
@@ -517,6 +533,7 @@ sync-git-submodules:
 	@echo "Checking git submodules"
 	@if [ "$(SKIP_SUBMODULE_SYNC)" != "yes" ]; then \
 		echo "Syncing git submodules"; \
+		git submodule sync --recursive; \
 		git submodule update --init --recursive; \
 	else \
 		echo "Skipping submodule sync"; \
@@ -530,8 +547,8 @@ konflux-fix-catalog-name: ## Fix catalog package name for TALM
 		sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml; \
 	fi
 
-.PHONY: konflux-validate-catalog-template-bundle ## validate the last bundle entry on the catalog template file
-konflux-validate-catalog-template-bundle: yq operator-sdk
+.PHONY: konflux-validate-catalog-template-bundle
+konflux-validate-catalog-template-bundle: sync-git-submodules yq operator-sdk ## validate the last bundle entry on the catalog template file
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-validate-catalog-template-bundle \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
@@ -540,13 +557,13 @@ konflux-validate-catalog-template-bundle: yq operator-sdk
 		ENGINE=$(ENGINE)
 
 .PHONY: konflux-validate-catalog
-konflux-validate-catalog: opm ## validate the current catalog file
+konflux-validate-catalog: sync-git-submodules opm ## validate the current catalog file
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-validate-catalog \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		OPM=$(OPM)
 
-.PHONY: konflux-generate-catalog ## generate a quay.io catalog
-konflux-generate-catalog: yq opm
+.PHONY: konflux-generate-catalog
+konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catalog
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-generate-catalog-legacy \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
@@ -558,8 +575,8 @@ konflux-generate-catalog: yq opm
 	$(MAKE) konflux-fix-catalog-name
 	$(MAKE) konflux-validate-catalog
 
-.PHONY: konflux-generate-catalog-production ## generate a registry.redhat.io catalog
-konflux-generate-catalog-production: yq opm
+.PHONY: konflux-generate-catalog-production
+konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a registry.redhat.io catalog
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-generate-catalog-production-legacy \
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
@@ -574,13 +591,14 @@ konflux-generate-catalog-production: yq opm
 	$(MAKE) konflux-validate-catalog
 
 .PHONY: konflux-update-tekton-task-refs
-konflux-update-tekton-task-refs: ## Update task references in Tekton pipeline files
+konflux-update-tekton-task-refs: sync-git-submodules ## Update task references in Tekton pipeline files
 	@echo "Updating task references in Tekton pipeline files..."
-	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/tekton update-task-refs PIPELINE_FILES="$(shell find $(PROJECT_DIR)/.tekton -name '*.yaml' -not -name 'OWNERS' | tr '\n' ' ')"
+	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/tekton update-task-refs \
+		PIPELINE_FILES="$$(find $(PROJECT_DIR)/.tekton -type f \( -name '*.yaml' -o -name '*.yml' \) -print0 | xargs -0 -r printf '%s ')"
 	@echo "Task references updated successfully."
 
 .PHONY: konflux-compare-catalog
-konflux-compare-catalog: ## Compare generated catalog with upstream FBC image
+konflux-compare-catalog: sync-git-submodules ## Compare generated catalog with upstream FBC image
 	@echo "Comparing generated catalog with upstream FBC image..."
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-compare-catalog \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
@@ -596,4 +614,4 @@ help:   ## Shows this message.
 	@awk 'BEGIN {FS = ":.*?## "}; /^[a-zA-Z0-9_-]+:.*?## / {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
 clean:
-	rm -rf $(PROJECT_DIR)/bin/
+	rm -rf $(LOCALBIN)
