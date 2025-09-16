@@ -381,7 +381,7 @@ func TestGetSecretManifest(t *testing.T) {
 					Namespace: "namespace",
 				},
 			},
-			expectedJson: `{"apiVersion":"v1","kind":"Secret","metadata":{"creationTimestamp":null,"name":"secret","namespace":"openshift-lifecycle-agent"}}`,
+			expectedJson: `{"apiVersion":"v1","kind":"Secret","metadata":{"name":"secret","namespace":"openshift-lifecycle-agent"}}`,
 		},
 	}
 	for _, test := range tests {
@@ -436,7 +436,7 @@ func TestGetConfigMapManifests(t *testing.T) {
 					"klusterlet.yaml": "data",
 				},
 			},
-			expectedJson: `{"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"name","namespace":"namespace","creationTimestamp":null},"data":{"klusterlet.yaml":"data"}}`,
+			expectedJson: `{"kind":"ConfigMap","apiVersion":"v1","metadata":{"name":"name","namespace":"namespace"},"data":{"klusterlet.yaml":"data"}}`,
 		},
 	}
 	for _, test := range tests {
@@ -788,7 +788,7 @@ func TestEnsureManifests(t *testing.T) {
   "apiVersion": "ran.openshift.io/v1alpha1",
   "kind": "ClusterGroupUpgrade",
   "metadata": {
-    "creationTimestamp": null,
+    
     "labels": {
       "ibgu": "name"
     },
@@ -896,7 +896,7 @@ func TestEnsureManifests(t *testing.T) {
   "apiVersion": "ran.openshift.io/v1alpha1",
   "kind": "ClusterGroupUpgrade",
   "metadata": {
-    "creationTimestamp": null,
+    
     "labels": {
       "ibgu": "name"
     },
@@ -1038,7 +1038,7 @@ func TestEnsureManifests(t *testing.T) {
   "apiVersion": "ran.openshift.io/v1alpha1",
   "kind": "ClusterGroupUpgrade",
   "metadata": {
-    "creationTimestamp": null,
+    
     "labels": {
       "ibgu": "name"
     },
