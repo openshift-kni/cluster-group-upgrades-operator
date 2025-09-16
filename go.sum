@@ -111,8 +111,8 @@ github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836 h1:8
 github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836/go.mod h1:UwTWt+P9MhBWNzRCJrvmoMg0hN2u/znkkrkt9C8phkU=
 github.com/openshift/build-machinery-go v0.0.0-20250211133638-a00a772ae1a2 h1:Pw/OKhN0r8HZcR4No8qh0QygTvuYsDeZhHsK6T9LC+I=
 github.com/openshift/build-machinery-go v0.0.0-20250211133638-a00a772ae1a2/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
-github.com/operator-framework/api v0.33.0 h1:Tdu9doXz6Key2riIiP3/JPahHEgFBXAqyWQN4kOITS8=
-github.com/operator-framework/api v0.33.0/go.mod h1:sEh1VqwQCJUj+l/rKNWPDEJdFNAbdTu8QcM+x+wdYYo=
+github.com/operator-framework/api v0.34.0 h1:REiEaYhG1CWmDoajdcAdZqtgoljWG+ixMY59vUX5pFI=
+github.com/operator-framework/api v0.34.0/go.mod h1:eGncUNIYvWtfGCCKmLzGXvoi3P0TDf3Yd/Z0Sn9E6SQ=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
