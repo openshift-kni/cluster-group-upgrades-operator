@@ -105,6 +105,10 @@ spec:
       description: Additional tags to apply to the built container image
       name: additional-tags
       type: array
+    - default: []
+      description: Additional labels to apply to the built container image
+      name: additional-labels
+      type: array
   results:
     - description: ''
       name: IMAGE_URL
@@ -250,12 +254,13 @@ spec:
         - name: LABELS
           value:
             - $(tasks.generate-labels.results.labels[*])
+            - $(params.additional-labels[*])
             - com.redhat.component=topology-aware-lifecycle-manager-operator-container
             - description=topology-aware-lifecycle-manager
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
-            - name=openshift4/topology-aware-lifecycle-manager-rhel9-operator
             - release=4.18
+            - cpe="cpe:/a:redhat:openshift:4.18::el9"
             - url=https://github.com/openshift-kni/cluster-group-upgrades-operator
             - vendor=Red Hat, Inc.
             - io.k8s.display-name=topology-aware-lifecycle-manager
