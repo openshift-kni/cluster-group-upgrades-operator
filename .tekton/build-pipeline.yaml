@@ -252,6 +252,7 @@ spec:
           value:
             - $(tasks.generate-labels.results.labels[*])
             - com.redhat.component=topology-aware-lifecycle-manager-operator-container
+            - cpe=cpe:/a:redhat:openshift:4.16::el9
             - description=topology-aware-lifecycle-manager
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
