@@ -37,6 +37,9 @@ RUN if [[ "${KONFLUX}" == "true" ]]; then \
 # Create the runtime image
 FROM ${RUNTIME_IMAGE}
 
+LABEL name="openshift4/topology-aware-lifecycle-manager-recovery-rhel9" \
+      cpe="cpe:/a:redhat:openshift:4.16::el9"
+
 COPY --from=builder /workspace/upgrade-recovery /usr/bin/
 
 ENTRYPOINT ["/usr/bin/upgrade-recovery"]
