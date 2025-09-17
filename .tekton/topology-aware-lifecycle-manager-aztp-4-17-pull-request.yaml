@@ -59,6 +59,9 @@ spec:
       value: "true"
     - name: additional-tags
       value: []
+    - name: additional-labels
+      value:
+        - name=openshift4/topology-aware-lifecycle-manager-aztp-rhel9
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
