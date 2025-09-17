@@ -263,6 +263,7 @@ spec:
             - description=topology-aware-lifecycle-manager
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
+            - name=openshift4/topology-aware-lifecycle-manager-rhel9-operator
             - release=4.19
             - cpe="cpe:/a:redhat:openshift:4.19::el9"
             - url=https://github.com/openshift-kni/cluster-group-upgrades-operator
