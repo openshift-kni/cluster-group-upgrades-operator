@@ -4,6 +4,9 @@ ARG RUNTIME_IMAGE=registry.access.redhat.com/ubi9-minimal:9.4
 # Create the runtime image
 FROM ${RUNTIME_IMAGE}
 
+LABEL name="openshift4/topology-aware-lifecycle-manager-precache-rhel9" \
+      cpe="cpe:/a:redhat:openshift:4.18::el9"
+
 RUN mkdir /opt/precache
 
 COPY pre-cache/release.sh \
