@@ -45,4 +45,5 @@ COPY --from=builder /workspace/manager .
 
 USER 65532:65532
 
+LABEL "cpe"="cpe:/a:redhat:openshift:4.18::el9"
 ENTRYPOINT ["/manager"]
