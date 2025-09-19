@@ -42,6 +42,8 @@ LABEL operators.operatorframework.io.bundle.channels.default.v1=stable
 LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.28.0
 LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
 LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v3
+LABEL name="openshift4/topology-aware-lifecycle-manager-operator-bundle"
+LABEL cpe="cpe:/a:redhat:openshift:4.18::el9"
 
 # Labels for testing.
 LABEL operators.operatorframework.io.test.mediatype.v1=scorecard+v1
