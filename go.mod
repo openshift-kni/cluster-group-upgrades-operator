@@ -9,7 +9,7 @@ require (
 	github.com/openshift/build-machinery-go v0.0.0-20250211133638-a00a772ae1a2
 	github.com/operator-framework/api v0.34.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.9.1
+	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.0
 	k8s.io/api v0.34.0
 	k8s.io/apimachinery v0.34.1
@@ -25,7 +25,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.25.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
-	golang.org/x/sys v0.35.0
+	golang.org/x/sys v0.36.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.34.0
 	open-cluster-management.io/config-policy-controller v0.16.0
@@ -74,7 +74,7 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/common v0.65.0 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
-	github.com/spf13/pflag v1.0.6 // indirect
+	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/stoewer/go-strcase v1.3.1 // indirect
 	github.com/stolostron/kubernetes-dependency-watches v0.10.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
