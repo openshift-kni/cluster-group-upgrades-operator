@@ -12,19 +12,21 @@ metadata:
       event == "push" &&
       target_branch == "main" &&
       (
-        '.tekton/build-pipeline.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.tekton/build-pipeline.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-4-20-push.yaml'.pathChanged() ||
         'config/***'.pathChanged() ||
         'controllers/***'.pathChanged() ||
         'deploy/***'.pathChanged() ||
-        'hack/***'.pathChanged() ||
-        'pkg/***'.pathChanged() ||
-        'vendor/***'.pathChanged() ||
+        'Dockerfile'.pathChanged() ||
         'go.mod'.pathChanged() ||
         'go.sum'.pathChanged() ||
+        'hack/***'.pathChanged() ||
         'main.go'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-4-20-push.yaml'.pathChanged() ||
-        'Dockerfile'.pathChanged()
+        'pkg/***'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged() ||
+        'vendor/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
