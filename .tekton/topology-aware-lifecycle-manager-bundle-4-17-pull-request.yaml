@@ -20,7 +20,9 @@ metadata:
         'bundle/***'.pathChanged() ||
         'config/***'.pathChanged() ||
         'hack/***'.pathChanged() ||
-        'manifests/***'.pathChanged()
+        'manifests/***'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
@@ -62,6 +64,9 @@ spec:
       value: "true"
     - name: additional-tags
       value: []
+    - name: additional-labels
+      value:
+        - name=openshift4/topology-aware-lifecycle-manager-operator-bundle
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
