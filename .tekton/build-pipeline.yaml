@@ -109,6 +109,10 @@ spec:
       default: docker
       type: string
       description: The format for the resulting image's mediaType. Valid values are oci or docker.
+    - default: []
+      description: Additional labels to apply to the built container image
+      name: additional-labels
+      type: array
   results:
     - description: ''
       name: IMAGE_URL
@@ -254,12 +258,14 @@ spec:
         - name: LABELS
           value:
             - $(tasks.generate-labels.results.labels[*])
+            - $(params.additional-labels[*])
             - com.redhat.component=topology-aware-lifecycle-manager-operator-container
             - description=topology-aware-lifecycle-manager
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
             - name=openshift4/topology-aware-lifecycle-manager-rhel8-operator
             - release=4.12
+            - cpe="cpe:/a:redhat:openshift:4.12::el8"
             - url=https://github.com/openshift-kni/cluster-group-upgrades-operator
             - vendor=Red Hat, Inc.
             - io.k8s.display-name=topology-aware-lifecycle-manager

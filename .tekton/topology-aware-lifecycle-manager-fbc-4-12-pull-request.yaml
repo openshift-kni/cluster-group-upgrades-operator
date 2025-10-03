@@ -18,7 +18,9 @@ metadata:
         '.konflux/Dockerfile.catalog'.pathChanged() ||
         '.tekton/fbc-pipeline.yaml'.pathChanged() ||
         '.tekton/images-mirror-set.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-fbc-4-12-pull-request.yaml'.pathChanged()
+        '.tekton/topology-aware-lifecycle-manager-fbc-4-12-pull-request.yaml'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
