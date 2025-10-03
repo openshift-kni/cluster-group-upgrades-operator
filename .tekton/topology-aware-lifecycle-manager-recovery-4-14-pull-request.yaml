@@ -22,6 +22,8 @@ metadata:
         'hack/***'.pathChanged() ||
         'pkg/***'.pathChanged() ||
         'recovery/***'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged() ||
         'vendor/***'.pathChanged()
       )
   creationTimestamp: null
@@ -58,6 +60,9 @@ spec:
       value: "true"
     - name: additional-tags
       value: []
+    - name: additional-labels
+      value:
+        - name=openshift4/topology-aware-lifecycle-manager-recovery-rhel8
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
