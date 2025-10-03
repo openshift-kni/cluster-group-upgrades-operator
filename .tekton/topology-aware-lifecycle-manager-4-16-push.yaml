@@ -24,6 +24,8 @@ metadata:
         'hack/***'.pathChanged() ||
         'main.go'.pathChanged() ||
         'pkg/***'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged() ||
         'vendor/***'.pathChanged()
       )
   creationTimestamp: null
