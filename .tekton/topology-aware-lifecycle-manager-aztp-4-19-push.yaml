@@ -21,6 +21,8 @@ metadata:
         'go.sum'.pathChanged() ||
         'hack/***'.pathChanged() ||
         'pkg/***'.pathChanged() ||
+        'telco5g-konflux'.pathChanged() ||
+        'telco5g-konflux/***'.pathChanged() ||
         'vendor/***'.pathChanged()
       )
   creationTimestamp: null
