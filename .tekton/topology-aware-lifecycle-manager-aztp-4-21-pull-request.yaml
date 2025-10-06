@@ -14,15 +14,12 @@ metadata:
       (
         '.konflux/container_build_args.conf'.pathChanged() ||
         '.tekton/build-pipeline.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-4-20-pull-request.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-aztp-4-21-pull-request.yaml'.pathChanged() ||
         'config/***'.pathChanged() ||
-        'controllers/***'.pathChanged() ||
-        'deploy/***'.pathChanged() ||
-        'Dockerfile'.pathChanged() ||
+        'Dockerfile.aztp'.pathChanged() ||
         'go.mod'.pathChanged() ||
         'go.sum'.pathChanged() ||
         'hack/***'.pathChanged() ||
-        'main.go'.pathChanged() ||
         'pkg/***'.pathChanged() ||
         'telco5g-konflux'.pathChanged() ||
         'telco5g-konflux/***'.pathChanged() ||
@@ -30,10 +27,10 @@ metadata:
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-4-20
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-21
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-aztp-4-21
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-4-20-on-pull-request
+  name: topology-aware-lifecycle-manager-aztp-4-21-on-pull-request
   namespace: telco-5g-tenant
 spec:
   params:
@@ -42,14 +39,14 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-20:on-pr-{{revision}}
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-21:on-pr-{{revision}}
     - name: image-expires-after
       value: 5d
     - name: build-platforms
       value:
         - linux/x86_64
     - name: dockerfile
-      value: Dockerfile
+      value: Dockerfile.aztp
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: hermetic
@@ -64,11 +61,11 @@ spec:
       value: []
     - name: additional-labels
       value:
-        - name=openshift4/topology-aware-lifecycle-manager-rhel9-operator
+        - name=openshift4/topology-aware-lifecycle-manager-aztp-rhel9
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-4-20
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-aztp-4-21
   workspaces:
     - name: git-auth
       secret:

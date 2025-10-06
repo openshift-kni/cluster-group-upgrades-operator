@@ -13,25 +13,23 @@ metadata:
       target_branch == "main" &&
       (
         '.konflux/container_build_args.conf'.pathChanged() ||
+        '.konflux/Dockerfile.bundle'.pathChanged() ||
+        '.konflux/overlay/***'.pathChanged() ||
         '.tekton/build-pipeline.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-precache-4-20-push.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-bundle-4-21-push.yaml'.pathChanged() ||
+        'bundle/***'.pathChanged() ||
         'config/***'.pathChanged() ||
-        'Dockerfile.precache'.pathChanged() ||
-        'go.mod'.pathChanged() ||
-        'go.sum'.pathChanged() ||
         'hack/***'.pathChanged() ||
-        'pkg/***'.pathChanged() ||
-        'pre-cache/***'.pathChanged() ||
+        'manifests/***'.pathChanged() ||
         'telco5g-konflux'.pathChanged() ||
-        'telco5g-konflux/***'.pathChanged() ||
-        'vendor/***'.pathChanged()
+        'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-20
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-precache-4-20
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-21
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-bundle-4-21
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-precache-4-20-on-push
+  name: topology-aware-lifecycle-manager-bundle-4-21-on-push
   namespace: telco-5g-tenant
 spec:
   params:
@@ -40,12 +38,12 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20:{{revision}}
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-21:{{revision}}
     - name: build-platforms
       value:
         - linux/x86_64
     - name: dockerfile
-      value: Dockerfile.precache
+      value: .konflux/Dockerfile.bundle
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: hermetic
@@ -54,17 +52,23 @@ spec:
       value: ""
     - name: build-source-image
       value: "true"
+    - name: skip-preflight
+      value: "true"
+    - name: build-image-index
+      value: "false"
+    - name: image-append-platform
+      value: "false"
     - name: skip-sast-coverity
       value: "true"
     - name: additional-tags
       value: ["latest"]
     - name: additional-labels
       value:
-        - name=openshift4/topology-aware-lifecycle-manager-precache-rhel9
+        - name=openshift4/topology-aware-lifecycle-manager-operator-bundle
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-precache-4-20
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-bundle-4-21
   workspaces:
     - name: git-auth
       secret:

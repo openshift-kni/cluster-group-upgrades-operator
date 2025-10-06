@@ -16,16 +16,16 @@ metadata:
         '.konflux/Dockerfile.catalog'.pathChanged() ||
         '.tekton/fbc-pipeline.yaml'.pathChanged() ||
         '.tekton/images-mirror-set.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-fbc-4-20-push.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-fbc-4-21-push.yaml'.pathChanged() ||
         'telco5g-konflux'.pathChanged() ||
         'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-fbc-4-20
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-fbc-4-20
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-fbc-4-21
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-fbc-4-21
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-fbc-4-20-on-push
+  name: topology-aware-lifecycle-manager-fbc-4-21-on-push
   namespace: telco-5g-tenant
 spec:
   params:
@@ -34,7 +34,7 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-4-20:{{revision}}
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-4-21:{{revision}}
     - name: build-platforms
       value:
         - linux/x86_64
@@ -50,7 +50,7 @@ spec:
   pipelineRef:
     name: fbc-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-fbc-4-20
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-fbc-4-21
   workspaces:
     - name: git-auth
       secret:
