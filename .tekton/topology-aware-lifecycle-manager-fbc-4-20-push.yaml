@@ -9,7 +9,7 @@ metadata:
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push" &&
-      target_branch == "main" &&
+      target_branch == "release-4.20" &&
       (
         '.konflux/catalog/***'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
