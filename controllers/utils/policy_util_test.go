@@ -185,7 +185,7 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
     apiVersion: v1
     kind: Pod
     metadata:
-      name: placeholder-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      name: placeholder-
       namespace: placeholder
 			`,
 		},
@@ -213,7 +213,7 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
     apiVersion: v1
     kind: Pod
     metadata:
-      name: placeholder-{{hub fromConfigMap "ztp-common" "common-cm" "common-key" hub}}
+      name: placeholder-
       namespace: placeholder
 			`,
 		},
@@ -275,6 +275,24 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
       namespace: placeholder
       labels:
         species-category: mammal
+`,
+		},
+		{
+			name: "Hub side templated policy",
+			inputRawTemplate: `|
+{{hub if $myConfigMap := (lookup "v1" "ConfigMap" "default" $configMap.name) hub}}
+{{hub range $key, $value := $myConfigMap.data hub}}
+- complianceType: mustonlyhave
+	objectDefinition:
+		{{hub $value | indent 14 hub}}
+{{hub end hub}}
+{{hub end hub}}
+			`,
+			expectedResult: `|
+
+
+- complianceType: mustonlyhave
+	objectDefinition:
 `,
 		},
 	}
