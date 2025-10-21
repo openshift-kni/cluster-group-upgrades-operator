@@ -198,7 +198,12 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		for _, configPlcTmpl := range configPlcTmpls.([]interface{}) {
 			// Make sure the objectDefinition of the ConfigurationPolicy object template exists.
 			if configPlcTmpl.(map[string]interface{})["objectDefinition"] == nil {
-				return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
+				// No objectDefinition in the policy template, skipping.
+				if objectTemplateRawPresent {
+					continue
+				} else {
+					return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
+				}
 			}
 			objectDefinition := configPlcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
 			if objectDefinition["status"] != nil {
@@ -291,12 +296,8 @@ func StripObjectTemplatesRaw(tmplStr string) string {
 	// For our usage all our results will be an array with a single item
 	// so we will just use item[0] here
 	for _, item := range bracketSubstrings {
-		// We want to remove all the ACM templates but not the hub side templates
-		if strings.HasPrefix(item[0], "{{hub") && strings.HasSuffix(item[0], "hub}}") {
-			continue
-		}
-
-		// Else just delete the template line entirely, including the newline at the end
+		// We want to remove all the ACM templates and the hub side templates
+		// Deletes the template line entirely, including the newline at the end
 		result = strings.Replace(result+"\n", item[0], "", 1)
 	}
 
