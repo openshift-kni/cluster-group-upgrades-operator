@@ -321,7 +321,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
   "status": {
     "placementSummary": null,
     "summary": {
-      "Applied": 0,
+      "applied": 0,
       "available": 0,
       "degraded": 0,
       "progressing": 0,
@@ -459,7 +459,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
   "status": {
     "placementSummary": null,
     "summary": {
-      "Applied": 0,
+      "applied": 0,
       "available": 0,
       "degraded": 0,
       "progressing": 0,
@@ -596,7 +596,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
   "status": {
     "placementSummary": null,
     "summary": {
-      "Applied": 0,
+      "applied": 0,
       "available": 0,
       "degraded": 0,
       "progressing": 0,
@@ -734,7 +734,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
   "status": {
     "placementSummary": null,
     "summary": {
-      "Applied": 0,
+      "applied": 0,
       "available": 0,
       "degraded": 0,
       "progressing": 0,
@@ -871,7 +871,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
   "status": {
     "placementSummary": null,
     "summary": {
-      "Applied": 0,
+      "applied": 0,
       "available": 0,
       "degraded": 0,
       "progressing": 0,
