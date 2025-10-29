@@ -86,7 +86,7 @@ CRD_OPTIONS ?= "crd:trivialVersions=true,preserveUnknownFields=false"
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
 CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/catalog-template.in.yaml
 CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/catalog-template.out.yaml
-CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
+CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.json
 
 # Konflux bundle image configuration
 BUNDLE_NAME_SUFFIX = bundle-4-12
@@ -542,9 +542,9 @@ sync-git-submodules:
 .PHONY: konflux-fix-catalog-name
 konflux-fix-catalog-name: ## Fix catalog package name for TALM
 	if [ "$$(uname)" = "Darwin" ]; then \
-		sed -i '' 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml; \
+		sed -i '' 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX); \
 	else \
-		sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml; \
+		sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX); \
 	fi
 
 .PHONY: konflux-validate-catalog-template-bundle
