@@ -148,18 +148,47 @@ spec:
       workspaces:
         - name: basic-auth
           workspace: git-auth
+    - name: run-opm-command
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+        - name: ociStorage
+          value: $(params.output-image).opm
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+        - name: OPM_ARGS
+          value:
+            - alpha
+            - render-template
+            - basic
+            # arg for OCP 4.17 and newer
+            - "--migrate-level=bundle-object-to-csv-metadata"
+            - ".konflux/catalog/catalog-template.in.yaml"
+        - name: OPM_OUTPUT_PATH
+          value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+      runAfter:
+        - clone-repository
+      taskRef:
+        params:
+          - name: name
+            value: run-opm-command-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-run-opm-command-oci-ta:0.1@sha256:4ab5dba35166a976c3d6293913501fdfc79a3222395388fc6208641ab8bc9359
+          - name: kind
+            value: task
+        resolver: bundles
     - name: prefetch-dependencies
       params:
         - name: input
           value: $(params.prefetch-input)
         - name: SOURCE_ARTIFACT
-          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+          value: $(tasks.run-opm-command.results.SOURCE_ARTIFACT)
         - name: ociStorage
           value: $(params.output-image).prefetch
         - name: ociArtifactExpiresAfter
           value: $(params.image-expires-after)
       runAfter:
-        - clone-repository
+        - run-opm-command
       taskRef:
         params:
           - name: name
