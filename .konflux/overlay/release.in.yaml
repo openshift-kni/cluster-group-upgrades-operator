@@ -6,6 +6,6 @@ variables:
       Topology Aware Lifecycle Manager is an operator that facilitates
       platform and operator upgrades of group of clusters
   display_name: "Topology Aware Lifecycle Manager"
-  manager_version: "topology-aware-lifecycle-manager.v4.16.6"
+  manager_version: "topology-aware-lifecycle-manager.v4.16.7"
   min_kube_version: "1.29.0"
-  version: "4.16.6"
+  version: "4.16.7"
