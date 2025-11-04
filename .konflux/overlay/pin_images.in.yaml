@@ -2,7 +2,7 @@
 # Manager
 - key: manager
   source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.19.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-19@sha256:f0b836fd0c291663387588459989fffd63e558dc087d83e0129c90e7eb751518
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-19@sha256:ecf558e2d393fd9de59a4f5c88d1d7016056da08691133937c126853d3d321ac
 #
 # Aztp
 - key: aztp_img
