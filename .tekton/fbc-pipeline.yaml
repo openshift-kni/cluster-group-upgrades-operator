@@ -166,6 +166,11 @@ spec:
             - ".konflux/catalog/catalog-template.in.yaml"
         - name: OPM_OUTPUT_PATH
           value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+        # replace catalog.json pullspecs with idms config
+        - name: IDMS_PATH
+          value: ".konflux/catalog/catalog-idms.yaml"
+        - name: FILE_TO_UPDATE_PULLSPEC
+          value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
       runAfter:
         - clone-repository
       taskRef:
