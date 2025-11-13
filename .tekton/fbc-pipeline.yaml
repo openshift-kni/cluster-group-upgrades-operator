@@ -156,9 +156,9 @@ spec:
           value: $(params.image-expires-after)
         - name: SCRIPT_RUNNER_IMAGE
           value: quay.io/konflux-ci/yq:latest
-        # quick test
+        # update catalog template
         - name: SCRIPT
-          value: touch .konflux/catalog/topology-aware-lifecycle-manager/hola.txt
+          value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
         - name: HERMETIC
           value: $(params.hermetic)
         - name: SOURCE_ARTIFACT
