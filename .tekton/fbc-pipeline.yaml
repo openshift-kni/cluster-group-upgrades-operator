@@ -262,6 +262,9 @@ spec:
           value: $(params.build-args-file)
         - name: SOURCE_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: ADDITIONAL_BASE_IMAGES
+          value:
+            - $(tasks.run-opm-pre-actions.results.SCRIPT_RUNNER_IMAGE_REFERENCE)
         - name: CACHI2_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: IMAGE_APPEND_PLATFORM
