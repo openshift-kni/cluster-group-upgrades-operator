@@ -417,6 +417,11 @@ type ObjectProperties struct {
 	// Diff stores the difference between the `objectDefinition` in the policy and the object on the
 	// cluster.
 	Diff string `json:"diff,omitempty"`
+
+	// MatchesAfterDryRun indicates whether the object matches the policy after the dry run update. If true,
+	// there was an initial mismatch between the policy and object, but the dry run update produced
+	// a compliant result.
+	MatchesAfterDryRun bool `json:"matchesAfterDryRun,omitempty"`
 }
 
 // RelatedObject contains the details of an object matched by the policy.
@@ -452,6 +457,16 @@ type ConfigurationPolicyStatus struct {
 	// RelatedObjects is a list of objects processed by the configuration policy due to its
 	// `object-templates`.
 	RelatedObjects []RelatedObject `json:"relatedObjects,omitempty"`
+
+	// History is a list of the most recent compliance messages for this configuration policy.
+	// The first entry is the most recent, and the list is limited to 10 entries.
+	History []HistoryEvent `json:"history,omitempty"`
+}
+
+// HistoryEvent is a timestamped message representing the policy compliance state at that time.
+type HistoryEvent struct {
+	LastTimestamp metav1.MicroTime `json:"lastTimestamp,omitempty"`
+	Message       string           `json:"message,omitempty"`
 }
 
 func (c ConfigurationPolicy) ObjectIdentifier() depclient.ObjectIdentifier {
@@ -478,7 +493,7 @@ type ConfigurationPolicy struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   *ConfigurationPolicySpec  `json:"spec,omitempty"`
+	Spec   ConfigurationPolicySpec   `json:"spec"`
 	Status ConfigurationPolicyStatus `json:"status,omitempty"`
 }
 

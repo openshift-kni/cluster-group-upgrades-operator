@@ -32,6 +32,7 @@ var (
 	ErrCacheDisabled        = errors.New("cannot perform this action because the cache is not enabled")
 	ErrInvalidInput         = errors.New("invalid input provided")
 	ErrNoVersionedResource  = errors.New("the resource version was not found")
+	ErrResourceUnwatchable  = errors.New("watch not supported on this resource")
 	ErrQueryBatchInProgress = errors.New(
 		"cannot perform this action; the query batch for this object ID is in progress",
 	)
@@ -276,7 +277,6 @@ func (d *dynamicWatcher) Start(ctx context.Context) error {
 	d.started = true
 	close(d.startedChan)
 
-	//nolint: revive
 	for d.processNextWorkItem(ctx) {
 	}
 
@@ -371,12 +371,14 @@ func (d *dynamicWatcher) relayWatchEvents(
 
 		w, watchedObjects, err := watchLatest(watchedObject, resource)
 		if err != nil {
-			if k8serrors.IsForbidden(err) || k8serrors.IsUnauthorized(err) {
-				klog.Errorf(
-					"Could not restart a watch request due to the client no longer having access. "+
-						"Cleaning up and starting reconciles for the watchers. Error: %v",
-					err,
-				)
+			// When one of these errors occur, the watch should not be retried
+			if k8serrors.IsForbidden(err) || k8serrors.IsUnauthorized(err) || errors.Is(err, ErrResourceUnwatchable) {
+				if errors.Is(err, ErrResourceUnwatchable) {
+					klog.Errorf("Could not restart a watch request: %v", err)
+				} else {
+					klog.Errorf("Could not restart a watch request due to the client no longer having access. "+
+						"Cleaning up and starting reconciles for the watchers. Error: %v", err)
+				}
 
 				d.lock.Lock()
 				defer d.lock.Unlock()
@@ -745,6 +747,9 @@ func watchLatest(
 	}
 
 	resourceVersion := listResult.GetResourceVersion()
+	if resourceVersion == "" {
+		return nil, listResult.Items, ErrResourceUnwatchable
+	}
 
 	watchStarted := make(chan error, 1)
 	var firstResultSent bool
