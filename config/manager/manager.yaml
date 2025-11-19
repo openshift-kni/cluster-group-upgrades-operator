@@ -41,6 +41,9 @@ spec:
         - --metrics-tls-cert-dir=/secrets/tls/metrics
         image: controller:latest
         name: manager
+        env:
+        - name: GOCOVERDIR
+          value: /coverage
         securityContext:
           allowPrivilegeEscalation: false
         ports:
@@ -50,6 +53,8 @@ spec:
         volumeMounts:
         - name: metrics-tls
           mountPath: /secrets/tls/metrics
+        - name: coverage
+          mountPath: /coverage
         livenessProbe:
           httpGet:
             path: /healthz
@@ -73,3 +78,5 @@ spec:
         secret:
           defaultMode: 420
           secretName: controller-manager-metrics-tls
+      - name: coverage
+        emptyDir: {}

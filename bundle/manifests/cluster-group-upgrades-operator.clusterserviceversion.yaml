@@ -557,6 +557,8 @@ spec:
                   value: "false"
                 - name: AZTP_IMG
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.21.0
+                - name: GOCOVERDIR
+                  value: /coverage
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:4.21.0
                 livenessProbe:
                   httpGet:
@@ -584,6 +586,8 @@ spec:
                 volumeMounts:
                 - mountPath: /secrets/tls/metrics
                   name: metrics-tls
+                - mountPath: /coverage
+                  name: coverage
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: cluster-group-upgrades-controller-manager
@@ -593,6 +597,8 @@ spec:
                 secret:
                   defaultMode: 420
                   secretName: controller-manager-metrics-tls
+              - emptyDir: {}
+                name: coverage
       permissions:
       - rules:
         - apiGroups:
