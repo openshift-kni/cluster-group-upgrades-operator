@@ -11,6 +11,9 @@ FROM ${BUILDER_IMAGE} AS builder
 # Default Konflux to false
 ARG KONFLUX="false"
 
+# Default COVER to false (set to "true" to enable coverage instrumentation)
+ARG COVER="false"
+
 # Asssume x86 unless otherwise specified
 ARG GOARCH="amd64"
 
@@ -26,14 +29,21 @@ COPY main.go main.go
 COPY pkg/api/ pkg/api/
 COPY controllers/ controllers/
 
+# Build binary with optional coverage instrumentation
 # For Konflux, compile with FIPS enabled
 # Otherwise compile normally
-RUN if [[ "${KONFLUX}" == "true" ]]; then \
+# If COVER=true, add -cover flag to enable coverage profiling
+RUN COVER_FLAG=""; \
+    if [[ "${COVER}" == "true" ]]; then \
+        echo "Building with coverage instrumentation enabled" && \
+        COVER_FLAG="-cover"; \
+    fi && \
+    if [[ "${KONFLUX}" == "true" ]]; then \
         echo "Compiling with fips" && \
-        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o manager main.go; \
+        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build ${COVER_FLAG} -mod=vendor -tags strictfipsruntime -a -o manager main.go; \
     else \
         echo "Compiling without fips" && \
-        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o manager main.go; \
+        CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build ${COVER_FLAG} -mod=vendor -a -o manager main.go; \
     fi
 
 # Create the runtime image

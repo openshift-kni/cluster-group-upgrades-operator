@@ -199,9 +199,18 @@ vet: ## Run go vet against code.
 .PHONY: unittests
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
-	go test -v ./controllers/...
+	go test -v -coverprofile=coverage.out -covermode=atomic ./controllers/...
 	@echo "Running backup unittests"
-	go test -v ./recovery/cmd/...
+	go test -v -coverprofile=recovery-coverage.out -covermode=atomic ./recovery/cmd/...
+	@echo "Merging coverage files"
+	@if [ -f recovery-coverage.out ]; then \
+		echo "mode: atomic" > coverage-combined.out; \
+		tail -n +2 coverage.out >> coverage-combined.out 2>/dev/null || true; \
+		tail -n +2 recovery-coverage.out >> coverage-combined.out 2>/dev/null || true; \
+		mv coverage-combined.out coverage.out; \
+		rm -f recovery-coverage.out; \
+	fi
+	@echo "Coverage report generated: coverage.out"
 	
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
@@ -264,6 +273,9 @@ debug: manifests generate fmt vet ## Run a controller from your host that accept
 
 docker-build: ## Build container image with the manager.
 	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
+
+docker-build-coverage: ## Build container image with coverage instrumentation enabled.
+	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} --build-arg COVER=true -f Dockerfile .
 
 docker-push: ## Push container image with the manager.
 	${ENGINE} push ${IMG}
