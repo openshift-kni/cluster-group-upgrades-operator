@@ -223,6 +223,7 @@ ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-binda
 # Set the paths to the binaries in the local bin directory
 BASHATE = $(LOCALBIN)/bashate
 CONTROLLER_GEN = $(LOCALBIN)/controller-gen
+COVERALLS = $(LOCALBIN)/coveralls
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KUSTOMIZE = $(LOCALBIN)/kustomize
 OPERATOR_SDK = $(LOCALBIN)/operator-sdk
@@ -549,6 +550,28 @@ yq-sort-and-format: yq ## Sort keys/reformat all YAML files in the repository
 		$(YQ) -i '.. |= sort_keys(.)' "$$file"; \
 	done
 	@echo "YAML sorting and formatting completed successfully."
+
+.PHONY: coveralls-download
+coveralls-download: $(LOCALBIN) ## Download coveralls binary locally if necessary.
+	@if [ ! -f "$(COVERALLS)" ]; then \
+		echo "Downloading coveralls..."; \
+		ARCH=$$(uname -m); \
+		if [ "$$ARCH" = "x86_64" ]; then \
+			BINARY="coveralls-linux-x86_64"; \
+		elif [ "$$ARCH" = "aarch64" ]; then \
+			BINARY="coveralls-linux-aarch64"; \
+		else \
+			echo "Error: Unsupported architecture $$ARCH"; \
+			exit 1; \
+		fi; \
+		URL="https://github.com/coverallsapp/coverage-reporter/releases/latest/download/$$BINARY"; \
+		echo "Downloading from $$URL"; \
+		curl -sSL "$$URL" -o $(COVERALLS); \
+		chmod +x $(COVERALLS); \
+		echo "Coveralls downloaded successfully."; \
+	else \
+		echo "Coveralls is already installed at $(COVERALLS)"; \
+	fi
 
 ##@ Konflux
 
