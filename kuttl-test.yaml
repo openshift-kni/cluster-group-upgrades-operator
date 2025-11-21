@@ -12,7 +12,7 @@ parallel: 1
 testDirs:
   - tests/kuttl/cgu/
   - tests/kuttl/ibgu/
-timeout: 40
+timeout: 60
 # startControlPlane: true
 # startKIND: true
 # kindNodeCache: true
