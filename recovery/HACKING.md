@@ -23,7 +23,7 @@ It is suggested that you run these tests regularly as part of development.
 ### golangci-lint
 
 Install golangci-lint in your GO environment by running:<br>
-`go install github.com/golangci/golangci-lint/cmd/golangci-lint@v1.44.0`
+`go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@v2.6.2`
 
 For more information, see:<br><https://golangci-lint.run/usage/install/>
 
