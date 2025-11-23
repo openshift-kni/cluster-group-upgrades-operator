@@ -80,11 +80,6 @@ oc patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p="[
             ],
             \"securityContext\": {
                 \"allowPrivilegeEscalation\": false,
-                \"runAsNonRoot\": true,
-                \"runAsUser\": 65532,
-                \"capabilities\": {
-                    \"drop\": [\"ALL\"]
-                }
             }
         }
     }
