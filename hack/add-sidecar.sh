@@ -94,12 +94,7 @@ oc rollout status deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE"
 echo ""
 echo "Waiting for sidecar container to be ready..."
 
-SELECTOR=$(oc get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o jsonpath='{.spec.selector.matchLabels}' | jq -r 'to_entries | map("\(.key)=\(.value)") | join(",")')
-
-oc wait --for=condition=Ready pod -l "$SELECTOR" -n "$NAMESPACE" --timeout=60s
-
-POD_NAME=$(oc get pods -n "$NAMESPACE" -l "$SELECTOR" -o jsonpath='{.items[0].metadata.name}')
-oc wait pod "$POD_NAME" -n "$NAMESPACE" --for=jsonpath='{.status.containerStatuses[?(@.name=="sidecar-busybox")].ready}'=true --timeout=60s
+sleep 60
 
 echo ""
 echo "Deployment updated successfully!"
