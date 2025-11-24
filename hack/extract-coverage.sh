@@ -61,14 +61,14 @@ if ! oc get deployment "$DEPLOYMENT" -n "$NAMESPACE"; then
     echo "Error: Deployment '$DEPLOYMENT' not found in namespace '$NAMESPACE'"
     echo ""
     echo "Available deployments:"
-    oc get deployments -n "$NAMESPACE" 2>/dev/null || echo "  Namespace not found or no deployments"
+    oc get deployments -n "$NAMESPACE" || echo "  Namespace not found or no deployments"
     exit 1
 fi
 echo "✓ Deployment found"
 
 # Check if add-sidecar.sh exists
-if [ ! -f "$SCRIPT_DIR/add-sidecar.sh" ]; then
-    echo "Error: add-sidecar.sh not found at $SCRIPT_DIR/add-sidecar.sh"
+if [ ! -f "$SCRIPT_DIR/add-sidecar-csv.sh" ]; then
+    echo "Error: add-sidecar.sh not found at $SCRIPT_DIR/add-sidecar-csv.sh"
     exit 1
 fi
 
@@ -81,8 +81,10 @@ echo ""
 echo "This will add a sidecar container and enable shareProcessNamespace..."
 echo ""
 
-"$SCRIPT_DIR/add-sidecar.sh" "$DEPLOYMENT" "$NAMESPACE" "$VOLUME_NAME" "$COVERAGE_PATH"
+"$SCRIPT_DIR/add-sidecar-csv.sh" "$NAMESPACE"
 
+echo "Waiting for the new deployment"
+sleep 60
 if [ $? -ne 0 ]; then
     echo ""
     echo "Error: Failed to add sidecar"
@@ -97,7 +99,7 @@ echo ""
 echo "=========================================="
 echo "Step 3: Finding Pod"
 echo "=========================================="
-POD_NAME=$(oc get pods -n "$NAMESPACE" -l control-plane=controller-manager --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)
+POD_NAME=$(oc get pods -n "$NAMESPACE" -l control-plane=controller-manager --field-selector=status.phase=Running -o jsonpath='{.items[0].metadata.name}')
 
 if [ -z "$POD_NAME" ]; then
     echo "Error: No running pod found for deployment '$DEPLOYMENT'"
@@ -112,7 +114,7 @@ echo "Found pod: $POD_NAME"
 # Verify sidecar is running
 echo ""
 echo "Verifying sidecar container..."
-SIDECAR_STATUS=$(oc get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[?(@.name=="sidecar-busybox")].ready}' 2>/dev/null)
+SIDECAR_STATUS=$(oc get pod "$POD_NAME" -n "$NAMESPACE" -o jsonpath='{.status.containerStatuses[?(@.name=="sidecar-busybox")].ready}')
 
 if [ "$SIDECAR_STATUS" != "true" ]; then
     echo "sidecar is not ready"
@@ -129,7 +131,7 @@ echo "=========================================="
 echo ""
 echo "Finding /manager process via sidecar..."
 
-MANAGER_PID=$(oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- sh -c "ps aux | grep '/manager' | grep -v grep | awk '{print \$1}'" 2>/dev/null | head -1)
+MANAGER_PID=$(oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- sh -c "ps aux | grep '/manager' | grep -v grep | awk '{print \$1}'" | head -1)
 
 if [ -z "$MANAGER_PID" ]; then
     echo "Error: Could not find /manager process"
@@ -143,7 +145,7 @@ echo "Found /manager process with PID: $MANAGER_PID"
 echo ""
 echo "Sending SIGINT to trigger coverage flush..."
 
-oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- kill -INT "$MANAGER_PID" 2>/dev/null
+oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- kill -INT "$MANAGER_PID"
 
 if [ $? -eq 0 ]; then
     echo "✓ SIGINT sent successfully"
@@ -172,7 +174,7 @@ mkdir -p "$OUTPUT_DIR"
 
 # Check if there are coverage files
 echo "Checking for coverage files..."
-FILE_COUNT=$(oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- sh -c "ls -1 $COVERAGE_PATH 2>/dev/null | wc -l" || echo "0")
+FILE_COUNT=$(oc exec -n "$NAMESPACE" "$POD_NAME" -c sidecar-busybox -- sh -c "ls -1 $COVERAGE_PATH | wc -l" || echo "0")
 
 if [ "$FILE_COUNT" -eq 0 ]; then
     echo "Warning: No coverage files found in $COVERAGE_PATH"
@@ -195,7 +197,7 @@ echo "Copying coverage data from sidecar container..."
 oc cp -n "$NAMESPACE" -c sidecar-busybox "$POD_NAME:$COVERAGE_PATH" "$OUTPUT_DIR" 2>&1 | grep -v "Defaulting container" || true
 
 # Verify files were copied
-COPIED_COUNT=$(find "$OUTPUT_DIR" -type f 2>/dev/null | wc -l)
+COPIED_COUNT=$(find "$OUTPUT_DIR" -type f | wc -l)
 if [ "$COPIED_COUNT" -eq 0 ]; then
     echo "Error: No files were copied from the pod"
     exit 1
