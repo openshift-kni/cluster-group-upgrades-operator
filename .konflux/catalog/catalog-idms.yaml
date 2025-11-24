@@ -1,0 +1,11 @@
+---
+# We use this IDMS to map the quay.io build to registry.redhat.io in the catalog.json post rendering
+apiVersion: config.openshift.io/v1
+kind: ImageDigestMirrorSet
+metadata:
+  name: catalog-idms
+spec:
+  imageDigestMirrors:
+  - mirrors:
+    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-4-19
+    source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
