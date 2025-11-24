@@ -86,7 +86,8 @@ CRD_OPTIONS ?= "crd"
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
 CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/catalog-template.in.yaml
 CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/catalog-template.out.yaml
-CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.json
+CATALOG_OUTPUT_FORMAT = json
+CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux bundle image configuration
 BUNDLE_NAME_SUFFIX = bundle-4-21
@@ -211,7 +212,7 @@ unittests: pre-cache-unit-test
 		rm -f recovery-coverage.out; \
 	fi
 	@echo "Coverage report generated: coverage.out"
-	
+
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
 	go mod tidy
@@ -592,6 +593,7 @@ konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catal
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
+		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/bundle.builds.in.yaml \
 		OPM=$(OPM) \
@@ -605,6 +607,7 @@ konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a re
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
+		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_NAME_SUFFIX=$(BUNDLE_NAME_SUFFIX) \
 		PRODUCTION_BUNDLE_NAME=$(PRODUCTION_BUNDLE_NAME) \
