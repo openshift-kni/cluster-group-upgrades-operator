@@ -148,18 +148,76 @@ spec:
       workspaces:
         - name: basic-auth
           workspace: git-auth
+    - name: run-opm-pre-actions
+      params:
+        - name: ociStorage
+          value: $(params.output-image).script
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+        - name: SCRIPT_RUNNER_IMAGE
+          value: quay.io/konflux-ci/yq:latest
+        # update catalog template
+        - name: SCRIPT
+          value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
+        - name: HERMETIC
+          value: $(params.hermetic)
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+      runAfter:
+        - clone-repository
+      taskRef:
+        params:
+        - name: name
+          value: run-script-oci-ta
+        - name: bundle
+          value: quay.io/konflux-ci/tekton-catalog/task-run-script-oci-ta:0.1@sha256:834a934f1e631a79aea7f2d001162cf90086e664e648c8ca15b69ad9798571ee
+        - name: kind
+          value: task
+        resolver: bundles
+    - name: run-opm-command
+      params:
+        - name: SOURCE_ARTIFACT
+          value: $(tasks.run-opm-pre-actions.results.SCRIPT_ARTIFACT)
+        - name: ociStorage
+          value: $(params.output-image).opm
+        - name: ociArtifactExpiresAfter
+          value: $(params.image-expires-after)
+        - name: OPM_ARGS
+          value:
+            - alpha
+            - render-template
+            - basic
+            - ".konflux/catalog/catalog-template.in.yaml"
+        - name: OPM_OUTPUT_PATH
+          value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+        # replace catalog.json pullspecs with idms config
+        - name: IDMS_PATH
+          value: ".konflux/catalog/catalog-idms.yaml"
+        - name: FILE_TO_UPDATE_PULLSPEC
+          value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+      runAfter:
+        - run-opm-pre-actions
+      taskRef:
+        params:
+          - name: name
+            value: run-opm-command-oci-ta
+          - name: bundle
+            value: quay.io/konflux-ci/tekton-catalog/task-run-opm-command-oci-ta:0.1@sha256:4ab5dba35166a976c3d6293913501fdfc79a3222395388fc6208641ab8bc9359
+          - name: kind
+            value: task
+        resolver: bundles
     - name: prefetch-dependencies
       params:
         - name: input
           value: $(params.prefetch-input)
         - name: SOURCE_ARTIFACT
-          value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
+          value: $(tasks.run-opm-command.results.SOURCE_ARTIFACT)
         - name: ociStorage
           value: $(params.output-image).prefetch
         - name: ociArtifactExpiresAfter
           value: $(params.image-expires-after)
       runAfter:
-        - clone-repository
+        - run-opm-command
       taskRef:
         params:
           - name: name
@@ -202,6 +260,9 @@ spec:
           value: $(params.build-args-file)
         - name: SOURCE_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.SOURCE_ARTIFACT)
+        - name: ADDITIONAL_BASE_IMAGES
+          value:
+            - $(tasks.run-opm-pre-actions.results.SCRIPT_RUNNER_IMAGE_REFERENCE)
         - name: CACHI2_ARTIFACT
           value: $(tasks.prefetch-dependencies.results.CACHI2_ARTIFACT)
         - name: IMAGE_APPEND_PLATFORM
