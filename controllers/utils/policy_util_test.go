@@ -295,6 +295,68 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
 	objectDefinition:
 `,
 		},
+		{
+			name: "Templated policy with object-templates-raw",
+			inputRawTemplate: `apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: test
+  namespace: policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: test
+      spec:
+        object-templates-raw: |
+          {{hub range (lookup "v1" "Secret" "policies" "" "").items hub}}
+          - complianceType: musthave
+            objectDefinition:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: {{hub .metadata.name hub}}
+                namespace: policies
+              stringData:
+                test: ''
+          {{hub end hub}}
+        pruneObjectBehavior: DeleteIfCreated
+        remediationAction: inform
+        severity: low
+			`,
+			expectedResult: `apiVersion: policy.open-cluster-management.io/v1
+kind: Policy
+metadata:
+  name: test
+  namespace: policies
+spec:
+  disabled: false
+  policy-templates:
+  - objectDefinition:
+      apiVersion: policy.open-cluster-management.io/v1
+      kind: ConfigurationPolicy
+      metadata:
+        name: test
+      spec:
+        object-templates-raw: |
+
+          - complianceType: musthave
+            objectDefinition:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+
+                namespace: policies
+              stringData:
+                test: ''
+
+        pruneObjectBehavior: DeleteIfCreated
+        remediationAction: inform
+        severity: low`,
+		},
 	}
 
 	// Loop over all test cases
@@ -309,6 +371,66 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
 
 			// Assert the actual result matches the expected result
 			assert.Equal(t, trimmedActual, trimmedExpected)
+		})
+	}
+}
+
+func TestInspectPolicyObjects(t *testing.T) {
+	testcases := []struct {
+		name             string
+		inputRawTemplate string
+		expectedResult   bool
+	}{
+		{
+			name: "Templated policy with object-templates-raw",
+			inputRawTemplate: `
+          {{hub range (lookup "v1" "Secret" "policies" "" "").items hub}}
+          - complianceType: musthave
+            objectDefinition:
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: {{hub .metadata.name hub}}
+                namespace: policies
+              stringData:
+                test: ''
+              status:
+                state: AtLatestKnown
+          {{hub end hub}}`,
+			expectedResult: true,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			policy := &unstructured.Unstructured{}
+			policy.SetUnstructuredContent(map[string]interface{}{
+				"apiVersion": "policy.open-cluster-management.io/v1",
+				"kind":       "Policy",
+				"metadata": map[string]interface{}{
+					"name":      "test",
+					"namespace": "policies",
+				},
+				"spec": map[string]interface{}{
+					"disabled": false,
+					"policy-templates": []interface{}{
+						map[string]interface{}{
+							"objectDefinition": map[string]interface{}{
+								"apiVersion": "policy.open-cluster-management.io/v1",
+								"kind":       "ConfigurationPolicy",
+								"metadata": map[string]interface{}{
+									"name": "test",
+								},
+								"spec": map[string]interface{}{
+									"object-templates-raw": tc.inputRawTemplate,
+								},
+							},
+						},
+					},
+				}})
+			actualResult, err := InspectPolicyObjects(policy)
+			assert.NoError(t, err)
+			assert.Equal(t, tc.expectedResult, actualResult)
 		})
 	}
 }
