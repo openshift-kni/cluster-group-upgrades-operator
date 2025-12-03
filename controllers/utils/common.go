@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -111,15 +112,24 @@ func Difference(a, b []string) []string {
 	return diff
 }
 
-func ObjectToJSON(obj runtime.Object) (string, error) {
+func ObjectToUnstructured(obj runtime.Object) (*unstructured.Unstructured, error) {
 	scheme := runtime.NewScheme()
 	mwv1alpha1.AddToScheme(scheme)
+	mwv1.AddToScheme(scheme)
 	v1alpha1.AddToScheme(scheme)
 	corev1.AddToScheme(scheme)
 	rbac.AddToScheme(scheme)
 	lcav1.AddToScheme(scheme)
 	outUnstructured := &unstructured.Unstructured{}
-	scheme.Convert(obj, outUnstructured, nil)
+	err := scheme.Convert(obj, outUnstructured, nil)
+	return outUnstructured, err
+}
+
+func ObjectToJSON(obj runtime.Object) (string, error) {
+	outUnstructured, err := ObjectToUnstructured(obj)
+	if err != nil {
+		return "", err
+	}
 	json, err := outUnstructured.MarshalJSON()
 	return string(json), err
 }
