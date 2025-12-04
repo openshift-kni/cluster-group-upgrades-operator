@@ -1,3 +1,5 @@
+[![Coverage Status](https://coveralls.io/repos/github/openshift-kni/cluster-group-upgrades-operator/badge.svg?branch=main)](https://coveralls.io/github/openshift-kni/cluster-group-upgrades-operator?branch=main)
+
 # Cluster Group Upgrades operator
 
 ## What is
