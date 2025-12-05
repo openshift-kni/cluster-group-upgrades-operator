@@ -147,8 +147,8 @@ github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836 h1:8
 github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836/go.mod h1:UwTWt+P9MhBWNzRCJrvmoMg0hN2u/znkkrkt9C8phkU=
 github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c h1:gJvhduWIrpzoUTwrJjjeul+hGETKkhRhEZosBg/X3Hg=
 github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
-github.com/operator-framework/api v0.35.0 h1:xKrffuGEagk3CWy6zqdK5YmIErlBtWUblNNK+q7ld7c=
-github.com/operator-framework/api v0.35.0/go.mod h1:A9UNu/pdcO1RauMHvV54unp4DNm/Y5fMVbGDpnIIF+M=
+github.com/operator-framework/api v0.36.0 h1:6+duRhamCvB540JbvNp/1+Pot7luff7HqdAOm9bAntg=
+github.com/operator-framework/api v0.36.0/go.mod h1:QSmHMx8XpGsNWvjU5CUelVZC916VLp/TZhfYvGKpghM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
