@@ -32,6 +32,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	clusters []string) error {
 
+	//nolint:staticcheck // Backup is deprecated, but we maintain backward compatibility
 	if clusterGroupUpgrade.Spec.Backup && len(clusters) > 0 {
 		// Backup is required
 		if clusterGroupUpgrade.Status.Backup == nil {
@@ -108,8 +109,8 @@ func (r *ClusterGroupUpgradeReconciler) triggerBackup(ctx context.Context,
 		}
 		if nextState == BackupStateSucceeded {
 			// cleanup for succeeded clusters
-			if r.jobAndViewCleanup(ctx, cluster, backupViews, backupDeleteTemplates) != nil {
-				r.Log.Error(err, "[triggerBackup] failed to cleanup for", "cluster", cluster)
+			if cleanupErr := r.jobAndViewCleanup(ctx, cluster, backupViews, backupDeleteTemplates); cleanupErr != nil {
+				r.Log.Error(cleanupErr, "[triggerBackup] failed to cleanup for", "cluster", cluster)
 				// skip cluster status transition if cleanup not successful
 				continue
 			}
@@ -155,7 +156,6 @@ func (r *ClusterGroupUpgradeReconciler) backupStarting(ctx context.Context, clus
 	cluster string) (string, error) {
 
 	nextState, currentState := BackupStateStarting, BackupStateStarting
-	var condition string
 
 	condition, err := r.getStartingConditions(ctx, cluster, backupJobView[0].resourceName, backup)
 	if err != nil {
@@ -244,9 +244,9 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
 	// Counts for the various cluster states
-	var failedBackupCount int = 0
-	var progressingBackupCount int = 0
-	var successfulBackupCount int = 0
+	var failedBackupCount int
+	var progressingBackupCount int
+	var successfulBackupCount int
 
 	// Loop over all the clusters and take count of all their states
 	for _, state := range clusterGroupUpgrade.Status.Backup.Status {

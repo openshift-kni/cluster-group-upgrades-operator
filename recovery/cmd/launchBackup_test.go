@@ -14,7 +14,7 @@ var _ = Describe("LaunchBackup", func() {
 		Context("progressfile exists", func() {
 			It("returns false", func() {
 				progressFile := "/tmp/progressfile"
-				_, err := os.OpenFile(progressFile, os.O_RDONLY|os.O_CREATE, 0755)
+				_, err := os.OpenFile(progressFile, os.O_RDONLY|os.O_CREATE, 0o755)
 				if err != nil {
 					return
 				}
@@ -52,7 +52,7 @@ var _ = Describe("LaunchBackup", func() {
 
 			It("cleanup with dir and file", func() {
 				dir, _ := os.MkdirTemp("", "tmpDir")
-				_, err := os.OpenFile(dir+"/foo", os.O_RDONLY|os.O_CREATE, 0755)
+				_, err := os.OpenFile(dir+"/foo", os.O_RDONLY|os.O_CREATE, 0o755)
 				if err != nil {
 					return
 				}

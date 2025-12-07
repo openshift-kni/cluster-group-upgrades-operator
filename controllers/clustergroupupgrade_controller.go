@@ -158,11 +158,12 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	if err != nil {
 		return
 	}
-	if reconcileTime == utils.ReconcileNow {
+	switch reconcileTime {
+	case utils.ReconcileNow:
 		r.sendEventCGUCreated(clusterGroupUpgrade)
 		nextReconcile = requeueImmediately()
 		return
-	} else if reconcileTime == utils.StopReconciling {
+	case utils.StopReconciling:
 		return
 	}
 
@@ -367,14 +368,18 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					)
 					// Requeue is required here since we need to come back and check the succeeded condition for final cleanup
 					nextReconcile = requeueImmediately()
-					r.updateStatus(ctx, clusterGroupUpgrade)
+					if err := r.updateStatus(ctx, clusterGroupUpgrade); err != nil {
+						r.Log.Error(err, "Failed to update status")
+					}
 					return
 				}
 				// fallthrough to the enable check
 			} else {
 				// wait for cgu update with valid policies for precaching spec
 				nextReconcile = requeueWithLongInterval()
-				r.updateStatus(ctx, clusterGroupUpgrade)
+				if err := r.updateStatus(ctx, clusterGroupUpgrade); err != nil {
+					r.Log.Error(err, "Failed to update status")
+				}
 				return
 			}
 		}
@@ -388,7 +393,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				"Not enabled",
 			)
 			nextReconcile = requeueWithLongInterval()
-			r.updateStatus(ctx, clusterGroupUpgrade)
+			if err := r.updateStatus(ctx, clusterGroupUpgrade); err != nil {
+				r.Log.Error(err, "Failed to update status")
+			}
 			return
 		}
 
@@ -470,7 +477,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				)
 				// Requeue is required here since we need to come back and check the succeeded condition for final cleanup
 				nextReconcile = requeueImmediately()
-				r.updateStatus(ctx, clusterGroupUpgrade)
+				if err := r.updateStatus(ctx, clusterGroupUpgrade); err != nil {
+					r.Log.Error(err, "Failed to update status")
+				}
 				return
 			}
 
@@ -496,7 +505,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						"No clusters available for remediation after filtering out non-completed clusters from blocking CGUs",
 					)
 					nextReconcile = requeueWithShortInterval()
-					r.updateStatus(ctx, clusterGroupUpgrade)
+					if err := r.updateStatus(ctx, clusterGroupUpgrade); err != nil {
+						r.Log.Error(err, "Failed to update status")
+					}
 					return
 				}
 			}
@@ -609,7 +620,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// If the upgrade is completed for the current batch, cleanup and move to the next.
 				r.Log.Info("[Reconcile] Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
 				if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
-					r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
+					if err := r.cleanupPlacementRules(ctx, clusterGroupUpgrade); err != nil {
+						r.Log.Error(err, "Failed to cleanup placement rules")
+					}
 				}
 				clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Time{}
 				clusterGroupUpgrade.Status.Status.CurrentBatch++
@@ -771,7 +784,9 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 			// Assume the cluster timed out if the status was not defined when it should have been
 			// This implies that this batch did not even get a chance to start
 			clusterFinalState.State = utils.ClusterRemediationTimedout
-			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
+			if err := utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName); err != nil {
+				r.Log.Error(err, "Failed to delete multi-cloud objects", "cluster", batchClusterName)
+			}
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		} else if clusterStatus.State == ranv1alpha1.InProgress {
 			emitTimedoutEvt = true
@@ -785,7 +800,9 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 					return err
 				}
 			}
-			utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName)
+			if err := utils.DeleteMultiCloudObjects(ctx, r.Client, clusterGroupUpgrade, batchClusterName); err != nil {
+				r.Log.Error(err, "Failed to delete multi-cloud objects", "cluster", batchClusterName)
+			}
 			clusterGroupUpgrade.Status.Clusters = append(clusterGroupUpgrade.Status.Clusters, clusterFinalState)
 		}
 	}
@@ -869,13 +886,14 @@ func (r *ClusterGroupUpgradeReconciler) updateClusterProgress(
 		size = len(clusterGroupUpgrade.Spec.ManifestWorkTemplates)
 	}
 
-	if *clusterProgressState == ranv1alpha1.NotStarted {
+	switch *clusterProgressState {
+	case ranv1alpha1.NotStarted:
 		*index = new(int)
 		**index = 0
 		*clusterProgressState = ranv1alpha1.InProgress
 
 		r.sendEventCGUClusterUpgradeStarted(clusterGroupUpgrade, clusterName)
-	} else if *clusterProgressState == ranv1alpha1.Completed {
+	case ranv1alpha1.Completed:
 		return true, false, false, nil
 	}
 
@@ -1006,7 +1024,9 @@ func (r *ClusterGroupUpgradeReconciler) performAfterCompletionActions(
 	}
 	for i := 0; i < len(clusters); i++ {
 		cluster := clusters[i]
-		r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, cluster)
+		if err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, cluster); err != nil {
+			r.Log.Error(err, "Failed to take actions after completion", "cluster", cluster)
+		}
 	}
 }
 
@@ -1028,7 +1048,7 @@ func (r *ClusterGroupUpgradeReconciler) buildRemediationPlan(
 	// Create remediation plan
 	var remediationPlan [][]string
 	isCanary := make(map[string]bool)
-	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
+	if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
 		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
 			if clusterMap[canary] {
 				remediationPlan = append(remediationPlan, []string{canary})
@@ -1073,6 +1093,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	keys := make(map[string]bool)
 
 	// Check to make sure at least one cluster selection method is defined
+	//nolint:staticcheck // ClusterSelector is deprecated, but we maintain backward compatibility
 	if clusterGroupUpgrade.Spec.Clusters == nil &&
 		clusterGroupUpgrade.Spec.ClusterSelector == nil &&
 		clusterGroupUpgrade.Spec.ClusterLabelSelectors == nil {
@@ -1090,6 +1111,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 
 	// Next get a list of all the clusters that match using the deprecated clusterSelector
 	// The expected format for ClusterSelector can be found in codedoc for its type definition
+	//nolint:staticcheck // ClusterSelector is deprecated, but we maintain backward compatibility
 	for _, clusterSelector := range clusterGroupUpgrade.Spec.ClusterSelector {
 		selectorList := strings.Split(clusterSelector, "=")
 		var clusterLabels map[string]string
@@ -1279,7 +1301,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	allMissingClusters := []string{}
 	for _, cluster := range clusters {
 		managedCluster := &clusterv1.ManagedCluster{}
-		err := r.Client.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
+		err := r.Get(ctx, types.NamespacedName{Name: cluster}, managedCluster)
 		if err != nil {
 			allMissingClusters = append(allMissingClusters, cluster)
 		}
@@ -1290,7 +1312,7 @@ func (r *ClusterGroupUpgradeReconciler) validateCR(ctx context.Context, clusterG
 	}
 
 	// Validate the canaries are in the list of clusters.
-	if clusterGroupUpgrade.Spec.RemediationStrategy.Canaries != nil && len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
+	if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) > 0 {
 		for _, canary := range clusterGroupUpgrade.Spec.RemediationStrategy.Canaries {
 			foundCanary := false
 			for _, cluster := range clusters {

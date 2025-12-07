@@ -251,7 +251,7 @@ func TestClusterGroupUpgradeReconciler_extractOpenshiftImagePlatformFromPolicies
 			wantErr: assert.NoError,
 			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"version":1,"nodes":[{"version":"4.11.12","payload":"quay.io/openshift-release-dev/ocp-release@sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","metadata":{"io.openshift.upgrades.graph.previous.remove_regex":"4[.]10[.].*","io.openshift.upgrades.graph.release.channels":"candidate-4.11,fast-4.11,stable-4.11,candidate-4.12","io.openshift.upgrades.graph.release.manifestref":"sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","url":"https://access.redhat.com/errata/RHSA-2022:7201"}}]}`))
+				_, _ = w.Write([]byte(`{"version":1,"nodes":[{"version":"4.11.12","payload":"quay.io/openshift-release-dev/ocp-release@sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","metadata":{"io.openshift.upgrades.graph.previous.remove_regex":"4[.]10[.].*","io.openshift.upgrades.graph.release.channels":"candidate-4.11,fast-4.11,stable-4.11,candidate-4.12","io.openshift.upgrades.graph.release.manifestref":"sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","url":"https://access.redhat.com/errata/RHSA-2022:7201"}}]}`))
 			})),
 		},
 		{
@@ -362,7 +362,7 @@ func TestClusterGroupUpgradeReconciler_validateOpenshiftUpgradeVersion(t *testin
 			wantErr: assert.NoError,
 			server: httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.WriteHeader(http.StatusOK)
-				w.Write([]byte(`{"version":1,"nodes":[{"version":"4.11.12","payload":"quay.io/openshift-release-dev/ocp-release@sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","metadata":{"io.openshift.upgrades.graph.previous.remove_regex":"4[.]10[.].*","io.openshift.upgrades.graph.release.channels":"candidate-4.11,fast-4.11,stable-4.11,candidate-4.12","io.openshift.upgrades.graph.release.manifestref":"sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","url":"https://access.redhat.com/errata/RHSA-2022:7201"}}]}`))
+				_, _ = w.Write([]byte(`{"version":1,"nodes":[{"version":"4.11.12","payload":"quay.io/openshift-release-dev/ocp-release@sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","metadata":{"io.openshift.upgrades.graph.previous.remove_regex":"4[.]10[.].*","io.openshift.upgrades.graph.release.channels":"candidate-4.11,fast-4.11,stable-4.11,candidate-4.12","io.openshift.upgrades.graph.release.manifestref":"sha256:0ca14e0f692391970fc23f88188f2a21f35a5ba24fe2f3cb908fd79fa46458e6","url":"https://access.redhat.com/errata/RHSA-2022:7201"}}]}`))
 			})),
 		},
 		{

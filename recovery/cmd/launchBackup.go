@@ -85,7 +85,7 @@ func LaunchBackup() error {
 	}
 
 	// Use a defer function to change "/run/ostree-booted" back to the original value before exiting
-	defer func() error {
+	defer func() {
 		if ostreeBootedRenamed != "" {
 			if info, localErr := os.Stat(ostreeBootedRenamed); localErr == nil && !info.IsDir() && info.Size() == 0 {
 				if localErr = os.Rename(ostreeBootedRenamed, ostreeBooted); localErr == nil {
@@ -100,9 +100,6 @@ func LaunchBackup() error {
 		if err == insufficientDiskSpaceError {
 			os.Exit(1)
 		}
-
-		// return error that triggered the defer function
-		return err
 	}()
 
 	// During recovery, this container may get relaunched, as it will be in "Running"
@@ -291,7 +288,9 @@ func ExecuteCmd(cmd string) error {
 
 	err := execCmd.Run()
 
-	lw.Close()
+	if closeErr := lw.Close(); closeErr != nil {
+		log.Error(closeErr, "Failed to close log writer")
+	}
 
 	if err != nil {
 		log.Error(err)
