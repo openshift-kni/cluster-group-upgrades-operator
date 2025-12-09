@@ -37,7 +37,7 @@ if [ -z "$CSV_NAME" ]; then
         echo "  mount-path       Mount path for the shared volume (default: /coverage)"
         echo ""
         echo "Example:"
-        echo "  $0 openshift-cluster-group-upgrades cluster-group-upgrades-operator.v4.21.0 coverage /coverage"
+        echo "  $0 openshift-cluster-group-upgrades cluster-group-upgrades-operator.v4.22.0 coverage /coverage"
         exit 1
     fi
     echo "Auto-detected CSV: $CSV_NAME"
