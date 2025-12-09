@@ -3,12 +3,14 @@
 aliases:
   konflux-approvers:
     - abraham2512
+    - by2waysprojects
     - fontivan
     - rauhersu
     - sabbir-47
     - shajmakh
     - yanirq
   konflux-reviewers:
+    - by2waysprojects
     - fontivan
     - rauhersu
   upgrades-operator-approvers:
