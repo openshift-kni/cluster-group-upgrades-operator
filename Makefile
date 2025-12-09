@@ -90,7 +90,7 @@ CATALOG_OUTPUT_FORMAT = json
 CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux bundle image configuration
-BUNDLE_NAME_SUFFIX = bundle-4-21
+BUNDLE_NAME_SUFFIX = bundle-4-22
 PRODUCTION_BUNDLE_NAME = operator-bundle
 
 # By default we build the same architecture we are running
@@ -653,7 +653,7 @@ konflux-compare-catalog: sync-git-submodules ## Compare generated catalog with u
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-compare-catalog \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
-		UPSTREAM_FBC_IMAGE=quay.io/redhat-user-workloads/telco-5g-tenant/$(PACKAGE_NAME_KONFLUX)-fbc-4-21:latest
+		UPSTREAM_FBC_IMAGE=quay.io/redhat-user-workloads/telco-5g-tenant/$(PACKAGE_NAME_KONFLUX)-fbc-4-22:latest
 
 .PHONY: konflux-all
 konflux-all: konflux-update-tekton-task-refs konflux-generate-catalog-production konflux-validate-catalog ## Run all Konflux-related targets
