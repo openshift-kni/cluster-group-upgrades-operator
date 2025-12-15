@@ -27,7 +27,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
-	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -150,10 +149,7 @@ func TestBlockingCRsNotCompletedWihtPartialComplete(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		fakeClient, err := getFakeClientFromObjects([]client.Object{}...)
-		if err != nil {
-			t.Errorf("error in creating fake client")
-		}
+		fakeClient := getFakeClientFromObjects([]client.Object{}...)
 		r := &ClusterGroupUpgradeReconciler{Client: fakeClient, Log: logr.Discard(), Scheme: testscheme}
 		cgu.Spec.BlockingCRs = test.blockingCRs
 		for _, tcgu := range test.CGUs {
@@ -291,10 +287,7 @@ func TestFilterNonCompletedClusters(t *testing.T) {
 		},
 	}
 	for _, test := range tests {
-		fakeClient, err := getFakeClientFromObjects([]client.Object{}...)
-		if err != nil {
-			t.Errorf("error in creating fake client")
-		}
+		fakeClient := getFakeClientFromObjects([]client.Object{}...)
 		r := &ClusterGroupUpgradeReconciler{Client: fakeClient, Log: logr.Discard(), Scheme: testscheme}
 		cgu.Spec.BlockingCRs = test.blockingCRs
 		for _, tcgu := range test.CGUs {
@@ -310,11 +303,6 @@ func TestFilterNonCompletedClusters(t *testing.T) {
 }
 
 func TestClusterGroupUpgradeReconciler_getClusterComplianceWithPolicy(t *testing.T) {
-	type fields struct {
-		Client client.Client
-		Log    logr.Logger
-		Scheme *runtime.Scheme
-	}
 	type args struct {
 		clusterName string
 		policy      *unstructured.Unstructured
@@ -419,10 +407,7 @@ func TestClusterGroupUpgradeReconciler_getClusterComplianceWithPolicy(t *testing
 		},
 	}
 
-	fakeClient, err := getFakeClientFromObjects([]client.Object{}...)
-	if err != nil {
-		t.Errorf("error in creating fake client")
-	}
+	fakeClient := getFakeClientFromObjects([]client.Object{}...)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -473,7 +458,9 @@ func TestClusterGroupUpgradeReconciler_getCGUControllerWorkerCount(t *testing.T)
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			os.Setenv(utils.CGUControllerWorkerCountEnv, tt.envVarValue)
+			if err := os.Setenv(utils.CGUControllerWorkerCountEnv, tt.envVarValue); err != nil {
+				t.Fatalf("Failed to set env var: %v", err)
+			}
 			if gotCount := r.getCGUControllerWorkerCount(); gotCount != tt.wantCount {
 				t.Errorf("ClusterGroupUpgradeReconciler.getCGUControllerWorkerCount() = %v, want %v", gotCount, tt.wantCount)
 			}

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -113,13 +112,25 @@ func Difference(a, b []string) []string {
 
 func ObjectToJSON(obj runtime.Object) (string, error) {
 	scheme := runtime.NewScheme()
-	mwv1alpha1.AddToScheme(scheme)
-	v1alpha1.AddToScheme(scheme)
-	corev1.AddToScheme(scheme)
-	rbac.AddToScheme(scheme)
-	lcav1.AddToScheme(scheme)
+	if err := mwv1alpha1.AddToScheme(scheme); err != nil {
+		return "", err
+	}
+	if err := ranv1alpha1.AddToScheme(scheme); err != nil {
+		return "", err
+	}
+	if err := corev1.AddToScheme(scheme); err != nil {
+		return "", err
+	}
+	if err := rbac.AddToScheme(scheme); err != nil {
+		return "", err
+	}
+	if err := lcav1.AddToScheme(scheme); err != nil {
+		return "", err
+	}
 	outUnstructured := &unstructured.Unstructured{}
-	scheme.Convert(obj, outUnstructured, nil)
+	if err := scheme.Convert(obj, outUnstructured, nil); err != nil {
+		return "", err
+	}
 	json, err := outUnstructured.MarshalJSON()
 	return string(json), err
 }
