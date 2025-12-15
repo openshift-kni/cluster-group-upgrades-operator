@@ -32,7 +32,7 @@ echo "Mount path: $MOUNT_PATH"
 echo ""
 
 # Check if deployment exists
-if ! kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" &>/dev/null; then
+if ! oc get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE"; then
     echo "Error: Deployment '$DEPLOYMENT_NAME' not found in namespace '$NAMESPACE'"
     exit 1
 fi
@@ -40,7 +40,7 @@ fi
 echo "Applying patch to add sidecar container..."
 
 # Get the current deployment spec
-CURRENT_SPEC=$(kubectl get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o json)
+CURRENT_SPEC=$(oc get deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" -o json)
 
 # Check if sidecar already exists
 if echo "$CURRENT_SPEC" | jq -e '.spec.template.spec.containers[]? | select(.name == "sidecar-busybox")' &>/dev/null; then
@@ -53,7 +53,7 @@ if echo "$CURRENT_SPEC" | jq -e '.spec.template.spec.shareProcessNamespace == tr
     echo "Process namespace sharing already enabled"
 else
     echo "Enabling process namespace sharing..."
-    kubectl patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p='[
+    oc patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p='[
         {
             "op": "add",
             "path": "/spec/template/spec/shareProcessNamespace",
@@ -64,7 +64,7 @@ fi
 
 # Add the sidecar container
 echo "Adding busybox sidecar container..."
-kubectl patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p="[
+oc patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p="[
     {
         \"op\": \"add\",
         \"path\": \"/spec/template/spec/containers/-\",
@@ -80,11 +80,6 @@ kubectl patch deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE" --type=json -p="[
             ],
             \"securityContext\": {
                 \"allowPrivilegeEscalation\": false,
-                \"runAsNonRoot\": true,
-                \"runAsUser\": 65532,
-                \"capabilities\": {
-                    \"drop\": [\"ALL\"]
-                }
             }
         }
     }
@@ -94,7 +89,12 @@ echo ""
 echo "Sidecar added successfully!"
 echo ""
 echo "Waiting for rollout to complete..."
-kubectl rollout status deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE"
+oc rollout status deployment "$DEPLOYMENT_NAME" -n "$NAMESPACE"
+
+echo ""
+echo "Waiting for sidecar container to be ready..."
+
+sleep 60
 
 echo ""
 echo "Deployment updated successfully!"
@@ -105,5 +105,5 @@ echo "  - Shared volume: $VOLUME_NAME mounted at $MOUNT_PATH"
 echo "  - Process namespace sharing (shareProcessNamespace: true)"
 echo ""
 echo "To access the sidecar:"
-echo "  kubectl exec -it -n $NAMESPACE deployment/$DEPLOYMENT_NAME -c sidecar-busybox -- sh"
+echo "  oc exec -it -n $NAMESPACE deployment/$DEPLOYMENT_NAME -c sidecar-busybox -- sh"
 echo ""

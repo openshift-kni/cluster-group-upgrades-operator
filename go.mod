@@ -1,18 +1,18 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
-go 1.24.4
+go 1.24.6
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
 	github.com/go-logr/logr v1.4.3
 	github.com/onsi/gomega v1.38.2
 	github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c
-	github.com/operator-framework/api v0.35.0
+	github.com/operator-framework/api v0.36.0
 	github.com/sirupsen/logrus v1.9.3
-	github.com/spf13/cobra v1.10.1
+	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
-	k8s.io/api v0.34.2
-	k8s.io/apimachinery v0.34.2
+	k8s.io/api v0.34.3
+	k8s.io/apimachinery v0.34.3
 	k8s.io/client-go v0.34.1
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v1.1.0
@@ -25,7 +25,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
-	golang.org/x/sys v0.38.0
+	golang.org/x/sys v0.39.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.34.1
 	open-cluster-management.io/config-policy-controller v0.17.0

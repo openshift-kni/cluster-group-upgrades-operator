@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 4.21.0
+VERSION ?= 4.22.0
 
 # BASHATE_VERSION defines the bashate version to download from GitHub releases.
 BASHATE_VERSION ?= 2.1.1
@@ -86,10 +86,11 @@ CRD_OPTIONS ?= "crd"
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
 CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/catalog-template.in.yaml
 CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/catalog-template.out.yaml
-CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml
+CATALOG_OUTPUT_FORMAT = json
+CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux bundle image configuration
-BUNDLE_NAME_SUFFIX = bundle-4-21
+BUNDLE_NAME_SUFFIX = bundle-4-22
 PRODUCTION_BUNDLE_NAME = operator-bundle
 
 # By default we build the same architecture we are running
@@ -211,7 +212,7 @@ unittests: pre-cache-unit-test
 		rm -f recovery-coverage.out; \
 	fi
 	@echo "Coverage report generated: coverage.out"
-	
+
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
 	go mod tidy
@@ -223,6 +224,7 @@ ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-binda
 # Set the paths to the binaries in the local bin directory
 BASHATE = $(LOCALBIN)/bashate
 CONTROLLER_GEN = $(LOCALBIN)/controller-gen
+COVERALLS = $(LOCALBIN)/coveralls
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
 KUSTOMIZE = $(LOCALBIN)/kustomize
 OPERATOR_SDK = $(LOCALBIN)/operator-sdk
@@ -550,6 +552,28 @@ yq-sort-and-format: yq ## Sort keys/reformat all YAML files in the repository
 	done
 	@echo "YAML sorting and formatting completed successfully."
 
+.PHONY: coveralls-download
+coveralls-download: $(LOCALBIN) ## Download coveralls binary locally if necessary.
+	@if [ ! -f "$(COVERALLS)" ]; then \
+		echo "Downloading coveralls..."; \
+		ARCH=$$(uname -m); \
+		if [ "$$ARCH" = "x86_64" ]; then \
+			BINARY="coveralls-linux-x86_64"; \
+		elif [ "$$ARCH" = "aarch64" ]; then \
+			BINARY="coveralls-linux-aarch64"; \
+		else \
+			echo "Error: Unsupported architecture $$ARCH"; \
+			exit 1; \
+		fi; \
+		URL="https://github.com/coverallsapp/coverage-reporter/releases/latest/download/$$BINARY"; \
+		echo "Downloading from $$URL"; \
+		curl -sSL "$$URL" -o $(COVERALLS); \
+		chmod +x $(COVERALLS); \
+		echo "Coveralls downloaded successfully."; \
+	else \
+		echo "Coveralls is already installed at $(COVERALLS)"; \
+	fi
+
 ##@ Konflux
 
 .PHONY: sync-git-submodules
@@ -566,9 +590,9 @@ sync-git-submodules:
 .PHONY: konflux-fix-catalog-name
 konflux-fix-catalog-name: ## Fix catalog package name for TALM
 	if [ "$$(uname)" = "Darwin" ]; then \
-		sed -i '' 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml; \
+		sed -i '' 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX); \
 	else \
-		sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.yaml; \
+		sed -i 's/cluster-group-upgrades-operator/topology-aware-lifecycle-manager/g' $(CATALOG_KONFLUX); \
 	fi
 
 .PHONY: konflux-validate-catalog-template-bundle
@@ -592,6 +616,7 @@ konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catal
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
+		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/bundle.builds.in.yaml \
 		OPM=$(OPM) \
@@ -605,6 +630,7 @@ konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a re
 		CATALOG_TEMPLATE_KONFLUX_INPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_INPUT) \
 		CATALOG_TEMPLATE_KONFLUX_OUTPUT=$(PROJECT_DIR)/$(CATALOG_TEMPLATE_KONFLUX_OUTPUT) \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
+		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_NAME_SUFFIX=$(BUNDLE_NAME_SUFFIX) \
 		PRODUCTION_BUNDLE_NAME=$(PRODUCTION_BUNDLE_NAME) \
@@ -627,7 +653,7 @@ konflux-compare-catalog: sync-git-submodules ## Compare generated catalog with u
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/catalog konflux-compare-catalog \
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
-		UPSTREAM_FBC_IMAGE=quay.io/redhat-user-workloads/telco-5g-tenant/$(PACKAGE_NAME_KONFLUX)-fbc-4-21:latest
+		UPSTREAM_FBC_IMAGE=quay.io/redhat-user-workloads/telco-5g-tenant/$(PACKAGE_NAME_KONFLUX)-fbc-4-22:latest
 
 .PHONY: konflux-all
 konflux-all: konflux-update-tekton-task-refs konflux-generate-catalog-production konflux-validate-catalog ## Run all Konflux-related targets

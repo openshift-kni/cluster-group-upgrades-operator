@@ -1,21 +1,21 @@
 ---
 # Manager
 - key: manager
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-21@sha256:e5188abbcc49bf0f2717cd9cef954a832fb34948ac4ee1e774f6129c958130ab
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.22.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-22@sha256:ed90f264bc5b288ffd38505c15ef20d5ee1494e450d504a9ffead34c0d5bd864
 #
 # Aztp
 - key: aztp_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-21@sha256:f0a2d0cc02ad1c41c61c40a1dcb765a108521a844f67de52851bcc587a9c202c
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.22.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-22@sha256:89a75985a9e20b1552e9e7a27f89359bd9c60b9fcb32f3cf563a03b365ed085a
 #
 # Precache
 - key: precache_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-21@sha256:b2ab841f0c16541822d26c1e29b7f2b07b4132a6f6f37c6d76f7d7af4eaced40
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.22.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-22@sha256:55f8ad69cee952ca6747a52ab21cfaa9b12db9a6ea4d7c10e958b3bdd4aa5830
 #
 # Recovery
 - key: recovery_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-21@sha256:6e27e1ddf12b40e4c42bc98df15a30c63fea8ed94a7d93c3ac0ac9fcd4bd7658
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.22.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-22@sha256:5dab1c00e98613803f30a33749e0193c57c7f46afbd14a644839ca90483b1d33
 #

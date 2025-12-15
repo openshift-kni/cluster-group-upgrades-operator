@@ -1,39 +1,20 @@
 # The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.20
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.21
 # CNF-18555: When there is a Konflux build available for this then we need to update from the brew image
 ARG BUILDER_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.24
 
-# build the catalog
+# fix the catalog (talm exclusive, naming issue)
 FROM ${BUILDER_IMAGE} AS builder
 
-# create dir structure to generate the catalog
-RUN mkdir -p /app/hack /app/.konflux/catalog
+# create dir structure to fix the catalog
+RUN mkdir -p /app/.konflux/catalog
 COPY Makefile /app
 COPY .konflux/catalog/ /app/.konflux/catalog/
-COPY telco5g-konflux /app/telco5g-konflux
-
 # we need to copy the vendor/ folder as the Makefile depends on it
 COPY vendor/ /app/vendor/
 
-# generate the catalog
-
-# debug
-RUN echo "root dir" && ls -lra $HOME
-
 WORKDIR /app
-RUN --mount=type=secret,id=telco-5g-redhat-pull-secret/.dockerconfigjson \
-    mkdir -p $HOME/.docker/ && \
-    cp /run/secrets/telco-5g-redhat-pull-secret/.dockerconfigjson $HOME/.docker/config.json
-
-# debug
-RUN echo "run secrets" && ls -lra /run/secrets/ && echo "docker dir" && ls -lra $HOME/.docker/ && cat $HOME/.docker/config.json
-
-ENV REGISTRY_AUTH_FILE=$HOME/.docker/config.json
-
-# The Konflux build is not hermetic so it will download the tools (opm, yq, etc) automatically
-# Konflux will externally sync the submodules so we can skip it here
-RUN SKIP_SUBMODULE_SYNC=yes make konflux-generate-catalog-production && \
-    rm -f $HOME/.docker/config.json
+RUN SKIP_SUBMODULE_SYNC=yes make konflux-fix-catalog-name
 
 # run the catalog
 FROM ${OPM_IMAGE}
@@ -44,6 +25,8 @@ CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
 # ensure this correponds to olm.package name
 ENV PACKAGE_NAME=topology-aware-lifecycle-manager
 
+# This assumes that the catalog is already built and exists in the .konflux/catalog/$PACKAGE_NAME directory
+# This should be done automatically by the fbc pipeline using the `run-opm-command` task
 COPY --from=builder /app/.konflux/catalog/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
 # RUN ["/bin/opm", "validate", "/configs/topology-aware-lifecycle-manager"]
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
