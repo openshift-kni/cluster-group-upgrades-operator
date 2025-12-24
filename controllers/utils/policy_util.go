@@ -287,18 +287,24 @@ func StripObjectTemplatesRaw(tmplStr string) string {
 	}
 
 	// Get everything between sets of brackets as substrings
-	bracketRegex := regexp.MustCompile(`\{{[^}]+}\}`)
+	// e.g. "name: test-{{ hub range (lookup "v1" "Secret" "policies" "" "").items hub }}"
+	bracketRegex := regexp.MustCompile(`([:]\s*[a-zA-Z0-9-]+\s*)\{{[^}]+}\}`)
 
-	// Each result here will be a substring including the start and end brackets
-	// e.g. "{{ $example.var.usage }}"
-	bracketSubstrings := bracketRegex.FindAllStringSubmatch(result, -1)
+	// Each result here will be replaced with the key from the map
+	// e.g. "name: test-{{ hub range (lookup "v1" "Secret" "policies" "" "").items hub }}"
+	// -> "name: test-"
+	result = bracketRegex.ReplaceAllString(result, "$1")
 
-	// For our usage all our results will be an array with a single item
-	// so we will just use item[0] here
-	for _, item := range bracketSubstrings {
+	// Get everything between sets of brackets as substrings
+	// e.g. "{{ hub range (lookup "v1" "Secret" "policies" "" "").items hub }}"
+	bracketRegexLineWide := regexp.MustCompile(`\n\s*[^\\\n]*\{{[^}]+}\}`)
+
+	bracketSubstringsLineWide := bracketRegexLineWide.FindAllStringSubmatch(result, -1)
+
+	for _, item := range bracketSubstringsLineWide {
 		// We want to remove all the ACM templates and the hub side templates
 		// Deletes the template line entirely, including the newline at the end
-		result = strings.Replace(result+"\n", item[0], "", 1)
+		result = strings.Replace(result+"\n", item[0], "\n", 1)
 	}
 
 	return result
