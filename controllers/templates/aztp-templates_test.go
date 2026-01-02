@@ -71,7 +71,7 @@ func TestAztpRenderYamlTemplates(t *testing.T) {
 	l := log.New(os.Stderr, "", 0)
 
 	if !reflect.DeepEqual(renderedObject, desiredObject) {
-		//TODO replace duplication by loop
+		// TODO replace duplication by loop
 		renderedJSON, err := json.Marshal(renderedObject)
 		if err != nil {
 			l.Println(renderedObject)
