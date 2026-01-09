@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -51,9 +50,9 @@ func init() {
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PolicyList{})
 }
 
-func getFakeClientFromObjects(objs ...client.Object) (client.WithWatch, error) {
+func getFakeClientFromObjects(objs ...client.Object) client.WithWatch {
 	c := fake.NewClientBuilder().WithScheme(testscheme).WithObjects(objs...).Build()
-	return c, nil
+	return c
 }
 
 func TestControllerReconciler(t *testing.T) {
@@ -82,7 +81,7 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster has no ready status",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 				},
@@ -102,15 +101,15 @@ func TestControllerReconciler(t *testing.T) {
 			name: "new managed cluster is not ready",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:              "testSpoke",
 						CreationTimestamp: metav1.Now(),
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionFalse,
+								Status: metav1.ConditionFalse,
 							},
 						},
 					},
@@ -131,14 +130,14 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster is ready but no child policies",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionTrue,
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
@@ -159,34 +158,34 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster is ready but all found child policies have no waves",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionTrue,
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-common.common-config-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-common.common-sub-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
@@ -208,20 +207,20 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster is ready and partial found child policies have no waves",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionTrue,
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-common.common-config-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
@@ -229,7 +228,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-common.common-sub-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
@@ -237,7 +236,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
@@ -258,8 +257,8 @@ func TestControllerReconciler(t *testing.T) {
 					t.Errorf("unexcepted error: %v", err.Error())
 				}
 
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
+				assert.Equal(t, clusterGroupUpgrade.Name, "testSpoke")
+				assert.Equal(t, clusterGroupUpgrade.Namespace, "ztp-install")
 				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-policy"})
@@ -277,20 +276,20 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster is ready and one found child policy is a copied policy",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionTrue,
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-common.common-config-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
@@ -298,7 +297,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-common.common-sub-policy",
 						Namespace: "testSpoke",
 						Labels: map[string]string{
@@ -307,7 +306,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-group.group-du-config-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
@@ -329,8 +328,8 @@ func TestControllerReconciler(t *testing.T) {
 					t.Errorf("unexcepted error: %v", err.Error())
 				}
 
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
+				assert.Equal(t, clusterGroupUpgrade.Name, "testSpoke")
+				assert.Equal(t, clusterGroupUpgrade.Namespace, "ztp-install")
 				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "group-du-config-policy"})
@@ -348,20 +347,20 @@ func TestControllerReconciler(t *testing.T) {
 			name: "managed cluster is ready and child policies are found",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "testSpoke",
 					},
 					Status: clusterv1.ManagedClusterStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type:   clusterv1.ManagedClusterConditionAvailable,
-								Status: v1.ConditionTrue,
+								Status: metav1.ConditionTrue,
 							},
 						},
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-common.common-config-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
@@ -369,7 +368,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-common.common-sub-4.11-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-4.11-policy"},
@@ -377,7 +376,7 @@ func TestControllerReconciler(t *testing.T) {
 					},
 				},
 				&policiesv1.Policy{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:        "ztp-group.group-du-config-policy",
 						Namespace:   "testSpoke",
 						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
@@ -399,8 +398,8 @@ func TestControllerReconciler(t *testing.T) {
 					t.Errorf("unexcepted error: %v", err.Error())
 				}
 
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Name, "testSpoke")
-				assert.Equal(t, clusterGroupUpgrade.ObjectMeta.Namespace, "ztp-install")
+				assert.Equal(t, clusterGroupUpgrade.Name, "testSpoke")
+				assert.Equal(t, clusterGroupUpgrade.Namespace, "ztp-install")
 				assert.Equal(t, *clusterGroupUpgrade.Spec.Enable, true)
 				assert.Equal(t, clusterGroupUpgrade.Spec.Clusters, []string{"testSpoke"})
 				assert.Equal(t, clusterGroupUpgrade.Spec.ManagedPolicies, []string{"common-config-policy", "common-sub-4.11-policy", "group-du-config-policy"})
@@ -419,15 +418,14 @@ func TestControllerReconciler(t *testing.T) {
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
 			ns := &corev1.Namespace{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "ztp-install",
 				},
 			}
-			objs := append(tc.objs, ns)
-			fakeClient, err := getFakeClientFromObjects(objs...)
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
+			objs := make([]client.Object, 0, len(tc.objs)+1)
+			objs = append(objs, tc.objs...)
+			objs = append(objs, ns)
+			fakeClient := getFakeClientFromObjects(objs...)
 
 			r := &ManagedClusterForCguReconciler{
 				Client: fakeClient,
@@ -478,7 +476,7 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 	var requests []reconcile.Request
 
 	ns := &corev1.Namespace{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "ztp-install",
 		},
 	}
@@ -487,14 +485,14 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 	for i := 1; i <= 100; i++ {
 		name := "spoke" + strconv.Itoa(i)
 		cluster := &clusterv1.ManagedCluster{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: name,
 			},
 			Status: clusterv1.ManagedClusterStatus{
-				Conditions: []v1.Condition{
+				Conditions: []metav1.Condition{
 					{
 						Type:   clusterv1.ManagedClusterConditionAvailable,
-						Status: v1.ConditionTrue,
+						Status: metav1.ConditionTrue,
 					},
 				},
 			},
@@ -502,7 +500,7 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 		objs = append(objs, cluster)
 
 		policy := &policiesv1.Policy{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:        "ztp-common.common-config-policy",
 				Namespace:   name,
 				Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
@@ -519,10 +517,7 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 		requests = append(requests, request)
 	}
 
-	fakeClient, err := getFakeClientFromObjects(objs...)
-	if err != nil {
-		t.Errorf("error in creating fake client")
-	}
+	fakeClient := getFakeClientFromObjects(objs...)
 
 	r := &ManagedClusterForCguReconciler{
 		Client: fakeClient,
@@ -537,7 +532,7 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 	}
 
 	clusterGroupUpgrades := &ranv1alpha1.ClusterGroupUpgradeList{}
-	if err := r.Client.List(context.TODO(), clusterGroupUpgrades, client.InNamespace("ztp-install")); err != nil {
+	if err := r.List(context.TODO(), clusterGroupUpgrades, client.InNamespace("ztp-install")); err != nil {
 		t.Errorf("unexpected error: %v", err)
 	}
 	if len(clusterGroupUpgrades.Items) != 100 {

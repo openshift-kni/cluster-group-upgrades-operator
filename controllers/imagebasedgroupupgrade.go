@@ -28,7 +28,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -43,7 +42,6 @@ import (
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
-	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -210,10 +208,11 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 			if _, exist := m[cluster.Name]; !exist {
 				m[cluster.Name] = &ibguv1alpha1.ClusterState{Name: cluster.Name}
 			}
-			if cluster.State == utils.ClusterRemediationComplete {
+			switch cluster.State {
+			case utils.ClusterRemediationComplete:
 				m[cluster.Name].CompletedActions = append(m[cluster.Name].CompletedActions,
 					utils.GetAllActionMessagesFromCGU(&cgu)...)
-			} else if cluster.State == utils.ClusterRemediationTimedout {
+			case utils.ClusterRemediationTimedout:
 				if cluster.CurrentManifestWork != nil {
 					action := utils.GetActionFromMWRSName(cluster.CurrentManifestWork.Name)
 					msg := utils.GetConditionMessageFromManifestWorkStatus(cluster.CurrentManifestWork)
@@ -258,15 +257,15 @@ func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *
 
 func createIBU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *lcav1.ImageBasedUpgrade {
 	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:        "upgrade",
 			Annotations: make(map[string]string),
 		},
 		Spec: ibgu.Spec.IBUSpec,
 	}
-	for n, v := range ibgu.ObjectMeta.Annotations {
+	for n, v := range ibgu.Annotations {
 		if strings.Contains(n, LcaAnnotationSuffix) {
-			ibu.ObjectMeta.Annotations[n] = v
+			ibu.Annotations[n] = v
 		}
 	}
 	return ibu
@@ -326,7 +325,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
 		if err != nil {
-			return false, fmt.Errorf("Error generating manifestworkreplicaset: %w", err)
+			return false, fmt.Errorf("error generating manifestworkreplicaset: %w", err)
 		}
 		manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
@@ -338,7 +337,9 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		// nolint: gocritic
 		if err != nil && errors.IsNotFound(err) {
 			r.Log.Info("Creating ManifestWorkReplicaSet", "ManifestWorkReplicaSet", mwrs.Name)
-			ctrl.SetControllerReference(ibgu, mwrs, r.Scheme)
+			if err := ctrl.SetControllerReference(ibgu, mwrs, r.Scheme); err != nil {
+				return false, fmt.Errorf("error setting controller reference: %w", err)
+			}
 			err = r.Create(ctx, mwrs)
 			if err != nil {
 				return false, fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
@@ -351,7 +352,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		}
 	}
 	annotations := make(map[string]string)
-	if suffix, exists := ibgu.ObjectMeta.Annotations[utils.NameSuffixAnnotation]; exists {
+	if suffix, exists := ibgu.Annotations[utils.NameSuffixAnnotation]; exists {
 		annotations[utils.NameSuffixAnnotation] = suffix
 	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
@@ -420,7 +421,7 @@ func (r *IBGUReconciler) getSecretManifest(
 		return nil
 	}
 	secret.ResourceVersion = ""
-	secret.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
+	secret.ManagedFields = []metav1.ManagedFieldsEntry{}
 	secret.CreationTimestamp = metav1.Time{}
 	secret.UID = ""
 	secret.Namespace = "openshift-lifecycle-agent"
@@ -445,8 +446,8 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 			continue
 		}
 		cm.ResourceVersion = ""
-		cm.ObjectMeta.ManagedFields = []metav1.ManagedFieldsEntry{}
-		cm.ObjectMeta.CreationTimestamp = metav1.Time{}
+		cm.ManagedFields = []metav1.ManagedFieldsEntry{}
+		cm.CreationTimestamp = metav1.Time{}
 		cm.UID = ""
 		cmBytes, err := utils.ObjectToByteArray(cm)
 		if err != nil {
@@ -460,7 +461,7 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 }
 
 func (r *IBGUReconciler) updateStatus(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	ibgu.Status.ObservedGeneration = ibgu.ObjectMeta.Generation
+	ibgu.Status.ObservedGeneration = ibgu.Generation
 	err := retry.RetryOnConflict(retry.DefaultRetry, func() error {
 		err := r.Status().Update(ctx, ibgu)
 		return err
@@ -478,7 +479,7 @@ func (r *IBGUReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.Recorder = mgr.GetEventRecorderFor("IBGU Reconciler")
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&v1alpha1.ImageBasedGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
+		For(&ibguv1alpha1.ImageBasedGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
 			UpdateFunc: func(e event.UpdateEvent) bool {
 				// Generation is only updated on spec changes (also on deletion),
 				// not metadata or status

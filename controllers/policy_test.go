@@ -30,6 +30,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+const (
+	policy1Name = "policy1"
+	policy2Name = "policy2"
+	policy3Name = "policy3"
+)
+
 func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 	ctx := context.Background()
 
@@ -64,11 +70,11 @@ func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterStatusCompliant
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterStatusNonCompliant
-				case "policy3":
+				case policy3Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -121,11 +127,11 @@ func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterNotMatchedWithPolicy
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterNotMatchedWithPolicy
-				case "policy3":
+				case policy3Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -201,11 +207,11 @@ func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 			startIndex:  1, // Start from index 1, skip policy1
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterStatusNonCompliant // This shouldn't be checked
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterStatusCompliant
-				case "policy3":
+				case policy3Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -295,9 +301,9 @@ func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterStatusCompliant
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -451,9 +457,9 @@ func TestGetNextNonCompliantPolicyForCluster_SoakingBehavior(t *testing.T) {
 			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterStatusCompliant
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -486,9 +492,9 @@ func TestGetNextNonCompliantPolicyForCluster_SoakingBehavior(t *testing.T) {
 			startIndex:  0,
 			getClusterComplianceFunc: func(clusterName string, policy *unstructured.Unstructured) string {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return utils.ClusterStatusCompliant
-				case "policy2":
+				case policy2Name:
 					return utils.ClusterStatusNonCompliant
 				}
 				return utils.ClusterStatusNonCompliant
@@ -526,11 +532,11 @@ func TestGetNextNonCompliantPolicyForCluster_SoakingBehavior(t *testing.T) {
 			},
 			shouldSoakFunc: func(policy *unstructured.Unstructured, firstCompliantAt metav1.Time) (bool, error) {
 				switch policy.GetName() {
-				case "policy1":
+				case policy1Name:
 					return false, nil // Should NOT soak, continues
-				case "policy2":
+				case policy2Name:
 					return true, nil // Should soak, terminates here
-				case "policy3":
+				case policy3Name:
 					return true, nil // Shouldn't reach this
 				}
 				return false, nil

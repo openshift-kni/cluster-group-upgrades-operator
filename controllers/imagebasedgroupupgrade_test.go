@@ -16,7 +16,6 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
@@ -68,7 +67,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			name: "two CGUs",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-upgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -88,7 +87,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -125,7 +124,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			name: "two CGUs with reverse order",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-finalizeupgrade-1",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -145,7 +144,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-upgrade-0	",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -178,7 +177,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			name: "two CGUs one in progress",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-upgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -198,7 +197,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -234,7 +233,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			name: "one cgu in progress",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -267,7 +266,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			name: "one cgu",
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-upgrade-finalizeupgrade",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -323,13 +322,13 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 		},
 	}
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 		},
 		Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
 
-			ClusterLabelSelectors: []v1.LabelSelector{
+			ClusterLabelSelectors: []metav1.LabelSelector{
 
 				{
 					MatchLabels: map[string]string{
@@ -349,18 +348,15 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			objs := []client.Object{}
-			fakeClient, err := getFakeClientFromObjects(objs...)
+			fakeClient := getFakeClientFromObjects(objs...)
 			for _, cgu := range test.CGUs {
 				err := fakeClient.Create(context.TODO(), &cgu)
 				if err != nil {
 					panic(err)
 				}
 			}
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
 			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
+			err := reconciler.syncStatusWithCGUs(context.Background(), ibgu)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
 		})
@@ -376,7 +372,7 @@ func TestGetSecretManifest(t *testing.T) {
 		{
 			name: "simple secret",
 			secret: corev1.Secret{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "secret",
 					Namespace: "namespace",
 				},
@@ -388,7 +384,7 @@ func TestGetSecretManifest(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			pull := lcav1.PullSecretRef{Name: "secret"}
 			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
 					Namespace: "namespace",
 				},
@@ -404,11 +400,8 @@ func TestGetSecretManifest(t *testing.T) {
 			}
 
 			objs := []client.Object{}
-			fakeClient, err := getFakeClientFromObjects(objs...)
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
-			err = fakeClient.Create(context.TODO(), &test.secret)
+			fakeClient := getFakeClientFromObjects(objs...)
+			err := fakeClient.Create(context.TODO(), &test.secret)
 			if err != nil {
 				panic(err)
 			}
@@ -428,7 +421,7 @@ func TestGetConfigMapManifests(t *testing.T) {
 		{
 			name: "simple configmap",
 			cm: corev1.ConfigMap{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
 					Namespace: "namespace",
 				},
@@ -442,7 +435,7 @@ func TestGetConfigMapManifests(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
 					Namespace: "namespace",
 				},
@@ -463,11 +456,8 @@ func TestGetConfigMapManifests(t *testing.T) {
 			}
 
 			objs := []client.Object{}
-			fakeClient, err := getFakeClientFromObjects(objs...)
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
-			err = fakeClient.Create(context.TODO(), &test.cm)
+			fakeClient := getFakeClientFromObjects(objs...)
+			err := fakeClient.Create(context.TODO(), &test.cm)
 			if err != nil {
 				panic(err)
 			}
@@ -492,7 +482,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "failed prep, upgrade and abort",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:   "cluster1",
 						Labels: map[string]string{},
 					},
@@ -517,7 +507,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-abort-failed":   "",
@@ -532,7 +522,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "abort completed",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-prep-failed": "",
@@ -552,7 +542,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 					},
 				},
@@ -562,7 +552,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "finalize completed",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-prep-completed":    "",
@@ -589,7 +579,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 					},
 				},
@@ -599,7 +589,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "prep completed",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 					},
 				},
@@ -616,7 +606,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-prep-completed": "",
@@ -629,7 +619,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "two cluster, first throws an error",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster2",
 					},
 				},
@@ -654,7 +644,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster2",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-prep-completed": "",
@@ -668,12 +658,12 @@ func TestEnsureClusterLabels(t *testing.T) {
 			name: "two cluster, first nothing to do",
 			managedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster1",
 					},
 				},
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster2",
 					},
 				},
@@ -693,7 +683,7 @@ func TestEnsureClusterLabels(t *testing.T) {
 			},
 			expectedManagedClusters: []clusterv1.ManagedCluster{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name: "cluster2",
 						Labels: map[string]string{
 							"lcm.openshift.io/ibgu-prep-completed": "",
@@ -705,12 +695,12 @@ func TestEnsureClusterLabels(t *testing.T) {
 	}
 
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "name",
 			Namespace: "namespace",
 		},
 		Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
-			ClusterLabelSelectors: []v1.LabelSelector{
+			ClusterLabelSelectors: []metav1.LabelSelector{
 
 				{
 					MatchLabels: map[string]string{
@@ -730,18 +720,15 @@ func TestEnsureClusterLabels(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			ibgu.Status.Clusters = test.clusterStates
 			objs := []client.Object{}
-			fakeClient, err := getFakeClientFromObjects(objs...)
+			fakeClient := getFakeClientFromObjects(objs...)
 			for _, mc := range test.managedClusters {
 				err := fakeClient.Create(context.TODO(), &mc)
 				if err != nil {
 					panic(err)
 				}
 			}
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
 			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			err = reconciler.ensureClusterLabels(context.TODO(), ibgu)
+			err := reconciler.ensureClusterLabels(context.TODO(), ibgu)
 			if test.expectedErr == nil {
 				assert.NoError(t, err)
 			} else {
@@ -869,7 +856,7 @@ func TestEnsureManifests(t *testing.T) {
 			},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -882,7 +869,7 @@ func TestEnsureManifests(t *testing.T) {
 						},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type: string(utils.ConditionTypes.Succeeded),
 							},
@@ -960,7 +947,7 @@ func TestEnsureManifests(t *testing.T) {
 			expectedMWRS: []string{},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -973,7 +960,7 @@ func TestEnsureManifests(t *testing.T) {
 						},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type: string(utils.ConditionTypes.Succeeded),
 							},
@@ -1003,7 +990,7 @@ func TestEnsureManifests(t *testing.T) {
 			expectedMWRS: []string{"name-upgrade", "name-finalizeupgrade"},
 			CGUs: []v1alpha1.ClusterGroupUpgrade{
 				{
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "name-prep-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
@@ -1016,7 +1003,7 @@ func TestEnsureManifests(t *testing.T) {
 						},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
-						Conditions: []v1.Condition{
+						Conditions: []metav1.Condition{
 							{
 								Type: string(utils.ConditionTypes.Succeeded),
 							},
@@ -1102,13 +1089,13 @@ func TestEnsureManifests(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name:      "name",
 					Namespace: "namespace",
 				},
 				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
 
-					ClusterLabelSelectors: []v1.LabelSelector{
+					ClusterLabelSelectors: []metav1.LabelSelector{
 
 						{
 							MatchLabels: map[string]string{
@@ -1127,19 +1114,16 @@ func TestEnsureManifests(t *testing.T) {
 			}
 
 			objs := []client.Object{}
-			fakeClient, err := getFakeClientFromObjects(objs...)
+			fakeClient := getFakeClientFromObjects(objs...)
 			for _, cgu := range test.CGUs {
 				err := fakeClient.Create(context.TODO(), &cgu)
 				if err != nil {
 					panic(err)
 				}
 			}
-			if err != nil {
-				t.Errorf("error in creating fake client")
-			}
 			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
-			err = reconciler.ensureManifests(context.TODO(), ibgu)
+			err := reconciler.ensureManifests(context.TODO(), ibgu)
 			assert.NoError(t, err)
 			list := &mwv1alpha1.ManifestWorkReplicaSetList{}
 			err = reconciler.List(context.TODO(), list)
