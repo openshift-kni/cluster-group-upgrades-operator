@@ -47,7 +47,7 @@ func (r *ClusterGroupUpgradeReconciler) getNextManifestWorkForCluster(
 			previousManifestWork, err := utils.GetManifestWorkForCluster(ctx, r.Client, clusterGroupUpgrade, startIndex-1, clusterName)
 			if err == nil {
 				// Need to cleanup previous mw for this cluster
-				err = r.Client.Delete(ctx, previousManifestWork)
+				err = r.Delete(ctx, previousManifestWork)
 				if client.IgnoreNotFound(err) != nil {
 					return startIndex, false, err
 				}

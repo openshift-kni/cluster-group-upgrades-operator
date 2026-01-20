@@ -59,6 +59,7 @@ type BeforeEnable struct {
 	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
 	// This field defines a map of key/value pairs that identify the cluster labels
 	// to be deleted for the defined clusters.
+	//
 	// Deprecated: Use RemoveClusterLabels instead.
 	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
 	// This field defines a list of labels to be removed for the defined clusters.
@@ -77,6 +78,7 @@ type AfterCompletion struct {
 	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
 	// This field defines a map of key/value pairs that identify the cluster labels
 	// to be deleted for the defined clusters.
+	//
 	// Deprecated: Use RemoveClusterLabels instead.
 	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
 	// This field defines a list of labels to be removed for the defined clusters.
@@ -115,6 +117,7 @@ type ClusterGroupUpgradeSpec struct {
 	// Important: Run "make" to regenerate code after modifying this file
 
 	// This field determines whether the cluster would be running a backup prior to the upgrade.
+	//
 	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
 	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.Backup is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality"
 	//+kubebuilder:default=false
@@ -149,6 +152,7 @@ type ClusterGroupUpgradeSpec struct {
 	//   - label1Name
 	// All the clusters matching the labels specified in clusterSelector will be included
 	// in the update plan.
+	//
 	// Deprecated: Use ClusterLabelSelectors instead
 	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.ClusterSelector is deprecated, use ClusterLabelSelectors instead"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Cluster Selector",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}

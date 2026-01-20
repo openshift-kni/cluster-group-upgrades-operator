@@ -47,13 +47,13 @@ func ProcessSubscriptionManagedClusterView(
 	conditionMCVforSub := meta.FindStatusCondition(mcv.Status.Conditions, viewv1beta1.ConditionViewProcessing)
 	if conditionMCVforSub == nil {
 		multiCloudLog.Info("ManagedClusterView was not (yet) ready, trying again later",
-			"managedcluserview", mcv.ObjectMeta.Name, "namespace", mcv.ObjectMeta.Namespace)
+			"managedcluserview", mcv.Name, "namespace", mcv.Namespace)
 		return MultiCloudPendingStatus, nil
 	}
 
 	if conditionMCVforSub.Reason != viewv1beta1.ReasonGetResource {
 		multiCloudLog.Info("ManagedClusterView was not able to retrieve the requested resource (yet), trying again later",
-			"managedclusterview", mcv.ObjectMeta.Name, "namespace", mcv.ObjectMeta.Namespace)
+			"managedclusterview", mcv.Name, "namespace", mcv.Namespace)
 		return MultiCloudPendingStatus, nil
 	}
 
@@ -62,21 +62,23 @@ func ProcessSubscriptionManagedClusterView(
 	if conditionMCVforSub.Status == "True" && conditionMCVforSub.Reason == viewv1beta1.ReasonGetResource {
 		// Get the subscription content from the ManagedClusterView.
 		subscription := operatorsv1alpha1.Subscription{}
-		json.Unmarshal(mcv.Status.Result.Raw, &subscription)
+		if err := json.Unmarshal(mcv.Status.Result.Raw, &subscription); err != nil {
+			return InstallPlanCannotBeApproved, err
+		}
 
 		// If the subscription's status is "UpgradePending" approve the installPlan. For any other value of the state, continue.
 		if subscription.Status.State != SubscriptionStateUpgradePending {
 			multiCloudLog.Info("Subscription State is not pending upgrade",
-				"subscription", subscription.ObjectMeta.Name, "namespace", subscription.ObjectMeta.Namespace)
+				"subscription", subscription.Name, "namespace", subscription.Namespace)
 			return InstallPlanCannotBeApproved, nil
 		}
 		if subscription.Status.Install == nil {
 			multiCloudLog.Info("Subscription status doesn't include information about the InstallPlan",
-				"subscription", subscription.ObjectMeta.Name, "namespace", subscription.ObjectMeta.Namespace)
+				"subscription", subscription.Name, "namespace", subscription.Namespace)
 			return InstallPlanCannotBeApproved, nil
 		}
 		multiCloudLog.Info("Accept InstallPlan", "name", subscription.Status.Install.Name,
-			"namespace", subscription.ObjectMeta.Namespace)
+			"namespace", subscription.Namespace)
 		installPlanResult, err := EnsureInstallPlanIsApproved(ctx, c, clusterGroupUpgrade, subscription, clusterName)
 		if err != nil {
 			return installPlanResult, err
@@ -98,7 +100,7 @@ var EnsureInstallPlanIsApproved = func(
 	mcvForInstallPlan, err := EnsureManagedClusterView(
 		ctx, c, subscription.Status.Install.Name, subscription.Status.Install.Name,
 		clusterName, "InstallPlan", subscription.Status.Install.Name,
-		subscription.ObjectMeta.Namespace, clusterGroupUpgrade.Name, clusterGroupUpgrade.Namespace)
+		subscription.Namespace, clusterGroupUpgrade.Name, clusterGroupUpgrade.Namespace)
 	if err != nil {
 		return InstallPlanCannotBeApproved, err
 	}
@@ -107,13 +109,13 @@ var EnsureInstallPlanIsApproved = func(
 		mcvForInstallPlan.Status.Conditions, viewv1beta1.ConditionViewProcessing)
 	if conditionMCVforInstallPlan == nil {
 		multiCloudLog.Info("ManagedClusterView was not (yet) ready, try again later",
-			"managedclusterview", mcvForInstallPlan.ObjectMeta.Name, "namespace", mcvForInstallPlan.ObjectMeta.Namespace)
+			"managedclusterview", mcvForInstallPlan.Name, "namespace", mcvForInstallPlan.Namespace)
 		return MultiCloudPendingStatus, nil
 	}
 
 	if conditionMCVforInstallPlan.Reason != viewv1beta1.ReasonGetResource {
 		multiCloudLog.Info("ManagedClusterView was not able to retrieve the requested resource (yet), trying again later",
-			"managedclusterview", mcvForInstallPlan.ObjectMeta.Name, "namespace", mcvForInstallPlan.ObjectMeta.Namespace)
+			"managedclusterview", mcvForInstallPlan.Name, "namespace", mcvForInstallPlan.Namespace)
 		return MultiCloudPendingStatus, nil
 	}
 
@@ -121,24 +123,26 @@ var EnsureInstallPlanIsApproved = func(
 	if conditionMCVforInstallPlan.Status == "True" && conditionMCVforInstallPlan.Reason == viewv1beta1.ReasonGetResource {
 		// Get the InstallPlan content from the ManagedClusterView.
 		installPlan := operatorsv1alpha1.InstallPlan{}
-		json.Unmarshal(mcvForInstallPlan.Status.Result.Raw, &installPlan)
+		if err := json.Unmarshal(mcvForInstallPlan.Status.Result.Raw, &installPlan); err != nil {
+			return InstallPlanCannotBeApproved, err
+		}
 
 		// If the InstallPlan's approval is not manual, return. No action is taken for Automatic install plans.
 		if installPlan.Spec.Approval != operatorsv1alpha1.ApprovalManual {
 			multiCloudLog.Info("InstallPlan can't be approved as it's approval is not set to Manual",
-				"InstallPlan", installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
+				"InstallPlan", installPlan.Name, "namespace", installPlan.Namespace)
 			return InstallPlanCannotBeApproved, nil
 		}
 
 		// If the InstallPlan has already been approved, return.
 		if installPlan.Spec.Approved {
 			multiCloudLog.Info("InstallPlan has already been approved",
-				"InstallPlan", installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
+				"InstallPlan", installPlan.Name, "namespace", installPlan.Namespace)
 			return InstallPlanAlreadyApproved, nil
 		}
 
 		multiCloudLog.Info("Create ManagedClusterAction for InstallPlan", "InstallPlan",
-			installPlan.ObjectMeta.Name, "namespace", installPlan.ObjectMeta.Namespace)
+			installPlan.Name, "namespace", installPlan.Namespace)
 		// Create or update the managedClusterAction to approve the install plan.
 		_, err := EnsureManagedClusterActionForInstallPlan(ctx, c, clusterName, clusterGroupUpgrade.Namespace+"-"+clusterGroupUpgrade.Name, installPlan)
 		if err != nil {
@@ -273,15 +277,15 @@ func NewManagedClusterActionForInstallPlanSpec(installPlan operatorsv1alpha1.Ins
 		`{"apiVersion": "operators.coreos.com/v1alpha1","kind": "InstallPlan",
 		  "metadata": {"name": "%s","resourceVersion": "%s"},
 		  "spec": {"approval": "Manual","approved": true, "clusterServiceVersionNames": %s}}`,
-		installPlan.ObjectMeta.Name,
-		installPlan.ObjectMeta.ResourceVersion,
+		installPlan.Name,
+		installPlan.ResourceVersion,
 		string(installPlanClusterServiceVersionNames))
 
 	actionSpec := actionv1beta1.ActionSpec{
 		ActionType: actionv1beta1.UpdateActionType,
 		KubeWork: &actionv1beta1.KubeWorkSpec{
 			Resource:       "installplan",
-			Namespace:      installPlan.ObjectMeta.Namespace,
+			Namespace:      installPlan.Namespace,
 			ObjectTemplate: runtime.RawExtension{Raw: []byte(templateContent)},
 		},
 	}

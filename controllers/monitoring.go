@@ -188,7 +188,10 @@ func (r *ClusterGroupUpgradeReconciler) processMonitoredObjects(
 
 		// If there is content saved for the current managed policy, retrieve it.
 		monitoredObjects := []ConfigurationObject{}
-		json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &monitoredObjects)
+		if err := json.Unmarshal([]byte(clusterGroupUpgrade.Status.ManagedPoliciesContent[managedPolicyName]), &monitoredObjects); err != nil {
+			r.Log.Error(err, "Failed to unmarshal monitored objects")
+			continue
+		}
 
 		for _, object := range monitoredObjects {
 			err := r.processMonitoredObject(ctx, clusterGroupUpgrade, object, clusterName)

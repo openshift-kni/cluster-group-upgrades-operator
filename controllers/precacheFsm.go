@@ -145,7 +145,7 @@ func (r *ClusterGroupUpgradeReconciler) precachingFsm(ctx context.Context,
 		if err != nil {
 			r.Log.Info("[precachingFsm]", "cluster", cluster, "err", err)
 			// Stop retrying on err and transition to the final state if CGU has been enabled
-			if *clusterGroupUpgrade.Spec.Enable == true {
+			if *clusterGroupUpgrade.Spec.Enable {
 				nextState = PrecacheStateError
 			}
 		}
@@ -341,9 +341,9 @@ func (r *ClusterGroupUpgradeReconciler) checkAllPrecachingDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
 	// Counts for the various cluster states
-	var failedPrecacheCount int = 0
-	var progressingPrecacheCount int = 0
-	var successfulPrecacheCount int = 0
+	var failedPrecacheCount = 0
+	var progressingPrecacheCount = 0
+	var successfulPrecacheCount = 0
 
 	// Loop over all the clusters and take count of all their states
 	for _, state := range clusterGroupUpgrade.Status.Precaching.Status {
