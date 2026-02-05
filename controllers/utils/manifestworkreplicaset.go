@@ -10,7 +10,6 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	rbac "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	serializer "k8s.io/apimachinery/pkg/runtime/serializer/json"
 	mwv1 "open-cluster-management.io/api/work/v1"
@@ -125,7 +124,7 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 // GeneratePermissionsManifestWorkReplicaset returns a ManifestWorkReplicaset for permissions required for work agent to access IBU
 func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
 	clusterRole := &rbac.ClusterRole{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "open-cluster-management:klusterlet-work:ibu-role",
 			Labels: map[string]string{
 				"open-cluster-management.io/aggregate-to-work": "true",
@@ -145,7 +144,7 @@ func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alp
 	}
 	manifestConfigs := []mwv1.ManifestConfigOption{}
 	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 		},
@@ -174,7 +173,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 		return nil, err
 	}
 	clusterRole := &rbac.ClusterRole{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "open-cluster-management:klusterlet-work:ibu-role",
 			Labels: map[string]string{
 				"open-cluster-management.io/aggregate-to-work": "true",
@@ -214,7 +213,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: ibuRaw}})
 
 	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: namespace,
 			Annotations: map[string]string{
@@ -241,7 +240,9 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 
 func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	scheme := runtime.NewScheme()
-	lcav1.AddToScheme(scheme)
+	if err := lcav1.AddToScheme(scheme); err != nil {
+		return nil, err
+	}
 	s := serializer.NewSerializerWithOptions(serializer.DefaultMetaFactory, scheme, scheme, serializer.SerializerOptions{})
 	gvks, isUnversioned, err := scheme.ObjectKinds(ibu)
 	if err != nil {
@@ -254,7 +255,9 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 		}
 	}
 	var dst bytes.Buffer
-	s.Encode(ibu, &dst)
+	if err := s.Encode(ibu, &dst); err != nil {
+		return nil, err
+	}
 	return dst.Bytes(), nil
 }
 
@@ -270,10 +273,10 @@ func getLabelSelectorForPlanItem(
 		switch planItem.Actions[0] {
 		case ibguv1alpha1.Abort:
 			if selector.MatchExpressions == nil {
-				selector.MatchExpressions = make([]v1.LabelSelectorRequirement, 0)
+				selector.MatchExpressions = make([]metav1.LabelSelectorRequirement, 0)
 			}
 			selector.MatchExpressions = append(
-				selector.MatchExpressions, v1.LabelSelectorRequirement{
+				selector.MatchExpressions, metav1.LabelSelectorRequirement{
 					Key: fmt.Sprintf(IBGUActionCompletedLabelTemplate,
 						strings.ToLower(ibguv1alpha1.Upgrade)),
 					Operator: metav1.LabelSelectorOpDoesNotExist,
@@ -320,7 +323,7 @@ func GenerateClusterGroupUpgradeForPlanItem(
 	}
 
 	return &ranv1alpha1.ClusterGroupUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      name,
 			Namespace: ibgu.GetNamespace(),
 			Labels: map[string]string{

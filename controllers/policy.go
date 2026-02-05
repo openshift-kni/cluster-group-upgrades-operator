@@ -63,7 +63,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
 		Kind:    "PlacementRule",
 		Version: "v1",
 	})
-	err := r.Client.Get(ctx, client.ObjectKey{
+	err := r.Get(ctx, client.ObjectKey{
 		Name:      prName,
 		Namespace: prNamespace,
 	}, placementRule)
@@ -103,7 +103,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementRuleWithClusters(
 	placementRuleSpecClusters["clusters"] = updatedClusters
 	placementRuleSpecClusters["clusterReplicas"] = nil
 
-	err = r.Client.Update(ctx, placementRule)
+	err = r.Update(ctx, placementRule)
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacementRules(ctx context.Contex
 			placementRuleSpecClusters["clusters"] = nil
 			placementRuleSpecClusters["clusterReplicas"] = 0
 
-			err = r.Client.Update(ctx, &plr)
+			err = r.Update(ctx, &plr)
 			if err != nil {
 				errorMap[plr.GetName()] = err.Error()
 			}
@@ -153,7 +153,7 @@ func (r *ClusterGroupUpgradeReconciler) getPolicyByName(ctx context.Context, pol
 	})
 
 	// Look for policy.
-	return foundPolicy, r.Client.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
+	return foundPolicy, r.Get(ctx, types.NamespacedName{Name: policyName, Namespace: namespace}, foundPolicy)
 }
 
 func updateDuplicatedManagedPoliciesInfo(managedPoliciesInfo *policiesInfo, policiesNs map[string][]string) {
@@ -318,14 +318,14 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 		Version: "v1",
 	})
 
-	err := r.Client.Get(ctx, client.ObjectKey{
+	err := r.Get(ctx, client.ObjectKey{
 		Name:      safeName,
 		Namespace: managedPolicy.GetNamespace(),
 	}, foundPlacementRule)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, pr)
+			err = r.Create(ctx, pr)
 			if err != nil {
 				return "", err
 			}
@@ -334,7 +334,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementRule(ctx context.Con
 		}
 	} else {
 		pr.SetResourceVersion(foundPlacementRule.GetResourceVersion())
-		err = r.Client.Update(ctx, pr)
+		err = r.Update(ctx, pr)
 		if err != nil {
 			return "", err
 		}
@@ -497,14 +497,14 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 		Kind:    "PlacementBinding",
 		Version: "v1",
 	})
-	err := r.Client.Get(ctx, client.ObjectKey{
+	err := r.Get(ctx, client.ObjectKey{
 		Name:      safeName,
 		Namespace: managedPolicy.GetNamespace(),
 	}, foundPlacementBinding)
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			err = r.Client.Create(ctx, pb)
+			err = r.Create(ctx, pb)
 			if err != nil {
 				return err
 			}
@@ -513,7 +513,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacementBinding(
 		}
 	} else {
 		pb.SetResourceVersion(foundPlacementBinding.GetResourceVersion())
-		err = r.Client.Update(ctx, pb)
+		err = r.Update(ctx, pb)
 		if err != nil {
 			return err
 		}
@@ -720,13 +720,13 @@ func (r *ClusterGroupUpgradeReconciler) getClusterComplianceWithPolicy(
 		// If the cluster is Compliant, return true.
 		// nolint: gocritic
 		if clusterName == crtSubStatusMap["clustername"].(string) {
-			if crtSubStatusMap["compliant"] == utils.ClusterStatusCompliant {
+			switch crtSubStatusMap["compliant"] {
+			case utils.ClusterStatusCompliant:
 				return utils.ClusterStatusCompliant
-			} else if crtSubStatusMap["compliant"] == utils.ClusterStatusNonCompliant ||
-				crtSubStatusMap["compliant"] == utils.ClusterStatusPending {
+			case utils.ClusterStatusNonCompliant, utils.ClusterStatusPending:
 				// Treat pending as non-compliant
 				return utils.ClusterStatusNonCompliant
-			} else if crtSubStatusMap["compliant"] == nil {
+			case nil:
 				r.Log.Info(
 					"[getClusterComplianceWithPolicy] Cluster is missing its compliance status, treat as NonCompliant",
 					"clusterName", clusterName, "policyName", policy.GetName())
@@ -787,7 +787,7 @@ func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context
 				// Or the controller pod fails to update the status after creating objects, e.g. node failure
 				// Remove it as we have created a new one and updated the map
 				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetKind())
-				err := r.Client.Delete(ctx, newResource)
+				err := r.Delete(ctx, newResource)
 				if !errors.IsNotFound(err) {
 					return childResourceNames, err
 				}
@@ -876,7 +876,7 @@ func (r *ClusterGroupUpgradeReconciler) rootPolicyHandlerOnUpdate(ctx context.Co
 	if len(targetClusters) > 0 {
 		// List CGUs in all namespaces
 		cgus := &ranv1alpha1.ClusterGroupUpgradeList{}
-		err := r.Client.List(ctx, cgus)
+		err := r.List(ctx, cgus)
 		if err != nil {
 			r.Log.Error(err, "[rootPolicyUpdateHandler]: fail to list ClusterGroupUpgrade")
 		}

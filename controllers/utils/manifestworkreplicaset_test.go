@@ -8,12 +8,11 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
 )
 
 var ibu = &lcav1.ImageBasedUpgrade{
-	ObjectMeta: v1.ObjectMeta{
+	ObjectMeta: metav1.ObjectMeta{
 		Name: "upgrade",
 	},
 	Spec: lcav1.ImageBasedUpgradeSpec{
@@ -39,7 +38,7 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 				Status: mwv1.ManifestResourceStatus{
 					Manifests: []mwv1.ManifestCondition{
 						{
-							Conditions: []v1.Condition{
+							Conditions: []metav1.Condition{
 								{
 									Type:    "Applied",
 									Message: "failed to apply",
@@ -52,14 +51,14 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 			},
 		},
 		{
-			name:     "successfull apply",
+			name:     "successful apply",
 			expected: "",
 			status: v1alpha1.ManifestWorkStatus{
 				Name: "manifest",
 				Status: mwv1.ManifestResourceStatus{
 					Manifests: []mwv1.ManifestCondition{
 						{
-							Conditions: []v1.Condition{
+							Conditions: []metav1.Condition{
 								{
 									Type:   "Applied",
 									Status: "True",
@@ -71,14 +70,14 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 			},
 		},
 		{
-			name:     "successfull apply",
+			name:     "successful apply",
 			expected: "some err\nsome err",
 			status: v1alpha1.ManifestWorkStatus{
 				Name: "manifest",
 				Status: mwv1.ManifestResourceStatus{
 					Manifests: []mwv1.ManifestCondition{
 						{
-							Conditions: []v1.Condition{
+							Conditions: []metav1.Condition{
 								{
 									Type:   "Applied",
 									Status: "True",
@@ -116,7 +115,7 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 
 func TestGenerateCGUForPlanItem(t *testing.T) {
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ibu",
 			Namespace: "namespace",
 		},
@@ -134,7 +133,7 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 					},
 				},
 			},
-			ClusterLabelSelectors: []v1.LabelSelector{
+			ClusterLabelSelectors: []metav1.LabelSelector{
 
 				{
 					MatchLabels: map[string]string{
@@ -339,7 +338,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
 
 func TestAbortManifestworkReplicaset(t *testing.T) {
 	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "upgrade",
 		},
 		Spec: lcav1.ImageBasedUpgradeSpec{
@@ -476,7 +475,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
 }
 func TestFinalizeManifestworkReplicaset(t *testing.T) {
 	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "upgrade",
 		},
 		Spec: lcav1.ImageBasedUpgradeSpec{
@@ -614,7 +613,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
 
 func TestRollbackManifestworkReplicaset(t *testing.T) {
 	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "upgrade",
 		},
 		Spec: lcav1.ImageBasedUpgradeSpec{
@@ -751,7 +750,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
 }
 func TestPrepManifestworkReplicaset(t *testing.T) {
 	ibu := &lcav1.ImageBasedUpgrade{
-		ObjectMeta: v1.ObjectMeta{
+		ObjectMeta: metav1.ObjectMeta{
 			Name: "upgrade",
 		},
 		Spec: lcav1.ImageBasedUpgradeSpec{
@@ -926,12 +925,12 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 	}{
 		{
 			name: "no extra selector",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
@@ -942,12 +941,12 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 		},
 		{
 			name: "finalizeUpgrade",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true",
 						"lcm.openshift.io/ibgu-upgrade-completed": ""},
@@ -959,12 +958,12 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 		},
 		{
 			name: "abortOnFailure",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true",
 						"lcm.openshift.io/ibgu-upgrade-failed": ""},
@@ -980,12 +979,12 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 		},
 		{
 			name: "finalizeRollback",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true",
 						"lcm.openshift.io/ibgu-rollback-completed": ""},
@@ -997,7 +996,7 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 		},
 		{
 			name: "Rollback",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
@@ -1005,7 +1004,7 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 					MatchLabels: map[string]string{"group": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true",
 						"lcm.openshift.io/ibgu-upgrade-completed": ""},
@@ -1021,15 +1020,15 @@ func TestGetLabelSelectorForPlanItem(t *testing.T) {
 		},
 		{
 			name: "Abort",
-			currentSelctor: []v1.LabelSelector{
+			currentSelctor: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
 				},
 			},
-			expected: []v1.LabelSelector{
+			expected: []metav1.LabelSelector{
 				{
 					MatchLabels: map[string]string{"common": "true"},
-					MatchExpressions: []v1.LabelSelectorRequirement{
+					MatchExpressions: []metav1.LabelSelectorRequirement{
 						{
 							Key:      "lcm.openshift.io/ibgu-upgrade-completed",
 							Operator: metav1.LabelSelectorOpDoesNotExist,

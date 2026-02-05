@@ -80,6 +80,8 @@ spec:
                         description: |-
                           This field defines a map of key/value pairs that identify the cluster labels
                           to be deleted for the defined clusters.
+
+
                           Deprecated: Use RemoveClusterLabels instead.
                         type: object
                       deleteObjects:
@@ -124,6 +126,8 @@ spec:
                         description: |-
                           This field defines a map of key/value pairs that identify the cluster labels
                           to be deleted for the defined clusters.
+
+
                           Deprecated: Use RemoveClusterLabels instead.
                         type: object
                       removeClusterAnnotations:
@@ -144,6 +148,8 @@ spec:
                 default: false
                 description: |-
                   This field determines whether the cluster would be running a backup prior to the upgrade.
+
+
                   Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
                 type: boolean
               batchTimeoutAction:
@@ -246,6 +252,8 @@ spec:
                     - label1Name
                   All the clusters matching the labels specified in clusterSelector will be included
                   in the update plan.
+
+
                   Deprecated: Use ClusterLabelSelectors instead
                 items:
                   type: string

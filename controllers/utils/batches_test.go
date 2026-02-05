@@ -32,7 +32,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            1,
 				currentBatch:          1,
 			},
-			expected: time.Duration(100 * time.Minute),
+			expected: 100 * time.Minute,
 			name:     "Base case 1",
 		},
 		{
@@ -43,7 +43,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            2,
 				currentBatch:          1,
 			},
-			expected: time.Duration(100 * time.Minute),
+			expected: 100 * time.Minute,
 			name:     "Base case 2",
 		},
 		{
@@ -54,7 +54,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            2,
 				currentBatch:          2,
 			},
-			expected: time.Duration(100 * time.Minute),
+			expected: 100 * time.Minute,
 			name:     "Base case 3",
 		},
 		{
@@ -65,7 +65,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            5,
 				currentBatch:          1,
 			},
-			expected: time.Duration(48 * time.Minute),
+			expected: 48 * time.Minute,
 			name:     "Realistic case 1",
 		},
 		{
@@ -76,7 +76,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            5,
 				currentBatch:          2,
 			},
-			expected: time.Duration(50 * time.Minute),
+			expected: 50 * time.Minute,
 			name:     "Realistic case 2",
 		},
 		{
@@ -87,7 +87,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            5,
 				currentBatch:          5,
 			},
-			expected: time.Duration(140 * time.Minute),
+			expected: 140 * time.Minute,
 			name:     "Realistic case 3",
 		},
 		{
@@ -98,7 +98,7 @@ func TestBatchTimeout(t *testing.T) {
 				numBatches:            100,
 				currentBatch:          100,
 			},
-			expected: time.Duration(50 * time.Minute),
+			expected: 50 * time.Minute,
 			name:     "Edge case 1",
 		},
 	}

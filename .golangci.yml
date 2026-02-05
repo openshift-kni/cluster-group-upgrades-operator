@@ -1,124 +1,77 @@
 ---
+version: "2"
+
 linters:
-  disable-all: true
   enable:
     - depguard
     - goconst
     - gocritic
     - revive
-    - gofmt
-    - goimports
     - govet
     - ineffassign
     - misspell
     - staticcheck
-    - typecheck
     - unconvert
     - unparam
     - gocyclo
     - unused
-linters-settings:
-  depguard:
-    # Rules to apply.
-    #
-    # Variables:
-    # - File Variables
-    #   you can still use and exclamation mark ! in front of a variable to say not to use it.
-    #   Example !$test will match any file that is not a go test file.
-    #
-    #   `$all` - matches all go files
-    #   `$test` - matches all go test files
-    #
-    # - Package Variables
-    #
-    #  `$gostd` - matches all of go's standard library (Pulled from `GOROOT`)
-    #
-    # Default: Only allow $gostd in all files.
-    rules:
-      # Name of a rule.
-      main:
-        # List of allowed packages.
-        # allow:
-        #  - $gostd
-        # Packages that are not allowed where the value is a suggestion.
-        deny:
-          - desc: Should be replaced by standard lib errors package
-            pkg: "github.com/pkg/errors"
-        # List of file globs that will match this list of settings to compare against.
-        # Default: $all
-        files:
-          - $all
-        # Used to determine the package matching priority.
-        # There are three different modes: `original`, `strict`, and `lax`.
-        # Default: "original"
-        list-mode: lax
-  gocritic:
-    enabled-checks:
-      # Diagnostic
-      - argOrder
-      - badCond
-      - caseOrder
-      - codegenComment
-      - commentedOutCode
-      - deprecatedComment
-      - dupArg
-      - dupBranchBody
-      - dupCase
-      - dupSubExpr
-      - exitAfterDefer
-      - flagDeref
-      - flagName
-      - nilValReturn
-      - offBy1
-      - weakCond
-      - octalLiteral
-      - sloppyReassign
-      # Performance
-      - equalFold
-      - indexAlloc
-      - rangeExprCopy
-      - appendCombine
-      # Style
-      - assignOp
-      - boolExprSimplify
-      - captLocal
-      - commentFormatting
-      - commentedOutImport
-      - defaultCaseOrder
-      - docStub
-      - elseif
-      - emptyFallthrough
-      - emptyStringTest
-      - hexLiteral
-      - methodExprCall
-      - regexpMust
-      - singleCaseSwitch
-      - sloppyLen
-      - stringXbytes
-      - switchTrue
-      - typeAssertChain
-      - typeSwitchVar
-      - underef
-      - unlabelStmt
-      - unlambda
-      - unslice
-      - valSwap
-      - yodaStyleExpr
-      - wrapperFunc
-      # Opinionated
-      - initClause
-      - nestingReduce
-      - ptrToRefParam
-      - typeUnparen
-      - unnecessaryBlock
-      - paramTypeCombine
-  revive:
-    rules:
-      - disabled: true
-        name: if-return
-        severity: warning
+  exclusions:
+    generated: lax
+    paths:
+      - "recovery/generated/.*"
+  settings:
+    depguard:
+      rules:
+        main:
+          deny:
+            - desc: Should be replaced by standard lib errors package
+              pkg: "github.com/pkg/errors"
+          files:
+            - $all
+          list-mode: lax
+    gocritic:
+      enabled-checks:
+        # Diagnostic (keeping only non-default ones)
+        - commentedOutCode
+        - nilValReturn
+        - weakCond
+        - octalLiteral
+        - sloppyReassign
+        # Performance
+        - equalFold
+        - indexAlloc
+        - rangeExprCopy
+        - appendCombine
+        # Style (keeping only non-default ones)
+        - boolExprSimplify
+        - commentedOutImport
+        - docStub
+        - emptyFallthrough
+        - emptyStringTest
+        - hexLiteral
+        - methodExprCall
+        - stringXbytes
+        - typeAssertChain
+        - unlabelStmt
+        - yodaStyleExpr
+        # Opinionated
+        - initClause
+        - nestingReduce
+        - ptrToRefParam
+        - typeUnparen
+        - unnecessaryBlock
+        - paramTypeCombine
+    revive:
+      rules:
+        - disabled: true
+          name: if-return
+          severity: warning
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+
 run:
   concurrency: 6
-  deadline: 5m
-  skip-files:
-    - ".*_test\\.go"
+  timeout: 5m
