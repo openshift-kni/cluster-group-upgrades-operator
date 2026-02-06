@@ -12,6 +12,10 @@ WORKDIR /tmp
 ENV MANIFESTS_PATH=/tmp/manifests
 COPY --chown=yq:yq bundle/manifests $MANIFESTS_PATH
 
+# Copy bundle metadata
+ENV METADATA_PATH=/tmp/metadata
+COPY --chown=yq:yq bundle/metadata $METADATA_PATH
+
 # Copy overlay scripts
 ENV OVERLAY_PATH=/tmp/overlay
 RUN mkdir -p $OVERLAY_PATH
@@ -25,6 +29,13 @@ RUN $OVERLAY_PATH/konflux-bundle-overlay.sh  \
     --set-pinning-file $OVERLAY_PATH/pin_images.in.yaml \
     --set-release-file $OVERLAY_PATH/release.in.yaml
 
+# Override specific labels in metadata/annotations.yaml using yq (version from release.in.yaml)
+RUN CHANNEL_VERSION=$(yq -r '.variables.version | split(".") | .[0:2] | join(".")' $OVERLAY_PATH/release.in.yaml) && \
+    export CHANNEL_VERSION && \
+    yq -i '.annotations["operators.operatorframework.io.bundle.package.v1"] = "topology-aware-lifecycle-manager"' $METADATA_PATH/annotations.yaml && \
+    yq -i '.annotations["operators.operatorframework.io.bundle.channels.v1"] = "stable," + strenv(CHANNEL_VERSION)' $METADATA_PATH/annotations.yaml && \
+    yq -i '.annotations["operators.operatorframework.io.bundle.channel.default.v1"] = "stable"' $METADATA_PATH/annotations.yaml
+
 # From here downwards this should mostly match the non-konflux bundle, i.e., `bundle.Dockerfile`
 # However there are a few exceptions:
 # 1. The label 'operators.operatorframework.io.bundle.channels.v1'
@@ -36,9 +47,9 @@ FROM scratch
 LABEL operators.operatorframework.io.bundle.mediatype.v1=registry+v1
 LABEL operators.operatorframework.io.bundle.manifests.v1=manifests/
 LABEL operators.operatorframework.io.bundle.metadata.v1=metadata/
-LABEL operators.operatorframework.io.bundle.package.v1=cluster-group-upgrades-operator
+LABEL operators.operatorframework.io.bundle.package.v1=topology-aware-lifecycle-manager
 LABEL operators.operatorframework.io.bundle.channels.v1=stable,4.18
-LABEL operators.operatorframework.io.bundle.channels.default.v1=stable
+LABEL operators.operatorframework.io.bundle.channel.default.v1=stable
 LABEL operators.operatorframework.io.metrics.builder=operator-sdk-v1.28.0
 LABEL operators.operatorframework.io.metrics.mediatype.v1=metrics+v1
 LABEL operators.operatorframework.io.metrics.project_layout=go.kubebuilder.io/v3
@@ -49,5 +60,5 @@ LABEL operators.operatorframework.io.test.config.v1=tests/scorecard/
 
 # Copy files to locations specified by labels.
 COPY --from=overlay /tmp/manifests /manifests/
-COPY bundle/metadata /metadata/
+COPY --from=overlay /tmp/metadata /metadata/
 COPY bundle/tests/scorecard /tests/scorecard/
