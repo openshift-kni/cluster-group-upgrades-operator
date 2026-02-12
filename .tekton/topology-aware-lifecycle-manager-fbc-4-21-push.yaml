@@ -10,6 +10,7 @@ metadata:
     pipelinesascode.tekton.dev/on-cel-expression: |
       event == "push" &&
       target_branch == "release-4.21" &&
+      !event_title.contains("[BRANCH-CUT]") &&
       (
         '.konflux/catalog/***'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
