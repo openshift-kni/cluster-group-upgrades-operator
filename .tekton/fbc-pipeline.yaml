@@ -381,7 +381,7 @@ spec:
           operator: in
           values:
             - 'false'
-    # Konflux bug https://redhat-internal.slack.com/archives/C04PZ7H0VA8/p1770869414428959
+    # Konflux bug KFLUXSPRT-7023
     # 2026-02-16: Adding exception to pass the fips checks
     # - name: fbc-fips-check-oci-ta
     #   params:
