@@ -456,7 +456,7 @@ golangci-lint-download: sync-git-submodules $(LOCALBIN) ## Download golangci-lin
 .PHONY: golangci-lint
 golangci-lint: golangci-lint-download $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@echo "Running golangci-lint on repository go files..."
-	$(GOLANGCI_LINT) run -v
+	GOFLAGS="-mod=vendor" $(GOLANGCI_LINT) run -v
 	@echo "Golangci-lint linting completed successfully."
 
 operator-sdk: sync-git-submodules $(LOCALBIN) ## Download operator-sdk locally if necessary.
