@@ -7,5 +7,5 @@ variables:
       platform and operator upgrades of group of clusters
   display_name: "Topology Aware Lifecycle Manager"
   manager_version: "topology-aware-lifecycle-manager.v5.0.0"
-  min_kube_version: "1.32.0"
+  min_kube_version: "1.35.0"
   version: "5.0.0"
