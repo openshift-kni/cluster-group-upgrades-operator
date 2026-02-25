@@ -98,6 +98,14 @@ rules:
   verbs:
   - update
 - apiGroups:
+  - config.openshift.io
+  resources:
+  - apiservers
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - lcm.openshift.io
   resources:
   - imagebasedgroupupgrades

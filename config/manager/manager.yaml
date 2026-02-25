@@ -38,7 +38,6 @@ spec:
         args:
         - --leader-elect
         - --metrics-bind-address=:6443
-        - --metrics-tls-cert-dir=/secrets/tls/metrics
         image: controller:latest
         name: manager
         env:
@@ -51,8 +50,6 @@ spec:
           protocol: TCP
           name: https
         volumeMounts:
-        - name: metrics-tls
-          mountPath: /secrets/tls/metrics
         - name: coverage
           mountPath: /coverage
         livenessProbe:
@@ -74,9 +71,5 @@ spec:
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
-      - name: metrics-tls
-        secret:
-          defaultMode: 420
-          secretName: controller-manager-metrics-tls
       - name: coverage
         emptyDir: {}
