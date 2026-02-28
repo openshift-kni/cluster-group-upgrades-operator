@@ -58,12 +58,41 @@ def extract_images(args, objects):
         channels[package] = channel
         packages.append(package)
         print(f"will process package {package} channel {channel}")
-    # 2. Find the right channels for our packages and get the latest bundle
+    # 2. Find the right channels for our packages and get the channel head (latest bundle)
     for item in objects:
         if item.get("schema") == "olm.channel":
             if item.get("package") in packages and item.get("name") == channels[item.get("package")]:
-                latest = item.get("entries")[-1].get("name")
-                bundles.append(latest)
+                # The channel head is the bundle that is NOT replaced by any other bundle
+                entries = item.get("entries", [])
+                if not entries:
+                    print(f"Warning: channel {item.get('name')} in package {item.get('package')} has no entries")
+                    continue
+
+                # Collect all bundle names that are replaced by another bundle
+                replaced_bundles = set()
+                for entry in entries:
+                    replaces = entry.get("replaces")
+                    if replaces:
+                        replaced_bundles.add(replaces)
+
+                # Find the head: the entry that is not replaced by any other entry
+                head_bundle = None
+                for entry in entries:
+                    entry_name = entry.get("name")
+                    if entry_name and entry_name not in replaced_bundles:
+                        if head_bundle is not None:
+                            # Multiple heads found - this shouldn't happen in valid catalogs
+                            print(f"Warning: multiple heads found in channel {item.get('name')}: {head_bundle}, {entry_name}")
+                        head_bundle = entry_name
+
+                if head_bundle:
+                    bundles.append(head_bundle)
+                    print(f"Selected channel head: {head_bundle} for package {item.get('package')}, channel {item.get('name')}")
+                else:
+                    print(f"Error: could not determine head for channel {item.get('name')} in package {item.get('package')}")
+                    # Fallback to last entry if head detection fails
+                    bundles.append(entries[-1].get("name"))
+                    print(f"Falling back to last entry: {entries[-1].get('name')}")
     # 3. extract related images from our bundles
     for item in objects:
         if item.get("schema") == "olm.bundle":
