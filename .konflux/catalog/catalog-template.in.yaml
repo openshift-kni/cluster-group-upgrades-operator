@@ -11,51 +11,51 @@ entries:
   - entries:
       # v4.12.0
       - name: topology-aware-lifecycle-manager.v4.12.0
-        skipRange: '>=4.10.0 <4.12.0'
+        skipRange: '>=4.12.0 <4.12.0'
       # v4.12.1
       - name: topology-aware-lifecycle-manager.v4.12.1
         replaces: topology-aware-lifecycle-manager.v4.12.0
-        skipRange: '>=4.9.0 <4.12.1'
+        skipRange: '>=4.12.0 <4.12.1'
       # v4.12.2
       - name: topology-aware-lifecycle-manager.v4.12.2
         replaces: topology-aware-lifecycle-manager.v4.12.1
-        skipRange: '>=4.9.0 <4.12.2'
+        skipRange: '>=4.12.0 <4.12.2'
       # v4.12.3
       - name: topology-aware-lifecycle-manager.v4.12.3
         replaces: topology-aware-lifecycle-manager.v4.12.2
-        skipRange: '>=4.9.0 <4.12.3'
+        skipRange: '>=4.12.0 <4.12.3'
       # v4.12.4
       - name: topology-aware-lifecycle-manager.v4.12.4
         replaces: topology-aware-lifecycle-manager.v4.12.3
-        skipRange: '>=4.9.0 <4.12.4'
+        skipRange: '>=4.12.0 <4.12.4'
       # v4.12.5
       - name: topology-aware-lifecycle-manager.v4.12.5
         replaces: topology-aware-lifecycle-manager.v4.12.4
-        skipRange: '>=4.9.0 <4.12.5'
+        skipRange: '>=4.12.0 <4.12.5'
       # v4.12.6
       - name: topology-aware-lifecycle-manager.v4.12.6
         replaces: topology-aware-lifecycle-manager.v4.12.5
-        skipRange: '>=4.9.0 <4.12.6'
+        skipRange: '>=4.12.0 <4.12.6'
       # v4.12.7
       - name: topology-aware-lifecycle-manager.v4.12.7
         replaces: topology-aware-lifecycle-manager.v4.12.6
-        skipRange: '>=4.9.0 <4.12.7'
+        skipRange: '>=4.12.0 <4.12.7'
       # v4.12.8
       - name: topology-aware-lifecycle-manager.v4.12.8
         replaces: topology-aware-lifecycle-manager.v4.12.7
-        skipRange: '>=4.9.0 <4.12.8'
+        skipRange: '>=4.12.0 <4.12.8'
       # v4.12.9
       - name: topology-aware-lifecycle-manager.v4.12.9
         replaces: 'topology-aware-lifecycle-manager.v4.12.8'
-        skipRange: '>=4.9.0 <4.12.9'
+        skipRange: '>=4.12.0 <4.12.9'
       # v4.12.10
       - name: topology-aware-lifecycle-manager.v4.12.10
         replaces: topology-aware-lifecycle-manager.v4.12.9
-        skipRange: '>=4.9.0 <4.12.10'
+        skipRange: '>=4.12.0 <4.12.10'
       # v4.12.11
       - name: topology-aware-lifecycle-manager.v4.12.11
         replaces: topology-aware-lifecycle-manager.v4.12.10
-        skipRange: '>=4.9.0 <4.12.11'
+        skipRange: '>=4.12.0 <4.12.11'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
@@ -63,51 +63,51 @@ entries:
   - entries:
       # v4.12.0
       - name: topology-aware-lifecycle-manager.v4.12.0
-        skipRange: '>=4.10.0 <4.12.0'
+        skipRange: '>=4.12.0 <4.12.0'
       # v4.12.1
       - name: topology-aware-lifecycle-manager.v4.12.1
         replaces: topology-aware-lifecycle-manager.v4.12.0
-        skipRange: '>=4.9.0 <4.12.1'
+        skipRange: '>=4.12.0 <4.12.1'
       # v4.12.2
       - name: topology-aware-lifecycle-manager.v4.12.2
         replaces: topology-aware-lifecycle-manager.v4.12.1
-        skipRange: '>=4.9.0 <4.12.2'
+        skipRange: '>=4.12.0 <4.12.2'
       # v4.12.3
       - name: topology-aware-lifecycle-manager.v4.12.3
         replaces: topology-aware-lifecycle-manager.v4.12.2
-        skipRange: '>=4.9.0 <4.12.3'
+        skipRange: '>=4.12.0 <4.12.3'
       # v4.12.4
       - name: topology-aware-lifecycle-manager.v4.12.4
         replaces: topology-aware-lifecycle-manager.v4.12.3
-        skipRange: '>=4.9.0 <4.12.4'
+        skipRange: '>=4.12.0 <4.12.4'
       # v4.12.5
       - name: topology-aware-lifecycle-manager.v4.12.5
         replaces: topology-aware-lifecycle-manager.v4.12.4
-        skipRange: '>=4.9.0 <4.12.5'
+        skipRange: '>=4.12.0 <4.12.5'
       # v4.12.6
       - name: topology-aware-lifecycle-manager.v4.12.6
         replaces: topology-aware-lifecycle-manager.v4.12.5
-        skipRange: '>=4.9.0 <4.12.6'
+        skipRange: '>=4.12.0 <4.12.6'
       # v4.12.7
       - name: topology-aware-lifecycle-manager.v4.12.7
         replaces: topology-aware-lifecycle-manager.v4.12.6
-        skipRange: '>=4.9.0 <4.12.7'
+        skipRange: '>=4.12.0 <4.12.7'
       # v4.12.8
       - name: topology-aware-lifecycle-manager.v4.12.8
         replaces: topology-aware-lifecycle-manager.v4.12.7
-        skipRange: '>=4.9.0 <4.12.8'
+        skipRange: '>=4.12.0 <4.12.8'
       # v4.12.9
       - name: topology-aware-lifecycle-manager.v4.12.9
         replaces: 'topology-aware-lifecycle-manager.v4.12.8'
-        skipRange: '>=4.9.0 <4.12.9'
+        skipRange: '>=4.12.0 <4.12.9'
       # v4.12.10
       - name: topology-aware-lifecycle-manager.v4.12.10
         replaces: topology-aware-lifecycle-manager.v4.12.9
-        skipRange: '>=4.9.0 <4.12.10'
+        skipRange: '>=4.12.0 <4.12.10'
       # v4.12.11
       - name: topology-aware-lifecycle-manager.v4.12.11
         replaces: topology-aware-lifecycle-manager.v4.12.10
-        skipRange: '>=4.9.0 <4.12.11'
+        skipRange: '>=4.12.0 <4.12.11'
     name: "4.12"
     package: topology-aware-lifecycle-manager
     schema: olm.channel
