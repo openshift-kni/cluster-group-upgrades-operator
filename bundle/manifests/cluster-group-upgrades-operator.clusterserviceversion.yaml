@@ -357,6 +357,14 @@ spec:
           verbs:
           - update
         - apiGroups:
+          - config.openshift.io
+          resources:
+          - apiservers
+          verbs:
+          - get
+          - list
+          - watch
+        - apiGroups:
           - lcm.openshift.io
           resources:
           - imagebasedgroupupgrades
@@ -545,7 +553,6 @@ spec:
               - args:
                 - --leader-elect
                 - --metrics-bind-address=:6443
-                - --metrics-tls-cert-dir=/secrets/tls/metrics
                 command:
                 - /manager
                 env:
@@ -584,8 +591,6 @@ spec:
                 securityContext:
                   allowPrivilegeEscalation: false
                 volumeMounts:
-                - mountPath: /secrets/tls/metrics
-                  name: metrics-tls
                 - mountPath: /coverage
                   name: coverage
               securityContext:
@@ -593,10 +598,6 @@ spec:
               serviceAccountName: cluster-group-upgrades-controller-manager
               terminationGracePeriodSeconds: 10
               volumes:
-              - name: metrics-tls
-                secret:
-                  defaultMode: 420
-                  secretName: controller-manager-metrics-tls
               - emptyDir: {}
                 name: coverage
       permissions:

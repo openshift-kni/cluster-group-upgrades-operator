@@ -17,6 +17,7 @@ limitations under the License.
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"flag"
 	"os"
@@ -37,11 +38,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
+	ocpv1 "github.com/openshift/api/config/v1"
+	utiltls "github.com/openshift/controller-runtime-common/pkg/tls"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 
 	operatorsv1alpha1 "github.com/operator-framework/api/pkg/operators/v1alpha1"
@@ -54,6 +56,8 @@ import (
 	//+kubebuilder:scaffold:imports
 )
 
+// +kubebuilder:rbac:groups=config.openshift.io,resources=apiservers,verbs=get;list;watch
+
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
@@ -61,7 +65,7 @@ var (
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
-
+	utilruntime.Must(ocpv1.AddToScheme(scheme))
 	utilruntime.Must(clusterv1.AddToScheme(scheme))
 	utilruntime.Must(mwv1.AddToScheme(scheme))
 	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
@@ -78,36 +82,56 @@ func main() {
 	var metricsAddr string
 	var enableLeaderElection bool
 	var probeAddr string
-	var enableHTTP2 bool
-	var metricsCertDir string
+	var skipTLSProfile bool
 
-	flag.BoolVar(&enableHTTP2, "enable-http2", enableHTTP2, "If HTTP/2 should be enabled for the webhook server.")
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
 		"Enable leader election for controller manager. "+
 			"Enabling this will ensure there is only one active controller manager.")
+	flag.BoolVar(&skipTLSProfile, "skip-tls-profile", false,
+		"Skip fetching TLS profile from OpenShift API server. "+
+			"Use this flag when running on vanilla Kubernetes.")
 	opts := zap.Options{
 		Development: true,
 	}
-	flag.StringVar(&metricsCertDir, "metrics-tls-cert-dir", "",
-		"The directory containing the tls.crt and tls.key.")
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 
-	// Set the TLS options.
-	// If the enable-http2 flag is false (the default), http/2 will be disabled due to its vulnerabilities.
-	// More specifically, disabling http/2 will prevent from being vulnerable to the HTTP/2 Stream
-	// Cancelation and Rapid Reset CVEs. For more information see:
-	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
-	// - https://github.com/advisories/GHSA-4374-p667-p6c8
-	tlsOpts := []func(*tls.Config){}
-	if !enableHTTP2 {
-		tlsOpts = append(tlsOpts, func(c *tls.Config) {
-			c.NextProtos = []string{"http/1.1"}
-		})
+	cfg := ctrl.GetConfigOrDie()
+
+	// Create a Kubernetes client to fetch the TLS profile.
+	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		setupLog.Error(err, "unable to create Kubernetes client")
+		os.Exit(1)
+	}
+
+	var tlsConfig func(*tls.Config)
+	var tlsSecurityProfileSpec ocpv1.TLSProfileSpec
+
+	// Fetch the TLS profile from the APIServer resource if not skipped.
+	if !skipTLSProfile {
+		tlsSecurityProfileSpec, err = utiltls.FetchAPIServerTLSProfile(context.Background(), k8sClient)
+		if err != nil {
+			setupLog.Error(err, "unable to get TLS profile from API server")
+			os.Exit(1)
+		}
+
+		// Create the TLS configuration function for the server endpoints.
+		var unsupportedCiphers []string
+		tlsConfig, unsupportedCiphers = utiltls.NewTLSConfigFromProfile(tlsSecurityProfileSpec)
+		if len(unsupportedCiphers) > 0 {
+			setupLog.Info("TLS configuration contains unsupported ciphers that will be ignored", "ciphers", unsupportedCiphers)
+		}
+	} else {
+		setupLog.Info("Skipping TLS profile fetch from OpenShift API server (running on vanilla Kubernetes)")
+		// Use a default TLS configuration for vanilla Kubernetes
+		tlsConfig = func(c *tls.Config) {
+			c.MinVersion = tls.VersionTLS12
+		}
 	}
 
 	ibguLabelReq, err := labels.NewRequirement(
@@ -118,22 +142,17 @@ func main() {
 	}
 	selector := labels.NewSelector().Add(*ibguLabelReq)
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), ctrl.Options{
+	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
 		Scheme:                 scheme,
 		HealthProbeBindAddress: probeAddr,
 		LeaderElection:         enableLeaderElection,
 		LeaderElectionID:       "9a2365a3.openshift.io",
 		Metrics: server.Options{
 			BindAddress:    metricsAddr,
-			SecureServing:  metricsCertDir != "",
-			CertDir:        metricsCertDir,
-			TLSOpts:        tlsOpts,
+			SecureServing:  true,
 			FilterProvider: filters.WithAuthenticationAndAuthorization,
+			TLSOpts:        []func(*tls.Config){tlsConfig},
 		},
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Port:    9443,
-			TLSOpts: tlsOpts,
-		}),
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
 				&mwv1.ManifestWork{}: {
@@ -184,9 +203,35 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Create a context that can be cancelled when there is a need to shut down the manager.
+	ctx, cancel := context.WithCancel(ctrl.SetupSignalHandler())
+	// Ensure the context is cancelled when the program exits.
+	defer cancel()
+
+	// Set up the TLS security profile watcher controller only if not skipped.
+	// This will trigger a graceful shutdown when the TLS profile changes.
+	if !skipTLSProfile {
+		if err := (&utiltls.SecurityProfileWatcher{
+			Client:                mgr.GetClient(),
+			InitialTLSProfileSpec: tlsSecurityProfileSpec,
+			OnProfileChange: func(ctx context.Context, oldTLSProfileSpec, newTLSProfileSpec ocpv1.TLSProfileSpec) {
+				setupLog.Info("TLS profile has changed, initiating a shutdown to reload it",
+					"old profile", oldTLSProfileSpec,
+					"new profile", newTLSProfileSpec,
+				)
+				cancel()
+			},
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create TLS security profile watcher controller")
+			//nolint:gocritic,exitAfterDefer
+			os.Exit(1)
+		}
+	}
+
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
+		//nolint:gocritic,exitAfterDefer
 		os.Exit(1)
 	}
 }

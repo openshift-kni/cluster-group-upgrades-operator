@@ -268,10 +268,10 @@ build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) go run ./main.go
+	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) go run ./main.go --skip-tls-profile
 
 debug: manifests generate fmt vet ## Run a controller from your host that accepts remote attachment.
-	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go
+	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go -- --skip-tls-profile
 
 docker-build: ## Build container image with the manager.
 	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
