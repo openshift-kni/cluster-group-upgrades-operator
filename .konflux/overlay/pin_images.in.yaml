@@ -2,25 +2,25 @@
 # Manager
 - key: manager
   source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.17.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-17@sha256:ee8a4be34f43cb3407366c57d59a9c2bd86af993779aa367d0e972ca7cc79f22
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-17@sha256:464097da219ed82427eda1a8fcd48026997278a5d5a230547926d7a938be1b98
 #
 # Aztp
 - key: aztp_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.17.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-17@sha256:ce19e241f8ad8c8b875342b01598d89c77572bdd94767eee14bc80b406dc3795
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-17@sha256:9e244850f6e649d542055cae37655eb54e1b70f94a0cf50b00f255225b2fc688
 #
 # Precache
 - key: precache_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.17.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-17@sha256:56a9072d7bbd6104ed6c6b9baa7cfb8fe55d769f2112b3290753d7ab14f72248
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-17@sha256:b23e2669259573b5bd84cc3b4dab990bea41591c1438b3849f0363511827f5e9
 #
 # Recovery
 - key: recovery_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.17.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-17@sha256:297582fefac46a06ff469cd3a9760f0f7a35dcf8b05803d53f7754a074a91af3
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-17@sha256:27663e21bdcbad0aa2a87c287bdf8e5566b869dea9205b632cbbbaa15514a1d4
 #
 # Kube RBAC Proxy
 - key: kube_rbac
   source: quay.io/openshift/origin-kube-rbac-proxy:4.17
-  target: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v4.17@sha256:26b4e80a0c2e52221789d1b8299567d994798269e8351a9c9e198df0319d1564
+  target: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v4.17@sha256:13ff6f1660386c40415467e308d4d41ad159447e3ec6ed13820d265c22a9a446
 #
