@@ -88,5 +88,12 @@ result=$(extract_pull_spec "/tmp")
 [[ $(cat $PULL_SPEC_FILE) == "\"quay.io/1\"" ]] || fatal "release pull spec extract failure"
 echo " release extract_pull_spec pass"
 
+# Test parse_index.py Python unit tests
+echo "Testing parse_index.py unit tests:"
+# shellcheck disable=SC2154
+python3 $cwd/test_parse_index.py
+[[ $? -eq 0 ]] || fatal "parse_index.py unit tests failed"
+echo " parse_index.py unit tests pass"
+
 # Clean
 rm -rf /tmp/operators.indexes /tmp/release-manifests $PULL_SPEC_FILE /tmp/operators.packagesAndChannels
