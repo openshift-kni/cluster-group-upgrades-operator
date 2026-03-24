@@ -31,7 +31,7 @@ func (r *ClusterGroupUpgradeReconciler) reconcileBackup(
 	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade,
 	clusters []string) error {
-
+	// nolint: staticcheck
 	if clusterGroupUpgrade.Spec.Backup && len(clusters) > 0 {
 		// Backup is required
 		if clusterGroupUpgrade.Status.Backup == nil {
@@ -244,9 +244,9 @@ func (r *ClusterGroupUpgradeReconciler) checkAllBackupDone(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
 
 	// Counts for the various cluster states
-	var failedBackupCount int = 0
-	var progressingBackupCount int = 0
-	var successfulBackupCount int = 0
+	var failedBackupCount int
+	var progressingBackupCount int
+	var successfulBackupCount int
 
 	// Loop over all the clusters and take count of all their states
 	for _, state := range clusterGroupUpgrade.Status.Backup.Status {

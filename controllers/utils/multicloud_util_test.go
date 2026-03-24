@@ -29,7 +29,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
@@ -69,7 +68,7 @@ func TestMultiCloudNewManagedClusterActionForInstallPlanSpec(t *testing.T) {
 		{
 			name: "ManagedClusterAction is missing",
 			installPlan: operatorsv1alpha1.InstallPlan{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
 				},
 				Spec: operatorsv1alpha1.InstallPlanSpec{
@@ -94,8 +93,6 @@ func TestMultiCloudNewManagedClusterActionForInstallPlanSpec(t *testing.T) {
 
 	for _, tc := range testcases {
 		t.Run(tc.name, func(t *testing.T) {
-			var objs []client.Object
-			objs = append(objs, &tc.installPlan)
 			tc.validateFunc(t, tc.installPlan)
 		})
 	}
@@ -116,7 +113,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 			mcaNamespace: "mcaNamespace",
 			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
 				},
 				Spec: operatorsv1alpha1.InstallPlanSpec{
@@ -140,7 +137,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 		{
 			name: "ManagedClusterAction is missing condition indefinitely",
 			mca: &actionv1beta1.ManagedClusterAction{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "mcaName", Namespace: "mcaNamespace",
 				},
 				Spec: actionv1beta1.ActionSpec{
@@ -154,7 +151,7 @@ func TestEnsureManagedClusterActionForInstallPlan(t *testing.T) {
 			mcaNamespace: "mcaNamespace",
 			cguLabel:     "default-cgu",
 			installPlan: operatorsv1alpha1.InstallPlan{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-abcd", Namespace: "installPlan-abcd-namespace",
 				},
 				Spec: operatorsv1alpha1.InstallPlanSpec{
@@ -241,7 +238,7 @@ func TestEnsureManagedClusterView(t *testing.T) {
 		{
 			name: "ManagedClusterView is successfully updated",
 			mcv: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "view1", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -310,7 +307,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "ManagedClusterView has missing conditions",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -328,7 +325,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -346,14 +343,14 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				if err != nil {
 					t.Errorf("Error occurred and it wasn't expected")
 				}
-				assert.Equal(t, mcvForInstallPlan.Status.Conditions, []v1.Condition([]v1.Condition(nil)))
+				assert.Equal(t, mcvForInstallPlan.Status.Conditions, []metav1.Condition(nil))
 				assert.Equal(t, result, MultiCloudPendingStatus)
 			},
 		},
 		{
 			name: "ManagedClusterView has condition type different than Processing",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -371,7 +368,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -382,7 +379,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   "SomeUnexpectedValue",
 							Reason: viewv1beta1.ReasonGetResourceFailed,
@@ -403,7 +400,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "ManagedClusterView has condition reason different than GetResourceProcessing",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -421,7 +418,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installplan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -432,7 +429,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResourceFailed,
@@ -453,7 +450,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "ManagedClusterView condition status different from true",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -471,7 +468,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -482,7 +479,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -504,7 +501,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "InstallPlan does not have approval set to Manual",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -522,7 +519,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -533,7 +530,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -561,7 +558,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "InstallPlan is already approved",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -579,7 +576,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -590,7 +587,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -618,7 +615,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 		{
 			name: "MCA was created to approve InstallPlan",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
@@ -636,7 +633,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 				},
 			},
 			mcvForInstallPlan: &viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "installPlan-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -647,7 +644,7 @@ func TestEnsureInstallPlanIsApproved(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -724,12 +721,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "ManagedClusterView has missing conditions",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -760,12 +757,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "ManagedClusterView has condition reason different than GetResourceProcessing",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -776,7 +773,7 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonResourceNameInvalid,
@@ -804,12 +801,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "Subscription status state is different than UpgradePending",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -820,7 +817,7 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -856,12 +853,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "Subscription status InstallPlanRef is missing",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -872,7 +869,7 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -906,12 +903,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "EnsureInstallPlanIsApproved returns error",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -922,7 +919,7 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -959,12 +956,12 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 		{
 			name: "EnsureInstallPlanIsApproved returns error",
 			cgu: ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 			},
 			mcvForSubscription: viewv1beta1.ManagedClusterView{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu-default-subscription-sub-xyz", Namespace: "spoke1",
 				},
 				Spec: viewv1beta1.ViewSpec{
@@ -975,7 +972,7 @@ func TestProcessSubscriptionManagedClusterView(t *testing.T) {
 					},
 				},
 				Status: viewv1beta1.ViewStatus{
-					Conditions: []v1.Condition{
+					Conditions: []metav1.Condition{
 						{
 							Type:   viewv1beta1.ConditionViewProcessing,
 							Reason: viewv1beta1.ReasonGetResource,
@@ -1038,7 +1035,7 @@ func TestMultiCloudUtilGetMultiCloudObjectName(t *testing.T) {
 	}{
 
 		cgu: ranv1alpha1.ClusterGroupUpgrade{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name: "cgu-test", Namespace: "cgu-namespace",
 			},
 		},
@@ -1085,7 +1082,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		{
 			name: "not enabled CGU",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1101,7 +1098,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		{
 			name: "completed CGU",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1120,7 +1117,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		{
 			name: "enabled but blocked CGU with no remediation plan",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1133,7 +1130,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		{
 			name: "in progress CGU - batch 1",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1159,7 +1156,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		{
 			name: "in progress CGU - batch 2",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1186,7 +1183,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 			// This is an edge case where CGU is deleted while it's starting the first batch
 			name: "CGU with no current batch",
 			cgu: &ranv1alpha1.ClusterGroupUpgrade{
-				ObjectMeta: v1.ObjectMeta{
+				ObjectMeta: metav1.ObjectMeta{
 					Name: "cgu", Namespace: "default",
 				},
 				Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
@@ -1207,7 +1204,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 			for _, cluster := range allClusters {
 				objs = append(objs, &viewv1beta1.ManagedClusterView{
 
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "view",
 						Namespace: cluster,
 						Labels: map[string]string{
@@ -1218,7 +1215,7 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 				})
 				objs = append(objs, &actionv1beta1.ManagedClusterAction{
 
-					ObjectMeta: v1.ObjectMeta{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "action",
 						Namespace: cluster,
 						Labels: map[string]string{

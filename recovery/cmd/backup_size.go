@@ -32,6 +32,8 @@ type resourceList struct {
 
 // compareBackupToDisk verifies disk space required against available disk space
 // returns: boolean, error
+//
+//nolint:unused // Used in Linux-only code (launchBackup.go)
 func compareBackupToDisk() (bool, error) {
 
 	estimated, err := EstimateFsSpaceRequirements()
@@ -57,11 +59,7 @@ func compareBackupToDisk() (bool, error) {
 // Compare verifies freedisk against estimated and safetyNet calculation
 // returns: boolean
 func Compare(freeDisk, estimated float64) bool {
-
-	if freeDisk > estimated+backupSizeSafetyNet {
-		return true
-	}
-	return false
+	return freeDisk > estimated+backupSizeSafetyNet
 }
 
 // EstimateFsSpaceRequirements calculate the required backup size

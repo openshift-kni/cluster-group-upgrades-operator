@@ -23,6 +23,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsBeforeEnable(
 
 		var labels map[string]any      // nil
 		var annotations map[string]any // nil
+		// nolint: staticcheck
 		if len(beforeEnable.AddClusterLabels) != 0 || len(beforeEnable.DeleteClusterLabels) != 0 || len(beforeEnable.RemoveClusterLabels) != 0 {
 			labels = map[string]any{
 				"add":    beforeEnable.AddClusterLabels,
@@ -61,6 +62,7 @@ func (r *ClusterGroupUpgradeReconciler) takeActionsAfterCompletion(
 	if afterCompletion != nil {
 		var labels map[string]any      // nil
 		var annotations map[string]any // nil
+		// nolint: staticcheck
 		if len(afterCompletion.AddClusterLabels) != 0 || len(afterCompletion.DeleteClusterLabels) != 0 || len(afterCompletion.RemoveClusterLabels) != 0 {
 			labels = map[string]interface{}{
 				"add":    afterCompletion.AddClusterLabels,

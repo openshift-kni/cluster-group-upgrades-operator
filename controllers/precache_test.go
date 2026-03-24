@@ -1,8 +1,9 @@
 package controllers
 
 import (
-	"github.com/stretchr/testify/assert"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestPrecache_parseSpaceRequired(t *testing.T) {

@@ -52,7 +52,7 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 			},
 		},
 		{
-			name:     "successfull apply",
+			name:     "successful apply",
 			expected: "",
 			status: v1alpha1.ManifestWorkStatus{
 				Name: "manifest",
@@ -71,7 +71,7 @@ func TestGetConditionMessageFromManifestWorkStatus(t *testing.T) {
 			},
 		},
 		{
-			name:     "successfull apply",
+			name:     "successful apply",
 			expected: "some err\nsome err",
 			status: v1alpha1.ManifestWorkStatus{
 				Name: "manifest",

@@ -8,6 +8,7 @@ rules:
   - ""
   resources:
   - configmaps
+  - namespaces
   verbs:
   - create
   - delete
@@ -23,18 +24,6 @@ rules:
   verbs:
   - create
   - patch
-- apiGroups:
-  - ""
-  resources:
-  - namespaces
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -135,17 +124,6 @@ rules:
   - monitoring.coreos.com
   resources:
   - prometheusrules
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - monitoring.coreos.com
-  resources:
   - servicemonitors
   verbs:
   - create
@@ -184,31 +162,6 @@ rules:
   - ran.openshift.io
   resources:
   - clustergroupupgrades
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - clustergroupupgrades/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
-  - clustergroupupgrades/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - ran.openshift.io
-  resources:
   - precachingconfigs
   verbs:
   - create
@@ -221,12 +174,14 @@ rules:
 - apiGroups:
   - ran.openshift.io
   resources:
+  - clustergroupupgrades/finalizers
   - precachingconfigs/finalizers
   verbs:
   - update
 - apiGroups:
   - ran.openshift.io
   resources:
+  - clustergroupupgrades/status
   - precachingconfigs/status
   verbs:
   - get

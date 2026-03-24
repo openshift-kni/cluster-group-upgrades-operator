@@ -219,7 +219,7 @@ func (r *ClusterGroupUpgradeReconciler) deleteManagedClusterResource(
 	obj.SetGroupVersionKind(gvk)
 	obj.SetName(name)
 	obj.SetNamespace(namespace)
-	if err := r.Client.Delete(ctx, obj); client.IgnoreNotFound(err) != nil {
+	if err := r.Delete(ctx, obj); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 	return nil
@@ -236,7 +236,7 @@ func (r *ClusterGroupUpgradeReconciler) getView(
 
 	view := &unstructured.Unstructured{}
 	view.SetGroupVersionKind(viewGroupVersionKind())
-	err := r.Client.Get(ctx, client.ObjectKey{
+	err := r.Get(ctx, client.ObjectKey{
 		Name:      name,
 		Namespace: namespace,
 	}, view)
@@ -432,11 +432,12 @@ func (r *ClusterGroupUpgradeReconciler) getJobStatus(
 		if condition.Type == "Failed" && condition.Status == "True" {
 			r.Log.Info("[getJobStatus]", "condition",
 				condition.String())
-			if condition.Reason == "DeadlineExceeded" {
+			switch condition.Reason {
+			case "DeadlineExceeded":
 				r.Log.Info("[getJobStatus]", "DeadlineExceeded",
 					"Partially done")
 				return JobDeadline, nil
-			} else if condition.Reason == "BackoffLimitExceeded" {
+			case "BackoffLimitExceeded":
 				r.Log.Info("[getJobStatus]", "BackoffLimitExceeded",
 					"Job failed")
 				return JobBackoffLimitExceeded, nil
