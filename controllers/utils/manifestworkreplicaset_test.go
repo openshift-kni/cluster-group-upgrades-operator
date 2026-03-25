@@ -324,8 +324,10 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
       "applied": 0,
       "available": 0,
       "degraded": 0,
+      "desiredTotal": 0,
       "progressing": 0,
-      "total": 0
+      "total": 0,
+      "updated": 0
     }
   }
 }
@@ -462,8 +464,10 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
       "applied": 0,
       "available": 0,
       "degraded": 0,
+      "desiredTotal": 0,
       "progressing": 0,
-      "total": 0
+      "total": 0,
+      "updated": 0
     }
   }
 }
@@ -599,8 +603,10 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
       "applied": 0,
       "available": 0,
       "degraded": 0,
+      "desiredTotal": 0,
       "progressing": 0,
-      "total": 0
+      "total": 0,
+      "updated": 0
     }
   }
 }
@@ -737,8 +743,10 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
       "applied": 0,
       "available": 0,
       "degraded": 0,
+      "desiredTotal": 0,
       "progressing": 0,
-      "total": 0
+      "total": 0,
+      "updated": 0
     }
   }
 }
@@ -874,8 +882,10 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
       "applied": 0,
       "available": 0,
       "degraded": 0,
+      "desiredTotal": 0,
       "progressing": 0,
-      "total": 0
+      "total": 0,
+      "updated": 0
     }
   }
 }`

@@ -66,9 +66,9 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 	utilruntime.Must(ocpv1.AddToScheme(scheme))
-	utilruntime.Must(clusterv1.AddToScheme(scheme))
-	utilruntime.Must(mwv1.AddToScheme(scheme))
-	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(clusterv1.Install(scheme))
+	utilruntime.Must(mwv1.Install(scheme))
+	utilruntime.Must(mwv1alpha1.Install(scheme))
 	utilruntime.Must(policiesv1.AddToScheme(scheme))
 	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(ibguv1alpha1.AddToScheme(scheme))
