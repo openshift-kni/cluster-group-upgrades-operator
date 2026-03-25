@@ -77,6 +77,7 @@ spec:
         - urn:alm:descriptor:com.tectonic.ui:text
       - description: |-
           This field determines whether the cluster would be running a backup prior to the upgrade.
+
           Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
         displayName: Backup
         path: backup
@@ -129,6 +130,7 @@ spec:
             - label1Name
           All the clusters matching the labels specified in clusterSelector will be included
           in the update plan.
+
           Deprecated: Use ClusterLabelSelectors instead
         displayName: Cluster Selector
         path: clusterSelector
@@ -267,6 +269,7 @@ spec:
           - ""
           resources:
           - configmaps
+          - namespaces
           verbs:
           - create
           - delete
@@ -282,18 +285,6 @@ spec:
           verbs:
           - create
           - patch
-        - apiGroups:
-          - ""
-          resources:
-          - namespaces
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
         - apiGroups:
           - ""
           resources:
@@ -394,17 +385,6 @@ spec:
           - monitoring.coreos.com
           resources:
           - prometheusrules
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - monitoring.coreos.com
-          resources:
           - servicemonitors
           verbs:
           - create
@@ -443,31 +423,6 @@ spec:
           - ran.openshift.io
           resources:
           - clustergroupupgrades
-          verbs:
-          - create
-          - delete
-          - get
-          - list
-          - patch
-          - update
-          - watch
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - clustergroupupgrades/finalizers
-          verbs:
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
-          - clustergroupupgrades/status
-          verbs:
-          - get
-          - patch
-          - update
-        - apiGroups:
-          - ran.openshift.io
-          resources:
           - precachingconfigs
           verbs:
           - create
@@ -480,12 +435,14 @@ spec:
         - apiGroups:
           - ran.openshift.io
           resources:
+          - clustergroupupgrades/finalizers
           - precachingconfigs/finalizers
           verbs:
           - update
         - apiGroups:
           - ran.openshift.io
           resources:
+          - clustergroupupgrades/status
           - precachingconfigs/status
           verbs:
           - get

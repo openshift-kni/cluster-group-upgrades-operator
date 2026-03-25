@@ -3,7 +3,6 @@ package controllers_test
 import (
 	"context"
 	"flag"
-	//"log"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"

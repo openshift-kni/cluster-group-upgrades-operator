@@ -347,6 +347,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 // and https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L58
 //
 // No truncation is made if maxSize is 0.
+// nolint: unparam
 func truncateAnnotations(anns map[string]string, maxSize int) {
 	canBeTruncatedAnnKeys := map[string]bool{
 		CGUEventAnnotationKeyBatchClustersList:    true,

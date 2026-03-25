@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
+// nolint: goconst
 func TestGetNextNonCompliantPolicyForCluster(t *testing.T) {
 	ctx := context.Background()
 

@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"context"
-	"reflect"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/types"
@@ -51,26 +50,4 @@ func (r *ClusterGroupUpgradeReconciler) getPreCachingConfigSpec(
 	}
 
 	return &preCachingConfig.Spec, nil
-}
-
-// mapPreCachingConfigSpecToPrecachingSpec maps the given PreCachingConfigSpec object to
-// a corresponding PrecachingSpec object
-func (r *ClusterGroupUpgradeReconciler) mapPreCachingConfigSpecToPrecachingSpec(
-	preCachingConfigSpec *ranv1alpha1.PreCachingConfigSpec) *ranv1alpha1.PrecachingSpec {
-
-	precachingSpec := &ranv1alpha1.PrecachingSpec{}
-
-	// Extract overrides if defined
-	if !reflect.DeepEqual(preCachingConfigSpec.Overrides, ranv1alpha1.PlatformPreCachingSpec{}) {
-		precachingSpec.PlatformImage = preCachingConfigSpec.Overrides.PlatformImage
-		precachingSpec.OperatorsIndexes = preCachingConfigSpec.Overrides.OperatorsIndexes
-		precachingSpec.OperatorsPackagesAndChannels = preCachingConfigSpec.Overrides.OperatorsPackagesAndChannels
-	}
-
-	// Extract remaining fields
-	precachingSpec.ExcludePrecachePatterns = preCachingConfigSpec.ExcludePrecachePatterns
-	precachingSpec.SpaceRequired = preCachingConfigSpec.SpaceRequired
-	precachingSpec.AdditionalImages = preCachingConfigSpec.AdditionalImages
-
-	return precachingSpec
 }

@@ -7,7 +7,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -15,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/rand"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
@@ -25,9 +25,8 @@ func GetMinOf3(number1, number2, number3 int) int {
 		return number1
 	} else if number2 <= number1 && number2 <= number3 {
 		return number2
-	} else {
-		return number3
 	}
+	return number3
 }
 
 // FindStringInSlice checks if a given string is in the slice, and returns true along with its index if it's found
@@ -113,13 +112,13 @@ func Difference(a, b []string) []string {
 
 func ObjectToJSON(obj runtime.Object) (string, error) {
 	scheme := runtime.NewScheme()
-	mwv1alpha1.AddToScheme(scheme)
-	v1alpha1.AddToScheme(scheme)
-	corev1.AddToScheme(scheme)
-	rbac.AddToScheme(scheme)
-	lcav1.AddToScheme(scheme)
+	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(corev1.AddToScheme(scheme))
+	utilruntime.Must(rbac.AddToScheme(scheme))
+	utilruntime.Must(lcav1.AddToScheme(scheme))
 	outUnstructured := &unstructured.Unstructured{}
-	scheme.Convert(obj, outUnstructured, nil)
+	utilruntime.Must(scheme.Convert(obj, outUnstructured, nil))
 	json, err := outUnstructured.MarshalJSON()
 	return string(json), err
 }

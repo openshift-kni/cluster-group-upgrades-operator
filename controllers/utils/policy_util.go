@@ -201,9 +201,8 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 				// No objectDefinition in the policy template, skipping.
 				if objectTemplateRawPresent {
 					continue
-				} else {
-					return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
 				}
+				return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
 			}
 			objectDefinition := configPlcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
 			if objectDefinition["status"] != nil {

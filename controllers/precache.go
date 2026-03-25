@@ -87,7 +87,9 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 		return "", fmt.Errorf("error response from update graph url %s: %d", updateGraphURL, res.StatusCode)
 	}
 
-	defer res.Body.Close()
+	defer func() {
+		_ = res.Body.Close()
+	}()
 
 	body, err := io.ReadAll(res.Body)
 	if err != nil && len(body) > 0 {
@@ -311,7 +313,7 @@ func parseSpaceRequired(spaceRequired string) (string, error) {
 	}
 
 	// Convert to base-2 format in Gibibytes (result is rounded-up to the next integer value)
-	resultGiB := int(math.Ceil(float64(result) / math.Pow(1024, 3)))
+	resultGiB := int(math.Ceil(float64(result) / (1024 * 1024 * 1024)))
 	return strconv.Itoa(resultGiB), nil
 }
 
@@ -429,7 +431,7 @@ func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 func (r *ClusterGroupUpgradeReconciler) checkPreCacheSpecConsistency(
 	spec ranv1alpha1.PrecachingSpec) (consistent bool, message string) {
 
-	var operatorsRequested, platformRequested bool = true, true
+	var operatorsRequested, platformRequested = true, true
 	if len(spec.OperatorsIndexes) == 0 {
 		operatorsRequested = false
 	}
