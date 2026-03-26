@@ -2,20 +2,20 @@
 # Manager
 - key: manager
   source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-21@sha256:5076055627c8a4c86e827fd9381a3dabb8e21ed52a0b6f6d67f7083a38f2a7df
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-21@sha256:b89f3f322d419bcec3bfeff6ffc1802ec3c8b974d7376978b6801423048da1e6
 #
 # Aztp
 - key: aztp_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-21@sha256:586fc2d810e319515d06dbe1a3477d756537acdaff4fc685362d0469dc4ce5fa
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-21@sha256:097ffaf356aad93526d100626ef14e91a5303525b951b19be51ca6dfade656df
 #
 # Precache
 - key: precache_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-21@sha256:b30c053a839c1d4cdd5240b95c7f2ffe277a727093afbb1eb85e4ce74e5fa7df
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-21@sha256:2c18d8ed1c6a57481f41ee93306ca0db5f53cddab8a7ac4d17b671164bb60229
 #
 # Recovery
 - key: recovery_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-21@sha256:7945070ee19e337a444dc12071642b61e6e1f98b11100e24721fdfe692c1dc40
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-21@sha256:58e2d81859d61a0c753bf04c4117b06064f5f02b6acc4acdc0cf258f83c45e55
 #
