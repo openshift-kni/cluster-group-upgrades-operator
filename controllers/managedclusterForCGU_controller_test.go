@@ -43,7 +43,7 @@ var (
 )
 
 func init() {
-	testscheme.AddKnownTypes(clusterv1.GroupVersion, &clusterv1.ManagedCluster{})
+	testscheme.AddKnownTypes(clusterv1.SchemeGroupVersion, &clusterv1.ManagedCluster{})
 	testscheme.AddKnownTypes(ranv1alpha1.SchemeGroupVersion, &ranv1alpha1.ClusterGroupUpgrade{})
 	testscheme.AddKnownTypes(ranv1alpha1.SchemeGroupVersion, &ranv1alpha1.ClusterGroupUpgradeList{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.Policy{})

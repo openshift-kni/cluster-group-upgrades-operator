@@ -28,8 +28,8 @@ func init() {
 	testscheme.AddKnownTypes(ibguv1alpha1.SchemeGroupVersion, &ibguv1alpha1.ImageBasedGroupUpgrade{})
 	testscheme.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.ClusterGroupUpgradeList{})
 	testscheme.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.ClusterGroupUpgrade{})
-	testscheme.AddKnownTypes(mwv1alpha1.GroupVersion, &mwv1alpha1.ManifestWorkReplicaSet{})
-	testscheme.AddKnownTypes(mwv1alpha1.GroupVersion, &mwv1alpha1.ManifestWorkReplicaSetList{})
+	testscheme.AddKnownTypes(mwv1alpha1.SchemeGroupVersion, &mwv1alpha1.ManifestWorkReplicaSet{})
+	testscheme.AddKnownTypes(mwv1alpha1.SchemeGroupVersion, &mwv1alpha1.ManifestWorkReplicaSetList{})
 }
 
 func TestSyncStatusWithCGUs(t *testing.T) {

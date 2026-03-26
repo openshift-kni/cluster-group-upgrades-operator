@@ -112,7 +112,7 @@ func Difference(a, b []string) []string {
 
 func ObjectToJSON(obj runtime.Object) (string, error) {
 	scheme := runtime.NewScheme()
-	utilruntime.Must(mwv1alpha1.AddToScheme(scheme))
+	utilruntime.Must(mwv1alpha1.Install(scheme))
 	utilruntime.Must(ranv1alpha1.AddToScheme(scheme))
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(rbac.AddToScheme(scheme))
