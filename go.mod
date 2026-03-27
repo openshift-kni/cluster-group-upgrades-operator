@@ -27,7 +27,7 @@ require (
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/openshift/controller-runtime-common v0.0.0-20260213175913-767fef058eca
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
-	golang.org/x/sys v0.41.0
+	golang.org/x/sys v0.42.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.35.0
 	open-cluster-management.io/config-policy-controller v0.18.0
