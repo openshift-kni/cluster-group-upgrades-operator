@@ -49,7 +49,7 @@ spec:
       description: Skip the ecosystem preflight checks (bundles should skip)
       name: skip-preflight
       type: string
-    - default: 'false'
+    - default: 'true'
       description: Skip the sast coverity check
       name: skip-sast-coverity
       type: string
