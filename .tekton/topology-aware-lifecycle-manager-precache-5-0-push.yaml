@@ -3,18 +3,18 @@ apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
   annotations:
+    build.appstudio.openshift.io/nudge_renovate_config_map: namespace-wide-nudging-renovate-config
     build.appstudio.openshift.io/repo: https://github.com/openshift-kni/cluster-group-upgrades-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
-    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "pull_request" &&
+      event == "push" &&
       target_branch == "main" &&
       (
         '.konflux/container_build_args.conf'.pathChanged() ||
         '.tekton/build-pipeline.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-precache-4-22-pull-request.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-precache-5-0-push.yaml'.pathChanged() ||
         'config/***'.pathChanged() ||
         'Dockerfile.precache'.pathChanged() ||
         'go.mod'.pathChanged() ||
@@ -28,10 +28,10 @@ metadata:
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-4-22
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-precache-4-22
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-5-0
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-precache-5-0
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-precache-4-22-on-pull-request
+  name: topology-aware-lifecycle-manager-precache-5-0-on-push
   namespace: telco-5g-tenant
 spec:
   params:
@@ -40,9 +40,7 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-22:on-pr-{{revision}}
-    - name: image-expires-after
-      value: 5d
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0:{{revision}}
     - name: build-platforms
       value:
         - linux/x86_64
@@ -59,14 +57,14 @@ spec:
     - name: skip-sast-coverity
       value: "true"
     - name: additional-tags
-      value: []
+      value: ["latest"]
     - name: additional-labels
       value:
         - name=openshift4/topology-aware-lifecycle-manager-precache-rhel9
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-precache-4-22
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-precache-5-0
   workspaces:
     - name: git-auth
       secret:

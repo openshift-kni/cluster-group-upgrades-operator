@@ -170,7 +170,7 @@ spec:
           value:
             - build-date=$SOURCE_DATE
             - short-commit=$(tasks.clone-repository.results.short-commit)
-            - version=v4.22-$SOURCE_DATE_EPOCH
+            - version=v5.0-$SOURCE_DATE_EPOCH
         - name: source-date-epoch
           value: $(tasks.clone-repository.results.commit-timestamp)
       runAfter:
@@ -254,8 +254,8 @@ spec:
             - description=topology-aware-lifecycle-manager
             - distribution-scope=public
             - io.k8s.description=topology-aware-lifecycle-manager
-            - release=4.22
-            - cpe=cpe:/a:redhat:openshift:4.22::el9
+            - release=5.0
+            - cpe=cpe:/a:redhat:openshift:5.0::el9
             - url=https://github.com/openshift-kni/cluster-group-upgrades-operator
             - vendor=Red Hat, Inc.
             - io.k8s.display-name=topology-aware-lifecycle-manager
