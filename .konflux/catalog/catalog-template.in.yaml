@@ -9,21 +9,21 @@ entries:
     schema: olm.package
   # Channel entries for 'stable' channel
   - entries:
-      # v4.22.0
-      - name: topology-aware-lifecycle-manager.v4.22.0
-        skipRange: '>=4.20.0 <4.22.0'
+      # v5.0.0
+      - name: topology-aware-lifecycle-manager.v5.0.0
+        skipRange: '>=4.20.0 <5.0.0'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
-  # Channel entries for '4.22' channel
+  # Channel entries for '5.0' channel
   - entries:
-      # v4.22.0
-      - name: topology-aware-lifecycle-manager.v4.22.0
-        skipRange: '>=4.20.0 <4.22.0'
-    name: "4.22"
+      # v5.0.0
+      - name: topology-aware-lifecycle-manager.v5.0.0
+        skipRange: '>=4.20.0 <5.0.0'
+    name: "5.0"
     package: topology-aware-lifecycle-manager
     schema: olm.channel
-  # v4.22.0 bundle
+  # v5.0.0 bundle
   # The url for this last entry is updated by telco5g-konflux/scripts/catalog/update-catalog-template.sh automatically
   - image: placeholder.will.be.updated.by.telco5g-konflux.scripts.catalog.update-catalog-template.sh
     schema: olm.bundle

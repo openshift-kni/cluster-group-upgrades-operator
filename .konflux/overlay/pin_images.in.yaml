@@ -1,21 +1,21 @@
 ---
 # Manager
 - key: manager
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.22.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-22@sha256:196720e04dcea5640ec6e2af7c70f99f5828c058751274527088ef782643db37
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator:5.0.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-0@sha256:196720e04dcea5640ec6e2af7c70f99f5828c058751274527088ef782643db37
 #
 # Aztp
 - key: aztp_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.22.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-22@sha256:eb4928d2e14af208907cb17ade4e8c345aeeb1d11a7276ab3cf894e477c0ece5
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:5.0.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-0@sha256:eb4928d2e14af208907cb17ade4e8c345aeeb1d11a7276ab3cf894e477c0ece5
 #
 # Precache
 - key: precache_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.22.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-22@sha256:ed05bd94d3713751f2f960442932edff98ff73f573412feac2684b12f5a02d69
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:5.0.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0@sha256:ed05bd94d3713751f2f960442932edff98ff73f573412feac2684b12f5a02d69
 #
 # Recovery
 - key: recovery_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.22.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-22@sha256:15182a4e4c1caae2ada61b3983501ea73ccd1a53c5161f5e36b36f3c38772fa5
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:5.0.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-0@sha256:15182a4e4c1caae2ada61b3983501ea73ccd1a53c5161f5e36b36f3c38772fa5
 #
