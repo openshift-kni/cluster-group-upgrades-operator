@@ -38,6 +38,7 @@ spec:
         args:
         - --leader-elect
         - --metrics-bind-address=:6443
+        - --metrics-tls-cert-dir=/etc/tls/private
         image: controller:latest
         name: manager
         env:
@@ -52,6 +53,9 @@ spec:
         volumeMounts:
         - name: coverage
           mountPath: /coverage
+        - mountPath: /etc/tls/private
+          name: metrics-serving-cert
+          readOnly: true
         livenessProbe:
           httpGet:
             path: /healthz
@@ -73,3 +77,6 @@ spec:
       volumes:
       - name: coverage
         emptyDir: {}
+      - name: metrics-serving-cert
+        secret:
+          secretName: talm-metrics-serving-cert

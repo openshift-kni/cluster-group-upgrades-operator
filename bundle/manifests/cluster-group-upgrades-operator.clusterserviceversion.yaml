@@ -510,6 +510,7 @@ spec:
               - args:
                 - --leader-elect
                 - --metrics-bind-address=:6443
+                - --metrics-tls-cert-dir=/etc/tls/private
                 command:
                 - /manager
                 env:
@@ -550,6 +551,9 @@ spec:
                 volumeMounts:
                 - mountPath: /coverage
                   name: coverage
+                - mountPath: /etc/tls/private
+                  name: metrics-serving-cert
+                  readOnly: true
               securityContext:
                 runAsNonRoot: true
               serviceAccountName: cluster-group-upgrades-controller-manager
@@ -557,6 +561,9 @@ spec:
               volumes:
               - emptyDir: {}
                 name: coverage
+              - name: metrics-serving-cert
+                secret:
+                  secretName: talm-metrics-serving-cert
       permissions:
       - rules:
         - apiGroups:

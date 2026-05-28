@@ -6,7 +6,7 @@ metadata:
     app.kubernetes.io/component: talm
     control-plane: controller-manager
   annotations:
-    service.beta.openshift.io/serving-cert-secret-name: controller-manager-metrics-tls
+    service.beta.openshift.io/serving-cert-secret-name: talm-metrics-serving-cert
   name: controller-manager-metrics-service
   namespace: system
 spec:
