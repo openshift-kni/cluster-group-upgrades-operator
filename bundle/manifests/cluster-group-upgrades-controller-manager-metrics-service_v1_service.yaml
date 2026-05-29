@@ -2,7 +2,7 @@ apiVersion: v1
 kind: Service
 metadata:
   annotations:
-    service.beta.openshift.io/serving-cert-secret-name: controller-manager-metrics-tls
+    service.beta.openshift.io/serving-cert-secret-name: talm-metrics-serving-cert
   creationTimestamp: null
   labels:
     app.kubernetes.io/component: talm
