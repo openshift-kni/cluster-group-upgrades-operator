@@ -83,6 +83,7 @@ func main() {
 	var enableLeaderElection bool
 	var probeAddr string
 	var skipTLSProfile bool
+	var metricsCertDir string
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
@@ -92,6 +93,8 @@ func main() {
 	flag.BoolVar(&skipTLSProfile, "skip-tls-profile", false,
 		"Skip fetching TLS profile from OpenShift API server. "+
 			"Use this flag when running on vanilla Kubernetes.")
+	flag.StringVar(&metricsCertDir, "metrics-tls-cert-dir", "",
+		"The directory containing the tls.crt and tls.key.")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -149,9 +152,10 @@ func main() {
 		LeaderElectionID:       "9a2365a3.openshift.io",
 		Metrics: server.Options{
 			BindAddress:    metricsAddr,
-			SecureServing:  true,
+			SecureServing:  metricsCertDir != "",
 			FilterProvider: filters.WithAuthenticationAndAuthorization,
 			TLSOpts:        []func(*tls.Config){tlsConfig},
+			CertDir:        metricsCertDir,
 		},
 		Cache: cache.Options{
 			ByObject: map[client.Object]cache.ByObject{
