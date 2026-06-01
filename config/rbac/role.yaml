@@ -46,19 +46,6 @@ rules:
   - update
   - watch
 - apiGroups:
-  - apps.open-cluster-management.io
-  resources:
-  - placementrules
-  verbs:
-  - create
-  - delete
-  - deletecollection
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
   - authentication.k8s.io
   resources:
   - tokenreviews
@@ -86,6 +73,19 @@ rules:
   - managedclusters/finalizers
   verbs:
   - update
+- apiGroups:
+  - cluster.open-cluster-management.io
+  resources:
+  - placements
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - patch
+  - update
+  - watch
 - apiGroups:
   - config.openshift.io
   resources:

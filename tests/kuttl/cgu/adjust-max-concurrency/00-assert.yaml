@@ -41,7 +41,7 @@ status:
   placementBindings:
   - cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-adjust-max-conc-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-adjust-max-conc-policy2-common-pao-sub-policy-placement-kuttl
   remediationPlan:

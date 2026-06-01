@@ -33,7 +33,7 @@ status:
     policy1-common-cluster-version-policy: default
   placementBindings:
   - cgu-soaking-policy1-common-cluster-version-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-soaking-policy1-common-cluster-version-policy-placement-kuttl
   remediationPlan:
   - - spoke1

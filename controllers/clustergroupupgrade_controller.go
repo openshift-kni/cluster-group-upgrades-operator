@@ -106,7 +106,7 @@ func requeueWithError(err error) (ctrl.Result, error) {
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=ran.openshift.io,resources=precachingconfigs/finalizers,verbs=update
-//+kubebuilder:rbac:groups=apps.open-cluster-management.io,resources=placementrules,verbs=get;list;watch;create;update;patch;delete;deletecollection
+//+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=placements,verbs=get;list;watch;create;update;patch;delete;deletecollection
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=placementbindings,verbs=get;list;watch;create;update;patch;delete;deletecollection
 //+kubebuilder:rbac:groups=policy.open-cluster-management.io,resources=policies,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;update;patch
@@ -612,7 +612,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				// If the upgrade is completed for the current batch, cleanup and move to the next.
 				r.Log.Info("[Reconcile] Upgrade completed for batch", "batchIndex", clusterGroupUpgrade.Status.Status.CurrentBatch)
 				if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
-					err = r.cleanupPlacementRules(ctx, clusterGroupUpgrade)
+					err = r.cleanupPlacements(ctx, clusterGroupUpgrade)
 					if err != nil {
 						return
 					}
@@ -964,7 +964,7 @@ func (r *ClusterGroupUpgradeReconciler) remediateCurrentBatch(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	switch clusterGroupUpgrade.RolloutType() {
 	case ranv1alpha1.RolloutTypes.Policy:
-		err := r.updatePlacementRules(ctx, clusterGroupUpgrade)
+		err := r.updatePlacements(ctx, clusterGroupUpgrade)
 		if err != nil {
 			return err
 		}
@@ -1359,7 +1359,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			// additional cleanup if CGU is not completed yet or deleteObject is set to false
 			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() || !shouldDeleteObjects(clusterGroupUpgrade) {
 				r.Log.Info("Final cleanup for in prgress CGU or deleteObject set to false")
-				// Include placementRules, placementBindings, precaching/backup job/manageClusterView/Action and ManifestWork for current batch
+				// Include placements, placementBindings, precaching/backup job/manageClusterView/Action and ManifestWork for current batch
 				if err := r.deleteResources(ctx, clusterGroupUpgrade); err != nil {
 					return utils.StopReconciling, err
 				}

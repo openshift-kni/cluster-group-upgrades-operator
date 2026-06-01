@@ -46,7 +46,7 @@ status:
   placementBindings:
   - cgu-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   remediationPlan:

@@ -395,7 +395,7 @@ kind-load-operator-image: ## Load Upgrades operator image to kind cluster
 # ACM specific CRDs have to exist before being able to start running the tests.
 install-acm-crds:
 	@echo "Installing ACM CRDs"
-	kubectl apply -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
+	kubectl apply -f deploy/acm/crds/cluster.open-cluster-management.io_placements.crd.yaml
 	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_placementbindings_crd.yaml
 	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
 	kubectl apply -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml
@@ -406,7 +406,7 @@ install-acm-crds:
 	kubectl apply -f deploy/acm/crds/work.open-cluster-management.io_manifestworkreplicasets.crd.yaml
 
 uninstall-acm-crds:
-	kubectl delete -f deploy/acm/crds/apps.open-cluster-management.io_placementrules_crd.yaml
+	kubectl delete -f deploy/acm/crds/cluster.open-cluster-management.io_placements.crd.yaml
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_placementbindings_crd.yaml
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policies_crd.yaml
 	kubectl delete -f deploy/acm/crds/policy.open-cluster-management.io_policyautomations_crd.yaml

@@ -156,10 +156,10 @@ func (r *ClusterGroupUpgradeReconciler) deleteResources(
 		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
 	}
 	for _, ns := range targetNamespaces {
-		if err := utils.DeletePlacementRules(ctx, r.Client, ns, labels); err != nil {
-			return fmt.Errorf("failed to delete PlacementRules for CGU %s: %v", clusterGroupUpgrade.Name, err)
+		if err := utils.DeletePlacements(ctx, r.Client, ns, labels); err != nil {
+			return fmt.Errorf("failed to delete Placements for CGU %s: %v", clusterGroupUpgrade.Name, err)
 		}
-		clusterGroupUpgrade.Status.PlacementRules = nil
+		clusterGroupUpgrade.Status.Placements = nil
 
 		if err := utils.DeletePlacementBindings(ctx, r.Client, ns, labels); err != nil {
 			return fmt.Errorf("failed to delete PlacementBindings for CGU %s: %v", clusterGroupUpgrade.Name, err)

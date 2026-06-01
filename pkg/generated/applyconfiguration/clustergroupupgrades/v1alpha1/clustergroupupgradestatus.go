@@ -25,7 +25,7 @@ import (
 // with apply.
 type ClusterGroupUpgradeStatusApplyConfiguration struct {
 	PlacementBindings                     []string                                    `json:"placementBindings,omitempty"`
-	PlacementRules                        []string                                    `json:"placementRules,omitempty"`
+	Placements                            []string                                    `json:"placements,omitempty"`
 	CopiedPolicies                        []string                                    `json:"copiedPolicies,omitempty"`
 	Conditions                            []v1.Condition                              `json:"conditions,omitempty"`
 	RemediationPlan                       [][]string                                  `json:"remediationPlan,omitempty"`
@@ -57,12 +57,12 @@ func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPlacementBindings(valu
 	return b
 }
 
-// WithPlacementRules adds the given value to the PlacementRules field in the declarative configuration
+// WithPlacements adds the given value to the Placements field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
-// If called multiple times, values provided by each call will be appended to the PlacementRules field.
-func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPlacementRules(values ...string) *ClusterGroupUpgradeStatusApplyConfiguration {
+// If called multiple times, values provided by each call will be appended to the Placements field.
+func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPlacements(values ...string) *ClusterGroupUpgradeStatusApplyConfiguration {
 	for i := range values {
-		b.PlacementRules = append(b.PlacementRules, values[i])
+		b.Placements = append(b.Placements, values[i])
 	}
 	return b
 }

@@ -75,7 +75,7 @@ status:
   - cgu-a-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-a-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-a-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-a-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-a-policy3-common-ptp-sub-policy-placement-kuttl
@@ -150,7 +150,7 @@ status:
   - cgu-b-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-b-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-b-policy4-common-sriov-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-b-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-b-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-b-policy3-common-ptp-sub-policy-placement-kuttl

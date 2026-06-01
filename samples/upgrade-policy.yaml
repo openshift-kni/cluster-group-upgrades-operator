@@ -45,8 +45,8 @@ metadata:
   name: upgrade
   namespace: default
 placementRef:
-  apiGroup: apps.open-cluster-management.io
-  kind: PlacementRule
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
   name: upgrade
 subjects:
 - apiGroup: policy.open-cluster-management.io
@@ -55,11 +55,22 @@ subjects:
 
 ---
 ---
-apiVersion: apps.open-cluster-management.io/v1
-kind: PlacementRule
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
 metadata:
   name: upgrade
   namespace: default
 spec:
-  clusters:
-  - name: sno
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: name
+          operator: In
+          values:
+          - sno
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
