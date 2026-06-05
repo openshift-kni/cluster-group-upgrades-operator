@@ -477,7 +477,7 @@ func (r *IBGUReconciler) updateStatus(ctx context.Context, ibgu *ibguv1alpha1.Im
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IBGUReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Recorder = mgr.GetEventRecorderFor("IBGU Reconciler")
+	r.Recorder = mgr.GetEventRecorderFor("IBGU Reconciler") //nolint: staticcheck
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ibguv1alpha1.ImageBasedGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{
