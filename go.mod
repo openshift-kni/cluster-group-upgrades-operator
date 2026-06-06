@@ -1,6 +1,6 @@
 module github.com/openshift-kni/cluster-group-upgrades-operator
 
-go 1.25.7
+go 1.26.3
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.41.0
 	github.com/openshift/api v0.0.0-20260213155647-8fe9fe363807
 	github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c
-	github.com/operator-framework/api v0.42.0
+	github.com/operator-framework/api v0.43.0
 	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
