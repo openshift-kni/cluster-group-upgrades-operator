@@ -1418,7 +1418,7 @@ func (r *ClusterGroupUpgradeReconciler) managedClusterResourceMapper(ctx context
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade")
+	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade") //nolint: staticcheck
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{

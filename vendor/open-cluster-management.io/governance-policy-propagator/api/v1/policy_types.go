@@ -101,7 +101,7 @@ type PolicySpec struct {
 
 	// PolicyTemplates is a list of definitions of policy engine resources to apply to managed
 	// clusters along with configurations on how it should be applied.
-	PolicyTemplates []*PolicyTemplate `json:"policy-templates"`
+	PolicyTemplates []*PolicyTemplate `json:"policy-templates"` //nolint:tagliatelle
 
 	// PolicyDependencies is a list of dependency objects detailed with extra considerations for
 	// compliance that should be fulfilled before applying the policies to the managed clusters.
