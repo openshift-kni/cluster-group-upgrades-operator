@@ -3,10 +3,13 @@ package controllers
 import (
 	"testing"
 
+	"github.com/go-logr/logr"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	eventsv1 "k8s.io/api/events/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/client-go/tools/record"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 func Test_truncateAnnotations(t *testing.T) {
@@ -185,13 +188,19 @@ func Test_sendEventCGUBatchUpgradeStarted_DeterministicClusterOrder(t *testing.T
 	// This test verifies that the batch cluster list in event annotations is deterministic
 	// regardless of map iteration order
 
-	fakeRecorder := record.NewFakeRecorder(10)
+	s := runtime.NewScheme()
+	_ = ranv1alpha1.AddToScheme(s)
+	_ = eventsv1.AddToScheme(s)
+
+	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+
 	reconciler := &ClusterGroupUpgradeReconciler{
-		Recorder: fakeRecorder,
+		Client:       fakeClient,
+		Log:          logr.Discard(),
+		Scheme:       s,
+		EventEmitter: NewEmitter(fakeClient, s, "ClusterGroupUpgrade"),
 	}
 
-	// Create CGU with CurrentBatchRemediationProgress as a map
-	// Maps in Go have non-deterministic iteration order
 	cgu := &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-cgu",
@@ -216,38 +225,40 @@ func Test_sendEventCGUBatchUpgradeStarted_DeterministicClusterOrder(t *testing.T
 		},
 	}
 
-	// Call the function multiple times
-	// If sorting is working correctly, we should get the same event each time
-	var events []string
 	for i := 0; i < 5; i++ {
 		reconciler.sendEventCGUBatchUpgradeStarted(cgu)
-		event := <-fakeRecorder.Events
-		events = append(events, event)
 	}
 
-	// Verify all events are identical (deterministic)
-	for i := 1; i < len(events); i++ {
-		assert.Equal(t, events[0], events[i],
-			"Event %d should match event 0 (events should be deterministic)", i)
-	}
+	var eventList eventsv1.EventList
+	assert.NoError(t, fakeClient.List(t.Context(), &eventList))
+	assert.Len(t, eventList.Items, 5)
 
-	// Verify the event contains sorted cluster names
-	// The event string should contain "cluster-alpha,cluster-bravo,cluster-charlie,cluster-zebra"
-	// This is verified implicitly by the determinism check, but we can also check explicitly
-	// if needed by parsing the event annotations
+	assert.Equal(t, "cluster-alpha,cluster-bravo,cluster-charlie,cluster-zebra",
+		eventList.Items[0].Annotations[CGUEventAnnotationKeyBatchClustersList])
+
+	for i := 1; i < len(eventList.Items); i++ {
+		assert.Equal(t, eventList.Items[0].Annotations[CGUEventAnnotationKeyBatchClustersList],
+			eventList.Items[i].Annotations[CGUEventAnnotationKeyBatchClustersList],
+			"Event %d batch-clusters annotation should match event 0 (deterministic order)", i)
+	}
 }
 
 func Test_sendEventCGUBatchUpgradeSuccess_DeterministicClusterOrder(t *testing.T) {
 	// This test verifies that the batch cluster list in event annotations is deterministic
 	// regardless of map iteration order
+	s := runtime.NewScheme()
+	_ = ranv1alpha1.AddToScheme(s)
+	_ = eventsv1.AddToScheme(s)
 
-	fakeRecorder := record.NewFakeRecorder(10)
+	fakeClient := fake.NewClientBuilder().WithScheme(s).Build()
+
 	reconciler := &ClusterGroupUpgradeReconciler{
-		Recorder: fakeRecorder,
+		Client:       fakeClient,
+		Log:          logr.Discard(),
+		Scheme:       s,
+		EventEmitter: NewEmitter(fakeClient, s, "ClusterGroupUpgrade"),
 	}
 
-	// Create CGU with CurrentBatchRemediationProgress as a map
-	// Maps in Go have non-deterministic iteration order
 	cgu := &ranv1alpha1.ClusterGroupUpgrade{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "test-cgu",
@@ -272,18 +283,20 @@ func Test_sendEventCGUBatchUpgradeSuccess_DeterministicClusterOrder(t *testing.T
 		},
 	}
 
-	// Call the function multiple times
-	// If sorting is working correctly, we should get the same event each time
-	var events []string
 	for i := 0; i < 5; i++ {
 		reconciler.sendEventCGUBatchUpgradeSuccess(cgu)
-		event := <-fakeRecorder.Events
-		events = append(events, event)
 	}
 
-	// Verify all events are identical (deterministic)
-	for i := 1; i < len(events); i++ {
-		assert.Equal(t, events[0], events[i],
-			"Event %d should match event 0 (events should be deterministic)", i)
+	var eventList eventsv1.EventList
+	assert.NoError(t, fakeClient.List(t.Context(), &eventList))
+	assert.Len(t, eventList.Items, 5)
+
+	assert.Equal(t, "cluster-alpha,cluster-bravo,cluster-charlie,cluster-zebra",
+		eventList.Items[0].Annotations[CGUEventAnnotationKeyBatchClustersList])
+
+	for i := 1; i < len(eventList.Items); i++ {
+		assert.Equal(t, eventList.Items[0].Annotations[CGUEventAnnotationKeyBatchClustersList],
+			eventList.Items[i].Annotations[CGUEventAnnotationKeyBatchClustersList],
+			"Event %d batch-clusters annotation should match event 0 (deterministic order)", i)
 	}
 }
