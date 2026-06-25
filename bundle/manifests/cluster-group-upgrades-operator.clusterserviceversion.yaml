@@ -395,6 +395,12 @@ spec:
           - update
           - watch
         - apiGroups:
+          - networking.k8s.io
+          resources:
+          - networkpolicies
+          verbs:
+          - '*'
+        - apiGroups:
           - policy.open-cluster-management.io
           resources:
           - placementbindings
