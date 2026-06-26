@@ -120,6 +120,7 @@ func requeueWithError(err error) (ctrl.Result, error) {
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 //+kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=*
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
