@@ -23,18 +23,18 @@ import (
 // CguCreated (Reason)
 // - BuildingRemediationPlan (Action) - When a new ClusterGroupUpgrade has triggered the reconciliation.
 // CguStarted (Reason) - When the CGU's enable field is true.
-// - PoliciesRemediationStarted (Action): When the policies remediation is started for the whole ClusterGroupUpgrade.
-// - PoliciesRemediationInBatchStarted (Action): When the policies remediation is started for a batch of the ClusterGroupUpgrade.
-// - PoliciesRemediationInClusterStarted (Action): When the policies remediation is started for a cluster of the ClusterGroupUpgrade.
+// - RemediationStarted (Action): When remediation is started for the whole ClusterGroupUpgrade.
+// - RemediationInBatchStarted (Action): When remediation is started for a batch of the ClusterGroupUpgrade.
+// - RemediationInClusterStarted (Action): When remediation is started for a cluster of the ClusterGroupUpgrade.
 // CguSuccess (Reason)
-// - PoliciesRemediationCompleted (Action): When the policies remediation is completed for the whole ClusterGroupUpgrade.
-// - PoliciesRemediationInBatchCompleted (Action): When the policies remediation is completed for a batch of the ClusterGroupUpgrade.
-// - PoliciesRemediationInClusterCompleted (Action): When the policies remediation is completed for a cluster of the ClusterGroupUpgrade.
+// - RemediationCompleted (Action): When remediation is completed for the whole ClusterGroupUpgrade.
+// - RemediationInBatchCompleted (Action): When remediation is completed for a batch of the ClusterGroupUpgrade.
+// - RemediationInClusterCompleted (Action): When remediation is completed for a cluster of the ClusterGroupUpgrade.
 // CguTimedout (Reason)
-// - PoliciesRemediationTimeout (Action): When the policies remediation is timed out for the whole ClusterGroupUpgrade.
-// - PoliciesRemediationInBatchTimeout (Action): When the policies remediation is timed out for a batch of the ClusterGroupUpgrade.
+// - RemediationTimeout (Action): When remediation is timed out for the whole ClusterGroupUpgrade.
+// - RemediationInBatchTimeout (Action): When remediation is timed out for a batch of the ClusterGroupUpgrade.
 // CguValidationFailure (Reason)
-// - PoliciesRemediationOnHoldDueToValidationFailure (Action): When the policies remediation is on hold due to a validation failure.
+// - RemediationOnHoldDueToValidationFailure (Action): When remediation is on hold due to a validation failure.
 
 // CGU Event Reasons
 const (
@@ -49,15 +49,15 @@ const (
 // CGU Event Actions
 const (
 	CGUEventActionBuildingRemediationPlan    = "BuildingRemediationPlan"
-	CGUEventActionStartRemediation           = "PoliciesRemediationStarted"
-	CGUEventActionCompleteRemediation        = "PoliciesRemediationCompleted"
-	CGUEventActionRemediationTimeout         = "PoliciesRemediationTimeout"
-	CGUEventActionStartBatchRemediation      = "PoliciesRemediationInBatchStarted"
-	CGUEventActionCompleteBatchRemediation   = "PoliciesRemediationInBatchCompleted"
-	CGUEventActionBatchRemediationTimeout    = "PoliciesRemediationInBatchTimeout"
-	CGUEventActionStartClusterRemediation    = "PoliciesRemediationInClusterStarted"
-	CGUEventActionCompleteClusterRemediation = "PoliciesRemediationInClusterCompleted"
-	CGUEventActionValidate                   = "PoliciesRemediationOnHoldDueToValidationFailure"
+	CGUEventActionStartRemediation           = "RemediationStarted"
+	CGUEventActionCompleteRemediation        = "RemediationCompleted"
+	CGUEventActionRemediationTimeout         = "RemediationTimeout"
+	CGUEventActionStartBatchRemediation      = "RemediationInBatchStarted"
+	CGUEventActionCompleteBatchRemediation   = "RemediationInBatchCompleted"
+	CGUEventActionBatchRemediationTimeout    = "RemediationInBatchTimeout"
+	CGUEventActionStartClusterRemediation    = "RemediationInClusterStarted"
+	CGUEventActionCompleteClusterRemediation = "RemediationInClusterCompleted"
+	CGUEventActionValidate                   = "RemediationOnHoldDueToValidationFailure"
 )
 
 // CGU Event Messages
@@ -104,6 +104,9 @@ const (
 	CGUEventAnnotationKeyMissingPoliciesList   = CGUEventAnnotationKeyPrefix + "/missing-policies"
 	CGUEventAnnotationKeyInvalidPoliciesList   = CGUEventAnnotationKeyPrefix + "/invalid-policies"
 	CGUEventAnnotationKeyAmbiguousPoliciesList = CGUEventAnnotationKeyPrefix + "/ambiguous-policies"
+
+	// Set by truncateAnnotations to indicate which annotation was truncated.
+	CGUEventAnnotationKeyTruncated = CGUEventAnnotationKeyPrefix + "/truncated"
 )
 
 // Values for the CGUEventAnnotationKeyEvType key
@@ -114,7 +117,8 @@ const (
 )
 
 const (
-	maxEventAnnsSize = apiValidation.TotalAnnotationSizeLimitB
+	maxEventAnnsSize  = apiValidation.TotalAnnotationSizeLimitB
+	maxEventNoteBytes = 1024
 )
 
 // CGU Validation errors
@@ -178,6 +182,10 @@ func (e *Emitter) Emit(ctx context.Context, obj runtime.Object, annotations map[
 		return fmt.Errorf("building object reference: %w", err)
 	}
 
+	if len(note) > maxEventNoteBytes {
+		note = note[:maxEventNoteBytes]
+	}
+
 	ev := &eventsv1.Event{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: ref.Name + "-",
@@ -207,22 +215,22 @@ func (e *Emitter) Emit(ctx context.Context, obj runtime.Object, annotations map[
 
 // emitEvent is a helper that calls the Emitter and logs failures.
 // Events are best-effort; errors are logged but never propagated to the caller.
-func (r *ClusterGroupUpgradeReconciler) emitEvent(cgu *cguv1alpha1.ClusterGroupUpgrade,
+func (r *ClusterGroupUpgradeReconciler) emitEvent(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade,
 	annotations map[string]string, eventType, reason, action, note string, related *corev1.ObjectReference) {
 
-	if err := r.EventEmitter.Emit(context.TODO(), cgu, annotations, eventType, reason, action, note, related); err != nil {
+	if err := r.EventEmitter.Emit(ctx, cgu, annotations, eventType, reason, action, note, related); err != nil {
 		r.Log.Error(err, "failed to emit event", "reason", reason, "cgu", cgu.Namespace+"/"+cgu.Name)
 	}
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUCreated(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUCreated(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtCreated, cgu.Name)
 
 	evAnns := map[string]string{
 		CGUEventAnnotationKeyEvType: CGUAnnEventGlobalUpgrade,
 	}
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonCreated,
@@ -232,7 +240,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUCreated(cgu *cguv1alpha1.Clu
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtStarted, cgu.Name)
 
 	clustersCount := getTotalClustersNum(cgu)
@@ -244,7 +252,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(cgu *cguv1alpha1.Clu
 		CGUEventAnnotationKeyTotalBatchesCount:  fmt.Sprint(batchesCount),
 	}
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonStarted,
@@ -254,7 +262,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(cgu *cguv1alpha1.Clu
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeSuccess, cgu.Name)
 
 	evAnns := map[string]string{
@@ -262,7 +270,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.Clu
 		CGUEventAnnotationKeyTotalClustersCount: fmt.Sprint(getTotalClustersNum(cgu)),
 	}
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonSuccess,
@@ -272,7 +280,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.Clu
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeTimedout, cgu.Name)
 
 	timedoutClusters := []string{}
@@ -291,7 +299,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.Cl
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeWarning,
 		CGUEventReasonTimedout,
@@ -301,7 +309,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.Cl
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	batchClusters := []string{}
 	for clusterName := range cgu.Status.Status.CurrentBatchRemediationProgress {
 		batchClusters = append(batchClusters, clusterName)
@@ -321,7 +329,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cgu
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonStarted,
@@ -331,7 +339,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cgu
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeSuccess, cgu.Name, cgu.Status.Status.CurrentBatch)
 
 	batchClusters := []string{}
@@ -354,7 +362,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cgu
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonSuccess,
@@ -364,7 +372,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cgu
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeTimedout, cgu.Name, cgu.Status.Status.CurrentBatch)
 
 	batchClustersCount := 0
@@ -389,7 +397,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cg
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeWarning,
 		CGUEventReasonTimedout,
@@ -399,7 +407,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cg
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtClusterUpgradeStarted, cgu.Name, clusterName)
 
 	evAnns := map[string]string{
@@ -415,7 +423,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *c
 		Name:       clusterName,
 	}
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonStarted,
@@ -425,7 +433,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *c
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtClusterUpgradeSuccess, cgu.Name, clusterName)
 
 	evAnns := map[string]string{
@@ -441,7 +449,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *c
 		Name:       clusterName,
 	}
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonSuccess,
@@ -467,7 +475,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *c
 // 		CGUEventReasonTimedout, evMsg)
 // }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClusters(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterNames []string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClusters(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterNames []string) {
 	clusterNamesStr := strings.Join(clusterNames, ",")
 	evMsg := fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, CGUValidationErrorMsgMissingCluster, clusterNamesStr)
 
@@ -478,7 +486,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClus
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
 		CGUEventReasonValidationFailure,
@@ -488,7 +496,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClus
 	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(cgu *cguv1alpha1.ClusterGroupUpgrade, failureType PoliciesValidationFailureType, info policiesInfo) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, failureType PoliciesValidationFailureType, info policiesInfo) {
 	r.Log.Info("Sending policies validation failure event",
 		"cgu", cgu.Namespace+"/"+cgu.Name,
 		"failureType", string(failureType),
@@ -520,7 +528,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 
 	truncateAnnotations(anns, maxEventAnnsSize)
 
-	r.emitEvent(cgu,
+	r.emitEvent(ctx, cgu,
 		anns,
 		corev1.EventTypeWarning,
 		CGUEventReasonValidationFailure,
@@ -534,13 +542,19 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 // (batch clusters, timedout clusters, etc.) to stay within the Kubernetes
 // annotation size limit of 64 KiB.
 //
+// When truncation occurs, a marker annotation (CGUEventAnnotationKeyTruncated)
+// is added whose value is the key of the annotation that was truncated.
+//
 // No truncation is made if maxSize is 0.
 // nolint: unparam
 func truncateAnnotations(anns map[string]string, maxSize int) {
 	canBeTruncatedAnnKeys := map[string]bool{
-		CGUEventAnnotationKeyBatchClustersList:    true,
-		CGUEventAnnotationKeyTimedoutClustersList: true,
-		CGUEventAnnotationKeyMissingClustersList:  true,
+		CGUEventAnnotationKeyBatchClustersList:     true,
+		CGUEventAnnotationKeyTimedoutClustersList:  true,
+		CGUEventAnnotationKeyMissingClustersList:   true,
+		CGUEventAnnotationKeyMissingPoliciesList:   true,
+		CGUEventAnnotationKeyInvalidPoliciesList:   true,
+		CGUEventAnnotationKeyAmbiguousPoliciesList: true,
 	}
 
 	var totalAnnsSize int64
@@ -552,15 +566,18 @@ func truncateAnnotations(anns map[string]string, maxSize int) {
 		return
 	}
 
-	sizeToShrink := totalAnnsSize - int64(maxSize)
-
 	for k, v := range anns {
 		if !canBeTruncatedAnnKeys[k] {
 			continue
 		}
 
+		// Reserve space for the truncation marker annotation.
+		markerSize := int64(len(CGUEventAnnotationKeyTruncated)) + int64(len(k))
+		sizeToShrink := totalAnnsSize + markerSize - int64(maxSize)
+
 		maxListStrLen := int64(len(v)) - sizeToShrink
 		anns[k] = truncateListString(v, maxListStrLen)
+		anns[CGUEventAnnotationKeyTruncated] = k
 
 		// Only one truncatable annotation per event, so we're done.
 		break

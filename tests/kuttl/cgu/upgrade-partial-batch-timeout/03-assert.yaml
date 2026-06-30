@@ -114,7 +114,7 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInClusterCompleted
+action: RemediationInClusterCompleted
 type: Normal
 related:
   apiVersion: cluster.open-cluster-management.io/v1

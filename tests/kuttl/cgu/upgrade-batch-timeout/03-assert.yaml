@@ -106,7 +106,7 @@ reason: CguTimedout
 reportingComponent: ClusterGroupUpgrade
 type: Warning
 ---
-action: PoliciesRemediationInBatchTimeout
+action: RemediationInBatchTimeout
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:
@@ -125,7 +125,7 @@ regarding:
 reportingController: ClusterGroupUpgrade
 type: Warning
 ---
-action: PoliciesRemediationTimeout
+action: RemediationTimeout
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:

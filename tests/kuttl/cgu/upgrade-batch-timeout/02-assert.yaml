@@ -147,7 +147,7 @@ reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
 type: Normal
 ---
-action: PoliciesRemediationInClusterCompleted
+action: RemediationInClusterCompleted
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:
@@ -169,7 +169,7 @@ related:
 reportingController: ClusterGroupUpgrade
 type: Normal
 ---
-action: PoliciesRemediationInBatchCompleted
+action: RemediationInBatchCompleted
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:
@@ -188,7 +188,7 @@ regarding:
 reportingController: ClusterGroupUpgrade
 type: Normal
 ---
-action: PoliciesRemediationInBatchStarted
+action: RemediationInBatchStarted
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:
@@ -206,7 +206,7 @@ regarding:
 reportingController: ClusterGroupUpgrade
 type: Normal
 ---
-action: PoliciesRemediationInClusterStarted
+action: RemediationInClusterStarted
 apiVersion: events.k8s.io/v1
 kind: Event
 metadata:

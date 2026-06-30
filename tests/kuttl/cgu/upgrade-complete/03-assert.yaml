@@ -129,7 +129,7 @@ note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke4 upgrade finished
   successfully'
 reason: CguSuccess
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInClusterCompleted
+action: RemediationInClusterCompleted
 type: Normal
 related:
   apiVersion: cluster.open-cluster-management.io/v1
@@ -154,7 +154,7 @@ note: 'ClusterGroupUpgrade cgu-upgrade-complete: all clusters in the batch index
   2 are compliant with managed policies'
 reason: CguSuccess
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInBatchCompleted
+action: RemediationInBatchCompleted
 type: Normal
 ---
 apiVersion: events.k8s.io/v1
@@ -172,5 +172,5 @@ regarding:
 note: ClusterGroupUpgrade cgu-upgrade-complete succeeded remediating policies
 reason: CguSuccess
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationCompleted
+action: RemediationCompleted
 type: Normal

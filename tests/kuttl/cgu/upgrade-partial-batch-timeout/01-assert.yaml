@@ -159,7 +159,7 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationStarted
+action: RemediationStarted
 type: Normal
 ---
 apiVersion: events.k8s.io/v1
@@ -177,7 +177,7 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInBatchStarted
+action: RemediationInBatchStarted
 type: Normal
 ---
 apiVersion: events.k8s.io/v1
@@ -194,7 +194,7 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInClusterStarted
+action: RemediationInClusterStarted
 type: Normal
 related:
   apiVersion: cluster.open-cluster-management.io/v1
@@ -215,7 +215,7 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInClusterStarted
+action: RemediationInClusterStarted
 type: Normal
 related:
   apiVersion: cluster.open-cluster-management.io/v1

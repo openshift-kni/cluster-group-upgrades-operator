@@ -122,7 +122,7 @@ metadata:
   namespace: default
 reason: CguTimedout
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationInBatchTimeout
+action: RemediationInBatchTimeout
 type: Warning
 ---
 apiVersion: events.k8s.io/v1
@@ -140,5 +140,5 @@ metadata:
   namespace: default
 reason: CguTimedout
 reportingController: ClusterGroupUpgrade
-action: PoliciesRemediationTimeout
+action: RemediationTimeout
 type: Warning

@@ -13,6 +13,14 @@ import (
 )
 
 func Test_truncateAnnotations(t *testing.T) {
+	longList := "cluster1,cluster2,cluster3,cluster4,cluster5,cluster6,cluster7,cluster8"
+
+	// markerOverhead is the space needed for the truncation marker annotation
+	// (key + value where value = the truncated annotation's key).
+	markerOverhead := func(truncatedKey string) int {
+		return len(CGUEventAnnotationKeyTruncated) + len(truncatedKey)
+	}
+
 	type args struct {
 		anns          map[string]string
 		maxSize       int
@@ -31,7 +39,7 @@ func Test_truncateAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "maxSize = 1, don't truncate as there's no annotations that cna be truncated",
+			name: "no truncatable keys present, skip even if over limit",
 			args: args{
 				anns:          map[string]string{"k": "v"},
 				maxSize:       1,
@@ -39,56 +47,13 @@ func Test_truncateAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "truncate last element for batch clusters list",
+			name: "no truncation needed when under limit",
 			args: args{
 				anns: map[string]string{
 					"k":                                    "v",
 					CGUEventAnnotationKeyBatchClustersList: "cluster1,cluster2",
 				},
-				maxSize: len(CGUEventAnnotationKeyBatchClustersList) + 10,
-				truncatedAnns: map[string]string{
-					"k":                                    "v",
-					CGUEventAnnotationKeyBatchClustersList: "cluster1",
-				},
-			},
-		},
-		{
-			name: "truncate last element for missing clusters list",
-			args: args{
-				anns: map[string]string{
-					"k":                                      "v",
-					CGUEventAnnotationKeyMissingClustersList: "cluster1,cluster2",
-				},
-				maxSize: len(CGUEventAnnotationKeyMissingClustersList) + 10,
-				truncatedAnns: map[string]string{
-					"k":                                      "v",
-					CGUEventAnnotationKeyMissingClustersList: "cluster1",
-				},
-			},
-		},
-		{
-			name: "truncate last element for missing clusters list",
-			args: args{
-				anns: map[string]string{
-					"k": "v",
-					CGUEventAnnotationKeyTimedoutClustersList: "cluster1,cluster2",
-				},
-				maxSize: len(CGUEventAnnotationKeyTimedoutClustersList) + 10,
-				truncatedAnns: map[string]string{
-					"k": "v",
-					CGUEventAnnotationKeyTimedoutClustersList: "cluster1",
-				},
-			},
-		},
-		// Same as the previous 3 tcs, but don't truncate as there's room for all anns.
-		{
-			name: "truncate last element for batch clusters list",
-			args: args{
-				anns: map[string]string{
-					"k":                                    "v",
-					CGUEventAnnotationKeyBatchClustersList: "cluster1,cluster2",
-				},
-				maxSize: len(CGUEventAnnotationKeyBatchClustersList) + 100,
+				maxSize: 500,
 				truncatedAnns: map[string]string{
 					"k":                                    "v",
 					CGUEventAnnotationKeyBatchClustersList: "cluster1,cluster2",
@@ -96,38 +61,95 @@ func Test_truncateAnnotations(t *testing.T) {
 			},
 		},
 		{
-			name: "truncate last element for missing clusters list",
-			args: args{
-				anns: map[string]string{
-					"k":                                      "v",
-					CGUEventAnnotationKeyMissingClustersList: "cluster1,cluster2",
-				},
-				maxSize: len(CGUEventAnnotationKeyMissingClustersList) + 100,
-				truncatedAnns: map[string]string{
-					"k":                                      "v",
-					CGUEventAnnotationKeyMissingClustersList: "cluster1,cluster2",
-				},
-			},
+			name: "truncate batch clusters list with marker",
+			args: func() args {
+				key := CGUEventAnnotationKeyBatchClustersList
+				// maxSize allows "cluster1" (8 bytes) to remain after reserving marker space.
+				// total_input = len("k") + len("v") + len(key) + len(longList)
+				// We pick maxSize so that maxListStrLen = len(longList) - (total + markerOverhead - maxSize)
+				// falls between len("cluster1") and len("cluster1,cluster2").
+				totalInput := len("k") + len("v") + len(key) + len(longList)
+				maxSize := totalInput + markerOverhead(key) - len(longList) + 10 // leaves room for ~10 chars
+				return args{
+					anns: map[string]string{
+						"k": "v",
+						key: longList,
+					},
+					maxSize: maxSize,
+					truncatedAnns: map[string]string{
+						"k":                         "v",
+						key:                         "cluster1",
+						CGUEventAnnotationKeyTruncated: key,
+					},
+				}
+			}(),
 		},
 		{
-			name: "truncate last element for missing clusters list",
-			args: args{
-				anns: map[string]string{
-					"k": "v",
-					CGUEventAnnotationKeyTimedoutClustersList: "cluster1,cluster2",
-				},
-				maxSize: len(CGUEventAnnotationKeyTimedoutClustersList) + 100,
-				truncatedAnns: map[string]string{
-					"k": "v",
-					CGUEventAnnotationKeyTimedoutClustersList: "cluster1,cluster2",
-				},
-			},
+			name: "truncate timedout clusters list with marker",
+			args: func() args {
+				key := CGUEventAnnotationKeyTimedoutClustersList
+				totalInput := len("k") + len("v") + len(key) + len(longList)
+				maxSize := totalInput + markerOverhead(key) - len(longList) + 10
+				return args{
+					anns: map[string]string{
+						"k": "v",
+						key: longList,
+					},
+					maxSize: maxSize,
+					truncatedAnns: map[string]string{
+						"k":                         "v",
+						key:                         "cluster1",
+						CGUEventAnnotationKeyTruncated: key,
+					},
+				}
+			}(),
+		},
+		{
+			name: "truncate missing clusters list with marker",
+			args: func() args {
+				key := CGUEventAnnotationKeyMissingClustersList
+				totalInput := len("k") + len("v") + len(key) + len(longList)
+				maxSize := totalInput + markerOverhead(key) - len(longList) + 10
+				return args{
+					anns: map[string]string{
+						"k": "v",
+						key: longList,
+					},
+					maxSize: maxSize,
+					truncatedAnns: map[string]string{
+						"k":                         "v",
+						key:                         "cluster1",
+						CGUEventAnnotationKeyTruncated: key,
+					},
+				}
+			}(),
+		},
+		{
+			name: "truncate missing policies list with marker",
+			args: func() args {
+				key := CGUEventAnnotationKeyMissingPoliciesList
+				longPolicies := "policy-aaa,policy-bbb,policy-ccc,policy-ddd,policy-eee,policy-fff,policy-ggg"
+				totalInput := len("k") + len("v") + len(key) + len(longPolicies)
+				maxSize := totalInput + markerOverhead(key) - len(longPolicies) + 12
+				return args{
+					anns: map[string]string{
+						"k": "v",
+						key: longPolicies,
+					},
+					maxSize: maxSize,
+					truncatedAnns: map[string]string{
+						"k":                         "v",
+						key:                         "policy-aaa",
+						CGUEventAnnotationKeyTruncated: key,
+					},
+				}
+			}(),
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			truncateAnnotations(tt.args.anns, tt.args.maxSize)
-			assert.Equal(t, tt.args.anns, tt.args.truncatedAnns)
+			assert.Equal(t, tt.args.truncatedAnns, tt.args.anns)
 		})
 	}
 }
@@ -226,7 +248,7 @@ func Test_sendEventCGUBatchUpgradeStarted_DeterministicClusterOrder(t *testing.T
 	}
 
 	for i := 0; i < 5; i++ {
-		reconciler.sendEventCGUBatchUpgradeStarted(cgu)
+		reconciler.sendEventCGUBatchUpgradeStarted(t.Context(), cgu)
 	}
 
 	var eventList eventsv1.EventList
@@ -284,7 +306,7 @@ func Test_sendEventCGUBatchUpgradeSuccess_DeterministicClusterOrder(t *testing.T
 	}
 
 	for i := 0; i < 5; i++ {
-		reconciler.sendEventCGUBatchUpgradeSuccess(cgu)
+		reconciler.sendEventCGUBatchUpgradeSuccess(t.Context(), cgu)
 	}
 
 	var eventList eventsv1.EventList
