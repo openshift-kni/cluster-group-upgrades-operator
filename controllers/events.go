@@ -384,6 +384,8 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(ctx con
 		}
 	}
 
+	slices.Sort(timedoutClusters)
+
 	timedoutClustersCount := len(timedoutClusters)
 	totalClustersCount := getTotalClustersNum(cgu)
 
@@ -488,7 +490,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClus
 
 	r.emitEvent(ctx, cgu,
 		evAnns,
-		corev1.EventTypeNormal,
+		corev1.EventTypeWarning,
 		CGUEventReasonValidationFailure,
 		CGUEventActionValidate,
 		evMsg,
@@ -514,12 +516,13 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 		invalidPoliciesStr := strings.Join(info.invalidPolicies, ",")
 		evMsg = fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, failureType, invalidPoliciesStr)
 		anns[CGUEventAnnotationKeyInvalidPoliciesList] = invalidPoliciesStr
-	case CGUValidationFailureAmbiguousPolicies:
+	case CGUValidationErrorMsgAmbiguousPolicies:
 		ambiguousPolicies := []string{}
 		for policy := range info.duplicatedPoliciesNs {
 			ambiguousPolicies = append(ambiguousPolicies, policy)
 		}
 
+		slices.Sort(ambiguousPolicies)
 		ambiguousPoliciesStr := strings.Join(ambiguousPolicies, ",")
 
 		evMsg = fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, failureType, ambiguousPoliciesStr)
