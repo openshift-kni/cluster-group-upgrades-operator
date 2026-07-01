@@ -103,20 +103,20 @@ func DeletePlacementBindings(ctx context.Context, c client.Client, ns string, la
 	return nil
 }
 
-// DeletePlacementRules deletes PlacementRules
-func DeletePlacementRules(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
+// DeletePlacements deletes Placements
+func DeletePlacements(ctx context.Context, c client.Client, ns string, labels map[string]string) error {
 	deleteAllOpts := []client.DeleteAllOfOption{
 		client.InNamespace(ns),
 		client.MatchingLabels(labels),
 	}
 
-	placementRule := &unstructured.Unstructured{}
-	placementRule.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "apps.open-cluster-management.io",
-		Kind:    "PlacementRule",
-		Version: "v1",
+	placement := &unstructured.Unstructured{}
+	placement.SetGroupVersionKind(schema.GroupVersionKind{
+		Group:   "cluster.open-cluster-management.io",
+		Kind:    "Placement",
+		Version: "v1beta1",
 	})
-	if err := c.DeleteAllOf(ctx, placementRule, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
+	if err := c.DeleteAllOf(ctx, placement, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
 	}
 	return nil

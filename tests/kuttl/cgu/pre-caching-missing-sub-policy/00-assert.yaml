@@ -39,7 +39,7 @@ status:
     policy0-common-config-policy: default
   placementBindings:
   - cgu-policy0-common-config-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-policy0-common-config-policy-placement-kuttl
   precaching:
     spec: {}
