@@ -72,7 +72,6 @@ type resourceTemplate struct {
 
 var precacheDependenciesCreateTemplates = []resourceTemplate{
 	{"precache-ns-create", templates.MngClusterActCreatePrecachingNS},
-	{"precache-spec-cm-create", templates.MngClusterActCreatePrecachingSpecCM},
 	{"precache-sa-create", templates.MngClusterActCreateServiceAcct},
 	{"precache-crb-create", templates.MngClusterActCreateClusterRoleBinding},
 }
