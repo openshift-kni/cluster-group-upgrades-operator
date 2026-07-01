@@ -78,8 +78,8 @@ func Test_truncateAnnotations(t *testing.T) {
 					},
 					maxSize: maxSize,
 					truncatedAnns: map[string]string{
-						"k":                         "v",
-						key:                         "cluster1",
+						"k":                            "v",
+						key:                            "cluster1",
 						CGUEventAnnotationKeyTruncated: key,
 					},
 				}
@@ -98,8 +98,8 @@ func Test_truncateAnnotations(t *testing.T) {
 					},
 					maxSize: maxSize,
 					truncatedAnns: map[string]string{
-						"k":                         "v",
-						key:                         "cluster1",
+						"k":                            "v",
+						key:                            "cluster1",
 						CGUEventAnnotationKeyTruncated: key,
 					},
 				}
@@ -118,8 +118,8 @@ func Test_truncateAnnotations(t *testing.T) {
 					},
 					maxSize: maxSize,
 					truncatedAnns: map[string]string{
-						"k":                         "v",
-						key:                         "cluster1",
+						"k":                            "v",
+						key:                            "cluster1",
 						CGUEventAnnotationKeyTruncated: key,
 					},
 				}
@@ -139,8 +139,8 @@ func Test_truncateAnnotations(t *testing.T) {
 					},
 					maxSize: maxSize,
 					truncatedAnns: map[string]string{
-						"k":                         "v",
-						key:                         "policy-aaa",
+						"k":                            "v",
+						key:                            "policy-aaa",
 						CGUEventAnnotationKeyTruncated: key,
 					},
 				}
