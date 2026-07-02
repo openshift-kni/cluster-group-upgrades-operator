@@ -7,7 +7,7 @@
 # Aztp
 - key: aztp_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.19.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:1fa1451560b96ae0b13b33233d977e03471f4fbf8687202a331a1da4b1822377
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-19@sha256:c1e83ff28580b570421f718d1c8c514f92f8de899f59badc94455bb707880f44
 #
 # Precache
 - key: precache_img
