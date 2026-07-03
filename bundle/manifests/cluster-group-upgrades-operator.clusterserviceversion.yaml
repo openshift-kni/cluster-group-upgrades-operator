@@ -356,6 +356,12 @@ spec:
           - list
           - watch
         - apiGroups:
+          - events.k8s.io
+          resources:
+          - events
+          verbs:
+          - create
+        - apiGroups:
           - lcm.openshift.io
           resources:
           - imagebasedgroupupgrades
