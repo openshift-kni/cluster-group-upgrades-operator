@@ -2,7 +2,7 @@
 
 cwd=$(dirname "$0")
 # shellcheck source=pre-cache/common.sh
-. $cwd/common.sh
+. "$cwd/common.sh"
 
 rendered_index_path="${rendered_index_path:-/tmp/index.json}"
 
@@ -27,10 +27,10 @@ render_index(){
 
     if [[ -d "$image_mount/configs" ]]; then
         log_debug "Rendering file based catalog"
-        $opm_bin render "$image_mount/configs" > $rendered_index_path
+        "$opm_bin" render "$image_mount/configs" > "$rendered_index_path"
     else
         log_debug "Rendering SQLite catalog"
-        $opm_bin render "$image_mount/database/index.db" > $rendered_index_path
+        "$opm_bin" render "$image_mount/database/index.db" > "$rendered_index_path"
     fi
     if [[ $? -ne 0 ]]; then
         return 1
@@ -39,30 +39,30 @@ render_index(){
 
 extract_packages(){
     local packages
-    tr -d " " < $CONFIG_VOLUME_PATH/operators.packagesAndChannels > /tmp/packagesAndChannels
+    tr -d " " < "$CONFIG_VOLUME_PATH/operators.packagesAndChannels" > /tmp/packagesAndChannels
     while IFS= read -r item; do
-        pkg=$(echo $item |cut -d ':' -f 1)
+        pkg=$(echo "$item" | cut -d ':' -f 1)
         packages="$packages$pkg,"
     done < <(sort -u /tmp/packagesAndChannels)
-    echo ${packages%,}
+    echo "${packages%,}"
     return 0
 }
 
 olm_main(){
-    if [ -z $(sort -u $CONFIG_VOLUME_PATH/operators.indexes) ]; then
+    if [ -z "$(sort -u "$CONFIG_VOLUME_PATH/operators.indexes")" ]; then
         log_debug "Operators index is not specified. Operators won't be pre-cached"
         return 0
     fi
     # There could be several indexes, hence the loop
     while IFS= read -r index; do
-        image_id=$(pull_index $index $PULL_SECRET_PATH)
+        image_id=$(pull_index "$index" "$PULL_SECRET_PATH")
         if [[ $? -ne 0 ]]; then
             log_debug "pull_index failed for index $index"
             return 1
         fi
         log_debug "$index image ID is $image_id"
 
-        image_mount=$(mount_index $image_id)
+        image_mount=$(mount_index "$image_id")
         if [[ $? -ne 0 ]]; then
             log_debug "mount_index failed for index $index"
             return 1
@@ -75,19 +75,19 @@ olm_main(){
             return 1
         fi
 
-        render_index $index $packages $image_mount
+        render_index "$index" "$packages" "$image_mount"
         if [[ $? -ne 0 ]]; then
             log_debug "render_index failed: OLM index render failed for index $index, package(s) $packages"
             return 1
         fi
         operators_spec_file="$CONFIG_VOLUME_PATH/operators.packagesAndChannels"
-        extract_pull_spec $rendered_index_path $operators_spec_file $PULL_SPEC_FILE
+        extract_pull_spec "$rendered_index_path" "$operators_spec_file" "$PULL_SPEC_FILE"
         if [[ $? -ne 0 ]]; then
             log_debug "extract_pull_spec failed"
             return 1
         fi
-        unmount_index $image_id
-    done < <(sort -u $CONFIG_VOLUME_PATH/operators.indexes)
+        unmount_index "$image_id"
+    done < <(sort -u "$CONFIG_VOLUME_PATH/operators.indexes")
     return 0
 }
 
