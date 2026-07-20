@@ -1,15 +1,40 @@
 package controllers
 
 import (
+	"context"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	cguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
+	eventsv1 "k8s.io/api/events/v1"
 	apiValidation "k8s.io/apimachinery/pkg/api/validation"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/reference"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// This is the relationship between the CGU Event Reasons and the CGU Event Actions:
+// CguCreated (Reason)
+// - BuildingRemediationPlan (Action) - When a new ClusterGroupUpgrade has triggered the reconciliation.
+// CguStarted (Reason) - When the CGU's enable field is true.
+// - RemediationStarted (Action): When remediation is started for the whole ClusterGroupUpgrade.
+// - RemediationInBatchStarted (Action): When remediation is started for a batch of the ClusterGroupUpgrade.
+// - RemediationInClusterStarted (Action): When remediation is started for a cluster of the ClusterGroupUpgrade.
+// CguSuccess (Reason)
+// - RemediationCompleted (Action): When remediation is completed for the whole ClusterGroupUpgrade.
+// - RemediationInBatchCompleted (Action): When remediation is completed for a batch of the ClusterGroupUpgrade.
+// - RemediationInClusterCompleted (Action): When remediation is completed for a cluster of the ClusterGroupUpgrade.
+// CguTimedout (Reason)
+// - RemediationTimeout (Action): When remediation is timed out for the whole ClusterGroupUpgrade.
+// - RemediationInBatchTimeout (Action): When remediation is timed out for a batch of the ClusterGroupUpgrade.
+// CguValidationFailure (Reason)
+// - RemediationOnHoldDueToValidationFailure (Action): When remediation is on hold due to a validation failure.
 
 // CGU Event Reasons
 const (
@@ -19,6 +44,20 @@ const (
 	CGUEventReasonTimedout = "CguTimedout"
 
 	CGUEventReasonValidationFailure = "CguValidationFailure"
+)
+
+// CGU Event Actions
+const (
+	CGUEventActionBuildingRemediationPlan    = "BuildingRemediationPlan"
+	CGUEventActionStartRemediation           = "RemediationStarted"
+	CGUEventActionCompleteRemediation        = "RemediationCompleted"
+	CGUEventActionRemediationTimeout         = "RemediationTimeout"
+	CGUEventActionStartBatchRemediation      = "RemediationInBatchStarted"
+	CGUEventActionCompleteBatchRemediation   = "RemediationInBatchCompleted"
+	CGUEventActionBatchRemediationTimeout    = "RemediationInBatchTimeout"
+	CGUEventActionStartClusterRemediation    = "RemediationInClusterStarted"
+	CGUEventActionCompleteClusterRemediation = "RemediationInClusterCompleted"
+	CGUEventActionValidate                   = "RemediationOnHoldDueToValidationFailure"
 )
 
 // CGU Event Messages
@@ -65,6 +104,9 @@ const (
 	CGUEventAnnotationKeyMissingPoliciesList   = CGUEventAnnotationKeyPrefix + "/missing-policies"
 	CGUEventAnnotationKeyInvalidPoliciesList   = CGUEventAnnotationKeyPrefix + "/invalid-policies"
 	CGUEventAnnotationKeyAmbiguousPoliciesList = CGUEventAnnotationKeyPrefix + "/ambiguous-policies"
+
+	// Set by truncateAnnotations to indicate which annotation was truncated.
+	CGUEventAnnotationKeyTruncated = CGUEventAnnotationKeyPrefix + "/truncated"
 )
 
 // Values for the CGUEventAnnotationKeyEvType key
@@ -75,7 +117,8 @@ const (
 )
 
 const (
-	maxEventAnnsSize = apiValidation.TotalAnnotationSizeLimitB
+	maxEventAnnsSize  = apiValidation.TotalAnnotationSizeLimitB
+	maxEventNoteBytes = 1024
 )
 
 // CGU Validation errors
@@ -90,20 +133,114 @@ const (
 	CGUValidationErrorMsgInvalidPolicies   PoliciesValidationFailureType = "invalid policies"
 )
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUCreated(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+// Emitter creates events/v1 Event resources directly via the Kubernetes API,
+// with full control over annotations.
+//
+// The standard EventRecorder from client-go does not expose annotations
+// in the new events/v1 API. This fills that gap for controllers
+// that emit low-volume, unique lifecycle events where the EventBroadcaster's
+// dedup and rate-limiting add no value but custom annotations are needed.
+type Emitter struct {
+	client     client.Client
+	scheme     *runtime.Scheme
+	controller string
+	instance   string
+}
+
+// NewEmitter returns an Emitter that reports events under the given controller name.
+// The scheme is needed to derive GroupVersionKind from runtime objects.
+func NewEmitter(c client.Client, scheme *runtime.Scheme, controller string) *Emitter {
+	instance, _ := os.Hostname()
+	return &Emitter{
+		client:     c,
+		scheme:     scheme,
+		controller: controller,
+		instance:   instance,
+	}
+}
+
+// Emit creates a single events/v1 Event resource in the cluster.
+//
+// obj is the object the event is about (the "regarding" object).
+// annotations may be nil for events that don't carry extra metadata.
+// eventType is "Normal" or "Warning" (use corev1.EventType* constants).
+// reason is a short, CamelCase machine-readable string (e.g. "CguStarted").
+// action describes what the controller did (e.g. "StartRemediation").
+// note is the human-readable event message.
+// related is an optional secondary object (e.g. the ManagedCluster being remediated).
+//
+// Safe to call on a nil receiver — the call is silently ignored.
+func (e *Emitter) Emit(ctx context.Context, obj runtime.Object, annotations map[string]string,
+	eventType, reason, action, note string, related *corev1.ObjectReference) error {
+
+	if e == nil {
+		return nil
+	}
+
+	ref, err := reference.GetReference(e.scheme, obj)
+	if err != nil {
+		return fmt.Errorf("building object reference: %w", err)
+	}
+
+	if len(note) > maxEventNoteBytes {
+		note = note[:maxEventNoteBytes]
+	}
+
+	ev := &eventsv1.Event{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: ref.Name + "-",
+			Namespace:    ref.Namespace,
+			Annotations:  annotations,
+		},
+		EventTime:           metav1.NowMicro(),
+		ReportingController: e.controller,
+		ReportingInstance:   e.instance,
+		Action:              action,
+		Reason:              reason,
+		Note:                note,
+		Type:                eventType,
+		Regarding: corev1.ObjectReference{
+			Kind:            ref.Kind,
+			APIVersion:      ref.APIVersion,
+			Name:            ref.Name,
+			Namespace:       ref.Namespace,
+			UID:             ref.UID,
+			ResourceVersion: ref.ResourceVersion,
+		},
+		Related: related,
+	}
+
+	return e.client.Create(ctx, ev)
+}
+
+// emitEvent is a helper that calls the Emitter and logs failures.
+// Events are best-effort; errors are logged but never propagated to the caller.
+func (r *ClusterGroupUpgradeReconciler) emitEvent(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade,
+	annotations map[string]string, eventType, reason, action, note string, related *corev1.ObjectReference) {
+
+	if err := r.EventEmitter.Emit(ctx, cgu, annotations, eventType, reason, action, note, related); err != nil {
+		r.Log.Error(err, "failed to emit event", "reason", reason, "cgu", cgu.Namespace+"/"+cgu.Name)
+	}
+}
+
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUCreated(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtCreated, cgu.Name)
 
 	evAnns := map[string]string{
 		CGUEventAnnotationKeyEvType: CGUAnnEventGlobalUpgrade,
 	}
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonCreated, evMsg)
+		CGUEventReasonCreated,
+		CGUEventActionBuildingRemediationPlan,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtStarted, cgu.Name)
 
 	clustersCount := getTotalClustersNum(cgu)
@@ -115,13 +252,17 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUStarted(cgu *cguv1alpha1.Clu
 		CGUEventAnnotationKeyTotalBatchesCount:  fmt.Sprint(batchesCount),
 	}
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonStarted, evMsg)
+		CGUEventReasonStarted,
+		CGUEventActionStartRemediation,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeSuccess, cgu.Name)
 
 	evAnns := map[string]string{
@@ -129,16 +270,19 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUSuccess(cgu *cguv1alpha1.Clu
 		CGUEventAnnotationKeyTotalClustersCount: fmt.Sprint(getTotalClustersNum(cgu)),
 	}
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonSuccess, evMsg)
+		CGUEventReasonSuccess,
+		CGUEventActionCompleteRemediation,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtUpgradeTimedout, cgu.Name)
 
-	// Iterate through all clusters to get a list of the timed-out ones.
 	timedoutClusters := []string{}
 	for _, clusterState := range cgu.Status.Clusters {
 		if clusterState.State == utils.ClusterRemediationTimedout {
@@ -155,13 +299,17 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUTimedout(cgu *cguv1alpha1.Cl
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeWarning,
-		CGUEventReasonTimedout, evMsg)
+		CGUEventReasonTimedout,
+		CGUEventActionRemediationTimeout,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	batchClusters := []string{}
 	for clusterName := range cgu.Status.Status.CurrentBatchRemediationProgress {
 		batchClusters = append(batchClusters, clusterName)
@@ -181,13 +329,17 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cgu
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonStarted, evMsg)
+		CGUEventReasonStarted,
+		CGUEventActionStartBatchRemediation,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeSuccess, cgu.Name, cgu.Status.Status.CurrentBatch)
 
 	batchClusters := []string{}
@@ -210,16 +362,19 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cgu
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonSuccess, evMsg)
+		CGUEventReasonSuccess,
+		CGUEventActionCompleteBatchRemediation,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeTimedout, cgu.Name, cgu.Status.Status.CurrentBatch)
 
-	// Iterate through the batch clusters to get a list of the timed-out ones.
 	batchClustersCount := 0
 	timedoutClusters := []string{}
 	for clusterName, clusterProgress := range cgu.Status.Status.CurrentBatchRemediationProgress {
@@ -228,6 +383,8 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cg
 			timedoutClusters = append(timedoutClusters, clusterName)
 		}
 	}
+
+	slices.Sort(timedoutClusters)
 
 	timedoutClustersCount := len(timedoutClusters)
 	totalClustersCount := getTotalClustersNum(cgu)
@@ -242,13 +399,17 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeTimedout(cgu *cg
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeWarning,
-		CGUEventReasonTimedout, evMsg)
+		CGUEventReasonTimedout,
+		CGUEventActionBatchRemediationTimeout,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtClusterUpgradeStarted, cgu.Name, clusterName)
 
 	evAnns := map[string]string{
@@ -258,13 +419,23 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeStarted(cgu *c
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	managedClusterRef := &corev1.ObjectReference{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       "ManagedCluster",
+		Name:       clusterName,
+	}
+
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonStarted, evMsg)
+		CGUEventReasonStarted,
+		CGUEventActionStartClusterRemediation,
+		evMsg,
+		managedClusterRef,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
 	evMsg := fmt.Sprintf(CGUEventMsgFmtClusterUpgradeSuccess, cgu.Name, clusterName)
 
 	evAnns := map[string]string{
@@ -274,10 +445,20 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *c
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	managedClusterRef := &corev1.ObjectReference{
+		APIVersion: clusterv1.GroupVersion.String(),
+		Kind:       "ManagedCluster",
+		Name:       clusterName,
+	}
+
+	r.emitEvent(ctx, cgu,
 		evAnns,
 		corev1.EventTypeNormal,
-		CGUEventReasonSuccess, evMsg)
+		CGUEventReasonSuccess,
+		CGUEventActionCompleteClusterRemediation,
+		evMsg,
+		managedClusterRef,
+	)
 }
 
 // func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeTimedout(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterName string) {
@@ -296,7 +477,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUClusterUpgradeSuccess(cgu *c
 // 		CGUEventReasonTimedout, evMsg)
 // }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClusters(cgu *cguv1alpha1.ClusterGroupUpgrade, clusterNames []string) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClusters(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, clusterNames []string) {
 	clusterNamesStr := strings.Join(clusterNames, ",")
 	evMsg := fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, CGUValidationErrorMsgMissingCluster, clusterNamesStr)
 
@@ -307,13 +488,17 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClus
 
 	truncateAnnotations(evAnns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu,
+	r.emitEvent(ctx, cgu,
 		evAnns,
-		corev1.EventTypeNormal,
-		CGUEventReasonValidationFailure, evMsg)
+		corev1.EventTypeWarning,
+		CGUEventReasonValidationFailure,
+		CGUEventActionValidate,
+		evMsg,
+		nil,
+	)
 }
 
-func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(cgu *cguv1alpha1.ClusterGroupUpgrade, failureType PoliciesValidationFailureType, info policiesInfo) {
+func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade, failureType PoliciesValidationFailureType, info policiesInfo) {
 	r.Log.Info("Sending policies validation failure event",
 		"cgu", cgu.Namespace+"/"+cgu.Name,
 		"failureType", string(failureType),
@@ -331,12 +516,13 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 		invalidPoliciesStr := strings.Join(info.invalidPolicies, ",")
 		evMsg = fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, failureType, invalidPoliciesStr)
 		anns[CGUEventAnnotationKeyInvalidPoliciesList] = invalidPoliciesStr
-	case CGUValidationFailureAmbiguousPolicies:
+	case CGUValidationErrorMsgAmbiguousPolicies:
 		ambiguousPolicies := []string{}
 		for policy := range info.duplicatedPoliciesNs {
 			ambiguousPolicies = append(ambiguousPolicies, policy)
 		}
 
+		slices.Sort(ambiguousPolicies)
 		ambiguousPoliciesStr := strings.Join(ambiguousPolicies, ",")
 
 		evMsg = fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, failureType, ambiguousPoliciesStr)
@@ -345,21 +531,33 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 
 	truncateAnnotations(anns, maxEventAnnsSize)
 
-	r.Recorder.AnnotatedEventf(cgu, anns, corev1.EventTypeWarning, CGUEventReasonValidationFailure, evMsg)
+	r.emitEvent(ctx, cgu,
+		anns,
+		corev1.EventTypeWarning,
+		CGUEventReasonValidationFailure,
+		CGUEventActionValidate,
+		evMsg,
+		nil,
+	)
 }
 
-// Truncates annotations with undeterministic size that can grow too much (batch clusters, timedout clusters...), ensuring
-// that there's always room for the most important annotations. As per k8s' code, total annotations size cannot exceed 64k.
-// See: https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L36
-// and https://github.com/kubernetes/kubernetes/blob/master/staging/src/k8s.io/apimachinery/pkg/api/validation/objectmeta.go#L58
+// truncateAnnotations shrinks annotations whose values can grow unbounded
+// (batch clusters, timedout clusters, etc.) to stay within the Kubernetes
+// annotation size limit of 64 KiB.
+//
+// When truncation occurs, a marker annotation (CGUEventAnnotationKeyTruncated)
+// is added whose value is the key of the annotation that was truncated.
 //
 // No truncation is made if maxSize is 0.
 // nolint: unparam
 func truncateAnnotations(anns map[string]string, maxSize int) {
 	canBeTruncatedAnnKeys := map[string]bool{
-		CGUEventAnnotationKeyBatchClustersList:    true,
-		CGUEventAnnotationKeyTimedoutClustersList: true,
-		CGUEventAnnotationKeyMissingClustersList:  true,
+		CGUEventAnnotationKeyBatchClustersList:     true,
+		CGUEventAnnotationKeyTimedoutClustersList:  true,
+		CGUEventAnnotationKeyMissingClustersList:   true,
+		CGUEventAnnotationKeyMissingPoliciesList:   true,
+		CGUEventAnnotationKeyInvalidPoliciesList:   true,
+		CGUEventAnnotationKeyAmbiguousPoliciesList: true,
 	}
 
 	var totalAnnsSize int64
@@ -367,32 +565,29 @@ func truncateAnnotations(anns map[string]string, maxSize int) {
 		totalAnnsSize += int64(len(k)) + int64(len(v))
 	}
 
-	// Do not truncate if anns size doesn't exceed the limit
 	if totalAnnsSize <= int64(maxSize) {
 		return
 	}
 
-	sizeToShrink := totalAnnsSize - int64(maxSize)
-
-	// Search for annotations that can be truncated. Once we find one, remove elements from the last
-	// until validation func succeeds.
 	for k, v := range anns {
 		if !canBeTruncatedAnnKeys[k] {
 			continue
 		}
 
-		// Assumption: this is the annotation that grew too much, so let's shrink it so it fits.
+		// Reserve space for the truncation marker annotation.
+		markerSize := int64(len(CGUEventAnnotationKeyTruncated)) + int64(len(k))
+		sizeToShrink := totalAnnsSize + markerSize - int64(maxSize)
+
 		maxListStrLen := int64(len(v)) - sizeToShrink
 		anns[k] = truncateListString(v, maxListStrLen)
+		anns[CGUEventAnnotationKeyTruncated] = k
 
-		// Design choice: clusters lists are the only anns that can be really big, but only one
-		// annotation of those types can appear now on each event, so we're done here.
+		// Only one truncatable annotation per event, so we're done.
 		break
 	}
 }
 
-// Truncates a list "elem1,elem2,..." leaving only the elements that fit in maxSize
-// including the separator.
+// truncateListString keeps only the comma-separated elements that fit in maxSize.
 func truncateListString(listStr string, maxSize int64) string {
 	newElems := []string{}
 
@@ -402,7 +597,6 @@ func truncateListString(listStr string, maxSize int64) string {
 
 		newElemsStr := strings.Join(newElems, ",")
 		if int64(len(newElemsStr)) > maxSize {
-			// The newly added element doesn't fit, remove it and return.
 			newElems = newElems[:len(newElems)-1]
 			return strings.Join(newElems, ",")
 		}

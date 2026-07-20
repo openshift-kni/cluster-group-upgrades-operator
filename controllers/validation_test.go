@@ -13,7 +13,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/util/yaml"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/record"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -197,18 +196,18 @@ spec:
 func TestClusterGroupUpgradeReconciler_extractOpenshiftImagePlatformFromPolicies(t *testing.T) {
 
 	type fields struct {
-		Client   client.Client
-		Log      logr.Logger
-		Scheme   *runtime.Scheme
-		Recorder record.EventRecorder
+		Client  client.Client
+		Log     logr.Logger
+		Scheme  *runtime.Scheme
+		Emitter *Emitter
 	}
 
 	commonFields := fields{
 		// currently this object is not used anywhere but keeping in case there's change in the future
-		Client:   nil,
-		Log:      logr.Discard(),
-		Scheme:   nil,
-		Recorder: nil,
+		Client:  nil,
+		Log:     logr.Discard(),
+		Scheme:  nil,
+		Emitter: nil,
 	}
 
 	type args struct {
@@ -271,10 +270,10 @@ func TestClusterGroupUpgradeReconciler_extractOpenshiftImagePlatformFromPolicies
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ClusterGroupUpgradeReconciler{
-				Client:   tt.fields.Client,
-				Log:      tt.fields.Log,
-				Scheme:   tt.fields.Scheme,
-				Recorder: tt.fields.Recorder,
+				Client:       tt.fields.Client,
+				Log:          tt.fields.Log,
+				Scheme:       tt.fields.Scheme,
+				EventEmitter: tt.fields.Emitter,
 			}
 
 			// special case when there needs to be a http call
@@ -312,18 +311,18 @@ spec:
 
 func TestClusterGroupUpgradeReconciler_validateOpenshiftUpgradeVersion(t *testing.T) {
 	type fields struct {
-		Client   client.Client
-		Log      logr.Logger
-		Scheme   *runtime.Scheme
-		Recorder record.EventRecorder
+		Client  client.Client
+		Log     logr.Logger
+		Scheme  *runtime.Scheme
+		Emitter *Emitter
 	}
 
 	commonFields := fields{
 		// currently this object is not used anywhere but keeping in case there's change in the future
-		Client:   nil,
-		Log:      logr.Discard(),
-		Scheme:   nil,
-		Recorder: nil,
+		Client:  nil,
+		Log:     logr.Discard(),
+		Scheme:  nil,
+		Emitter: nil,
 	}
 
 	type args struct {
@@ -400,10 +399,10 @@ func TestClusterGroupUpgradeReconciler_validateOpenshiftUpgradeVersion(t *testin
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ClusterGroupUpgradeReconciler{
-				Client:   tt.fields.Client,
-				Log:      tt.fields.Log,
-				Scheme:   tt.fields.Scheme,
-				Recorder: tt.fields.Recorder,
+				Client:       tt.fields.Client,
+				Log:          tt.fields.Log,
+				Scheme:       tt.fields.Scheme,
+				EventEmitter: tt.fields.Emitter,
 			}
 
 			// special case when there needs to be a http call
@@ -842,18 +841,18 @@ spec:
 `
 
 	type fields struct {
-		Client   client.Client
-		Log      logr.Logger
-		Scheme   *runtime.Scheme
-		Recorder record.EventRecorder
+		Client  client.Client
+		Log     logr.Logger
+		Scheme  *runtime.Scheme
+		Emitter *Emitter
 	}
 
 	commonFields := fields{
 		// currently this object is not used anywhere but keeping in case there's change in the future
-		Client:   nil,
-		Log:      logr.Discard(),
-		Scheme:   nil,
-		Recorder: nil,
+		Client:  nil,
+		Log:     logr.Discard(),
+		Scheme:  nil,
+		Emitter: nil,
 	}
 
 	type args struct {
@@ -929,10 +928,10 @@ spec:
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			r := &ClusterGroupUpgradeReconciler{
-				Client:   tt.fields.Client,
-				Log:      tt.fields.Log,
-				Scheme:   tt.fields.Scheme,
-				Recorder: tt.fields.Recorder,
+				Client:       tt.fields.Client,
+				Log:          tt.fields.Log,
+				Scheme:       tt.fields.Scheme,
+				EventEmitter: tt.fields.Emitter,
 			}
 
 			got, err := r.extractPrecachingSpecFromPolicies(tt.args.policies)
