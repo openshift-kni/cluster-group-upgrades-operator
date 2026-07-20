@@ -137,8 +137,8 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 		{
 			name: "basic fields",
 			data: templateData{
-				Cluster:      "spoke1",
-				ResourceName: "precache-spec-cm-create",
+				Cluster:       "spoke1",
+				ResourceName:  "precache-spec-cm-create",
 				PlatformImage: "quay.io/openshift-release-dev/ocp-release@sha256:abc123",
 				Operators: operatorsData{
 					Indexes:             []string{"registry.example.com:5000/redhat-operators:v4.11"},
@@ -152,9 +152,9 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 				"operators.indexes":             "registry.example.com:5000/redhat-operators:v4.11",
 				"operators.packagesAndChannels": "ptp-operator:4.9\nsriov-network-operator:4.9",
 				"excludePrecachePatterns":       "aws\nthanos",
-				"additionalImages":             "image1:tag\nimage2:tag",
-				"platform.image":               "quay.io/openshift-release-dev/ocp-release@sha256:abc123",
-				"spaceRequired":                "45",
+				"additionalImages":              "image1:tag\nimage2:tag",
+				"platform.image":                "quay.io/openshift-release-dev/ocp-release@sha256:abc123",
+				"spaceRequired":                 "45",
 			},
 		},
 		{
@@ -175,9 +175,9 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 				"operators.indexes":             "",
 				"operators.packagesAndChannels": "",
 				"excludePrecachePatterns":       "",
-				"additionalImages":             "",
-				"platform.image":               "",
-				"spaceRequired":                "10",
+				"additionalImages":              "",
+				"platform.image":                "",
+				"spaceRequired":                 "10",
 			},
 		},
 		{
@@ -197,9 +197,9 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 				"operators.indexes":             "# not-a-comment",
 				"operators.packagesAndChannels": "operator:4.9\n    extra-key: extra-value",
 				"excludePrecachePatterns":       "pattern\nother: true",
-				"additionalImages":             `image:tag", "extra": "field`,
-				"platform.image":               "",
-				"spaceRequired":                "10",
+				"additionalImages":              `image:tag", "extra": "field`,
+				"platform.image":                "",
+				"spaceRequired":                 "10",
 			},
 		},
 	}

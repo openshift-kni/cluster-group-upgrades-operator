@@ -332,9 +332,9 @@ func buildPrecacheSpecConfigMapAction(data templateData) *unstructured.Unstructu
 		"operators.indexes":             strings.Join(data.Operators.Indexes, "\n"),
 		"operators.packagesAndChannels": strings.Join(data.Operators.PackagesAndChannels, "\n"),
 		"excludePrecachePatterns":       strings.Join(data.ExcludePrecachePatterns, "\n"),
-		"additionalImages":             strings.Join(data.AdditionalImages, "\n"),
-		"platform.image":               data.PlatformImage,
-		"spaceRequired":                data.SpaceRequired,
+		"additionalImages":              strings.Join(data.AdditionalImages, "\n"),
+		"platform.image":                data.PlatformImage,
+		"spaceRequired":                 data.SpaceRequired,
 	}
 
 	return &unstructured.Unstructured{
