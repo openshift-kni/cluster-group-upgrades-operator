@@ -111,11 +111,7 @@ func DeletePlacements(ctx context.Context, c client.Client, ns string, labels ma
 	}
 
 	placement := &unstructured.Unstructured{}
-	placement.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "Placement",
-		Version: "v1beta1",
-	})
+	placement.SetGroupVersionKind(PlacementGVK)
 	if err := c.DeleteAllOf(ctx, placement, deleteAllOpts...); client.IgnoreNotFound(err) != nil {
 		return err
 	}
@@ -250,6 +246,118 @@ func UpdateManagedPolicyNamespaceList(policyNs map[string][]string, policyNameAr
 	if !nsFound {
 		policyNs[crtPolicyName] = append(policyNs[crtPolicyName], crtPolicyNs)
 	}
+}
+
+// getPlacementMatchExpression navigates the nested Placement structure and returns the first matchExpression map.
+// Uses NestedFieldNoCopy so modifications to the returned map affect the original object.
+func getPlacementMatchExpression(placement *unstructured.Unstructured) (map[string]interface{}, error) {
+	predicatesRaw, found, err := unstructured.NestedFieldNoCopy(placement.Object, "spec", "predicates")
+	if err != nil {
+		return nil, fmt.Errorf("error reading predicates: %v", err)
+	}
+	if !found {
+		return nil, nil
+	}
+
+	predicates, ok := predicatesRaw.([]interface{})
+	if !ok || len(predicates) == 0 {
+		return nil, nil
+	}
+
+	predicate, ok := predicates[0].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid predicate structure")
+	}
+
+	rcs, found := predicate["requiredClusterSelector"]
+	if !found {
+		return nil, nil
+	}
+	rcsMap, ok := rcs.(map[string]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	ls, found := rcsMap["labelSelector"]
+	if !found {
+		return nil, nil
+	}
+	lsMap, ok := ls.(map[string]interface{})
+	if !ok {
+		return nil, nil
+	}
+
+	me, found := lsMap["matchExpressions"]
+	if !found {
+		return nil, nil
+	}
+	meSlice, ok := me.([]interface{})
+	if !ok || len(meSlice) == 0 {
+		return nil, nil
+	}
+
+	expr, ok := meSlice[0].(map[string]interface{})
+	if !ok {
+		return nil, fmt.Errorf("invalid matchExpression structure")
+	}
+
+	return expr, nil
+}
+
+// GetPlacementClusterNames extracts cluster names from Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
+func GetPlacementClusterNames(placement *unstructured.Unstructured) ([]string, error) {
+	expr, err := getPlacementMatchExpression(placement)
+	if err != nil {
+		return nil, err
+	}
+	if expr == nil {
+		return []string{}, nil
+	}
+
+	valuesInterface, found := expr["values"]
+	if !found {
+		return []string{}, nil
+	}
+
+	valuesSlice, ok := valuesInterface.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("values is not a slice")
+	}
+
+	values := make([]string, len(valuesSlice))
+	for i, v := range valuesSlice {
+		str, ok := v.(string)
+		if !ok {
+			return nil, fmt.Errorf("value at index %d is not a string", i)
+		}
+		values[i] = str
+	}
+
+	return values, nil
+}
+
+// SetPlacementClusterNames sets cluster names in Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
+func SetPlacementClusterNames(placement *unstructured.Unstructured, clusterNames []string) error {
+	expr, err := getPlacementMatchExpression(placement)
+	if err != nil {
+		return err
+	}
+	if expr == nil {
+		return fmt.Errorf("matchExpression not found in Placement")
+	}
+
+	var values []interface{}
+	if clusterNames != nil {
+		values = make([]interface{}, len(clusterNames))
+		for i, name := range clusterNames {
+			values[i] = name
+		}
+	} else {
+		values = []interface{}{}
+	}
+
+	expr["values"] = values
+	return nil
 }
 
 // StripObjectTemplatesRaw removes all the ACM raw templating from a string and returns an interface

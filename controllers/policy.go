@@ -58,11 +58,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 	ctx context.Context, clusterNames []string, placementName, placementNamespace string) error {
 
 	placement := &unstructured.Unstructured{}
-	placement.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "Placement",
-		Version: "v1beta1",
-	})
+	placement.SetGroupVersionKind(utils.PlacementGVK)
 	err := r.Get(ctx, client.ObjectKey{
 		Name:      placementName,
 		Namespace: placementNamespace,
@@ -73,7 +69,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 	}
 
 	// Get existing cluster names from the Placement
-	existingNames, err := getPlacementClusterNames(placement)
+	existingNames, err := utils.GetPlacementClusterNames(placement)
 	if err != nil {
 		return err
 	}
@@ -93,7 +89,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 	}
 
 	// Update the Placement with the new cluster list
-	err = setPlacementClusterNames(placement, updatedNames)
+	err = utils.SetPlacementClusterNames(placement, updatedNames)
 	if err != nil {
 		return err
 	}
@@ -123,7 +119,7 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacements(ctx context.Context, c
 
 		for _, placement := range placements.Items {
 			// Reset cluster values to empty list
-			err = setPlacementClusterNames(&placement, nil)
+			err = utils.SetPlacementClusterNames(&placement, nil)
 			if err != nil {
 				errorMap[placement.GetName()] = err.Error()
 				continue
@@ -309,11 +305,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacement(ctx context.Context
 	placement := r.newBatchPlacement(clusterGroupUpgrade, managedPolicy.GetName(), managedPolicy.GetNamespace(), safeName, name)
 
 	foundPlacement := &unstructured.Unstructured{}
-	foundPlacement.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "Placement",
-		Version: "v1beta1",
-	})
+	foundPlacement.SetGroupVersionKind(utils.PlacementGVK)
 
 	err := r.Get(ctx, client.ObjectKey{
 		Name:      safeName,
@@ -337,134 +329,6 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacement(ctx context.Context
 		}
 	}
 	return safeName, nil
-}
-
-// getPlacementClusterNames extracts cluster names from Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
-func getPlacementClusterNames(placement *unstructured.Unstructured) ([]string, error) {
-	spec, found, err := unstructured.NestedMap(placement.Object, "spec")
-	if err != nil || !found {
-		return nil, fmt.Errorf("spec not found in Placement")
-	}
-
-	predicates, found, err := unstructured.NestedSlice(spec, "predicates")
-	if err != nil || !found || len(predicates) == 0 {
-		return []string{}, nil
-	}
-
-	predicate, ok := predicates[0].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid predicate structure")
-	}
-
-	matchExpressions, found, err := unstructured.NestedSlice(predicate, "requiredClusterSelector", "labelSelector", "matchExpressions")
-	if err != nil || !found || len(matchExpressions) == 0 {
-		return []string{}, nil
-	}
-
-	expr, ok := matchExpressions[0].(map[string]interface{})
-	if !ok {
-		return nil, fmt.Errorf("invalid matchExpression structure")
-	}
-
-	valuesInterface, found := expr["values"]
-	if !found {
-		return []string{}, nil
-	}
-
-	// Convert []interface{} to []string
-	valuesSlice, ok := valuesInterface.([]interface{})
-	if !ok {
-		return nil, fmt.Errorf("values is not a slice")
-	}
-
-	values := make([]string, len(valuesSlice))
-	for i, v := range valuesSlice {
-		str, ok := v.(string)
-		if !ok {
-			return nil, fmt.Errorf("value at index %d is not a string", i)
-		}
-		values[i] = str
-	}
-
-	return values, nil
-}
-
-// setPlacementClusterNames sets cluster names in Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
-func setPlacementClusterNames(placement *unstructured.Unstructured, clusterNames []string) error {
-	// Convert []string to []interface{} for unstructured
-	var values []interface{}
-	if clusterNames != nil {
-		values = make([]interface{}, len(clusterNames))
-		for i, name := range clusterNames {
-			values[i] = name
-		}
-	} else {
-		values = []interface{}{}
-	}
-
-	// Navigate through the nested structure and update values
-	spec, found, err := unstructured.NestedFieldNoCopy(placement.Object, "spec")
-	if err != nil || !found {
-		return fmt.Errorf("spec not found in Placement")
-	}
-
-	specMap, ok := spec.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("spec is not a map")
-	}
-
-	predicates, found := specMap["predicates"]
-	if !found {
-		return fmt.Errorf("predicates not found in Placement")
-	}
-
-	predicatesSlice, ok := predicates.([]interface{})
-	if !ok || len(predicatesSlice) == 0 {
-		return fmt.Errorf("predicates is not a valid slice")
-	}
-
-	predicate, ok := predicatesSlice[0].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("invalid predicate structure")
-	}
-
-	rcs, found := predicate["requiredClusterSelector"]
-	if !found {
-		return fmt.Errorf("requiredClusterSelector not found")
-	}
-
-	rcsMap, ok := rcs.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("requiredClusterSelector is not a map")
-	}
-
-	ls, found := rcsMap["labelSelector"]
-	if !found {
-		return fmt.Errorf("labelSelector not found")
-	}
-
-	lsMap, ok := ls.(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("labelSelector is not a map")
-	}
-
-	me, found := lsMap["matchExpressions"]
-	if !found {
-		return fmt.Errorf("matchExpressions not found")
-	}
-
-	meSlice, ok := me.([]interface{})
-	if !ok || len(meSlice) == 0 {
-		return fmt.Errorf("matchExpressions is not a valid slice")
-	}
-
-	expr, ok := meSlice[0].(map[string]interface{})
-	if !ok {
-		return fmt.Errorf("invalid matchExpression structure")
-	}
-
-	expr["values"] = values
-	return nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) newBatchPlacement(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, policyNamespace, placementName, desiredName string) *unstructured.Unstructured {
@@ -513,11 +377,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacement(clusterGroupUpgrade *r
 		},
 	}
 
-	u.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "Placement",
-		Version: "v1beta1",
-	})
+	u.SetGroupVersionKind(utils.PlacementGVK)
 
 	return u
 }
@@ -705,8 +565,8 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 		},
 		"placementRef": map[string]interface{}{
 			"name":     placementName,
-			"kind":     "Placement",
-			"apiGroup": "cluster.open-cluster-management.io",
+			"kind":     utils.PlacementGVK.Kind,
+			"apiGroup": utils.PlacementGVK.Group,
 		},
 		"subjects": subjects,
 	}
@@ -734,9 +594,9 @@ func (r *ClusterGroupUpgradeReconciler) getPlacements(ctx context.Context, clust
 	}
 	placementsList := &unstructured.UnstructuredList{}
 	placementsList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   "cluster.open-cluster-management.io",
-		Kind:    "PlacementList",
-		Version: "v1beta1",
+		Group:   utils.PlacementGVK.Group,
+		Kind:    utils.PlacementGVK.Kind + "List",
+		Version: utils.PlacementGVK.Version,
 	})
 	if err := r.List(ctx, placementsList, listOpts...); err != nil {
 		return nil, err
