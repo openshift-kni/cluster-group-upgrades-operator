@@ -55,10 +55,9 @@ spec:
                   values derived by TALM.
                 properties:
                   operatorsIndexes:
-                    description: 'Deprecated: this field is no longer used by the
-                      controller and will be removed in a future release. OLM index
-                      images are now derived automatically from policy-referenced
-                      CatalogSource objects.'
+                    description: |-
+                      Deprecated: OperatorsIndexes is no longer used by the controller and will be removed in a future release.
+                      OLM index images are now derived automatically from policy-referenced CatalogSource objects.
                     items:
                       type: string
                     type: array
@@ -69,16 +68,15 @@ spec:
                       type: string
                     type: array
                   platformImage:
-                    description: 'Deprecated: this field is no longer used by the
-                      controller and will be removed in a future release. The platform
-                      image is now always derived from the ClusterVersion object in
-                      the managed policies.'
+                    description: |-
+                      Deprecated: PlatformImage is no longer used by the controller and will be removed in a future release.
+                      The platform image is now always derived from the ClusterVersion object in the managed policies.
                     type: string
                   preCacheImage:
-                    description: 'Deprecated: this field is no longer used by the
-                      controller and will be removed in a future release. The pre-caching
-                      workload image is now always derived from the PRECACHE_IMG
-                      environment variable set via the operator CSV relatedImages.'
+                    description: |-
+                      Deprecated: PreCacheImage is no longer used by the controller and will be removed in a future release.
+                      The pre-caching workload image is now always derived from the PRECACHE_IMG environment variable
+                      set via the operator CSV relatedImages.
                     type: string
                 type: object
               spaceRequired:
