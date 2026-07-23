@@ -359,14 +359,17 @@ type ClusterGroupUpgradeList struct {
 
 // PlatformPreCachingSpec modify the default pre-caching behavior and values derived by TALM.
 type PlatformPreCachingSpec struct {
-	// Override the pre-cached OpenShift platform image derived by TALM
+	// Deprecated: PlatformImage is no longer used by the controller and will be removed in a future release.
+	// The platform image is now always derived from the ClusterVersion object in the managed policies.
 	PlatformImage string `json:"platformImage,omitempty"`
-	// Override the pre-cached OLM index images derived by TALM (list of image pull specs)
+	// Deprecated: OperatorsIndexes is no longer used by the controller and will be removed in a future release.
+	// OLM index images are now derived automatically from policy-referenced CatalogSource objects.
 	OperatorsIndexes []string `json:"operatorsIndexes,omitempty"`
 	// Override the pre-cached operator packages and channels derived by TALM (list of <package:channel> string entries)
 	OperatorsPackagesAndChannels []string `json:"operatorsPackagesAndChannels,omitempty"`
-	// Override the pre-caching workload image pull spec - typically derived by TALM from the operator
-	// ClusterServiceVersion (csv) object.
+	// Deprecated: PreCacheImage is no longer used by the controller and will be removed in a future release.
+	// The pre-caching workload image is now always derived from the PRECACHE_IMG environment variable
+	// set via the operator CSV relatedImages.
 	PreCacheImage string `json:"preCacheImage,omitempty"`
 }
 
