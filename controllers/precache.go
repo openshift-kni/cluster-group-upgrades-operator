@@ -233,19 +233,11 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheimagePullSpec(
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
 	string, error) {
 
-	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
-	if err != nil {
-		r.Log.Error(err, "getOverrides failed ")
-		return "", err
-	}
-	image := overrides["precache.image"]
+	image := os.Getenv("PRECACHE_IMG")
+	r.Log.Info("[getPrecacheimagePullSpec]", "workload image", image)
 	if image == "" {
-		image = os.Getenv("PRECACHE_IMG")
-		r.Log.Info("[getPrecacheimagePullSpec]", "workload image", image)
-		if image == "" {
-			return "", fmt.Errorf(
-				"can't find pre-caching image pull spec in environment or overrides")
-		}
+		return "", fmt.Errorf(
+			"PRECACHE_IMG environment variable is not set")
 	}
 	return image, nil
 }
@@ -292,29 +284,20 @@ func (r *ClusterGroupUpgradeReconciler) includeSoftwareSpecOverrides(
 		return *rv, err
 	}
 
-	platformImage := overrides["platform.image"]
-	operatorsIndexes := strings.Split(overrides["operators.indexes"], "\n")
+	// Platform image: always use TALM-derived value (ConfigMap overrides are deprecated)
+	rv.PlatformImage = spec.PlatformImage
+
+	// Operator indexes: always use TALM-derived value (ConfigMap overrides are deprecated)
+	rv.OperatorsIndexes = spec.OperatorsIndexes
+
+	// Operator packages and channels: ConfigMap override > TALM-derived
 	operatorsPackagesAndChannels := strings.Split(overrides["operators.packagesAndChannels"], "\n")
-	if platformImage == "" {
-		platformImage = spec.PlatformImage
-	}
-	rv.PlatformImage = platformImage
-
-	if overrides["operators.indexes"] == "" {
-		operatorsIndexes = spec.OperatorsIndexes
-	}
-
-	rv.OperatorsIndexes = operatorsIndexes
-
 	if overrides["operators.packagesAndChannels"] == "" {
 		operatorsPackagesAndChannels = spec.OperatorsPackagesAndChannels
 	}
 	rv.OperatorsPackagesAndChannels = operatorsPackagesAndChannels
 
-	if err != nil {
-		return *rv, err
-	}
-	return *rv, err
+	return *rv, nil
 }
 
 // checkPreCacheSpecConsistency checks software spec can be precached
