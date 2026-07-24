@@ -60,10 +60,8 @@ func (r *ClusterGroupUpgradeReconciler) mapPreCachingConfigSpecToPrecachingSpec(
 
 	precachingSpec := &ranv1alpha1.PrecachingSpec{}
 
-	// Extract overrides if defined
+	// Extract overrides if defined (only non-deprecated fields)
 	if !reflect.DeepEqual(preCachingConfigSpec.Overrides, ranv1alpha1.PlatformPreCachingSpec{}) {
-		precachingSpec.PlatformImage = preCachingConfigSpec.Overrides.PlatformImage
-		precachingSpec.OperatorsIndexes = preCachingConfigSpec.Overrides.OperatorsIndexes
 		precachingSpec.OperatorsPackagesAndChannels = preCachingConfigSpec.Overrides.OperatorsPackagesAndChannels
 	}
 
