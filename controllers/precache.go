@@ -256,35 +256,13 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 // returns: image - pull spec string
 //
 //	error
-func (r *ClusterGroupUpgradeReconciler) getPrecacheImagePullSpec(
-	ctx context.Context,
-	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (
-	string, error) {
+func (r *ClusterGroupUpgradeReconciler) getPrecacheImagePullSpec() (string, error) {
 
-	preCachingConfigSpec, err := r.getPreCachingConfigSpec(ctx, clusterGroupUpgrade)
-	if err != nil {
-		r.Log.Error(err, "getPreCachingConfigSpec failed ")
-		return "", err
-	}
-
-	preCacheImage := preCachingConfigSpec.Overrides.PreCacheImage
+	preCacheImage := os.Getenv("PRECACHE_IMG")
+	r.Log.Info("[getPrecacheImagePullSpec]", "workload image", preCacheImage)
 	if preCacheImage == "" {
-		overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
-		if err != nil {
-			r.Log.Error(err, "getOverrides failed ")
-			return "", err
-		}
-		preCacheImage = overrides["precache.image"]
-		if preCacheImage == "" {
-			preCacheImage = os.Getenv("PRECACHE_IMG")
-			r.Log.Info("[getPrecacheImagePullSpec]", "workload image", preCacheImage)
-			if preCacheImage == "" {
-				return "", fmt.Errorf(
-					"can't find pre-caching image pull spec in environment or overrides")
-			}
-		} else {
-			r.Log.Info(getDeprecationMessage("precache.image"))
-		}
+		return "", fmt.Errorf(
+			"PRECACHE_IMG environment variable is not set")
 	}
 	return preCacheImage, nil
 }
@@ -347,29 +325,14 @@ func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 		return *rv, err
 	}
 
-	// Support specifying overrides via ConfigMap (if PreCachingConfig fields are not specified)
 	overrides, err := r.getOverrides(ctx, clusterGroupUpgrade)
 	if err != nil {
 		return *rv, err
 	}
 
-	// Check the OpenShift platform image
-	platformImage := preCachingConfigSpec.Overrides.PlatformImage
-	if platformImage == "" {
-		overrideField := "platform.image"
-		platformImage = overrides[overrideField]
-		if platformImage == "" {
-			platformImage = spec.PlatformImage
-		} else {
-			r.Log.Info(getDeprecationMessage(overrideField))
-		}
-	}
-	rv.PlatformImage = platformImage
+	// Platform image: always use TALM-derived value (CR and ConfigMap overrides are deprecated)
+	rv.PlatformImage = spec.PlatformImage
 
-	// Define re-usable function to extract pre-caching config from the following sources (in order of precedence):
-	// 1) PreCachingConfig CR,
-	// 2) cluster-group-upgrade-overrides ConfigMap (log deprecation message if this source is used),
-	// 3) spec.<field> (value derived by TALM)
 	extractConfig := func(preCachingConfigCRValue []string, overrideField string, talmDerivedValue []string) []string {
 		if len(preCachingConfigCRValue) == 0 {
 			extractedOverrides := strings.Split(overrides[overrideField], "\n")
@@ -377,7 +340,6 @@ func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 				return talmDerivedValue
 			}
 			r.Log.Info(getDeprecationMessage(overrideField))
-			// Remove empty strings as a consequence of strings.Split
 			var filteredResult []string
 			for _, value := range extractedOverrides {
 				if value != "" {
@@ -389,22 +351,21 @@ func (r *ClusterGroupUpgradeReconciler) includePreCachingConfigs(
 		return preCachingConfigCRValue
 	}
 
-	// Extract the operator indexes
-	rv.OperatorsIndexes = extractConfig(preCachingConfigSpec.Overrides.OperatorsIndexes,
-		"operators.indexes", spec.OperatorsIndexes)
+	// Operator indexes: always use TALM-derived value (CR and ConfigMap overrides are deprecated)
+	rv.OperatorsIndexes = spec.OperatorsIndexes
 
-	// Extract the operator packages and channels
+	// Operator packages and channels: CR override > ConfigMap override > TALM-derived
 	rv.OperatorsPackagesAndChannels = extractConfig(preCachingConfigSpec.Overrides.OperatorsPackagesAndChannels,
 		"operators.packagesAndChannels", spec.OperatorsPackagesAndChannels)
 
-	// Extract the pre-cache exclusion patterns
+	// Exclude patterns: CR value > ConfigMap override > empty
 	rv.ExcludePrecachePatterns = extractConfig(preCachingConfigSpec.ExcludePrecachePatterns,
 		"excludePrecachePatterns", []string{})
 
-	// Retrieve additional user images
+	// Additional user images from the PreCachingConfig CR
 	rv.AdditionalImages = preCachingConfigSpec.AdditionalImages
 
-	// Extract the space required for pre-caching
+	// Space required: CR value > ConfigMap override > default
 	spaceRequired := preCachingConfigSpec.SpaceRequired
 	if spaceRequired == "" {
 		overrideField := "precache.spaceRequired"
