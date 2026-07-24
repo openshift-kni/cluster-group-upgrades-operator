@@ -55,8 +55,9 @@ spec:
                   values derived by TALM.
                 properties:
                   operatorsIndexes:
-                    description: Override the pre-cached OLM index images derived
-                      by TALM (list of image pull specs)
+                    description: |-
+                      Deprecated: OperatorsIndexes is no longer used by the controller and will be removed in a future release.
+                      OLM index images are now derived automatically from policy-referenced CatalogSource objects.
                     items:
                       type: string
                     type: array
@@ -67,13 +68,15 @@ spec:
                       type: string
                     type: array
                   platformImage:
-                    description: Override the pre-cached OpenShift platform image
-                      derived by TALM
+                    description: |-
+                      Deprecated: PlatformImage is no longer used by the controller and will be removed in a future release.
+                      The platform image is now always derived from the ClusterVersion object in the managed policies.
                     type: string
                   preCacheImage:
                     description: |-
-                      Override the pre-caching workload image pull spec - typically derived by TALM from the operator
-                      ClusterServiceVersion (csv) object.
+                      Deprecated: PreCacheImage is no longer used by the controller and will be removed in a future release.
+                      The pre-caching workload image is now always derived from the PRECACHE_IMG environment variable
+                      set via the operator CSV relatedImages.
                     type: string
                 type: object
               spaceRequired:
