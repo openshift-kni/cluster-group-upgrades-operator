@@ -119,7 +119,7 @@ func (r *ManagedClusterForCguReconciler) Reconcile(ctx context.Context, req ctrl
 		// cluster is ready
 		r.Log.Info("cluster is ready", "Name", managedCluster.Name)
 
-		// Child policies get created as soon as the placementrule/placementbinding
+		// Child policies get created as soon as the placement/placementbinding
 		// gets created and matches the parent policies to the managedcluster.
 		// It takes ~45 minutes for cluster to be installed and ready.
 		// At this stage, all child policies should be created.

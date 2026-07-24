@@ -39,7 +39,7 @@ status:
     policy5-subscriptions: default
   placementBindings:
   - cgu-policy5-subscriptions-placement-kuttl
-  placementRules:
+  placements:
   - cgu-policy5-subscriptions-placement-kuttl
   remediationPlan:
   - - spoke1
