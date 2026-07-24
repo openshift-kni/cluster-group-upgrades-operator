@@ -18,6 +18,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 
+	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -246,6 +247,16 @@ func (r *ClusterGroupUpgradeReconciler) deployDependencies(
 	if err != nil {
 		return false, err
 	}
+
+	spec.ResourceName = "precache-spec-cm-create"
+	cmAction := buildPrecacheSpecConfigMapAction(*spec)
+	if err := r.Create(ctx, cmAction); err != nil {
+		if !errors.IsAlreadyExists(err) {
+			return false, err
+		}
+		r.Log.Info("[deployDependencies] ConfigMap MCA already exists", "cluster", cluster)
+	}
+
 	spec.ViewUpdateIntervalSec = utils.GetMCVUpdateInterval(len(clusterGroupUpgrade.Status.Precaching.Status))
 	err = r.createResourcesFromTemplates(ctx, spec, precacheDependenciesViewTemplates)
 	if err != nil {
@@ -311,6 +322,46 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 	rv.AdditionalImages = spec.AdditionalImages
 	rv.SpaceRequired = spec.SpaceRequired
 	return rv
+}
+
+// buildPrecacheSpecConfigMapAction constructs the ManagedClusterAction for the
+// pre-cache-spec ConfigMap as a typed Go object instead of rendering a text template,
+// ensuring user-supplied strings are safely embedded as map values.
+func buildPrecacheSpecConfigMapAction(data templateData) *unstructured.Unstructured {
+	cmData := map[string]interface{}{
+		"operators.indexes":             strings.Join(data.Operators.Indexes, "\n"),
+		"operators.packagesAndChannels": strings.Join(data.Operators.PackagesAndChannels, "\n"),
+		"excludePrecachePatterns":       strings.Join(data.ExcludePrecachePatterns, "\n"),
+		"additionalImages":              strings.Join(data.AdditionalImages, "\n"),
+		"platform.image":                data.PlatformImage,
+		"spaceRequired":                 data.SpaceRequired,
+	}
+
+	return &unstructured.Unstructured{
+		Object: map[string]interface{}{
+			"apiVersion": "action.open-cluster-management.io/v1beta1",
+			"kind":       "ManagedClusterAction",
+			"metadata": map[string]interface{}{
+				"name":      data.ResourceName,
+				"namespace": data.Cluster,
+			},
+			"spec": map[string]interface{}{
+				"actionType": "Create",
+				"kube": map[string]interface{}{
+					"resource": "configmap",
+					"template": map[string]interface{}{
+						"apiVersion": "v1",
+						"kind":       "ConfigMap",
+						"metadata": map[string]interface{}{
+							"name":      "pre-cache-spec",
+							"namespace": "openshift-talo-pre-cache",
+						},
+						"data": cmData,
+					},
+				},
+			},
+		},
+	}
 }
 
 // includePreCachingConfigs retrieves the PreCachingConfigCR associated to the CGU

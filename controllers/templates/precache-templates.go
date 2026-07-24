@@ -40,33 +40,6 @@ spec:
           workload.openshift.io/allowed: management
 `
 
-// MngClusterActCreatePrecachingSpecCM creates precachingSpec configmap
-const MngClusterActCreatePrecachingSpecCM string = `
-{{ template "actionGVK"}}
-{{ template "metadata" . }}
-spec:
-  actionType: Create
-  kube:
-    resource: configmap
-    template:
-      apiVersion: v1
-      data:
-        operators.indexes: |{{ range .Operators.Indexes }}
-          {{ . }} {{ end }}
-        operators.packagesAndChannels: |{{ range .Operators.PackagesAndChannels }} 
-          {{ . }} {{ end }}
-        excludePrecachePatterns: |{{ range .ExcludePrecachePatterns }} 
-          {{ . }} {{ end }}
-        additionalImages: |{{ range .AdditionalImages }}
-          {{ . }} {{ end }}
-        platform.image: {{ .PlatformImage }}
-        spaceRequired: "{{ .SpaceRequired }}"
-      kind: ConfigMap
-      metadata:
-        name: pre-cache-spec
-        namespace: openshift-talo-pre-cache
-`
-
 // MngClusterActCreateServiceAcct creates serviceaccount
 const MngClusterActCreateServiceAcct string = `
 {{ template "actionGVK"}}
