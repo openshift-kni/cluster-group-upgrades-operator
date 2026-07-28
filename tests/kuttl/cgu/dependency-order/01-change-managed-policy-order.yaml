@@ -4,5 +4,5 @@ kind: TestStep
 commands:
   - command: >
       oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu 
-        --patch '{"spec":{"managedPolicies":["policy1-common-cluster-version-policy","policy0-common-config-policy"]}}' --type=merge
+        --patch '{"spec":{"managedPolicies":["policy1-deporder-cluster-version-policy","policy0-deporder-config-policy"]}}' --type=merge
 
