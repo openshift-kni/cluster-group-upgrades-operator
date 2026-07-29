@@ -64,7 +64,21 @@ metadata:
   namespace: default
 reason: CguCreated
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+note: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguCreated
+reportingController: ClusterGroupUpgrade
+action: BuildingRemediationPlan
 type: Normal

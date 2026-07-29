@@ -97,9 +97,6 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
@@ -117,9 +114,6 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
@@ -136,9 +130,6 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
@@ -154,7 +145,84 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInClusterCompleted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade finished
+  successfully'
+reason: CguSuccess
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke1
+reportingController: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInBatchCompleted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/event-type: batch
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: all clusters in the batch index
+  1 are compliant with managed policies'
+reason: CguSuccess
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+reportingController: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInBatchStarted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke4
+    cgu.openshift.io/event-type: batch
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: batch index 2 upgrade started'
+reason: CguStarted
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+reportingController: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInClusterStarted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke4 upgrade started'
+reason: CguStarted
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke4
+reportingController: ClusterGroupUpgrade
 type: Normal

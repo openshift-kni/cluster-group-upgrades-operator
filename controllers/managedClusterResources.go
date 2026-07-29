@@ -623,7 +623,6 @@ func (r *ClusterGroupUpgradeReconciler) checkDependencies(
 //
 //	error
 func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
-	ctx context.Context,
 	clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusterName string) (
 	*templateData, error) {
 
@@ -632,7 +631,7 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheJobTemplateData(
 	rv.Cluster = clusterName
 	rv.JobTimeout = uint64(
 		clusterGroupUpgrade.Spec.RemediationStrategy.Timeout) * 60
-	image, err := r.getPrecacheImagePullSpec(ctx, clusterGroupUpgrade)
+	image, err := r.getPrecacheImagePullSpec()
 	if err != nil {
 		return rv, err
 	}
@@ -674,7 +673,7 @@ func (r *ClusterGroupUpgradeReconciler) deployWorkload(
 	var err error
 	switch workloadType {
 	case precache:
-		spec, err = r.getPrecacheJobTemplateData(ctx, clusterGroupUpgrade, cluster)
+		spec, err = r.getPrecacheJobTemplateData(clusterGroupUpgrade, cluster)
 		if err != nil {
 			return err
 		}

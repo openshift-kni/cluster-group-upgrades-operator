@@ -83,7 +83,6 @@ metadata:
   name: spoke6
 ---
 apiVersion: v1
-count: 1
 involvedObject:
   apiVersion: ran.openshift.io/v1alpha1
   kind: ClusterGroupUpgrade
@@ -98,13 +97,9 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
-count: 1
 involvedObject:
   apiVersion: ran.openshift.io/v1alpha1
   kind: ClusterGroupUpgrade
@@ -120,13 +115,9 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
-count: 1
 involvedObject:
   apiVersion: ran.openshift.io/v1alpha1
   kind: ClusterGroupUpgrade
@@ -139,7 +130,64 @@ metadata:
   namespace: default
 reason: CguStarted
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+    cgu.openshift.io/total-batches-count: "2"
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: ClusterGroupUpgrade cgu-upgrade-complete started remediating policies
+reason: CguStarted
+reportingController: ClusterGroupUpgrade
+action: RemediationStarted
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/batch-clusters-count: "1"
+    cgu.openshift.io/event-type: batch
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: batch index 1 upgrade started'
+reason: CguStarted
+reportingController: ClusterGroupUpgrade
+action: RemediationInBatchStarted
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade started'
+reason: CguStarted
+reportingController: ClusterGroupUpgrade
+action: RemediationInClusterStarted
+type: Normal
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke1

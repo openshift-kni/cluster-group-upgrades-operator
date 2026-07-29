@@ -97,7 +97,26 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke1 upgrade finished
+  successfully'
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguSuccess
+reportingController: ClusterGroupUpgrade
+action: RemediationInClusterCompleted
+type: Normal
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke1

@@ -35,3 +35,7 @@ __debug_bin*
 # Python cache
 __pycache__/
 *.pyc
+
+# Claude
+/CLAUDE.md
+/.claude

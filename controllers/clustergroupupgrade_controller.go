@@ -33,7 +33,6 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/tools/record"
 	"k8s.io/client-go/util/retry"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -56,9 +55,9 @@ import (
 // ClusterGroupUpgradeReconciler reconciles a ClusterGroupUpgrade object
 type ClusterGroupUpgradeReconciler struct {
 	client.Client
-	Log      logr.Logger
-	Scheme   *runtime.Scheme
-	Recorder record.EventRecorder
+	Log          logr.Logger
+	Scheme       *runtime.Scheme
+	EventEmitter *Emitter
 }
 
 type policiesInfo struct {
@@ -115,11 +114,12 @@ func requeueWithError(err error) (ctrl.Result, error) {
 //+kubebuilder:rbac:groups=work.open-cluster-management.io,resources=manifestworks,verbs=create;update;delete;get;list;watch;patch;deletecollection
 //+kubebuilder:rbac:groups=work.open-cluster-management.io,resources=manifestworkreplicasets,verbs=get;list;watch
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
+//+kubebuilder:rbac:groups="events.k8s.io",resources=events,verbs=create
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=servicemonitors,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=monitoring.coreos.com,resources=prometheusrules,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=authentication.k8s.io,resources=tokenreviews,verbs=create
 //+kubebuilder:rbac:groups=authorization.k8s.io,resources=subjectaccessreviews,verbs=create
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=networkpolicies,verbs=*
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -160,7 +160,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	}
 	switch reconcileTime {
 	case utils.ReconcileNow:
-		r.sendEventCGUCreated(clusterGroupUpgrade)
+		r.sendEventCGUCreated(ctx, clusterGroupUpgrade)
 		nextReconcile = requeueImmediately()
 		return
 	case utils.StopReconciling:
@@ -181,9 +181,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 
 			if suceededCondition.Status == metav1.ConditionTrue {
-				r.sendEventCGUSuccess(clusterGroupUpgrade)
+				r.sendEventCGUSuccess(ctx, clusterGroupUpgrade)
 			} else {
-				r.sendEventCGUTimedout(clusterGroupUpgrade)
+				r.sendEventCGUTimedout(ctx, clusterGroupUpgrade)
 			}
 			// Set completion time only after post actions are executed with no errors
 			clusterGroupUpgrade.Status.Status.CompletedAt = metav1.Now()
@@ -204,7 +204,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			condMsg := fmt.Sprintf("Unable to select clusters: %s", err)
 			cond := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.ClustersSelected))
 			if cond == nil || cond.Message != condMsg {
-				r.sendEventCGUValidationFailureMissingClusters(clusterGroupUpgrade, missingClusters)
+				r.sendEventCGUValidationFailureMissingClusters(ctx, clusterGroupUpgrade, missingClusters)
 			}
 			utils.SetStatusCondition(
 				&clusterGroupUpgrade.Status.Conditions,
@@ -313,7 +313,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// Send the validation failure event only if this validation error is new.
 			cond := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.Validated))
 			if cond == nil || cond.Message != statusMessage {
-				r.sendEventCGUVPoliciesValidationFailure(clusterGroupUpgrade, validationFailureType, managedPoliciesInfo)
+				r.sendEventCGUVPoliciesValidationFailure(ctx, clusterGroupUpgrade, validationFailureType, managedPoliciesInfo)
 			}
 
 			// If there are errors regarding the managedPolicies, update the Status accordingly.
@@ -393,7 +393,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			return
 		}
 
-		r.sendEventCGUStarted(clusterGroupUpgrade)
+		r.sendEventCGUStarted(ctx, clusterGroupUpgrade)
 
 		if clusterGroupUpgrade.Status.Status.StartedAt.IsZero() {
 			clusterGroupUpgrade.Status.Status.StartedAt = metav1.Now()
@@ -577,7 +577,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			// Set the time for when the batch started updating.
 			clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt = metav1.Now()
 
-			r.sendEventCGUBatchUpgradeStarted(clusterGroupUpgrade)
+			r.sendEventCGUBatchUpgradeStarted(ctx, clusterGroupUpgrade)
 		}
 
 		// Check whether we have time left on the cgu timeout
@@ -803,7 +803,7 @@ func (r *ClusterGroupUpgradeReconciler) handleBatchTimeout(ctx context.Context,
 	}
 
 	if emitTimedoutEvt {
-		r.sendEventCGUBatchUpgradeTimedout(clusterGroupUpgrade)
+		r.sendEventCGUBatchUpgradeTimedout(ctx, clusterGroupUpgrade)
 	}
 
 	return nil
@@ -851,7 +851,7 @@ func (r *ClusterGroupUpgradeReconciler) updateCurrentBatchProgress(
 	}
 
 	if isBatchComplete {
-		r.sendEventCGUBatchUpgradeSuccess(clusterGroupUpgrade)
+		r.sendEventCGUBatchUpgradeSuccess(ctx, clusterGroupUpgrade)
 	}
 
 	r.Log.Info("[updateCurrentBatchProgress]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)
@@ -887,7 +887,7 @@ func (r *ClusterGroupUpgradeReconciler) updateClusterProgress(
 		**index = 0
 		*clusterProgressState = ranv1alpha1.InProgress
 
-		r.sendEventCGUClusterUpgradeStarted(clusterGroupUpgrade, clusterName)
+		r.sendEventCGUClusterUpgradeStarted(ctx, clusterGroupUpgrade, clusterName)
 	case ranv1alpha1.Completed:
 		return true, false, false, nil
 	}
@@ -903,7 +903,7 @@ func (r *ClusterGroupUpgradeReconciler) updateClusterProgress(
 		clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress[clusterName].ManifestWorkIndex = nil
 		*clusterProgressState = ranv1alpha1.Completed
 
-		r.sendEventCGUClusterUpgradeSuccess(clusterGroupUpgrade, clusterName)
+		r.sendEventCGUClusterUpgradeSuccess(ctx, clusterGroupUpgrade, clusterName)
 
 		err := r.takeActionsAfterCompletion(ctx, clusterGroupUpgrade, clusterName)
 		if err != nil {
@@ -1418,7 +1418,7 @@ func (r *ClusterGroupUpgradeReconciler) managedClusterResourceMapper(ctx context
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ClusterGroupUpgradeReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	r.Recorder = mgr.GetEventRecorderFor("ClusterGroupUpgrade") //nolint: staticcheck
+	r.EventEmitter = NewEmitter(mgr.GetClient(), mgr.GetScheme(), "ClusterGroupUpgrade")
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&ranv1alpha1.ClusterGroupUpgrade{}, builder.WithPredicates(predicate.Funcs{

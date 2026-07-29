@@ -77,9 +77,6 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
@@ -99,9 +96,6 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
 type: Normal
 ---
 apiVersion: v1
@@ -118,7 +112,65 @@ metadata:
   namespace: default
 reason: CguSuccess
 reportingComponent: ClusterGroupUpgrade
-reportingInstance: ""
-source:
-  component: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: cluster spoke4 upgrade finished
+  successfully'
+reason: CguSuccess
+reportingController: ClusterGroupUpgrade
+action: RemediationInClusterCompleted
+type: Normal
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke4
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke4
+    cgu.openshift.io/batch-clusters-count: "1"
+    cgu.openshift.io/event-type: batch
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-upgrade-complete: all clusters in the batch index
+  2 are compliant with managed policies'
+reason: CguSuccess
+reportingController: ClusterGroupUpgrade
+action: RemediationInBatchCompleted
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: ClusterGroupUpgrade cgu-upgrade-complete succeeded remediating policies
+reason: CguSuccess
+reportingController: ClusterGroupUpgrade
+action: RemediationCompleted
 type: Normal

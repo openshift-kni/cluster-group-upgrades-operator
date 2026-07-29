@@ -95,6 +95,12 @@ rules:
   - list
   - watch
 - apiGroups:
+  - events.k8s.io
+  resources:
+  - events
+  verbs:
+  - create
+- apiGroups:
   - lcm.openshift.io
   resources:
   - imagebasedgroupupgrades
@@ -133,6 +139,12 @@ rules:
   - patch
   - update
   - watch
+- apiGroups:
+  - networking.k8s.io
+  resources:
+  - networkpolicies
+  verbs:
+  - '*'
 - apiGroups:
   - policy.open-cluster-management.io
   resources:
