@@ -75,6 +75,13 @@ const (
 	PolicyTypeCatalogSource = "CatalogSource"
 )
 
+// PlacementGVK is the GroupVersionKind for the Placement API
+var PlacementGVK = schema.GroupVersionKind{
+	Group:   "cluster.open-cluster-management.io",
+	Kind:    "Placement",
+	Version: "v1beta1",
+}
+
 // SubscriptionGroupVersionKind for monitoring and other type specific logic
 func SubscriptionGroupVersionKind() schema.GroupVersionKind {
 	return schema.GroupVersionKind{Kind: "Subscription", Group: "operators.coreos.com"}

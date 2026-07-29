@@ -45,7 +45,7 @@ status:
   placementBindings:
   - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
   - cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   remediationPlan:

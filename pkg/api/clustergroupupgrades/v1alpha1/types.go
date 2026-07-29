@@ -134,9 +134,8 @@ type ClusterGroupUpgradeSpec struct {
 	// pre-caching configurations.
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PreCachingConfigRef",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	PreCachingConfigRef PreCachingConfigCR `json:"preCachingConfigRef,omitempty"`
-	// This field determines when the upgrade starts. While false, the upgrade doesn't start. The policies,
-	// placement rules and placement bindings are created, but clusters are not added to the placement rule.
-	// Once set to true, the clusters start being upgraded, one batch at a time.
+	// This field determines when the CGU starts. While false, the CGU doesn't start.
+	// Once set to true, policy rollout starts on the clusters, one batch at a time.
 	//+kubebuilder:default=true
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Enable",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
 	Enable *bool `json:"enable,omitempty"`
@@ -301,8 +300,8 @@ type ClusterGroupUpgradeStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placement Bindings"
 	PlacementBindings []string `json:"placementBindings,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placement Rules"
-	PlacementRules []string `json:"placementRules,omitempty"`
+	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Placements"
+	Placements []string `json:"placements,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Copied Policies"
 	// Deprecated
 	CopiedPolicies []string `json:"copiedPolicies,omitempty"`
