@@ -6,14 +6,14 @@ metadata:
     policy.open-cluster-management.io/controls: CM-2 Baseline Configuration
     policy.open-cluster-management.io/standards: NIST SP 800-53
   labels:
-    policy.open-cluster-management.io/root-policy: policy1-common-cluster-version-policy
-  name: default.policy0-common-config-policy
+    policy.open-cluster-management.io/root-policy: policy1-deporder-cluster-version-policy
+  name: default.policy0-deporder-config-policy
 # namespace: common-policies
 spec:
   dependencies: 
   - apiVersion: policy.open-cluster-management.io/v1
     kind: Policy
-    name: policy1-common-cluster-version-policy
+    name: policy1-deporder-cluster-version-policy
     namespace: default
     compliance: Compliant
   disabled: false
