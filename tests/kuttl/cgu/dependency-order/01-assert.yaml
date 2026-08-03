@@ -8,8 +8,8 @@ spec:
   - spoke1
   enable: false
   managedPolicies:
-  - policy1-common-cluster-version-policy
-  - policy0-common-config-policy
+  - policy1-deporder-cluster-version-policy
+  - policy0-deporder-config-policy
   remediationStrategy:
     maxConcurrency: 4
     timeout: 240

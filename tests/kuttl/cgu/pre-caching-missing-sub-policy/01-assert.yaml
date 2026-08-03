@@ -58,7 +58,7 @@ status:
   - cgu-policy0-common-config-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl
-  placementRules:
+  placements:
   - cgu-policy0-common-config-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl

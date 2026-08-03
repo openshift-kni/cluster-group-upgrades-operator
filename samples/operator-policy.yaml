@@ -67,22 +67,27 @@ status:
       clusternamespace: cnfdf22
       compliant: Compliant
 ---
-apiVersion: apps.open-cluster-management.io/v1
-kind: PlacementRule
+apiVersion: cluster.open-cluster-management.io/v1beta1
+kind: Placement
 metadata:
-  name: common-cnfdf22-placementrules
+  name: common-cnfdf22-placements
   namespace: ztp-common-cnfdf22
 spec:
-  clusterSelector:
-    matchExpressions:
-      - key: common-cnfdf22
-        operator: In
-        values:
+  clusterSets:
+  - default
+  predicates:
+  - requiredClusterSelector:
+      labelSelector:
+        matchExpressions:
+        - key: common-cnfdf22
+          operator: In
+          values:
           - "true"
-status:
-  decisions:
-    - clusterName: cnfdf22
-      clusterNamespace: cnfdf22
+  tolerations:
+  - key: cluster.open-cluster-management.io/unavailable
+    operator: Exists
+  - key: cluster.open-cluster-management.io/unreachable
+    operator: Exists
 ---
 apiVersion: policy.open-cluster-management.io/v1
 kind: PlacementBinding
@@ -90,9 +95,9 @@ metadata:
   name: common-cnfdf22-placementbinding
   namespace: ztp-common-cnfdf22
 placementRef:
-  name: common-cnfdf22-placementrules
-  apiGroup: apps.open-cluster-management.io
-  kind: PlacementRule
+  name: common-cnfdf22-placements
+  apiGroup: cluster.open-cluster-management.io
+  kind: Placement
 subjects:
   - name: common-cnfdf22-subscriptions-policy
     apiGroup: policy.open-cluster-management.io
