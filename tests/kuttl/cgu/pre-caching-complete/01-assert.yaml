@@ -153,12 +153,15 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11\
-          \ \n"
-        operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9\
-          \  \nperformance-addon-operator:4.9 \n"
-        platform.image: null
-        spaceRequired: '35'
+        additionalImages: ""
+        excludePrecachePatterns: ""
+        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |-
+          ptp-operator:4.9
+          sriov-network-operator:4.9
+          performance-addon-operator:4.9
+        platform.image: ""
+        spaceRequired: "35"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -234,12 +237,15 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11\
-          \ \n"
-        operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9\
-          \  \nperformance-addon-operator:4.9 \n"
-        platform.image: null
-        spaceRequired: '35'
+        additionalImages: ""
+        excludePrecachePatterns: ""
+        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |-
+          ptp-operator:4.9
+          sriov-network-operator:4.9
+          performance-addon-operator:4.9
+        platform.image: ""
+        spaceRequired: "35"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -315,12 +321,15 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11\
-          \ \n"
-        operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9\
-          \  \nperformance-addon-operator:4.9 \n"
-        platform.image: null
-        spaceRequired: '35'
+        additionalImages: ""
+        excludePrecachePatterns: ""
+        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |-
+          ptp-operator:4.9
+          sriov-network-operator:4.9
+          performance-addon-operator:4.9
+        platform.image: ""
+        spaceRequired: "35"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
@@ -396,12 +405,15 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: "e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11\
-          \ \n"
-        operators.packagesAndChannels: "ptp-operator:4.9  \nsriov-network-operator:4.9\
-          \  \nperformance-addon-operator:4.9 \n"
-        platform.image: null
-        spaceRequired: '35'
+        additionalImages: ""
+        excludePrecachePatterns: ""
+        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |-
+          ptp-operator:4.9
+          sriov-network-operator:4.9
+          performance-addon-operator:4.9
+        platform.image: ""
+        spaceRequired: "35"
       kind: ConfigMap
       metadata:
         name: pre-cache-spec
