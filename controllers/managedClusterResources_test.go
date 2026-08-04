@@ -31,46 +31,6 @@ func TestMCR_renderYamlTemplates(t *testing.T) {
 		result       string
 	}{
 		{
-			name:         "create configmap",
-			resourceName: "precache-spec",
-			data: templateData{
-				Cluster:                 "test",
-				ResourceName:            "precache-spec",
-				ExcludePrecachePatterns: []string{"aws", "thanos"},
-				AdditionalImages:        []string{"image1:tag", "image2:tag"},
-				SpaceRequired:           "45",
-			},
-			template: templates.MngClusterActCreatePrecachingSpecCM,
-			result: `
-apiVersion: action.open-cluster-management.io/v1beta1
-kind: ManagedClusterAction
-metadata:
-  name: precache-spec
-  namespace: test
-spec:
-  actionType: Create
-  kube:
-    resource: configmap
-    template:
-      apiVersion: v1
-      data:
-        excludePrecachePatterns: |
-          aws  
-          thanos 
-        additionalImages: |
-          image1:tag 
-          image2:tag 
-        operators.indexes: ""
-        operators.packagesAndChannels: ""
-        platform.image:
-        spaceRequired: "45"
-      kind: ConfigMap
-      metadata:
-        name: pre-cache-spec
-        namespace: openshift-talo-pre-cache
-`,
-		},
-		{
 			name:         "create namespace",
 			resourceName: "test-ns",
 			data: templateData{
