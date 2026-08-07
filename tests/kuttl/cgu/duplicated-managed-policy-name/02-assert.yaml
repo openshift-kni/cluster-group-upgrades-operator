@@ -55,14 +55,14 @@ status:
     policy4-common-sriov-sub-policy: default
   placementBindings:
   - cgu-policy1-common-cluster-version-policy-placement-kuttl
-  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   - cgu-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   placements:
   - cgu-policy1-common-cluster-version-policy-placement-kuttl
-  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   - cgu-policy2-common-pao-sub-policy-placement-kuttl
   - cgu-policy3-common-ptp-sub-policy-placement-kuttl
+  - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   remediationPlan:
   - - spoke1
     - spoke2

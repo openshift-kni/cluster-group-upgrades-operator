@@ -635,6 +635,29 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 					return
 				}
 
+				if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
+					placementMsg, placementErr := r.checkPlacementsSatisfied(ctx, clusterGroupUpgrade)
+					if placementErr != nil {
+						r.Log.Info("[checkPlacementsSatisfied] Error checking placements", "error", placementErr)
+					} else if placementMsg != "" {
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.Progressing,
+							utils.ConditionReasons.WaitingForPlacement,
+							metav1.ConditionTrue,
+							placementMsg,
+						)
+					} else if progressingCondition.Reason == string(utils.ConditionReasons.WaitingForPlacement) {
+						utils.SetStatusCondition(
+							&clusterGroupUpgrade.Status.Conditions,
+							utils.ConditionTypes.Progressing,
+							utils.ConditionReasons.InProgress,
+							metav1.ConditionTrue,
+							utils.InProgressMessages[clusterGroupUpgrade.RolloutType()],
+						)
+					}
+				}
+
 				// Check if this batch has timed out
 				if !clusterGroupUpgrade.Status.Status.CurrentBatchStartedAt.IsZero() {
 
