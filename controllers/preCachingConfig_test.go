@@ -13,9 +13,6 @@ import (
 )
 
 func TestPreCachingConfig_getPreCachingConfigSpec(t *testing.T) {
-	preCacheImage := "precache-workload-override:v:0.0"
-	platformImage := "test-platform-image:test-tag"
-	operatorsIndexes := []string{"registry.example.com:5000/test-index:v0.0"}
 	operatorsPackagesAndChannels := []string{
 		"local-storage-operator: stable",
 		"performance-addon-operator: 4.9",
@@ -37,10 +34,7 @@ func TestPreCachingConfig_getPreCachingConfigSpec(t *testing.T) {
 			cguConfigNamespace: "test",
 			inputPreCachingConfigSpec: ranv1alpha1.PreCachingConfigSpec{
 				Overrides: ranv1alpha1.PlatformPreCachingSpec{
-					PlatformImage:                platformImage,
-					OperatorsIndexes:             operatorsIndexes,
 					OperatorsPackagesAndChannels: operatorsPackagesAndChannels,
-					PreCacheImage:                preCacheImage,
 				},
 				SpaceRequired:           "15 GiB",
 				AdditionalImages:        []string{"image1:tag", "image2:tag"},
@@ -48,10 +42,7 @@ func TestPreCachingConfig_getPreCachingConfigSpec(t *testing.T) {
 			},
 			expectedPreCachingConfigSpec: ranv1alpha1.PreCachingConfigSpec{
 				Overrides: ranv1alpha1.PlatformPreCachingSpec{
-					PlatformImage:                platformImage,
-					OperatorsIndexes:             operatorsIndexes,
 					OperatorsPackagesAndChannels: operatorsPackagesAndChannels,
-					PreCacheImage:                preCacheImage,
 				},
 				SpaceRequired:           "15 GiB",
 				AdditionalImages:        []string{"image1:tag", "image2:tag"},
@@ -66,8 +57,6 @@ func TestPreCachingConfig_getPreCachingConfigSpec(t *testing.T) {
 			cguConfigNamespace: "test",
 			inputPreCachingConfigSpec: ranv1alpha1.PreCachingConfigSpec{
 				Overrides: ranv1alpha1.PlatformPreCachingSpec{
-					PlatformImage:                platformImage,
-					OperatorsIndexes:             operatorsIndexes,
 					OperatorsPackagesAndChannels: operatorsPackagesAndChannels,
 				},
 				SpaceRequired:           "15 GiB",
@@ -145,8 +134,8 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 				ExcludePrecachePatterns: []string{"aws", "azure"},
 			},
 			expectedPrecachingSpec: &ranv1alpha1.PrecachingSpec{
-				PlatformImage:    "test-platform-image:test-tag",
-				OperatorsIndexes: []string{"registry.example.com:5000/test-index:v0.0"},
+				PlatformImage:    "",
+				OperatorsIndexes: []string(nil),
 				OperatorsPackagesAndChannels: []string{
 					"local-storage-operator: stable",
 					"performance-addon-operator: 4.9",
@@ -171,8 +160,8 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 				},
 			},
 			expectedPrecachingSpec: &ranv1alpha1.PrecachingSpec{
-				PlatformImage:    "test-platform-image:test-tag",
-				OperatorsIndexes: []string{"registry.example.com:5000/test-index:v0.0"},
+				PlatformImage:    "",
+				OperatorsIndexes: []string(nil),
 				OperatorsPackagesAndChannels: []string{
 					"local-storage-operator: stable",
 					"performance-addon-operator: 4.9",

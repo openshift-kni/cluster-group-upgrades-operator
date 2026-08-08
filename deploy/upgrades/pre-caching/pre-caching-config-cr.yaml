@@ -6,9 +6,7 @@ metadata:
   annotations:
     cluster-group-upgrades-operator/name-suffix: kuttl      
 spec:
-  overrides:
-    preCacheImage: quay.io/test_images/pre-cache:latest
-    platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+  overrides: {}
   additionalImages:
     - image1:latest
     - image2:latest
