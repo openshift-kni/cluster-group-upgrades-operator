@@ -5,6 +5,8 @@ commands:
   # Create all the managed inform policies
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy0-common-config-policy.yaml
     namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+    namespaced: true
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
     namespaced: true
   - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy3-common-ptp-sub-policy.yaml
@@ -16,12 +18,29 @@ commands:
   - command: ../../../../deploy/upgrades/pre-caching/patch-policies-status.sh default default default default
     ignoreFailure: false
 
+  # Patch policy1 (ClusterVersion) as Compliant for all spokes
+  - command: >
+      curl -k -s -X PATCH -H "Accept: application/json, */*"
+      -H "Content-Type: application/merge-patch+json"
+      http://localhost:8001/apis/policy.open-cluster-management.io/v1/namespaces/default/policies/policy1-common-cluster-version-policy/status
+      --data '{"status":{"compliant":"Compliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"Compliant"},{"clustername":"spoke2","clusternamespace":"spoke2","compliant":"Compliant"},{"clustername":"spoke5","clusternamespace":"spoke5","compliant":"Compliant"},{"clustername":"spoke6","clusternamespace":"spoke6","compliant":"Compliant"}]}}'
+    ignoreFailure: false
+
   # Create all the child policies to map the inform policies above.
   - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true
   - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
     namespaced: true
   - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy0-common-config-policy.yaml
+    namespaced: true
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke5 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
     namespaced: true
 
   - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
