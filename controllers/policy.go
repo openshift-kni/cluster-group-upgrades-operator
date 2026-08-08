@@ -15,6 +15,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/util/workqueue"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -57,8 +58,7 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacements(ctx context.Context, cl
 func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 	ctx context.Context, clusterNames []string, placementName, placementNamespace string) error {
 
-	placement := &unstructured.Unstructured{}
-	placement.SetGroupVersionKind(utils.PlacementGVK)
+	placement := &clusterv1beta1.Placement{}
 	err := r.Get(ctx, client.ObjectKey{
 		Name:      placementName,
 		Namespace: placementNamespace,
@@ -68,19 +68,13 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 		return err
 	}
 
-	// Get existing cluster names from the Placement
-	existingNames, err := utils.GetPlacementClusterNames(placement)
-	if err != nil {
-		return err
-	}
+	existingNames := utils.GetPlacementClusterNames(placement)
 
-	// Build a set of existing names for deduplication
 	existingSet := make(map[string]bool)
 	for _, name := range existingNames {
 		existingSet[name] = true
 	}
 
-	// Add new cluster names that aren't already present
 	updatedNames := existingNames
 	for _, clusterName := range clusterNames {
 		if !existingSet[clusterName] {
@@ -88,18 +82,9 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 		}
 	}
 
-	// Update the Placement with the new cluster list
-	err = utils.SetPlacementClusterNames(placement, updatedNames)
-	if err != nil {
-		return err
-	}
+	utils.SetPlacementClusterNames(placement, updatedNames)
 
-	err = r.Update(ctx, placement)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return r.Update(ctx, placement)
 }
 
 func (r *ClusterGroupUpgradeReconciler) cleanupPlacements(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
@@ -117,17 +102,12 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacements(ctx context.Context, c
 			return err
 		}
 
-		for _, placement := range placements.Items {
-			// Reset cluster values to empty list
-			err = utils.SetPlacementClusterNames(&placement, nil)
-			if err != nil {
-				errorMap[placement.GetName()] = err.Error()
-				continue
-			}
+		for i := range placements.Items {
+			utils.SetPlacementClusterNames(&placements.Items[i], nil)
 
-			err = r.Update(ctx, &placement)
+			err = r.Update(ctx, &placements.Items[i])
 			if err != nil {
-				errorMap[placement.GetName()] = err.Error()
+				errorMap[placements.Items[i].Name] = err.Error()
 			}
 		}
 	}
@@ -304,9 +284,7 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacement(ctx context.Context
 	safeName := utils.GetSafeResourceName(name, managedPolicy.GetNamespace(), clusterGroupUpgrade, utils.MaxObjectNameLength)
 	placement := r.newBatchPlacement(clusterGroupUpgrade, managedPolicy.GetName(), managedPolicy.GetNamespace(), safeName, name)
 
-	foundPlacement := &unstructured.Unstructured{}
-	foundPlacement.SetGroupVersionKind(utils.PlacementGVK)
-
+	foundPlacement := &clusterv1beta1.Placement{}
 	err := r.Get(ctx, client.ObjectKey{
 		Name:      safeName,
 		Namespace: managedPolicy.GetNamespace(),
@@ -331,55 +309,50 @@ func (r *ClusterGroupUpgradeReconciler) ensureBatchPlacement(ctx context.Context
 	return safeName, nil
 }
 
-func (r *ClusterGroupUpgradeReconciler) newBatchPlacement(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, policyNamespace, placementName, desiredName string) *unstructured.Unstructured {
-	u := &unstructured.Unstructured{}
-	u.Object = map[string]interface{}{
-		"metadata": map[string]interface{}{
-			"name":      placementName,
-			"namespace": policyNamespace,
-			"labels": map[string]interface{}{
+func (r *ClusterGroupUpgradeReconciler) newBatchPlacement(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName, policyNamespace, placementName, desiredName string) *clusterv1beta1.Placement {
+	return &clusterv1beta1.Placement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      placementName,
+			Namespace: policyNamespace,
+			Labels: map[string]string{
 				"app": "openshift-cluster-group-upgrades",
 				"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
 				"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
 				"openshift-cluster-group-upgrades/forPolicy":                    policyName,
 				utils.ExcludeFromClusterBackup:                                  "true",
 			},
-			"annotations": map[string]interface{}{
+			Annotations: map[string]string{
 				utils.DesiredResourceName: utils.PrefixNameWithNamespace(policyNamespace, desiredName),
 			},
 		},
-		"spec": map[string]interface{}{
-			"predicates": []interface{}{
-				map[string]interface{}{
-					"requiredClusterSelector": map[string]interface{}{
-						"labelSelector": map[string]interface{}{
-							"matchExpressions": []interface{}{
-								map[string]interface{}{
-									"key":      "name",
-									"operator": "In",
-									"values":   []interface{}{},
+		Spec: clusterv1beta1.PlacementSpec{
+			Predicates: []clusterv1beta1.ClusterPredicate{
+				{
+					RequiredClusterSelector: clusterv1beta1.ClusterSelector{
+						LabelSelector: metav1.LabelSelector{
+							MatchExpressions: []metav1.LabelSelectorRequirement{
+								{
+									Key:      "name",
+									Operator: metav1.LabelSelectorOpIn,
+									Values:   []string{},
 								},
 							},
 						},
 					},
 				},
 			},
-			"tolerations": []interface{}{
-				map[string]interface{}{
-					"key":      "cluster.open-cluster-management.io/unavailable",
-					"operator": "Exists",
+			Tolerations: []clusterv1beta1.Toleration{
+				{
+					Key:      "cluster.open-cluster-management.io/unavailable",
+					Operator: clusterv1beta1.TolerationOpExists,
 				},
-				map[string]interface{}{
-					"key":      "cluster.open-cluster-management.io/unreachable",
-					"operator": "Exists",
+				{
+					Key:      "cluster.open-cluster-management.io/unreachable",
+					Operator: clusterv1beta1.TolerationOpExists,
 				},
 			},
 		},
 	}
-
-	u.SetGroupVersionKind(utils.PlacementGVK)
-
-	return u
 }
 
 // PolicyEvaluationDeps provides dependency injection for policy evaluation functions
@@ -565,8 +538,8 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 		},
 		"placementRef": map[string]interface{}{
 			"name":     placementName,
-			"kind":     utils.PlacementGVK.Kind,
-			"apiGroup": utils.PlacementGVK.Group,
+			"kind":     "Placement",
+			"apiGroup": clusterv1beta1.GroupVersion.Group,
 		},
 		"subjects": subjects,
 	}
@@ -579,7 +552,7 @@ func (r *ClusterGroupUpgradeReconciler) newBatchPlacementBinding(clusterGroupUpg
 	return u
 }
 
-func (r *ClusterGroupUpgradeReconciler) getPlacements(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string, policyNamespace string) (*unstructured.UnstructuredList, error) {
+func (r *ClusterGroupUpgradeReconciler) getPlacements(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyName *string, policyNamespace string) (*clusterv1beta1.PlacementList, error) {
 	var placementLabels = map[string]string{
 		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          clusterGroupUpgrade.Name,
 		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": clusterGroupUpgrade.Namespace,
@@ -592,17 +565,42 @@ func (r *ClusterGroupUpgradeReconciler) getPlacements(ctx context.Context, clust
 		client.InNamespace(policyNamespace),
 		client.MatchingLabels(placementLabels),
 	}
-	placementsList := &unstructured.UnstructuredList{}
-	placementsList.SetGroupVersionKind(schema.GroupVersionKind{
-		Group:   utils.PlacementGVK.Group,
-		Kind:    utils.PlacementGVK.Kind + "List",
-		Version: utils.PlacementGVK.Version,
-	})
+	placementsList := &clusterv1beta1.PlacementList{}
 	if err := r.List(ctx, placementsList, listOpts...); err != nil {
 		return nil, err
 	}
 
 	return placementsList, nil
+}
+
+// checkPlacementsSatisfied checks whether any CGU-owned Placement is blocked due to missing ManagedClusterSetBindings.
+// Returns a non-empty message describing the issue if any placement is unsatisfied, or empty string if all are fine.
+func (r *ClusterGroupUpgradeReconciler) checkPlacementsSatisfied(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) (string, error) {
+	var targetNamespaces []string
+	for _, policy := range clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade {
+		if _, ok := utils.FindStringInSlice(targetNamespaces, policy.Namespace); !ok {
+			targetNamespaces = append(targetNamespaces, policy.Namespace)
+		}
+	}
+
+	for _, ns := range targetNamespaces {
+		placements, err := r.getPlacements(ctx, clusterGroupUpgrade, nil, ns)
+		if err != nil {
+			return "", err
+		}
+
+		for _, placement := range placements.Items {
+			for _, cond := range placement.Status.Conditions {
+				if cond.Type == clusterv1beta1.PlacementConditionSatisfied && cond.Status == metav1.ConditionFalse && cond.Reason == "NoManagedClusterSetBindings" {
+					return fmt.Sprintf(
+						"Placement %q in namespace %q cannot select clusters: %s. "+
+							"Create a ManagedClusterSetBinding for the \"default\" ManagedClusterSet in the policy namespace.",
+						placement.GetName(), ns, cond.Message), nil
+				}
+			}
+		}
+	}
+	return "", nil
 }
 
 func (r *ClusterGroupUpgradeReconciler) getPlacementBindings(ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, policyNamespace string) (*unstructured.UnstructuredList, error) {
@@ -787,15 +785,11 @@ adding the names to them. If duplicate (with same desired name annotation value)
 
 	returns: the updated childResourceNameList
 */
-func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource *unstructured.Unstructured) ([]string, error) {
+func (r *ClusterGroupUpgradeReconciler) checkDuplicateChildResources(ctx context.Context, safeNameMap map[string]string, childResourceNames []string, newResource client.Object) ([]string, error) {
 	if desiredName, ok := newResource.GetAnnotations()[utils.DesiredResourceName]; ok {
 		if safeName, ok := safeNameMap[desiredName]; ok {
 			if newResource.GetName() != safeName {
-				// Found an object with the same object name in annotation but different from our records in the names map
-				// This could happen when reconcile calls work on a stale version of CGU right after a status update from a previous reconcile
-				// Or the controller pod fails to update the status after creating objects, e.g. node failure
-				// Remove it as we have created a new one and updated the map
-				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetKind())
+				r.Log.Info("[checkDuplicateChildResources] clean up stale child resource", "name", newResource.GetName(), "kind", newResource.GetObjectKind().GroupVersionKind().Kind)
 				err := r.Delete(ctx, newResource)
 				if !errors.IsNotFound(err) {
 					return childResourceNames, err
@@ -832,6 +826,7 @@ func (r *ClusterGroupUpgradeReconciler) updateChildResourceNamesInStatus(ctx con
 				return err
 			}
 		}
+		sort.Strings(placementNames)
 		clusterGroupUpgrade.Status.Placements = placementNames
 
 		placementBindings, err := r.getPlacementBindings(ctx, clusterGroupUpgrade, ns)
@@ -845,6 +840,7 @@ func (r *ClusterGroupUpgradeReconciler) updateChildResourceNamesInStatus(ctx con
 				return err
 			}
 		}
+		sort.Strings(placementBindingNames)
 		clusterGroupUpgrade.Status.PlacementBindings = placementBindingNames
 	}
 
