@@ -10,7 +10,7 @@ fatal() {
 for f in common olm release pull; do
     echo "Testing import of $f"
     # shellcheck disable=1090,2154
-    . $cwd/$f
+    . "$cwd/$f"
     rc=$?
     [[ $rc -eq 0 ]] || fatal "Could not import $f"
     echo "Ok"
@@ -36,7 +36,7 @@ cat <<EOF > /tmp/release-manifests/image-references
 EOF
 
 # shellcheck disable=SC2154
-(rm $pull_spec_file || true) &> /dev/null
+(rm "$pull_spec_file" || true) &> /dev/null
 
 # shellcheck disable=SC2034
 container_tool=/usr/bin/echo
@@ -47,9 +47,9 @@ config_volume_path=/tmp
 echo "Testing common functions:"
 
 # shellcheck disable=SC2154
-result=$(pull_index "temp" $pull_secret_path)
+result=$(pull_index "temp" "$pull_secret_path")
 [[ $? -eq 0 ]] || fatal "pull_index unexpected exit code"
-[[ $result == "pull --quiet temp --authfile=$pull_secret_path" ]] || fatal "Index pull failure"
+[[ $result == "pull --quiet --authfile=$pull_secret_path -- temp" ]] || fatal "Index pull failure"
 echo " Index pull pass"
 
 result=$(mount_index test)
@@ -72,8 +72,8 @@ echo " extract_packages - pass"
 echo "Testing release unit:"
 result=$(extract_pull_spec "/tmp")
 [[ $? -eq 0 ]] || fatal "release_image extract unexpected exit code"
-[[ $(cat $pull_spec_file) == "\"test\"" ]] || fatal "release pull spec extract failure"
+[[ $(cat "$pull_spec_file") == "\"test\"" ]] || fatal "release pull spec extract failure"
 echo " release extract_pull_spec pass"
 
 # Clean
-rm -rf /tmp/operators.indexes /tmp/release-manifests $pull_spec_file /tmp/operators.packagesAndChannels
+rm -rf /tmp/operators.indexes /tmp/release-manifests "$pull_spec_file" /tmp/operators.packagesAndChannels
