@@ -68,7 +68,10 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 		return err
 	}
 
-	existingNames := utils.GetPlacementClusterNames(placement)
+	existingNames, err := utils.GetPlacementClusterNames(placement)
+	if err != nil {
+		return err
+	}
 
 	existingSet := make(map[string]bool)
 	for _, name := range existingNames {
@@ -82,7 +85,9 @@ func (r *ClusterGroupUpgradeReconciler) updatePlacementWithClusters(
 		}
 	}
 
-	utils.SetPlacementClusterNames(placement, updatedNames)
+	if err := utils.SetPlacementClusterNames(placement, updatedNames); err != nil {
+		return err
+	}
 
 	return r.Update(ctx, placement)
 }
@@ -103,7 +108,10 @@ func (r *ClusterGroupUpgradeReconciler) cleanupPlacements(ctx context.Context, c
 		}
 
 		for i := range placements.Items {
-			utils.SetPlacementClusterNames(&placements.Items[i], nil)
+			if err := utils.SetPlacementClusterNames(&placements.Items[i], nil); err != nil {
+				errorMap[placements.Items[i].Name] = err.Error()
+				continue
+			}
 
 			err = r.Update(ctx, &placements.Items[i])
 			if err != nil {
@@ -586,12 +594,12 @@ func (r *ClusterGroupUpgradeReconciler) checkPlacementsSatisfied(ctx context.Con
 	for _, ns := range targetNamespaces {
 		placements, err := r.getPlacements(ctx, clusterGroupUpgrade, nil, ns)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("failed to list placements in namespace %s: %w", ns, err)
 		}
 
 		for _, placement := range placements.Items {
 			for _, cond := range placement.Status.Conditions {
-				if cond.Type == clusterv1beta1.PlacementConditionSatisfied && cond.Status == metav1.ConditionFalse && cond.Reason == "NoManagedClusterSetBindings" {
+				if cond.Type == clusterv1beta1.PlacementConditionSatisfied && cond.Status == metav1.ConditionFalse && cond.Reason == utils.PlacementReasonNoManagedClusterSetBindings {
 					return fmt.Sprintf(
 						"Placement %q in namespace %q cannot select clusters: %s. "+
 							"Create a ManagedClusterSetBinding for the \"default\" ManagedClusterSet in the policy namespace.",

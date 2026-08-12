@@ -248,23 +248,33 @@ func UpdateManagedPolicyNamespaceList(policyNs map[string][]string, policyNameAr
 }
 
 // GetPlacementClusterNames extracts cluster names from Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
-func GetPlacementClusterNames(placement *clusterv1beta1.Placement) []string {
+func GetPlacementClusterNames(placement *clusterv1beta1.Placement) ([]string, error) {
 	if len(placement.Spec.Predicates) == 0 {
-		return []string{}
+		return nil, fmt.Errorf("placement %s/%s has no predicates", placement.Namespace, placement.Name)
 	}
 	exprs := placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions
 	if len(exprs) == 0 {
-		return []string{}
+		return nil, fmt.Errorf("placement %s/%s has no match expressions", placement.Namespace, placement.Name)
 	}
-	return exprs[0].Values
+	src := exprs[0].Values
+	if src == nil {
+		return nil, nil
+	}
+	result := make([]string, len(src))
+	copy(result, src)
+	return result, nil
 }
 
 // SetPlacementClusterNames sets cluster names in Placement spec.predicates[0].requiredClusterSelector.labelSelector.matchExpressions[0].values
-func SetPlacementClusterNames(placement *clusterv1beta1.Placement, clusterNames []string) {
-	if len(placement.Spec.Predicates) == 0 || len(placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions) == 0 {
-		return
+func SetPlacementClusterNames(placement *clusterv1beta1.Placement, clusterNames []string) error {
+	if len(placement.Spec.Predicates) == 0 {
+		return fmt.Errorf("placement %s/%s has no predicates", placement.Namespace, placement.Name)
+	}
+	if len(placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions) == 0 {
+		return fmt.Errorf("placement %s/%s has no match expressions", placement.Namespace, placement.Name)
 	}
 	placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions[0].Values = clusterNames
+	return nil
 }
 
 // StripObjectTemplatesRaw removes all the ACM raw templating from a string and returns an interface

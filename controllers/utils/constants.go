@@ -75,6 +75,12 @@ const (
 	PolicyTypeCatalogSource = "CatalogSource"
 )
 
+// Placement condition reasons from OCM (not exported by upstream API).
+// See: https://github.com/open-cluster-management-io/api/blob/main/cluster/v1beta1/types_placement.go
+const (
+	PlacementReasonNoManagedClusterSetBindings = "NoManagedClusterSetBindings"
+)
+
 // SubscriptionGroupVersionKind for monitoring and other type specific logic
 func SubscriptionGroupVersionKind() schema.GroupVersionKind {
 	return schema.GroupVersionKind{Kind: "Subscription", Group: "operators.coreos.com"}

@@ -638,7 +638,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 				if clusterGroupUpgrade.RolloutType() == ranv1alpha1.RolloutTypes.Policy {
 					placementMsg, placementErr := r.checkPlacementsSatisfied(ctx, clusterGroupUpgrade)
 					if placementErr != nil {
-						r.Log.Info("[checkPlacementsSatisfied] Error checking placements", "error", placementErr)
+						r.Log.Error(placementErr, "[checkPlacementsSatisfied] Error checking placements")
 					} else if placementMsg != "" {
 						utils.SetStatusCondition(
 							&clusterGroupUpgrade.Status.Conditions,

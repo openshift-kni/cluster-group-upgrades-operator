@@ -709,7 +709,7 @@ func TestCheckPlacementsSatisfied(t *testing.T) {
 					{
 						Type:    clusterv1beta1.PlacementConditionSatisfied,
 						Status:  metav1.ConditionFalse,
-						Reason:  "NoManagedClusterSetBindings",
+						Reason:  utils.PlacementReasonNoManagedClusterSetBindings,
 						Message: "No valid ManagedClusterSetBindings found in placement namespace",
 					},
 				}),
@@ -750,7 +750,7 @@ func TestCheckPlacementsSatisfied(t *testing.T) {
 					{
 						Type:    clusterv1beta1.PlacementConditionSatisfied,
 						Status:  metav1.ConditionFalse,
-						Reason:  "NoManagedClusterSetBindings",
+						Reason:  utils.PlacementReasonNoManagedClusterSetBindings,
 						Message: "No valid ManagedClusterSetBindings found in placement namespace",
 					},
 				}),

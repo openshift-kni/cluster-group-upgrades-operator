@@ -344,9 +344,10 @@ func newTestPlacement(clusterNames []string) *clusterv1beta1.Placement {
 
 func TestGetPlacementClusterNames(t *testing.T) {
 	tests := []struct {
-		name      string
-		placement *clusterv1beta1.Placement
-		expected  []string
+		name        string
+		placement   *clusterv1beta1.Placement
+		expected    []string
+		expectError bool
 	}{
 		{
 			name:      "returns cluster names from valid placement",
@@ -359,12 +360,12 @@ func TestGetPlacementClusterNames(t *testing.T) {
 			expected:  []string{},
 		},
 		{
-			name:      "returns empty slice when no predicates",
-			placement: &clusterv1beta1.Placement{},
-			expected:  []string{},
+			name:        "returns error when no predicates",
+			placement:   &clusterv1beta1.Placement{},
+			expectError: true,
 		},
 		{
-			name: "returns empty slice when matchExpressions is empty",
+			name: "returns error when matchExpressions is empty",
 			placement: &clusterv1beta1.Placement{
 				Spec: clusterv1beta1.PlacementSpec{
 					Predicates: []clusterv1beta1.ClusterPredicate{
@@ -376,16 +377,31 @@ func TestGetPlacementClusterNames(t *testing.T) {
 					},
 				},
 			},
-			expected: []string{},
+			expectError: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := GetPlacementClusterNames(tt.placement)
-			assert.Equal(t, tt.expected, result)
+			result, err := GetPlacementClusterNames(tt.placement)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
 		})
 	}
+}
+
+func TestGetPlacementClusterNamesDefensiveCopy(t *testing.T) {
+	placement := newTestPlacement([]string{"cluster1", "cluster2"})
+	result, err := GetPlacementClusterNames(placement)
+	assert.NoError(t, err)
+
+	result[0] = "modified"
+	original := placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions[0].Values
+	assert.Equal(t, "cluster1", original[0], "modifying returned slice should not alter placement internals")
 }
 
 func TestSetPlacementClusterNames(t *testing.T) {
@@ -394,6 +410,7 @@ func TestSetPlacementClusterNames(t *testing.T) {
 		placement    *clusterv1beta1.Placement
 		clusterNames []string
 		expected     []string
+		expectError  bool
 	}{
 		{
 			name:         "sets cluster names on valid placement",
@@ -414,18 +431,24 @@ func TestSetPlacementClusterNames(t *testing.T) {
 			expected:     []string{"new1", "new2", "new3"},
 		},
 		{
-			name:         "no-op when no predicates",
+			name:         "returns error when no predicates",
 			placement:    &clusterv1beta1.Placement{},
 			clusterNames: []string{"cluster1"},
-			expected:     []string{},
+			expectError:  true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			SetPlacementClusterNames(tt.placement, tt.clusterNames)
-			result := GetPlacementClusterNames(tt.placement)
-			assert.Equal(t, tt.expected, result)
+			err := SetPlacementClusterNames(tt.placement, tt.clusterNames)
+			if tt.expectError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+				result, err := GetPlacementClusterNames(tt.placement)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
+			}
 		})
 	}
 }
@@ -433,15 +456,18 @@ func TestSetPlacementClusterNames(t *testing.T) {
 func TestGetSetPlacementClusterNamesRoundTrip(t *testing.T) {
 	placement := newTestPlacement(nil)
 
-	SetPlacementClusterNames(placement, []string{"a", "b", "c"})
-	names := GetPlacementClusterNames(placement)
+	assert.NoError(t, SetPlacementClusterNames(placement, []string{"a", "b", "c"}))
+	names, err := GetPlacementClusterNames(placement)
+	assert.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, names)
 
-	SetPlacementClusterNames(placement, []string{"x"})
-	names = GetPlacementClusterNames(placement)
+	assert.NoError(t, SetPlacementClusterNames(placement, []string{"x"}))
+	names, err = GetPlacementClusterNames(placement)
+	assert.NoError(t, err)
 	assert.Equal(t, []string{"x"}, names)
 
-	SetPlacementClusterNames(placement, nil)
-	names = GetPlacementClusterNames(placement)
+	assert.NoError(t, SetPlacementClusterNames(placement, nil))
+	names, err = GetPlacementClusterNames(placement)
+	assert.NoError(t, err)
 	assert.Nil(t, names)
 }
