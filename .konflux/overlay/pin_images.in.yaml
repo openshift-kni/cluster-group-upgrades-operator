@@ -2,7 +2,7 @@
 # Manager
 - key: manager
   source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.14.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-14@sha256:d0caf1ab9359f93f91b539b866b8c051fa013cac9bc8963623131bc8399cf3fa
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-14@sha256:b351267cfa97d87bdda9af62545f2f78f076c1e26ea8e848dd34da5b340588e7
 #
 # Precache
 - key: precache_img
