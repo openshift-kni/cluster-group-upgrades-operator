@@ -67,7 +67,7 @@ spec:
       value: []
     - name: additional-labels
       value:
-        - name=openshift4/topology-aware-lifecycle-manager-operator-bundle
+        - name=openshift5/topology-aware-lifecycle-manager-operator-bundle
   pipelineRef:
     name: build-pipeline
   taskRunTemplate:
