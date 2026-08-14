@@ -31,6 +31,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -48,6 +49,8 @@ func init() {
 	testscheme.AddKnownTypes(ranv1alpha1.SchemeGroupVersion, &ranv1alpha1.ClusterGroupUpgradeList{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.Policy{})
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PolicyList{})
+	testscheme.AddKnownTypes(clusterv1beta1.SchemeGroupVersion, &clusterv1beta1.Placement{})
+	testscheme.AddKnownTypes(clusterv1beta1.SchemeGroupVersion, &clusterv1beta1.PlacementList{})
 }
 
 func getFakeClientFromObjects(objs ...client.Object) (client.WithWatch, error) {

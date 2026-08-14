@@ -28,6 +28,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 // nolint: goconst
@@ -641,4 +644,143 @@ func TestGetNextNonCompliantPolicyForCluster_EdgeCases(t *testing.T) {
 		assert.Equal(t, 0, index) // First policy should be non-compliant
 		assert.False(t, isSoaking)
 	})
+}
+
+func newTestCGUPlacement(name, namespace string, labels map[string]string, conditions []metav1.Condition) *clusterv1beta1.Placement {
+	return &clusterv1beta1.Placement{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      name,
+			Namespace: namespace,
+			Labels:    labels,
+		},
+		Status: clusterv1beta1.PlacementStatus{
+			Conditions: conditions,
+		},
+	}
+}
+
+func TestCheckPlacementsSatisfied(t *testing.T) {
+	ctx := context.Background()
+
+	cguLabels := map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          "test-cgu",
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": "default",
+	}
+
+	cgu := &ranv1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "test-cgu",
+			Namespace: "default",
+		},
+		Status: ranv1alpha1.ClusterGroupUpgradeStatus{
+			ManagedPoliciesForUpgrade: []ranv1alpha1.ManagedPolicyForUpgrade{
+				{Name: "policy1", Namespace: "ztp-install"},
+			},
+		},
+	}
+
+	tests := []struct {
+		name        string
+		placements  []*clusterv1beta1.Placement
+		expectEmpty bool
+	}{
+		{
+			name:        "no placements",
+			placements:  nil,
+			expectEmpty: true,
+		},
+		{
+			name: "placement satisfied",
+			placements: []*clusterv1beta1.Placement{
+				newTestCGUPlacement("test-placement", "ztp-install", cguLabels, []metav1.Condition{
+					{
+						Type:   clusterv1beta1.PlacementConditionSatisfied,
+						Status: metav1.ConditionTrue,
+						Reason: "AllDecisionsScheduled",
+					},
+				}),
+			},
+			expectEmpty: true,
+		},
+		{
+			name: "placement not satisfied - missing MCSB",
+			placements: []*clusterv1beta1.Placement{
+				newTestCGUPlacement("test-placement", "ztp-install", cguLabels, []metav1.Condition{
+					{
+						Type:    clusterv1beta1.PlacementConditionSatisfied,
+						Status:  metav1.ConditionFalse,
+						Reason:  utils.PlacementReasonNoManagedClusterSetBindings,
+						Message: "No valid ManagedClusterSetBindings found in placement namespace",
+					},
+				}),
+			},
+			expectEmpty: false,
+		},
+		{
+			name: "placement not satisfied - different reason ignored",
+			placements: []*clusterv1beta1.Placement{
+				newTestCGUPlacement("test-placement", "ztp-install", cguLabels, []metav1.Condition{
+					{
+						Type:   clusterv1beta1.PlacementConditionSatisfied,
+						Status: metav1.ConditionFalse,
+						Reason: "NoClusterMatched",
+					},
+				}),
+			},
+			expectEmpty: true,
+		},
+		{
+			name: "placement with no status conditions",
+			placements: []*clusterv1beta1.Placement{
+				newTestCGUPlacement("test-placement", "ztp-install", cguLabels, nil),
+			},
+			expectEmpty: true,
+		},
+		{
+			name: "multiple placements - one unsatisfied",
+			placements: []*clusterv1beta1.Placement{
+				newTestCGUPlacement("placement-ok", "ztp-install", cguLabels, []metav1.Condition{
+					{
+						Type:   clusterv1beta1.PlacementConditionSatisfied,
+						Status: metav1.ConditionTrue,
+						Reason: "AllDecisionsScheduled",
+					},
+				}),
+				newTestCGUPlacement("placement-bad", "ztp-install", cguLabels, []metav1.Condition{
+					{
+						Type:    clusterv1beta1.PlacementConditionSatisfied,
+						Status:  metav1.ConditionFalse,
+						Reason:  utils.PlacementReasonNoManagedClusterSetBindings,
+						Message: "No valid ManagedClusterSetBindings found in placement namespace",
+					},
+				}),
+			},
+			expectEmpty: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var objs []client.Object
+			for _, p := range tt.placements {
+				objs = append(objs, p)
+			}
+
+			fakeClient := fake.NewClientBuilder().WithScheme(testscheme).WithObjects(objs...).Build()
+			r := &ClusterGroupUpgradeReconciler{
+				Client: fakeClient,
+				Log:    logr.Discard(),
+				Scheme: testscheme,
+			}
+
+			result, err := r.checkPlacementsSatisfied(ctx, cgu)
+			assert.NoError(t, err)
+			if tt.expectEmpty {
+				assert.Empty(t, result)
+			} else {
+				assert.NotEmpty(t, result)
+				assert.Contains(t, result, "ManagedClusterSetBinding")
+			}
+		})
+	}
 }

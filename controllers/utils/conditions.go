@@ -56,6 +56,7 @@ var ConditionReasons = struct {
 	PrecacheSpecIsWellFormed      ConditionReason
 	TimedOut                      ConditionReason
 	UnresolvableDenpendency       ConditionReason
+	WaitingForPlacement           ConditionReason
 }{
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
@@ -79,6 +80,7 @@ var ConditionReasons = struct {
 	PrecacheSpecIsWellFormed:      "PrecacheSpecIsWellFormed",
 	TimedOut:                      "TimedOut",
 	UnresolvableDenpendency:       "UnresolvableDenpendency",
+	WaitingForPlacement:           "WaitingForPlacement",
 }
 
 // InProgressMessages defines the in progress messages for the conditions by rollout type

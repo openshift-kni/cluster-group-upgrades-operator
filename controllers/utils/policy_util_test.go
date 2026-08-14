@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 )
 
 func TestGetParentPolicyNameAndNamespace(t *testing.T) {
@@ -314,28 +315,23 @@ func TestStripObjectTemplatesRaw(t *testing.T) {
 	}
 }
 
-func newTestPlacement(clusterNames []string) *unstructured.Unstructured {
-	var values []interface{}
-	for _, name := range clusterNames {
-		values = append(values, name)
-	}
+func newTestPlacement(clusterNames []string) *clusterv1beta1.Placement {
+	values := clusterNames
 	if values == nil {
-		values = []interface{}{}
+		values = []string{}
 	}
 
-	return &unstructured.Unstructured{
-		Object: map[string]interface{}{
-			"spec": map[string]interface{}{
-				"predicates": []interface{}{
-					map[string]interface{}{
-						"requiredClusterSelector": map[string]interface{}{
-							"labelSelector": map[string]interface{}{
-								"matchExpressions": []interface{}{
-									map[string]interface{}{
-										"key":      "name",
-										"operator": "In",
-										"values":   values,
-									},
+	return &clusterv1beta1.Placement{
+		Spec: clusterv1beta1.PlacementSpec{
+			Predicates: []clusterv1beta1.ClusterPredicate{
+				{
+					RequiredClusterSelector: clusterv1beta1.ClusterSelector{
+						LabelSelector: v1.LabelSelector{
+							MatchExpressions: []v1.LabelSelectorRequirement{
+								{
+									Key:      "name",
+									Operator: v1.LabelSelectorOpIn,
+									Values:   values,
 								},
 							},
 						},
@@ -349,7 +345,7 @@ func newTestPlacement(clusterNames []string) *unstructured.Unstructured {
 func TestGetPlacementClusterNames(t *testing.T) {
 	tests := []struct {
 		name        string
-		placement   *unstructured.Unstructured
+		placement   *clusterv1beta1.Placement
 		expected    []string
 		expectError bool
 	}{
@@ -364,76 +360,24 @@ func TestGetPlacementClusterNames(t *testing.T) {
 			expected:  []string{},
 		},
 		{
-			name: "returns empty slice when no predicates",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{},
-				},
-			},
-			expected: []string{},
+			name:        "returns error when no predicates",
+			placement:   &clusterv1beta1.Placement{},
+			expectError: true,
 		},
 		{
-			name: "returns empty slice when predicates is empty",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{
-						"predicates": []interface{}{},
-					},
-				},
-			},
-			expected: []string{},
-		},
-		{
-			name: "returns error for invalid predicate structure",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{
-						"predicates": []interface{}{"invalid"},
+			name: "returns error when matchExpressions is empty",
+			placement: &clusterv1beta1.Placement{
+				Spec: clusterv1beta1.PlacementSpec{
+					Predicates: []clusterv1beta1.ClusterPredicate{
+						{
+							RequiredClusterSelector: clusterv1beta1.ClusterSelector{
+								LabelSelector: v1.LabelSelector{},
+							},
+						},
 					},
 				},
 			},
 			expectError: true,
-		},
-		{
-			name: "returns empty slice when matchExpressions is missing",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{
-						"predicates": []interface{}{
-							map[string]interface{}{
-								"requiredClusterSelector": map[string]interface{}{
-									"labelSelector": map[string]interface{}{},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: []string{},
-		},
-		{
-			name: "returns empty slice when values key is missing",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{
-						"predicates": []interface{}{
-							map[string]interface{}{
-								"requiredClusterSelector": map[string]interface{}{
-									"labelSelector": map[string]interface{}{
-										"matchExpressions": []interface{}{
-											map[string]interface{}{
-												"key":      "name",
-												"operator": "In",
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-			expected: []string{},
 		},
 	}
 
@@ -450,10 +394,20 @@ func TestGetPlacementClusterNames(t *testing.T) {
 	}
 }
 
+func TestGetPlacementClusterNamesDefensiveCopy(t *testing.T) {
+	placement := newTestPlacement([]string{"cluster1", "cluster2"})
+	result, err := GetPlacementClusterNames(placement)
+	assert.NoError(t, err)
+
+	result[0] = "modified"
+	original := placement.Spec.Predicates[0].RequiredClusterSelector.LabelSelector.MatchExpressions[0].Values
+	assert.Equal(t, "cluster1", original[0], "modifying returned slice should not alter placement internals")
+}
+
 func TestSetPlacementClusterNames(t *testing.T) {
 	tests := []struct {
 		name         string
-		placement    *unstructured.Unstructured
+		placement    *clusterv1beta1.Placement
 		clusterNames []string
 		expected     []string
 		expectError  bool
@@ -468,7 +422,7 @@ func TestSetPlacementClusterNames(t *testing.T) {
 			name:         "clears cluster names with nil",
 			placement:    newTestPlacement([]string{"cluster1"}),
 			clusterNames: nil,
-			expected:     []string{},
+			expected:     nil,
 		},
 		{
 			name:         "overwrites existing cluster names",
@@ -477,12 +431,8 @@ func TestSetPlacementClusterNames(t *testing.T) {
 			expected:     []string{"new1", "new2", "new3"},
 		},
 		{
-			name: "returns error when matchExpression not found",
-			placement: &unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"spec": map[string]interface{}{},
-				},
-			},
+			name:         "returns error when no predicates",
+			placement:    &clusterv1beta1.Placement{},
 			clusterNames: []string{"cluster1"},
 			expectError:  true,
 		},
@@ -493,13 +443,12 @@ func TestSetPlacementClusterNames(t *testing.T) {
 			err := SetPlacementClusterNames(tt.placement, tt.clusterNames)
 			if tt.expectError {
 				assert.Error(t, err)
-				return
+			} else {
+				assert.NoError(t, err)
+				result, err := GetPlacementClusterNames(tt.placement)
+				assert.NoError(t, err)
+				assert.Equal(t, tt.expected, result)
 			}
-			assert.NoError(t, err)
-
-			result, err := GetPlacementClusterNames(tt.placement)
-			assert.NoError(t, err)
-			assert.Equal(t, tt.expected, result)
 		})
 	}
 }
@@ -507,24 +456,18 @@ func TestSetPlacementClusterNames(t *testing.T) {
 func TestGetSetPlacementClusterNamesRoundTrip(t *testing.T) {
 	placement := newTestPlacement(nil)
 
-	err := SetPlacementClusterNames(placement, []string{"a", "b", "c"})
-	assert.NoError(t, err)
-
+	assert.NoError(t, SetPlacementClusterNames(placement, []string{"a", "b", "c"}))
 	names, err := GetPlacementClusterNames(placement)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"a", "b", "c"}, names)
 
-	err = SetPlacementClusterNames(placement, []string{"x"})
-	assert.NoError(t, err)
-
+	assert.NoError(t, SetPlacementClusterNames(placement, []string{"x"}))
 	names, err = GetPlacementClusterNames(placement)
 	assert.NoError(t, err)
 	assert.Equal(t, []string{"x"}, names)
 
-	err = SetPlacementClusterNames(placement, nil)
-	assert.NoError(t, err)
-
+	assert.NoError(t, SetPlacementClusterNames(placement, nil))
 	names, err = GetPlacementClusterNames(placement)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{}, names)
+	assert.Nil(t, names)
 }
