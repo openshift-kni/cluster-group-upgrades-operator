@@ -243,6 +243,7 @@ non-kind-deps-update: common-deps-update
 
 # Download go tools
 .PHONY: controller-gen
+.PHONY: $(CONTROLLER_GEN)
 controller-gen: sync-git-submodules $(LOCALBIN) ## Download controller-gen locally if necessary.
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
 		TOOL_NAME=controller-gen \
@@ -250,6 +251,7 @@ controller-gen: sync-git-submodules $(LOCALBIN) ## Download controller-gen local
 		DOWNLOAD_INSTALL_DIR=$(LOCALBIN)
 
 .PHONY: kustomize
+.PHONY: $(KUSTOMIZE)
 kustomize: sync-git-submodules $(LOCALBIN) ## Download kustomize locally if necessary.
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-go-tool \
 		TOOL_NAME=kustomize \
@@ -455,6 +457,7 @@ bashate-download: sync-git-submodules $(LOCALBIN) ## Download bashate locally if
 	@echo "Bashate downloaded successfully."
 
 .PHONY: bashate
+.PHONY: $(BASHATE)
 bashate: bashate-download $(BASHATE) ## Lint bash files in the repository
 	@echo "Running bashate on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
@@ -479,11 +482,14 @@ golangci-lint-download: sync-git-submodules $(LOCALBIN) ## Download golangci-lin
 	@echo "Golangci-lint downloaded successfully."
 
 .PHONY: golangci-lint
+.PHONY: $(GOLANGCI_LINT)
 golangci-lint: golangci-lint-download $(GOLANGCI_LINT) ## Run golangci-lint against code.
 	@echo "Running golangci-lint on repository go files..."
 	$(GOLANGCI_LINT) run -v
 	@echo "Golangci-lint linting completed successfully."
 
+.PHONY: operator-sdk
+.PHONY: $(OPERATOR_SDK)
 operator-sdk: sync-git-submodules $(LOCALBIN) ## Download operator-sdk locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-operator-sdk \
 		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
@@ -491,6 +497,7 @@ operator-sdk: sync-git-submodules $(LOCALBIN) ## Download operator-sdk locally i
 	@echo "Operator sdk downloaded successfully."
 
 .PHONY: opm
+.PHONY: $(OPM)
 opm: sync-git-submodules $(LOCALBIN) ## Download opm locally if necessary.
 	@$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-opm \
 		DOWNLOAD_INSTALL_DIR=$(LOCALBIN) \
@@ -507,6 +514,7 @@ shellcheck-download: sync-git-submodules $(LOCALBIN) ## Download shellcheck loca
 	@echo "Shellcheck downloaded successfully."
 
 .PHONY: shellcheck
+.PHONY: $(SHELLCHECK)
 shellcheck: shellcheck-download $(SHELLCHECK) ## Lint bash files in the repository
 	@echo "Running shellcheck on repository bash files..."
 	find $(PROJECT_DIR) -name '*.sh' \
@@ -530,12 +538,14 @@ yamllint-download: sync-git-submodules $(LOCALBIN) ## Download yamllint locally 
 	@echo "Yamllint downloaded successfully."
 
 .PHONY: yamllint
+.PHONY: $(YAMLLINT)
 yamllint: yamllint-download $(YAMLLINT) ## Lint YAML files in the repository
 	@echo "Running yamllint on repository YAML files..."
 	$(YAMLLINT) -c $(PROJECT_DIR)/.yamllint.yaml $(PROJECT_DIR)
 	@echo "YAML linting completed successfully."
 
 .PHONY: yq
+.PHONY: $(YQ)
 yq: sync-git-submodules $(LOCALBIN) ## Download yq
 	@echo "Downloading yq..."
 	$(MAKE) -C $(PROJECT_DIR)/telco5g-konflux/scripts/download download-yq \
