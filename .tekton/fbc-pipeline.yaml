@@ -142,9 +142,9 @@ spec:
       value: $(params.image-expires-after)
     - name: SCRIPT_RUNNER_IMAGE
       value: quay.io/konflux-ci/yq:latest
-        # update catalog template
+        # skip catalog template update; render catalog-template.in.yaml as-is
     - name: SCRIPT
-      value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
+      value: "true"
     - name: HERMETIC
       value: $(params.hermetic)
     - name: SOURCE_ARTIFACT
