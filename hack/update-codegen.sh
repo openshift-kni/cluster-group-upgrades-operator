@@ -24,7 +24,7 @@ source "${CODEGEN_PKG}/kube_codegen.sh"
 kube::codegen::gen_client \
     --with-applyconfig \
     --with-watch \
-    --input-pkg-root ${module}/pkg/api \
-    --output-pkg-root ${module}/pkg/generated \
-    --output-base "$(dirname "${BASH_SOURCE[0]}")/../../../.." \
-    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt"
+    --output-dir "${SCRIPT_ROOT}/pkg/generated" \
+    --output-pkg "${module}/pkg/generated" \
+    --boilerplate "${SCRIPT_ROOT}/hack/boilerplate.go.txt" \
+    "${SCRIPT_ROOT}/pkg/api"

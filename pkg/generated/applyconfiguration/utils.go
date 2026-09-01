@@ -20,7 +20,10 @@ package applyconfiguration
 import (
 	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
+	internal "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/internal"
+	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"
+	managedfields "k8s.io/apimachinery/pkg/util/managedfields"
 )
 
 // ForKind returns an apply configuration type for the given GroupVersionKind, or nil if no
@@ -67,4 +70,8 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 
 	}
 	return nil
+}
+
+func NewTypeConverter(scheme *runtime.Scheme) managedfields.TypeConverter {
+	return managedfields.NewSchemeTypeConverter(scheme, internal.Parser())
 }

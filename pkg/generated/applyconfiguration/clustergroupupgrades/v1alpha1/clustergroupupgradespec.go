@@ -18,28 +18,76 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// ClusterGroupUpgradeSpecApplyConfiguration represents an declarative configuration of the ClusterGroupUpgradeSpec type for use
+// ClusterGroupUpgradeSpecApplyConfiguration represents a declarative configuration of the ClusterGroupUpgradeSpec type for use
 // with apply.
+//
+// TODO add validation so manifest templates and managed policies are not used at the same time
+// ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
 type ClusterGroupUpgradeSpecApplyConfiguration struct {
-	Backup                *bool                                      `json:"backup,omitempty"`
-	PreCaching            *bool                                      `json:"preCaching,omitempty"`
-	PreCachingConfigRef   *PreCachingConfigCRApplyConfiguration      `json:"preCachingConfigRef,omitempty"`
-	Enable                *bool                                      `json:"enable,omitempty"`
-	Clusters              []string                                   `json:"clusters,omitempty"`
-	ClusterSelector       []string                                   `json:"clusterSelector,omitempty"`
-	ClusterLabelSelectors []v1.LabelSelector                         `json:"clusterLabelSelectors,omitempty"`
+	// This field determines whether the cluster would be running a backup prior to the upgrade.
+	//
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
+	Backup *bool `json:"backup,omitempty"`
+	// This field determines whether container image pre-caching will be done on all the clusters
+	// matching the selector.
+	// If required, the pre-caching process starts immediately on all clusters irrespectively of
+	// the value of the "enable" flag
+	PreCaching *bool `json:"preCaching,omitempty"`
+	// This field specifies a reference to a pre-caching config custom resource that contains the additional
+	// pre-caching configurations.
+	PreCachingConfigRef *PreCachingConfigCRApplyConfiguration `json:"preCachingConfigRef,omitempty"`
+	// This field determines when the CGU starts. While false, the CGU doesn't start.
+	// Once set to true, policy rollout starts on the clusters, one batch at a time.
+	Enable   *bool    `json:"enable,omitempty"`
+	Clusters []string `json:"clusters,omitempty"`
+	// This field holds a label common to multiple clusters that will be updated.
+	// The expected format is as follows:
+	// clusterSelector:
+	// - label1Name=label1Value
+	// - label2Name=label2Value
+	// If the value is empty, then the expected format is:
+	// clusterSelector:
+	// - label1Name
+	// All the clusters matching the labels specified in clusterSelector will be included
+	// in the update plan.
+	//
+	// Deprecated: Use ClusterLabelSelectors instead
+	ClusterSelector []string `json:"clusterSelector,omitempty"`
+	// This field holds a list of expressions or labels that will be used to determine what clusters to include in the operation.
+	// The expected format is as follows:
+	// clusterLabelSelectors:
+	// - matchExpressions:
+	// - key: label1
+	// operator: In
+	// values:
+	// - value1a
+	// - value1b
+	// - matchLabels:
+	// label2: value2
+	// - matchExpressions:
+	// - key: label3
+	// operator: In
+	// values:
+	// - value3
+	// matchLabels:
+	// label4: value4
+	ClusterLabelSelectors []v1.LabelSelectorApplyConfiguration       `json:"clusterLabelSelectors,omitempty"`
 	RemediationStrategy   *RemediationStrategySpecApplyConfiguration `json:"remediationStrategy,omitempty"`
 	ManagedPolicies       []string                                   `json:"managedPolicies,omitempty"`
 	ManifestWorkTemplates []string                                   `json:"manifestWorkTemplates,omitempty"`
 	BlockingCRs           []BlockingCRApplyConfiguration             `json:"blockingCRs,omitempty"`
 	Actions               *ActionsApplyConfiguration                 `json:"actions,omitempty"`
-	BatchTimeoutAction    *string                                    `json:"batchTimeoutAction,omitempty"`
+	// The Batch Timeout Action can be specified to control what happens when a batch times out. The default value is `Continue`.
+	// The possible values are:
+	// - Continue
+	// - Abort
+	BatchTimeoutAction *string `json:"batchTimeoutAction,omitempty"`
 }
 
-// ClusterGroupUpgradeSpecApplyConfiguration constructs an declarative configuration of the ClusterGroupUpgradeSpec type for use with
+// ClusterGroupUpgradeSpecApplyConfiguration constructs a declarative configuration of the ClusterGroupUpgradeSpec type for use with
 // apply.
 func ClusterGroupUpgradeSpec() *ClusterGroupUpgradeSpecApplyConfiguration {
 	return &ClusterGroupUpgradeSpecApplyConfiguration{}
@@ -100,9 +148,12 @@ func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithClusterSelector(values .
 // WithClusterLabelSelectors adds the given value to the ClusterLabelSelectors field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the ClusterLabelSelectors field.
-func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithClusterLabelSelectors(values ...v1.LabelSelector) *ClusterGroupUpgradeSpecApplyConfiguration {
+func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithClusterLabelSelectors(values ...*v1.LabelSelectorApplyConfiguration) *ClusterGroupUpgradeSpecApplyConfiguration {
 	for i := range values {
-		b.ClusterLabelSelectors = append(b.ClusterLabelSelectors, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithClusterLabelSelectors")
+		}
+		b.ClusterLabelSelectors = append(b.ClusterLabelSelectors, *values[i])
 	}
 	return b
 }

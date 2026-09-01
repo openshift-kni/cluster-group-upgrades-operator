@@ -18,18 +18,15 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
-	json "encoding/json"
-	"fmt"
-	"time"
+	context "context"
 
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
-	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	applyconfigurationclustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
 	scheme "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/scheme"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	types "k8s.io/apimachinery/pkg/types"
 	watch "k8s.io/apimachinery/pkg/watch"
-	rest "k8s.io/client-go/rest"
+	gentype "k8s.io/client-go/gentype"
 )
 
 // ClusterGroupUpgradesGetter has a method to return a ClusterGroupUpgradeInterface.
@@ -40,216 +37,41 @@ type ClusterGroupUpgradesGetter interface {
 
 // ClusterGroupUpgradeInterface has methods to work with ClusterGroupUpgrade resources.
 type ClusterGroupUpgradeInterface interface {
-	Create(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.CreateOptions) (*v1alpha1.ClusterGroupUpgrade, error)
-	Update(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (*v1alpha1.ClusterGroupUpgrade, error)
-	UpdateStatus(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (*v1alpha1.ClusterGroupUpgrade, error)
+	Create(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, opts v1.CreateOptions) (*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, error)
+	Update(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, error)
+	// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
+	UpdateStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, error)
 	Delete(ctx context.Context, name string, opts v1.DeleteOptions) error
 	DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error
-	Get(ctx context.Context, name string, opts v1.GetOptions) (*v1alpha1.ClusterGroupUpgrade, error)
-	List(ctx context.Context, opts v1.ListOptions) (*v1alpha1.ClusterGroupUpgradeList, error)
+	Get(ctx context.Context, name string, opts v1.GetOptions) (*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, error)
+	List(ctx context.Context, opts v1.ListOptions) (*clustergroupupgradesv1alpha1.ClusterGroupUpgradeList, error)
 	Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error)
-	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterGroupUpgrade, err error)
-	Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error)
-	ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error)
+	Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, err error)
+	Apply(ctx context.Context, clusterGroupUpgrade *applyconfigurationclustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, err error)
+	// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
+	ApplyStatus(ctx context.Context, clusterGroupUpgrade *applyconfigurationclustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *clustergroupupgradesv1alpha1.ClusterGroupUpgrade, err error)
 	ClusterGroupUpgradeExpansion
 }
 
 // clusterGroupUpgrades implements ClusterGroupUpgradeInterface
 type clusterGroupUpgrades struct {
-	client rest.Interface
-	ns     string
+	*gentype.ClientWithListAndApply[*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, *clustergroupupgradesv1alpha1.ClusterGroupUpgradeList, *applyconfigurationclustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration]
 }
 
 // newClusterGroupUpgrades returns a ClusterGroupUpgrades
 func newClusterGroupUpgrades(c *RanV1alpha1Client, namespace string) *clusterGroupUpgrades {
 	return &clusterGroupUpgrades{
-		client: c.RESTClient(),
-		ns:     namespace,
+		gentype.NewClientWithListAndApply[*clustergroupupgradesv1alpha1.ClusterGroupUpgrade, *clustergroupupgradesv1alpha1.ClusterGroupUpgradeList, *applyconfigurationclustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration](
+			"clustergroupupgrades",
+			c.RESTClient(),
+			scheme.ParameterCodec,
+			namespace,
+			func() *clustergroupupgradesv1alpha1.ClusterGroupUpgrade {
+				return &clustergroupupgradesv1alpha1.ClusterGroupUpgrade{}
+			},
+			func() *clustergroupupgradesv1alpha1.ClusterGroupUpgradeList {
+				return &clustergroupupgradesv1alpha1.ClusterGroupUpgradeList{}
+			},
+		),
 	}
-}
-
-// Get takes name of the clusterGroupUpgrade, and returns the corresponding clusterGroupUpgrade object, and an error if there is any.
-func (c *clusterGroupUpgrades) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(name).
-		VersionedParams(&options, scheme.ParameterCodec).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// List takes label and field selectors, and returns the list of ClusterGroupUpgrades that match those selectors.
-func (c *clusterGroupUpgrades) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ClusterGroupUpgradeList, err error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	result = &v1alpha1.ClusterGroupUpgradeList{}
-	err = c.client.Get().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Watch returns a watch.Interface that watches the requested clusterGroupUpgrades.
-func (c *clusterGroupUpgrades) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	var timeout time.Duration
-	if opts.TimeoutSeconds != nil {
-		timeout = time.Duration(*opts.TimeoutSeconds) * time.Second
-	}
-	opts.Watch = true
-	return c.client.Get().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Watch(ctx)
-}
-
-// Create takes the representation of a clusterGroupUpgrade and creates it.  Returns the server's representation of the clusterGroupUpgrade, and an error, if there is any.
-func (c *clusterGroupUpgrades) Create(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.CreateOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Post().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(clusterGroupUpgrade).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Update takes the representation of a clusterGroupUpgrade and updates it. Returns the server's representation of the clusterGroupUpgrade, and an error, if there is any.
-func (c *clusterGroupUpgrades) Update(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(clusterGroupUpgrade.Name).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(clusterGroupUpgrade).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *clusterGroupUpgrades) UpdateStatus(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Put().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(clusterGroupUpgrade.Name).
-		SubResource("status").
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(clusterGroupUpgrade).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Delete takes name of the clusterGroupUpgrade and deletes it. Returns an error if one occurs.
-func (c *clusterGroupUpgrades) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(name).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *clusterGroupUpgrades) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	var timeout time.Duration
-	if listOpts.TimeoutSeconds != nil {
-		timeout = time.Duration(*listOpts.TimeoutSeconds) * time.Second
-	}
-	return c.client.Delete().
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		VersionedParams(&listOpts, scheme.ParameterCodec).
-		Timeout(timeout).
-		Body(&opts).
-		Do(ctx).
-		Error()
-}
-
-// Patch applies the patch and returns the patched clusterGroupUpgrade.
-func (c *clusterGroupUpgrades) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Patch(pt).
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(name).
-		SubResource(subresources...).
-		VersionedParams(&opts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// Apply takes the given apply declarative configuration, applies it and returns the applied clusterGroupUpgrade.
-func (c *clusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	if clusterGroupUpgrade == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
-	}
-	patchOpts := opts.ToPatchOptions()
-	data, err := json.Marshal(clusterGroupUpgrade)
-	if err != nil {
-		return nil, err
-	}
-	name := clusterGroupUpgrade.Name
-	if name == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
-	}
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Patch(types.ApplyPatchType).
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(*name).
-		VersionedParams(&patchOpts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
-}
-
-// ApplyStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-func (c *clusterGroupUpgrades) ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	if clusterGroupUpgrade == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
-	}
-	patchOpts := opts.ToPatchOptions()
-	data, err := json.Marshal(clusterGroupUpgrade)
-	if err != nil {
-		return nil, err
-	}
-
-	name := clusterGroupUpgrade.Name
-	if name == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
-	}
-
-	result = &v1alpha1.ClusterGroupUpgrade{}
-	err = c.client.Patch(types.ApplyPatchType).
-		Namespace(c.ns).
-		Resource("clustergroupupgrades").
-		Name(*name).
-		SubResource("status").
-		VersionedParams(&patchOpts, scheme.ParameterCodec).
-		Body(data).
-		Do(ctx).
-		Into(result)
-	return
 }
