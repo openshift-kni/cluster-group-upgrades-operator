@@ -17,17 +17,29 @@ limitations under the License.
 
 package v1alpha1
 
-// BeforeEnableApplyConfiguration represents an declarative configuration of the BeforeEnable type for use
+// BeforeEnableApplyConfiguration represents a declarative configuration of the BeforeEnable type for use
 // with apply.
+//
+// BeforeEnable defines the actions to be done before starting upgrade
 type BeforeEnableApplyConfiguration struct {
-	AddClusterLabels         map[string]string `json:"addClusterLabels,omitempty"`
-	DeleteClusterLabels      map[string]string `json:"deleteClusterLabels,omitempty"`
-	RemoveClusterLabels      []string          `json:"removeClusterLabels,omitempty"`
-	AddClusterAnnotations    map[string]string `json:"addClusterAnnotations,omitempty"`
-	RemoveClusterAnnotations []string          `json:"removeClusterAnnotations,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be added or updated to the defined clusters.
+	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be deleted for the defined clusters.
+	//
+	// Deprecated: Use RemoveClusterLabels instead.
+	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	// This field defines a list of labels to be removed for the defined clusters.
+	RemoveClusterLabels []string `json:"removeClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster annotations
+	// to be added or updated to the defined clusters.
+	AddClusterAnnotations map[string]string `json:"addClusterAnnotations,omitempty"`
+	// This field defines a list of annotations to be removed for the defined clusters.
+	RemoveClusterAnnotations []string `json:"removeClusterAnnotations,omitempty"`
 }
 
-// BeforeEnableApplyConfiguration constructs an declarative configuration of the BeforeEnable type for use with
+// BeforeEnableApplyConfiguration constructs a declarative configuration of the BeforeEnable type for use with
 // apply.
 func BeforeEnable() *BeforeEnableApplyConfiguration {
 	return &BeforeEnableApplyConfiguration{}

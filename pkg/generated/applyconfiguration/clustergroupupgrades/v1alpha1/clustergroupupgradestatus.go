@@ -18,19 +18,26 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "k8s.io/client-go/applyconfigurations/meta/v1"
 )
 
-// ClusterGroupUpgradeStatusApplyConfiguration represents an declarative configuration of the ClusterGroupUpgradeStatus type for use
+// ClusterGroupUpgradeStatusApplyConfiguration represents a declarative configuration of the ClusterGroupUpgradeStatus type for use
 // with apply.
+//
+// ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
 type ClusterGroupUpgradeStatusApplyConfiguration struct {
-	PlacementBindings                     []string                                    `json:"placementBindings,omitempty"`
-	Placements                            []string                                    `json:"placements,omitempty"`
-	CopiedPolicies                        []string                                    `json:"copiedPolicies,omitempty"`
-	Conditions                            []v1.Condition                              `json:"conditions,omitempty"`
-	RemediationPlan                       [][]string                                  `json:"remediationPlan,omitempty"`
-	ManagedPoliciesNs                     map[string]string                           `json:"managedPoliciesNs,omitempty"`
-	SafeResourceNames                     map[string]string                           `json:"safeResourceNames,omitempty"`
+	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
+	// Important: Run "make" to regenerate code after modifying this file
+	PlacementBindings []string `json:"placementBindings,omitempty"`
+	Placements        []string `json:"placements,omitempty"`
+	// Deprecated
+	CopiedPolicies    []string                         `json:"copiedPolicies,omitempty"`
+	Conditions        []v1.ConditionApplyConfiguration `json:"conditions,omitempty"`
+	RemediationPlan   [][]string                       `json:"remediationPlan,omitempty"`
+	ManagedPoliciesNs map[string]string                `json:"managedPoliciesNs,omitempty"`
+	SafeResourceNames map[string]string                `json:"safeResourceNames,omitempty"`
+	// Contains the managed policies (and the namespaces) that have NonCompliant clusters
+	// that require updating.
 	ManagedPoliciesForUpgrade             []ManagedPolicyForUpgradeApplyConfiguration `json:"managedPoliciesForUpgrade,omitempty"`
 	ManagedPoliciesCompliantBeforeUpgrade []string                                    `json:"managedPoliciesCompliantBeforeUpgrade,omitempty"`
 	ManagedPoliciesContent                map[string]string                           `json:"managedPoliciesContent,omitempty"`
@@ -41,7 +48,7 @@ type ClusterGroupUpgradeStatusApplyConfiguration struct {
 	ComputedMaxConcurrency                *int                                        `json:"computedMaxConcurrency,omitempty"`
 }
 
-// ClusterGroupUpgradeStatusApplyConfiguration constructs an declarative configuration of the ClusterGroupUpgradeStatus type for use with
+// ClusterGroupUpgradeStatusApplyConfiguration constructs a declarative configuration of the ClusterGroupUpgradeStatus type for use with
 // apply.
 func ClusterGroupUpgradeStatus() *ClusterGroupUpgradeStatusApplyConfiguration {
 	return &ClusterGroupUpgradeStatusApplyConfiguration{}
@@ -80,9 +87,12 @@ func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithCopiedPolicies(values 
 // WithConditions adds the given value to the Conditions field in the declarative configuration
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, values provided by each call will be appended to the Conditions field.
-func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithConditions(values ...v1.Condition) *ClusterGroupUpgradeStatusApplyConfiguration {
+func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithConditions(values ...*v1.ConditionApplyConfiguration) *ClusterGroupUpgradeStatusApplyConfiguration {
 	for i := range values {
-		b.Conditions = append(b.Conditions, values[i])
+		if values[i] == nil {
+			panic("nil value passed to WithConditions")
+		}
+		b.Conditions = append(b.Conditions, *values[i])
 	}
 	return b
 }

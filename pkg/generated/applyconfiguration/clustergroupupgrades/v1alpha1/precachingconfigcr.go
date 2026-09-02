@@ -17,14 +17,16 @@ limitations under the License.
 
 package v1alpha1
 
-// PreCachingConfigCRApplyConfiguration represents an declarative configuration of the PreCachingConfigCR type for use
+// PreCachingConfigCRApplyConfiguration represents a declarative configuration of the PreCachingConfigCR type for use
 // with apply.
+//
+// PreCachingConfigCR defines the reference to the pre-caching config CR
 type PreCachingConfigCRApplyConfiguration struct {
 	Name      *string `json:"name,omitempty"`
 	Namespace *string `json:"namespace,omitempty"`
 }
 
-// PreCachingConfigCRApplyConfiguration constructs an declarative configuration of the PreCachingConfigCR type for use with
+// PreCachingConfigCRApplyConfiguration constructs a declarative configuration of the PreCachingConfigCR type for use with
 // apply.
 func PreCachingConfigCR() *PreCachingConfigCRApplyConfiguration {
 	return &PreCachingConfigCRApplyConfiguration{}

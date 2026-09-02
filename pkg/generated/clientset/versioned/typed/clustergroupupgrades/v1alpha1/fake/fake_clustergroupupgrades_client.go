@@ -28,7 +28,7 @@ type FakeRanV1alpha1 struct {
 }
 
 func (c *FakeRanV1alpha1) ClusterGroupUpgrades(namespace string) v1alpha1.ClusterGroupUpgradeInterface {
-	return &FakeClusterGroupUpgrades{c, namespace}
+	return newFakeClusterGroupUpgrades(c, namespace)
 }
 
 // RESTClient returns a RESTClient that is used to communicate

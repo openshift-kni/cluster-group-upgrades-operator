@@ -21,14 +21,16 @@ import (
 	v1 "open-cluster-management.io/api/work/v1"
 )
 
-// ManifestWorkStatusApplyConfiguration represents an declarative configuration of the ManifestWorkStatus type for use
+// ManifestWorkStatusApplyConfiguration represents a declarative configuration of the ManifestWorkStatus type for use
 // with apply.
+//
+// ManifestWorkStatus defines the status of a certain ManifestWork
 type ManifestWorkStatusApplyConfiguration struct {
 	Name   *string                    `json:"name,omitempty"`
 	Status *v1.ManifestResourceStatus `json:"status,omitempty"`
 }
 
-// ManifestWorkStatusApplyConfiguration constructs an declarative configuration of the ManifestWorkStatus type for use with
+// ManifestWorkStatusApplyConfiguration constructs a declarative configuration of the ManifestWorkStatus type for use with
 // apply.
 func ManifestWorkStatus() *ManifestWorkStatusApplyConfiguration {
 	return &ManifestWorkStatusApplyConfiguration{}

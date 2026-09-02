@@ -18,15 +18,16 @@ limitations under the License.
 package v1alpha1
 
 import (
-	"context"
+	context "context"
 	time "time"
 
-	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	apiclustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	versioned "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned"
 	internalinterfaces "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/listers/clustergroupupgrades/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/listers/clustergroupupgrades/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
+	schema "k8s.io/apimachinery/pkg/runtime/schema"
 	watch "k8s.io/apimachinery/pkg/watch"
 	cache "k8s.io/client-go/tools/cache"
 )
@@ -35,7 +36,7 @@ import (
 // ClusterGroupUpgrades.
 type ClusterGroupUpgradeInformer interface {
 	Informer() cache.SharedIndexInformer
-	Lister() v1alpha1.ClusterGroupUpgradeLister
+	Lister() clustergroupupgradesv1alpha1.ClusterGroupUpgradeLister
 }
 
 type clusterGroupUpgradeInformer struct {
@@ -48,42 +49,67 @@ type clusterGroupUpgradeInformer struct {
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
-	return NewFilteredClusterGroupUpgradeInformer(client, namespace, resyncPeriod, indexers, nil)
+	return NewClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
 }
 
 // NewFilteredClusterGroupUpgradeInformer constructs a new informer for ClusterGroupUpgrade type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
 func NewFilteredClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return cache.NewSharedIndexInformer(
-		&cache.ListWatch{
-			ListFunc: func(options v1.ListOptions) (runtime.Object, error) {
+	return NewClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewClusterGroupUpgradeInformerWithOptions constructs a new informer for ClusterGroupUpgrade type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewClusterGroupUpgradeInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	gvr := schema.GroupVersionResource{Group: "ran.openshift.io", Version: "v1alpha1", Resource: "clustergroupupgrades"}
+	identifier := options.InformerName.WithResource(gvr)
+	tweakListOptions := options.TweakListOptions
+	return cache.NewSharedIndexInformerWithOptions(
+		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
+			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).List(context.TODO(), options)
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).List(context.Background(), opts)
 			},
-			WatchFunc: func(options v1.ListOptions) (watch.Interface, error) {
+			WatchFunc: func(opts v1.ListOptions) (watch.Interface, error) {
 				if tweakListOptions != nil {
-					tweakListOptions(&options)
+					tweakListOptions(&opts)
 				}
-				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).Watch(context.TODO(), options)
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).Watch(context.Background(), opts)
 			},
+			ListWithContextFunc: func(ctx context.Context, opts v1.ListOptions) (runtime.Object, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).List(ctx, opts)
+			},
+			WatchFuncWithContext: func(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
+				if tweakListOptions != nil {
+					tweakListOptions(&opts)
+				}
+				return client.RanV1alpha1().ClusterGroupUpgrades(namespace).Watch(ctx, opts)
+			},
+		}, client),
+		&apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade{},
+		cache.SharedIndexInformerOptions{
+			ResyncPeriod: options.ResyncPeriod,
+			Indexers:     options.Indexers,
+			Identifier:   identifier,
 		},
-		&clustergroupupgradesv1alpha1.ClusterGroupUpgrade{},
-		resyncPeriod,
-		indexers,
 	)
 }
 
 func (f *clusterGroupUpgradeInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewFilteredClusterGroupUpgradeInformer(client, f.namespace, resyncPeriod, cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, f.tweakListOptions)
+	return NewClusterGroupUpgradeInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *clusterGroupUpgradeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&clustergroupupgradesv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer)
+	return f.factory.InformerFor(&apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer)
 }
 
-func (f *clusterGroupUpgradeInformer) Lister() v1alpha1.ClusterGroupUpgradeLister {
-	return v1alpha1.NewClusterGroupUpgradeLister(f.Informer().GetIndexer())
+func (f *clusterGroupUpgradeInformer) Lister() clustergroupupgradesv1alpha1.ClusterGroupUpgradeLister {
+	return clustergroupupgradesv1alpha1.NewClusterGroupUpgradeLister(f.Informer().GetIndexer())
 }
