@@ -8,8 +8,8 @@ spec:
   - spoke1
   enable: false
   managedPolicies:
-  - policy0-common-config-policy
-  - policy1-common-cluster-version-policy
+  - policy0-deporder-config-policy
+  - policy1-deporder-cluster-version-policy
   remediationStrategy:
     maxConcurrency: 4
     timeout: 240
@@ -20,7 +20,7 @@ status:
     reason: ClusterSelectionCompleted
     status: "True"
     type: ClustersSelected
-  - message: Managed Policy policy0-common-config-policy depends on policy1-common-cluster-version-policy, which is to be remediated later
+  - message: Managed Policy policy0-deporder-config-policy depends on policy1-deporder-cluster-version-policy, which is to be remediated later
     reason: UnresolvableDenpendency
     status: "False"
     type: Validated

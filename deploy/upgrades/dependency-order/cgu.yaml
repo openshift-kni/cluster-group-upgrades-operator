@@ -7,8 +7,8 @@ metadata:
     cluster-group-upgrades-operator/name-suffix: kuttl      
 spec:
   managedPolicies:
-    - policy0-common-config-policy
-    - policy1-common-cluster-version-policy
+    - policy0-deporder-config-policy
+    - policy1-deporder-cluster-version-policy
   enable: false
   clusters:
   - spoke1
