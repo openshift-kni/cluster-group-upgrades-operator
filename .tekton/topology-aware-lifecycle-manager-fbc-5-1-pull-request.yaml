@@ -4,11 +4,12 @@ metadata:
   annotations:
     build.appstudio.openshift.io/repo: https://github.com/openshift-kni/cluster-group-upgrades-operator?rev={{revision}}
     build.appstudio.redhat.com/commit_sha: '{{revision}}'
+    build.appstudio.redhat.com/pull_request_number: '{{pull_request_number}}'
     build.appstudio.redhat.com/target_branch: '{{target_branch}}'
-    pipelinesascode.tekton.dev/cancel-in-progress: "false"
+    pipelinesascode.tekton.dev/cancel-in-progress: "true"
     pipelinesascode.tekton.dev/max-keep-runs: "3"
     pipelinesascode.tekton.dev/on-cel-expression: |
-      event == "push" &&
+      event == "pull_request" &&
       target_branch == "main" &&
       !event_title.contains("[BRANCH-CUT]") &&
       (
@@ -17,16 +18,16 @@ metadata:
         '.konflux/Dockerfile.catalog'.pathChanged() ||
         '.tekton/fbc-pipeline.yaml'.pathChanged() ||
         '.tekton/images-mirror-set.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-fbc-5-0-push.yaml'.pathChanged() ||
+        '.tekton/topology-aware-lifecycle-manager-fbc-5-1-pull-request.yaml'.pathChanged() ||
         'telco5g-konflux'.pathChanged() ||
         'telco5g-konflux/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
-    appstudio.openshift.io/application: topology-aware-lifecycle-manager-fbc-5-0
-    appstudio.openshift.io/component: topology-aware-lifecycle-manager-fbc-5-0
+    appstudio.openshift.io/application: topology-aware-lifecycle-manager-fbc-5-1
+    appstudio.openshift.io/component: topology-aware-lifecycle-manager-fbc-5-1
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-fbc-5-0-on-push
+  name: topology-aware-lifecycle-manager-fbc-5-1-on-pull-request
   namespace: telco-5g-tenant
 spec:
   params:
@@ -35,7 +36,9 @@ spec:
     - name: revision
       value: '{{revision}}'
     - name: output-image
-      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-5-0:{{revision}}
+      value: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-fbc-5-1:on-pr-{{revision}}
+    - name: image-expires-after
+      value: 5d
     - name: build-platforms
       value:
         - linux/x86_64
@@ -44,13 +47,13 @@ spec:
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: additional-tags
-      value: ["latest"]
+      value: []
     - name: hermetic
       value: "true"
   pipelineRef:
     name: fbc-pipeline
   taskRunTemplate:
-    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-fbc-5-0
+    serviceAccountName: build-pipeline-topology-aware-lifecycle-manager-fbc-5-1
   workspaces:
     - name: git-auth
       secret:

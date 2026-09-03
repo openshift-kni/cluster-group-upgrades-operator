@@ -8,32 +8,32 @@ metadata:
 spec:
   imageDigestMirrors:
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-1
       source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-rhel9-operator
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-1
       source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-1
       source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-aztp-rhel9
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-1
       source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-precache-rhel9
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-1
       source: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-recovery-rhel9
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-1
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-rhel9-operator
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-1
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-operator-bundle
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-1
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-aztp-rhel9
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-1
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9
     - mirrors:
-        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-0
+        - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-1
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-recovery-rhel9
