@@ -1,3 +1,4 @@
+---
 apiVersion: tekton.dev/v1
 kind: PipelineRun
 metadata:
@@ -12,22 +13,14 @@ metadata:
       target_branch == "release-5.0" &&
       !event_title.contains("[BRANCH-CUT]") &&
       (
-        '.konflux/catalog/5.0/***'.pathChanged() ||
-        '.konflux/catalog/fbc-images-resolvable-integration-test-idms.yaml'.pathChanged() ||
-        '.konflux/container_build_args.conf'.pathChanged() ||
-        '.konflux/Dockerfile.catalog'.pathChanged() ||
-        '.tekton/fbc-pipeline.yaml'.pathChanged() ||
-        '.tekton/images-mirror-set.yaml'.pathChanged() ||
-        '.tekton/topology-aware-lifecycle-manager-fbc-5-0-push.yaml'.pathChanged() ||
-        'telco5g-konflux'.pathChanged() ||
-        'telco5g-konflux/***'.pathChanged()
+        '.konflux/catalog/4.22/***'.pathChanged()
       )
   creationTimestamp: null
   labels:
     appstudio.openshift.io/application: topology-aware-lifecycle-manager-fbc-5-0
     appstudio.openshift.io/component: topology-aware-lifecycle-manager-fbc-5-0
     pipelines.appstudio.openshift.io/type: build
-  name: topology-aware-lifecycle-manager-fbc-5-0-on-push
+  name: topology-aware-lifecycle-manager-fbc-4-22-on-push
   namespace: telco-5g-tenant
 spec:
   params:
@@ -41,21 +34,19 @@ spec:
       value:
         - linux/x86_64
     - name: dockerfile
-      value: .konflux/Dockerfile.catalog
+      value: .konflux/Dockerfile.catalog.4.22
     - name: catalog-template-file
-      value: .konflux/catalog/5.0/catalog-template.in.yaml
-    - name: bundle-builds-file
-      value: .konflux/catalog/5.0/bundle.builds.in.yaml
+      value: .konflux/catalog/4.22/catalog-template.in.yaml
     - name: catalog-output-path
-      value: .konflux/catalog/5.0/topology-aware-lifecycle-manager/catalog.json
+      value: .konflux/catalog/4.22/topology-aware-lifecycle-manager/catalog.json
     - name: catalog-idms-path
-      value: .konflux/catalog/5.0/catalog-idms.yaml
+      value: .konflux/catalog/4.22/catalog-idms.yaml
     - name: catalog-update-script
-      value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/5.0/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/5.0/bundle.builds.in.yaml
+      value: "true"
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: additional-tags
-      value: ["latest"]
+      value: []
     - name: hermetic
       value: "true"
   pipelineRef:
