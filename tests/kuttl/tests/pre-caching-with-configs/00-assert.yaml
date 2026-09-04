@@ -16,6 +16,7 @@ spec:
     namespace: default
   managedPolicies:
   - policy0-common-config-policy
+  - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   - policy3-common-ptp-sub-policy
   - policy4-common-sriov-sub-policy
@@ -43,6 +44,7 @@ status:
   - cgu-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
   - policy0-common-config-policy
+  - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   managedPoliciesContent:
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'

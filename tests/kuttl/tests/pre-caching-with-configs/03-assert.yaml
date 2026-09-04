@@ -13,6 +13,7 @@ spec:
   enable: false
   managedPolicies:
   - policy0-common-config-policy
+  - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   - policy3-common-ptp-sub-policy
   - policy4-common-sriov-sub-policy
@@ -47,6 +48,7 @@ status:
   - cgu-policy4-common-sriov-sub-policy-kuttl
   managedPoliciesCompliantBeforeUpgrade:
   - policy0-common-config-policy
+  - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
   managedPoliciesContent:
     policy3-common-ptp-sub-policy: '[{"kind":"Subscription","name":"ptp-operator-subscription","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-ptp"}]'
@@ -67,7 +69,7 @@ status:
   - cgu-policy4-common-sriov-sub-policy-placement-kuttl
   precaching:
     spec:
-      platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+      platformImage: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
       operatorsIndexes:
       - e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
       operatorsPackagesAndChannels:

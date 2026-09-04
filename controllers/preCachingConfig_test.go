@@ -128,7 +128,7 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 		expectedPrecachingSpec *ranv1alpha1.PrecachingSpec
 	}{
 		{
-			name: "Complete PreCachingConfigSpec with Overrides object",
+			name: "Complete_PreCachingConfigSpec_with_Overrides_object",
 			preCachingConfigSpec: &ranv1alpha1.PreCachingConfigSpec{
 				Overrides: ranv1alpha1.PlatformPreCachingSpec{
 					PlatformImage:    "test-platform-image:test-tag",
@@ -144,8 +144,8 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 				ExcludePrecachePatterns: []string{"aws", "azure"},
 			},
 			expectedPrecachingSpec: &ranv1alpha1.PrecachingSpec{
-				PlatformImage:    "test-platform-image:test-tag",
-				OperatorsIndexes: []string{"registry.example.com:5000/test-index:v0.0"},
+				PlatformImage:    "",
+				OperatorsIndexes: nil,
 				OperatorsPackagesAndChannels: []string{
 					"local-storage-operator: stable",
 					"performance-addon-operator: 4.9",
@@ -157,7 +157,7 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 			},
 		},
 		{
-			name: "Incomplete PreCachingConfigSpec with Overrides object",
+			name: "Incomplete_PreCachingConfigSpec_with_Overrides_object",
 			preCachingConfigSpec: &ranv1alpha1.PreCachingConfigSpec{
 				Overrides: ranv1alpha1.PlatformPreCachingSpec{
 					PlatformImage:    "test-platform-image:test-tag",
@@ -170,8 +170,8 @@ func TestPreCachingConfig_mapPreCachingConfigSpecToPrecachingSpec(t *testing.T) 
 				},
 			},
 			expectedPrecachingSpec: &ranv1alpha1.PrecachingSpec{
-				PlatformImage:    "test-platform-image:test-tag",
-				OperatorsIndexes: []string{"registry.example.com:5000/test-index:v0.0"},
+				PlatformImage:    "",
+				OperatorsIndexes: nil,
 				OperatorsPackagesAndChannels: []string{
 					"local-storage-operator: stable",
 					"performance-addon-operator: 4.9",
