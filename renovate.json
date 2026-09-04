@@ -55,7 +55,7 @@
         ]
     },
     "gomod": {
-        "enabled": false
+        "enabled": true
     },
     "packageRules": [
         {
@@ -82,6 +82,77 @@
             "matchUpdateTypes": [
                 "minor"
             ]
+        },
+        {
+            "description": "Migrated from Dependabot: enable Go module updates and auto-merge digest/patch/minor once CI passes. Also re-enables minor for gomod, overriding the global minor disable above. Major updates are left as normal PRs for manual review.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchUpdateTypes": [
+                "digest",
+                "patch",
+                "minor"
+            ],
+            "enabled": true,
+            "ignoreTests": false,
+            "addLabels": [
+                "allow-automatic-merge"
+            ]
+        },
+        {
+            "description": "Group the Kubernetes ecosystem into a single PR.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "k8s.io/**",
+                "sigs.k8s.io/**"
+            ],
+            "groupName": "kubernetes"
+        },
+        {
+            "description": "Group golang.org/x updates.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "golang.org/x/**"
+            ],
+            "groupName": "golang.org/x"
+        },
+        {
+            "description": "Group open-cluster-management.io updates.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "open-cluster-management.io/**"
+            ],
+            "groupName": "ocm"
+        },
+        {
+            "description": "Group ginkgo and gomega together.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "github.com/onsi/ginkgo/v2",
+                "github.com/onsi/gomega"
+            ],
+            "groupName": "ginkgo"
+        },
+        {
+            "description": "Skip noisy onsi patch bumps (matches previous Dependabot policy).",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "github.com/onsi/**"
+            ],
+            "matchUpdateTypes": [
+                "patch"
+            ],
+            "enabled": false
         }
     ],
     "prConcurrentLimit": 0,
