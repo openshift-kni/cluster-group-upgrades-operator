@@ -86,6 +86,26 @@ spec:
     type: string
     default: 'false'
     description: When "true", omit the build history (history timestamps, layer metadata, etc.) from the resulting image.
+  - name: catalog-template-file
+    type: string
+    default: .konflux/catalog/5.0/catalog-template.in.yaml
+    description: Path to the basic catalog template rendered by opm.
+  - name: bundle-builds-file
+    type: string
+    default: .konflux/catalog/5.0/bundle.builds.in.yaml
+    description: Path to the bundle builds file used to replace the catalog template placeholder.
+  - name: catalog-output-path
+    type: string
+    default: .konflux/catalog/5.0/topology-aware-lifecycle-manager/catalog.json
+    description: Path where opm writes the rendered catalog.json.
+  - name: catalog-idms-path
+    type: string
+    default: .konflux/catalog/5.0/catalog-idms.yaml
+    description: IDMS used to rewrite quay.io bundle pullspecs to registry.redhat.io after rendering.
+  - name: catalog-update-script
+    type: string
+    default: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/5.0/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/5.0/bundle.builds.in.yaml
+    description: Script run before opm rendering. Set to "true" to skip the catalog template update.
   results:
   - description: ''
     name: IMAGE_URL
@@ -142,9 +162,9 @@ spec:
       value: $(params.image-expires-after)
     - name: SCRIPT_RUNNER_IMAGE
       value: quay.io/konflux-ci/yq:latest
-        # update catalog template
+        # update catalog template (or skip with "true")
     - name: SCRIPT
-      value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
+      value: $(params.catalog-update-script)
     - name: HERMETIC
       value: $(params.hermetic)
     - name: SOURCE_ARTIFACT
@@ -175,14 +195,14 @@ spec:
       - basic
             # arg for OCP 4.17 and newer
       - "--migrate-level=bundle-object-to-csv-metadata"
-      - ".konflux/catalog/catalog-template.in.yaml"
+      - "$(params.catalog-template-file)"
     - name: OPM_OUTPUT_PATH
-      value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+      value: "$(params.catalog-output-path)"
         # replace catalog.json pullspecs with idms config
     - name: IDMS_PATH
-      value: ".konflux/catalog/catalog-idms.yaml"
+      value: "$(params.catalog-idms-path)"
     - name: FILE_TO_UPDATE_PULLSPEC
-      value: ".konflux/catalog/topology-aware-lifecycle-manager/catalog.json"
+      value: "$(params.catalog-output-path)"
     runAfter:
     - run-opm-pre-actions
     taskRef:

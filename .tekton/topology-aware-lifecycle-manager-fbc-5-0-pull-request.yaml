@@ -13,7 +13,8 @@ metadata:
       target_branch == "release-5.0" &&
       !event_title.contains("[BRANCH-CUT]") &&
       (
-        '.konflux/catalog/***'.pathChanged() ||
+        '.konflux/catalog/5.0/***'.pathChanged() ||
+        '.konflux/catalog/fbc-images-resolvable-integration-test-idms.yaml'.pathChanged() ||
         '.konflux/container_build_args.conf'.pathChanged() ||
         '.konflux/Dockerfile.catalog'.pathChanged() ||
         '.tekton/fbc-pipeline.yaml'.pathChanged() ||
@@ -44,6 +45,16 @@ spec:
         - linux/x86_64
     - name: dockerfile
       value: .konflux/Dockerfile.catalog
+    - name: catalog-template-file
+      value: .konflux/catalog/5.0/catalog-template.in.yaml
+    - name: bundle-builds-file
+      value: .konflux/catalog/5.0/bundle.builds.in.yaml
+    - name: catalog-output-path
+      value: .konflux/catalog/5.0/topology-aware-lifecycle-manager/catalog.json
+    - name: catalog-idms-path
+      value: .konflux/catalog/5.0/catalog-idms.yaml
+    - name: catalog-update-script
+      value: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/5.0/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/5.0/bundle.builds.in.yaml
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: additional-tags
