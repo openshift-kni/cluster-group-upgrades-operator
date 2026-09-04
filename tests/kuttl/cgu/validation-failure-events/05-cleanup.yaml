@@ -1,0 +1,26 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: oc delete -f ../../../../deploy/upgrades/validation-failure-events/cgu-missing-clusters.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/upgrades/validation-failure-events/cgu-missing-policies.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/upgrades/validation-failure-events/cgu-invalid-policies.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/upgrades/validation-failure-events/cgu-ambiguous-policies.yaml
+    namespaced: true
+  - command: oc delete -f ../../../../deploy/upgrades/validation-failure-events/policy-invalid-hub-template.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/upgrades/validation-failure-events/child-policy-invalid-hub-template.yaml
+    namespaced: true
+  - command: oc delete --namespace=aaa -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=bbb -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc delete namespace aaa
+  - command: oc delete namespace bbb
