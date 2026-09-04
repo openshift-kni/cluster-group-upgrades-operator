@@ -2,7 +2,7 @@
 
 curl -k -s -X PATCH -H "Accept: application/json, */*" \
 -H "Content-Type: application/merge-patch+json" \
-http://localhost:8001/apis/policy.open-cluster-management.io/v1/namespaces/$1/policies/policy0-common-config-policy/status \
+http://localhost:8001/apis/policy.open-cluster-management.io/v1/namespaces/$1/policies/policy0-deporder-config-policy/status \
 --data '{"status":{"compliant":"NonCompliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"NonCompliant"}, {"clustername":"spoke2","clusternamespace":"spoke2","compliant":"Compliant"}, {"clustername":"spoke5","clusternamespace":"spoke5","compliant":"Compliant"}, {"clustername":"spoke6","clusternamespace":"spoke6","compliant":"Compliant"}]}}'
 
 curl -k -s -X PATCH -H "Accept: application/json, */*" \
