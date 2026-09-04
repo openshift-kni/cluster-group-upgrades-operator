@@ -84,10 +84,10 @@ CRD_OPTIONS ?= "crd"
 
 # Konflux catalog configuration
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
-CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/catalog-template.in.yaml
-CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/catalog-template.out.yaml
+CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/5.0/catalog-template.in.yaml
+CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/5.0/catalog-template.out.yaml
 CATALOG_OUTPUT_FORMAT = json
-CATALOG_KONFLUX = .konflux/catalog/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
+CATALOG_KONFLUX = .konflux/catalog/5.0/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux bundle image configuration
 BUNDLE_NAME_SUFFIX = bundle-5-0
@@ -628,7 +628,7 @@ konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catal
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
-		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/bundle.builds.in.yaml \
+		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/5.0/bundle.builds.in.yaml \
 		OPM=$(OPM) \
 		YQ=$(YQ)
 	$(MAKE) konflux-fix-catalog-name
@@ -644,7 +644,7 @@ konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a re
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_NAME_SUFFIX=$(BUNDLE_NAME_SUFFIX) \
 		PRODUCTION_BUNDLE_NAME=$(PRODUCTION_BUNDLE_NAME) \
-		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/bundle.builds.in.yaml \
+		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/5.0/bundle.builds.in.yaml \
 		OPM=$(OPM) \
 		YQ=$(YQ)
 	$(MAKE) konflux-fix-catalog-name
