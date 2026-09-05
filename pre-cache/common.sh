@@ -37,27 +37,27 @@ pull_index(){
     local index_pull_spec=$1
     local PULL_SECRET_PATH=$2
     # Pull the image into the cache directory and attain the image ID
-    release_index_id=$($CONTAINER_TOOL pull --quiet  $index_pull_spec --authfile=$PULL_SECRET_PATH)
+    release_index_id=$("$CONTAINER_TOOL" pull --quiet --authfile="$PULL_SECRET_PATH" -- "$index_pull_spec")
     [[ $? -eq 0 ]] || return 1
-    echo $release_index_id
+    echo "$release_index_id"
     return 0
 }
 
 mount_index(){
     local image_id=$1
     local image_mount
-    image_mount=$($CONTAINER_TOOL image mount $image_id)
+    image_mount=$("$CONTAINER_TOOL" image mount "$image_id")
     rv=$?
-    echo $image_mount
+    echo "$image_mount"
     return $rv
 }
 
 unmount_index(){
     local image_id=$1
     local result
-    result=$($CONTAINER_TOOL image unmount $image_id)
+    result=$("$CONTAINER_TOOL" image unmount "$image_id")
     rv=$?
-    echo $result
+    echo "$result"
     return $rv
 }
 
