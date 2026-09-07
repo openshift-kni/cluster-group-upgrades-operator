@@ -39,7 +39,10 @@ func (r *Policy) SetupWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// +kubebuilder:webhook:path=/validate-policy-open-cluster-management-io-v1-policy,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=policy.open-cluster-management.io,resources=policies,verbs=create,versions=v1,name=policy.open-cluster-management.io.webhook,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-policy-open-cluster-management-io-v1-policy,mutating=false,failurePolicy=Ignore,sideEffects=None,groups=policy.open-cluster-management.io,resources=policies,verbs=create;update,versions=v1,name=policy.open-cluster-management.io.webhook,admissionReviewVersions=v1,serviceName=propagator-webhook-service,serviceNamespace=open-cluster-management
+
+// PolicyCustomValidator validates Policy create and update requests.
+//
 // +kubebuilder:object:generate=false
 type PolicyCustomValidator struct{}
 
