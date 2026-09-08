@@ -13,6 +13,7 @@ metadata:
       event == "pull_request" &&
       target_branch == "release-5.0" &&
       !event_title.contains("[BRANCH-CUT]") &&
+      event_title.contains("[NEW-4-22-BUNDLE]") &&
       (
         '.konflux/catalog/4.22/***'.pathChanged()
       )
