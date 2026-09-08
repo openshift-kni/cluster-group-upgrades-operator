@@ -1,0 +1,82 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-canary-timeout-fail
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke4
+  - spoke6
+  enable: false
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    canaries:
+    - spoke1
+    - spoke2
+    maxConcurrency: 2
+    timeout: 240
+status:
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: Not enabled
+    reason: NotEnabled
+    status: 'False'
+    type: Progressing
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+  remediationPlan:
+  - - spoke1
+  - - spoke2
+  - - spoke4
+    - spoke6
+  status: {}
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+kind: Event
+message: 'New ClusterGroupUpgrade found: cgu-canary-timeout-fail'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguCreated
+reportingComponent: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+note: 'New ClusterGroupUpgrade found: cgu-canary-timeout-fail'
+reason: CguCreated
+reportingController: ClusterGroupUpgrade
+action: BuildingRemediationPlan
+type: Normal

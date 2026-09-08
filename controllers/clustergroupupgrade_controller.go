@@ -678,6 +678,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
 							clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
 							r.Log.Info("Canaries batch timed out")
+							r.sendEventCGUBatchUpgradeTimedout(ctx, clusterGroupUpgrade)
 							utils.SetStatusCondition(
 								&clusterGroupUpgrade.Status.Conditions,
 								utils.ConditionTypes.Progressing,
