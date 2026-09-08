@@ -15,7 +15,7 @@ COPY .konflux/catalog/ /app/.konflux/catalog/
 COPY vendor/ /app/vendor/
 
 WORKDIR /app
-RUN SKIP_SUBMODULE_SYNC=yes make konflux-fix-catalog-name
+RUN SKIP_SUBMODULE_SYNC=yes make konflux-fix-catalog-name CATALOG_KONFLUX=.konflux/catalog/5.0/topology-aware-lifecycle-manager/catalog.json
 
 # run the catalog
 FROM ${OPM_IMAGE}
