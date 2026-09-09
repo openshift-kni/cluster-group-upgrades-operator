@@ -84,6 +84,13 @@
             ]
         },
         {
+            "description": "Only propose Go module updates compatible with each branch's existing go directive. Renovate never bumps the go directive itself (its default), and this skips dependency updates whose new version would require a newer Go than the branch targets. Since the config is read from the default branch but the go directive is read per branch, release branches (e.g. go 1.24) are protected from updates that need a newer toolchain, while main follows its own go version.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "constraintsFiltering": "strict"
+        },
+        {
             "description": "Migrated from Dependabot: enable Go module updates and auto-merge digest/patch/minor once CI passes. Also re-enables minor for gomod, overriding the global minor disable above. Major updates are left as normal PRs for manual review.",
             "matchManagers": [
                 "gomod"
