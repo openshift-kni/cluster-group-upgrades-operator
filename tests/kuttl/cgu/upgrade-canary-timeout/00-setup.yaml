@@ -1,0 +1,46 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: oc delete events --all
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+
+  # Mark all four CGU clusters non-compliant on policy1 so spoke1, spoke2, spoke4, and
+  # spoke6 are included in the remediation plan (the shared patch script omits spoke2
+  # on policy1 and marks spoke6 as compliant).
+  - command: >
+      oc patch policy policy1-common-cluster-version-policy -n default
+      --type=merge --subresource=status
+      -p '{"status":{"compliant":"NonCompliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"NonCompliant"},{"clustername":"spoke2","clusternamespace":"spoke2","compliant":"NonCompliant"},{"clustername":"spoke4","clusternamespace":"spoke4","compliant":"NonCompliant"},{"clustername":"spoke6","clusternamespace":"spoke6","compliant":"NonCompliant"}]}}'
+    ignoreFailure: false
+
+  # Same as above for policy2: all four spokes must be non-compliant to build the
+  # expected plan [[spoke1], [spoke2], [spoke4, spoke6]] with two canary batches.
+  - command: >
+      oc patch policy policy2-common-pao-sub-policy -n default
+      --type=merge --subresource=status
+      -p '{"status":{"compliant":"NonCompliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"NonCompliant"},{"clustername":"spoke2","clusternamespace":"spoke2","compliant":"NonCompliant"},{"clustername":"spoke4","clusternamespace":"spoke4","compliant":"NonCompliant"},{"clustername":"spoke6","clusternamespace":"spoke6","compliant":"NonCompliant"}]}}'
+    ignoreFailure: false
+
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke2 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke4 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy1-common-cluster-version-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke6 -f ../../../../deploy/acm/policies/all_policies/child-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/upgrades/upgrade-canary-timeout-fail/cgu-canary-timeout-fail.yaml
+    namespaced: true
