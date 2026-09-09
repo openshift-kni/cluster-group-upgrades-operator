@@ -169,7 +169,7 @@ func NewEmitter(c client.Client, scheme *runtime.Scheme, controller string) *Emi
 // note is the human-readable event message.
 // related is an optional secondary object (e.g. the ManagedCluster being remediated).
 //
-// Safe to call on a nil receiver — the call is silently ignored.
+// Safe to call on a nil receiver - the call is silently ignored.
 func (e *Emitter) Emit(ctx context.Context, obj runtime.Object, annotations map[string]string,
 	eventType, reason, action, note string, related *corev1.ObjectReference) error {
 
@@ -482,6 +482,7 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUValidationFailureMissingClus
 	evMsg := fmt.Sprintf(CGUEventMsgFmtValidationFailure, cgu.Name, CGUValidationErrorMsgMissingCluster, clusterNamesStr)
 
 	evAnns := map[string]string{
+		CGUEventAnnotationKeyEvType:               CGUAnnEventGlobalUpgrade,
 		CGUEventAnnotationKeyMissingClustersCount: fmt.Sprint(len(clusterNames)),
 		CGUEventAnnotationKeyMissingClustersList:  clusterNamesStr,
 	}
@@ -505,7 +506,9 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUVPoliciesValidationFailure(c
 	)
 
 	var evMsg string
-	anns := map[string]string{}
+	anns := map[string]string{
+		CGUEventAnnotationKeyEvType: CGUAnnEventGlobalUpgrade,
+	}
 
 	switch failureType {
 	case CGUValidationErrorMsgMissingPolicies:
