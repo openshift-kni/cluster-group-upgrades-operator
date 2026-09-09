@@ -136,8 +136,8 @@ github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836 h1:8
 github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836/go.mod h1:UwTWt+P9MhBWNzRCJrvmoMg0hN2u/znkkrkt9C8phkU=
 github.com/openshift/api v0.0.0-20260805215214-cfb63858e9d7 h1:Z6p+yoWjFXbfnN2zPdQ8SRXPKDs9QtT3P8hN3SP2zuw=
 github.com/openshift/api v0.0.0-20260805215214-cfb63858e9d7/go.mod h1:k6qH5QOVa5GDln2VVm8Jz4NV3Z7R2SATHFLwGS6Wh3M=
-github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c h1:gJvhduWIrpzoUTwrJjjeul+hGETKkhRhEZosBg/X3Hg=
-github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
+github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b h1:ErTc+6D1n/rpRaUYP++h0YlOzM+q7UaAdqDZrzhA0ho=
+github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
 github.com/openshift/controller-runtime-common v0.0.0-20260213175913-767fef058eca h1:EOc/lbyZxtn1b/BvRwnLpbgBg0F+2RUQd3xMiA4/JsQ=
 github.com/openshift/controller-runtime-common v0.0.0-20260213175913-767fef058eca/go.mod h1:59nLF3/IfhAtoQZfUzlCyidTAdlVT6KiVeTicUi2wuA=
 github.com/openshift/library-go v0.0.0-20260904093542-946ee696bcb5 h1:Xxq4yPrGXwYoX02ggkqImBlojBq5cZmJer8uSySdNHc=
