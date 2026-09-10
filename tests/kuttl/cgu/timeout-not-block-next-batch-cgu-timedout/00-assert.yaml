@@ -52,3 +52,36 @@ status:
     default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
     default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
   status: {}
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+kind: Event
+message: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguCreated
+reportingComponent: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
+reason: CguCreated
+reportingController: ClusterGroupUpgrade
+action: BuildingRemediationPlan
+type: Normal

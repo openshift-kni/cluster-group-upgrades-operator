@@ -2,6 +2,9 @@ apiVersion: kuttl.dev/v1beta1
 kind: TestStep
 
 commands:
+  - command: oc --namespace=default get cgu -o yaml
+  - script: |
+      oc --namespace=default get events -o json | jq '.items | sort_by(.eventTime) | .[] | select(.reason | test("Cgu")) | {"ts": .eventTime, "reason": .reason, "msg": .message, "anns": .metadata.annotations}'
   - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy1-common-cluster-version-policy.yaml
     namespaced: true
   - command: oc delete -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
@@ -13,4 +16,6 @@ commands:
     namespaced: true
   # Delete the UOCR
   - command: oc delete -f ../../../../deploy/upgrades/upgrade-complete/cgu-upgrade-complete.yaml
+    namespaced: true
+  - command: oc delete events --all
     namespaced: true
