@@ -1,3 +1,7 @@
-catalog-template.out.yaml
-topology-aware-lifecycle-manager/catalog.yaml
-topology-aware-lifecycle-manager/catalog.json
+# Generated for Konflux FBC builds; do not commit.
+5.0/catalog-template.out.yaml
+5.0/topology-aware-lifecycle-manager/catalog.yaml
+5.0/topology-aware-lifecycle-manager/catalog.json
+4.22/catalog-template.out.yaml
+4.22/topology-aware-lifecycle-manager/catalog.yaml
+4.22/topology-aware-lifecycle-manager/catalog.json
