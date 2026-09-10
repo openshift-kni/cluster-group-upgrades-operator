@@ -55,7 +55,22 @@
         ]
     },
     "gomod": {
-        "enabled": true
+        "enabled": true,
+        "postUpdateOptions": [
+            "gomodUpdateImportPaths",
+            "gomodTidy"
+        ],
+        "packageRules": [
+            {
+                "matchManagers": [
+                    "gomod"
+                ],
+                "matchDepTypes": [
+                    "indirect"
+                ],
+                "enabled": false
+            }
+        ]
     },
     "packageRules": [
         {
