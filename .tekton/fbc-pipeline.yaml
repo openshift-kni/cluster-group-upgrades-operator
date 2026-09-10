@@ -106,6 +106,10 @@ spec:
     type: string
     default: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/5.0/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/5.0/bundle.builds.in.yaml
     description: Script run before opm rendering. Set to "true" to skip the catalog template update.
+  - name: catalog-path
+    type: string
+    default: .konflux/catalog/5.0
+    description: Catalog directory relative to the build context containing the package subdirectory. Used by fbc-inject-lifecycle to bypass Dockerfile parsing for multi-stage builds.
   results:
   - description: ''
     name: IMAGE_URL
@@ -449,7 +453,7 @@ spec:
     - name: CONTEXT
       value: $(params.path-context)
     - name: CATALOG_PATH
-      value: ".konflux/catalog"
+      value: $(params.catalog-path)
     - name: SOURCE_ARTIFACT
       value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
     - name: ociStorage

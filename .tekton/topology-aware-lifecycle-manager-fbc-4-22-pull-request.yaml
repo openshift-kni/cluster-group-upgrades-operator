@@ -47,6 +47,8 @@ spec:
       value: .konflux/catalog/4.22/catalog-idms.yaml
     - name: catalog-update-script
       value: "true"
+    - name: catalog-path
+      value: .konflux/catalog/4.22
     - name: build-args-file
       value: .konflux/container_build_args.conf
     - name: additional-tags
