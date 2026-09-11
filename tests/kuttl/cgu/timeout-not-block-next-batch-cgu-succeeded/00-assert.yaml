@@ -8,7 +8,7 @@ spec:
   - spoke1
   - spoke4
   - spoke6
-  enable: true
+  enable: false
   managedPolicies:
   - policy1-common-cluster-version-policy
   - policy2-common-pao-sub-policy
@@ -16,9 +16,6 @@ spec:
     maxConcurrency: 1
     timeout: 240
 status:
-  clusters:
-  - name: spoke6
-    state: complete
   conditions:
   - message: All selected clusters are valid
     reason: ClusterSelectionCompleted
@@ -28,9 +25,9 @@ status:
     reason: ValidationCompleted
     status: 'True'
     type: Validated
-  - message: Remediating non-compliant policies
-    reason: InProgress
-    status: 'True'
+  - message: Not enabled
+    reason: NotEnabled
+    status: 'False'
     type: Progressing
   managedPoliciesContent:
     policy2-common-pao-sub-policy: '[{"kind":"Subscription","name":"performance-addon-operator","apiVersion":"operators.coreos.com/v1alpha1","namespace":"openshift-performance-addon-operator"}]'
@@ -54,30 +51,37 @@ status:
   safeResourceNames:
     default/cgu-upgrade-complete-policy1-common-cluster-version-policy-placement: cgu-upgrade-complete-policy1-common-cluster-version-policy-placement-kuttl
     default/cgu-upgrade-complete-policy2-common-pao-sub-policy-placement: cgu-upgrade-complete-policy2-common-pao-sub-policy-placement-kuttl
-  status:
-    currentBatch: 1
-    currentBatchRemediationProgress:
-      spoke1:
-        policyIndex: 0
-        state: InProgress
+  status: {}
 ---
-apiVersion: cluster.open-cluster-management.io/v1
-kind: ManagedCluster
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+kind: Event
+message: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
 metadata:
-  labels:
-    ztp-running: ''
-  name: spoke1
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguCreated
+reportingComponent: ClusterGroupUpgrade
+type: Normal
 ---
-apiVersion: cluster.open-cluster-management.io/v1
-kind: ManagedCluster
+apiVersion: events.k8s.io/v1
+kind: Event
 metadata:
-  labels:
-    ztp-running: ''
-  name: spoke4
----
-apiVersion: cluster.open-cluster-management.io/v1
-kind: ManagedCluster
-metadata:
-  labels:
-    ztp-done: ''
-  name: spoke6
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: 'New ClusterGroupUpgrade found: cgu-upgrade-complete'
+reason: CguCreated
+reportingController: ClusterGroupUpgrade
+action: BuildingRemediationPlan
+type: Normal

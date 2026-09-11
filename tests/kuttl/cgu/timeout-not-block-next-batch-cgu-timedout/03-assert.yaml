@@ -1,0 +1,127 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-upgrade-complete
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 1
+status:
+  clusters:
+  - name: spoke6
+    state: complete
+  - currentPolicy:
+      name: policy1-common-cluster-version-policy
+      status: NonCompliant
+    name: spoke1
+    state: timedout
+  - name: spoke4
+    state: complete
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: "True"
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: "True"
+    type: Validated
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Progressing
+  - message: Policy remediation took too long
+    reason: TimedOut
+    status: "False"
+    type: Succeeded
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ''
+  name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-done: ''
+  name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: ClusterGroupUpgrade cgu-upgrade-complete timed-out remediating policies
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+    cgu.openshift.io/timedout-clusters: spoke1
+    cgu.openshift.io/timedout-clusters-count: "1"
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+reason: CguTimedout
+reportingComponent: ClusterGroupUpgrade
+type: Warning
+---
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+    cgu.openshift.io/timedout-clusters: spoke1
+    cgu.openshift.io/timedout-clusters-count: "1"
+    cgu.openshift.io/total-clusters-count: "2"
+  namespace: default
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-upgrade-complete
+  namespace: default
+note: ClusterGroupUpgrade cgu-upgrade-complete timed-out remediating policies
+reason: CguTimedout
+reportingController: ClusterGroupUpgrade
+action: RemediationTimeout
+type: Warning
+---
+apiVersion: kuttl.dev/v1beta1
+kind: TestAssert
+timeout: 5
+commands:
+  # Check to avoid duplicated events
+  - script: |
+      NAMESPACE=default
+      # This function expects the reason as the first argument and the expected count as the second argument.
+      function get_ev_count {
+        local reason=$1
+        local expected_count=$2
+        local count=$(kubectl get events -n $NAMESPACE --field-selector reason=$reason -o jsonpath='{.items[*].metadata.name}' | wc -w)
+        echo "Found $count events with reason $reason"
+        if [ "$count" -ne "$expected_count" ]; then
+          echo "ERROR: Expected $expected_count events with reason $reason, but found $count"
+          exit 1
+        fi
+      }
+      get_ev_count "CguCreated" 1
+      get_ev_count "CguStarted" 5
+      get_ev_count "CguTimedout" 2
+      get_ev_count "CguSuccess" 2
