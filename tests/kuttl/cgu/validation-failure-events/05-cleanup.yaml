@@ -24,3 +24,5 @@ commands:
     namespaced: true
   - command: oc delete namespace aaa
   - command: oc delete namespace bbb
+  - command: oc delete events --all
+    namespaced: true
