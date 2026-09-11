@@ -1,9 +1,9 @@
 reviewers:
-  - sttts
-  - mfojtik
-  - soltysh
+  - control-plane-approvers
   - 2uasimojo
+  - jsafrane
+  - sanchezl
 approvers:
-  - sttts
-  - mfojtik
-  - soltysh
+  - control-plane-approvers
+  - jsafrane
+  - sanchezl
