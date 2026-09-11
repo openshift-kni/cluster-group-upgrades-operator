@@ -7,7 +7,7 @@ require (
 	github.com/go-logr/logr v1.4.4
 	github.com/onsi/gomega v1.42.0
 	github.com/openshift/api v0.0.0-20260805215214-cfb63858e9d7
-	github.com/openshift/build-machinery-go v0.0.0-20250602125535-1b6d00b8c37c
+	github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b
 	github.com/operator-framework/api v0.45.0
 	github.com/sirupsen/logrus v1.10.1
 	github.com/spf13/cobra v1.10.2
