@@ -178,7 +178,11 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 
 	// Generate a list of ordered managed policies based on the deploy wave.
 	// Deploywave is a way to order deployment of policies, it's defined
-	// as a annotation in policy.
+	// as an annotation on the root (parent) policy - i.e. the Policy CR
+	// created by the user in its own namespace - not on the child policy
+	// copied by ACM into the managed cluster's namespace, becausei f the
+	// root policy has .spec.copyPolicyMetadata=false, the annotation
+	// won't be copied to the child policy.
 	// For example,
 	//   metadata:
 	//     annotations:
@@ -192,19 +196,26 @@ func (r *ManagedClusterForCguReconciler) newClusterGroupUpgrade(
 			continue
 		}
 
-		deployWave, found := cPolicy.GetAnnotations()[ztpDeployWaveAnnotation]
+		policyName, err := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())
+		if err != nil {
+			r.Log.Info("Ignoring policy with invalid name", "policy", cPolicy.Name)
+			continue
+		}
+		rootNs, rootName := policyName[0], policyName[1]
+
+		rootPolicy := &policiesv1.Policy{}
+		if err := r.Get(ctx, types.NamespacedName{Name: rootName, Namespace: rootNs}, rootPolicy); err != nil {
+			return fmt.Errorf("failed to get root policy %s/%s for child policy %s: %w", rootNs, rootName, cPolicy.GetName(), err)
+		}
+
+		deployWave, found := rootPolicy.GetAnnotations()[ztpDeployWaveAnnotation]
 		if found {
 			deployWaveInt, err := strconv.Atoi(deployWave)
 			if err != nil {
 				// err convert from string to int
-				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, cPolicy.GetName(), err)
+				return fmt.Errorf("%s in policy %s is not an interger: %s", ztpDeployWaveAnnotation, rootName, err)
 			}
-			policyName, err := utils.GetParentPolicyNameAndNamespace(cPolicy.GetName())
-			if err != nil {
-				r.Log.Info("Ignoring policy with invalid name", "policy", cPolicy.Name)
-				continue
-			}
-			policyWaveMap[policyName[1]] = deployWaveInt
+			policyWaveMap[rootName] = deployWaveInt
 		}
 	}
 
