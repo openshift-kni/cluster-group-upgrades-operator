@@ -124,4 +124,4 @@ replace github.com/imdario/mergo => github.com/imdario/mergo v1.0.1
 
 replace k8s.io/code-generator => k8s.io/code-generator v0.29.5
 
-replace golang.org/x/net => github.com/openshift-sustaining/net v0.43.0-sec.4
+replace golang.org/x/net => github.com/openshift-sustaining/net v0.43.0
