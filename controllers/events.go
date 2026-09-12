@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"fmt"
+	"slices"
 	"strings"
 
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -165,6 +166,9 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeStarted(cgu *cgu
 	for clusterName := range cgu.Status.Status.CurrentBatchRemediationProgress {
 		batchClusters = append(batchClusters, clusterName)
 	}
+	// CurrentBatchRemediationProgress is a map, sort the cluster name list for
+	// generating deterministic event payload string
+	slices.Sort(batchClusters)
 
 	evMsg := fmt.Sprintf(CGUEventMsgFmtBatchUpgradeStarted, cgu.Name, cgu.Status.Status.CurrentBatch)
 
@@ -190,6 +194,9 @@ func (r *ClusterGroupUpgradeReconciler) sendEventCGUBatchUpgradeSuccess(cgu *cgu
 	for clusterName := range cgu.Status.Status.CurrentBatchRemediationProgress {
 		batchClusters = append(batchClusters, clusterName)
 	}
+	// CurrentBatchRemediationProgress is a map, sort the cluster name list for
+	// generating deterministic event payload string
+	slices.Sort(batchClusters)
 
 	batchClustersCount := len(batchClusters)
 	totalClustersCount := getTotalClustersNum(cgu)
