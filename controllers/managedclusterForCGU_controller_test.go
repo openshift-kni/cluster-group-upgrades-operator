@@ -179,6 +179,12 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:      "common-config-policy",
+						Namespace: "ztp-common",
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-common.common-sub-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
@@ -186,9 +192,21 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
+						Name:      "common-sub-policy",
+						Namespace: "ztp-common",
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "group-du-config-policy",
+						Namespace: "ztp-group",
 					},
 				},
 			},
@@ -221,17 +239,29 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-common.common-config-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+						Name:      "ztp-common.common-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "common-config-policy",
+						Namespace:   "ztp-common",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 					},
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-common.common-sub-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
+						Name:      "ztp-common.common-sub-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "common-sub-policy",
+						Namespace:   "ztp-common",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "20"},
 					},
 				},
@@ -240,6 +270,12 @@ func TestControllerReconciler(t *testing.T) {
 						Name:      "ztp-group.group-du-config-policy",
 						Namespace: "testSpoke",
 						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "group-du-config-policy",
+						Namespace: "ztp-group",
 					},
 				},
 			},
@@ -290,13 +326,23 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-common.common-config-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+						Name:      "ztp-common.common-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "common-config-policy",
+						Namespace:   "ztp-common",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 					},
 				},
 				&policiesv1.Policy{
+					// This child policy is a copy created by CGU processing (see the
+					// "openshift-cluster-group-upgrades/clusterGroupUpgrade" label) and is
+					// filtered out by GetChildPolicies before the root policy is ever looked
+					// up, so no matching root policy is needed here.
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "ztp-common.common-sub-policy",
 						Namespace: "testSpoke",
@@ -307,9 +353,15 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-group.group-du-config-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+						Name:      "ztp-group.group-du-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "group-du-config-policy",
+						Namespace:   "ztp-group",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "30"},
 					},
 				},
@@ -361,25 +413,43 @@ func TestControllerReconciler(t *testing.T) {
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-common.common-config-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+						Name:      "ztp-common.common-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "common-config-policy",
+						Namespace:   "ztp-common",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
 					},
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-common.common-sub-4.11-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-4.11-policy"},
+						Name:      "ztp-common.common-sub-4.11-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-sub-4.11-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "common-sub-4.11-policy",
+						Namespace:   "ztp-common",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "2"},
 					},
 				},
 				&policiesv1.Policy{
 					ObjectMeta: metav1.ObjectMeta{
-						Name:        "ztp-group.group-du-config-policy",
-						Namespace:   "testSpoke",
-						Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+						Name:      "ztp-group.group-du-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:        "group-du-config-policy",
+						Namespace:   "ztp-group",
 						Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1000000000000000"},
 					},
 				},
@@ -483,6 +553,17 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 	}
 	objs = append(objs, ns)
 
+	// The root policy is shared by all 100 spoke clusters (same name/namespace,
+	// only the child policy namespace changes per cluster), so it only needs to
+	// be added once.
+	objs = append(objs, &policiesv1.Policy{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:        "common-config-policy",
+			Namespace:   "ztp-common",
+			Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
+		},
+	})
+
 	for i := 1; i <= 100; i++ {
 		name := "spoke" + strconv.Itoa(i)
 		cluster := &clusterv1.ManagedCluster{
@@ -502,10 +583,9 @@ func TestControllerReconcileWithHundredClusters(t *testing.T) {
 
 		policy := &policiesv1.Policy{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:        "ztp-common.common-config-policy",
-				Namespace:   name,
-				Labels:      map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
-				Annotations: map[string]string{"ran.openshift.io/ztp-deploy-wave": "1"},
+				Name:      "ztp-common.common-config-policy",
+				Namespace: name,
+				Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
 			},
 		}
 		objs = append(objs, policy)
