@@ -2,7 +2,7 @@ module github.com/openshift-kni/cluster-group-upgrades-operator
 
 go 1.22.0
 
-toolchain go1.22.4
+toolchain go1.27.1
 
 require (
 	github.com/go-bindata/go-bindata v3.1.2+incompatible
