@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
-	github.com/openshift/controller-runtime-common v0.0.0-20260213175913-767fef058eca
+	github.com/openshift/controller-runtime-common v0.0.0-20260813135806-e1187ec555fc
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
 	golang.org/x/sys v0.47.0
 	gopkg.in/yaml.v3 v3.0.1
