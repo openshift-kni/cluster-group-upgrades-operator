@@ -11,13 +11,13 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.7.0
 	github.com/stretchr/testify v1.8.2
-	k8s.io/api v0.26.3
+	k8s.io/api v0.26.15
 	k8s.io/apimachinery v0.27.4
 	k8s.io/client-go v12.0.0+incompatible
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.11.0
 	open-cluster-management.io/governance-policy-propagator v0.8.0
-	sigs.k8s.io/controller-runtime v0.14.6
+	sigs.k8s.io/controller-runtime v0.14.7
 )
 
 require (
@@ -75,7 +75,7 @@ require (
 	go.uber.org/zap v1.24.0 // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.25.0 // indirect
-	golang.org/x/oauth2 v0.0.0-20220411215720-9780585627b5 // indirect
+	golang.org/x/oauth2 v0.7.0 // indirect
 	golang.org/x/term v0.29.0 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.3.0 // indirect
@@ -85,8 +85,8 @@ require (
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	k8s.io/apiextensions-apiserver v0.26.1 // indirect
-	k8s.io/component-base v0.26.1 // indirect
+	k8s.io/apiextensions-apiserver v0.26.10 // indirect
+	k8s.io/component-base v0.26.10 // indirect
 	k8s.io/gengo v0.0.0-20220902162205-c0856e24416d // indirect
 	k8s.io/klog/v2 v2.90.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20230501164219-8b0f38b5fd1f // indirect
@@ -96,6 +96,6 @@ require (
 	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
-replace k8s.io/client-go => k8s.io/client-go v0.26.1
+replace k8s.io/client-go => k8s.io/client-go v0.26.15
 
 replace golang.org/x/net => github.com/openshift-sustaining/net v0.35.0-sec.4
