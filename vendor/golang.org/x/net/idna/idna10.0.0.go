@@ -362,17 +362,13 @@ func (p *Profile) process(s string, toASCII bool) (string, error) {
 			continue
 		}
 		if strings.HasPrefix(label, acePrefix) {
-			enc := label[len(acePrefix):]
-			u, err2 := decode(enc)
+			u, err2 := decode(label[len(acePrefix):])
 			if err2 != nil {
 				if err == nil {
 					err = err2
 				}
 				// Spec says keep the old label.
 				continue
-			}
-			if err == nil && len(u) > 0 && isASCII(u) {
-				err = punyError(enc)
 			}
 			isBidi = isBidi || bidirule.DirectionString(u) != bidi.LeftToRight
 			labels.set(u)
@@ -426,15 +422,6 @@ func (p *Profile) process(s string, toASCII bool) (string, error) {
 		}
 	}
 	return s, err
-}
-
-func isASCII(s string) bool {
-	for _, c := range []byte(s) {
-		if c >= 0x80 {
-			return false
-		}
-	}
-	return true
 }
 
 func normalize(p *Profile, s string) (mapped string, isBidi bool, err error) {
