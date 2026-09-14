@@ -175,6 +175,14 @@
                 "patch"
             ],
             "enabled": false
+        },
+        {
+            "description": "Only allow patch updates for the Go toolchain directive on release branches. Prevents minor/major bumps (e.g. go1.22.4 → go1.27.1) while still allowing security patches (e.g. go1.22.4 → go1.22.9).",
+            "matchManagers": ["gomod"],
+            "matchDepTypes": ["toolchain"],
+            "matchUpdateTypes": ["minor", "major"],
+            "matchBaseBranches": ["/^release-/"],
+            "enabled": false
         }
     ],
     "prConcurrentLimit": 0,
