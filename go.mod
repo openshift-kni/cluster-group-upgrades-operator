@@ -24,12 +24,12 @@ require (
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.32.0
-	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
+	github.com/openshift-kni/lifecycle-agent v0.0.0-20260912090217-93334ad4cf56
 	github.com/openshift/controller-runtime-common v0.0.0-20260813135806-e1187ec555fc
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
 	golang.org/x/sys v0.48.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/code-generator v0.36.2
+	k8s.io/code-generator v0.36.4
 	open-cluster-management.io/config-policy-controller v0.20.0
 	sigs.k8s.io/structured-merge-diff/v6 v6.3.3
 	sigs.k8s.io/yaml v1.6.0
