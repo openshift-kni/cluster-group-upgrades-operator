@@ -26,10 +26,10 @@ require (
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/openshift/controller-runtime-common v0.0.0-20260213175913-767fef058eca
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
+	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
 	golang.org/x/sys v0.43.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/code-generator v0.35.0
+	k8s.io/code-generator v0.35.3
 	open-cluster-management.io/config-policy-controller v0.18.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
 	sigs.k8s.io/yaml v1.6.0

@@ -276,8 +276,8 @@ github.com/spf13/pflag
 # github.com/stoewer/go-strcase v1.3.1
 ## explicit; go 1.11
 github.com/stoewer/go-strcase
-# github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
-## explicit; go 1.22.0
+# github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
+## explicit; go 1.25.0
 github.com/stolostron/cluster-lifecycle-api/action/v1beta1
 github.com/stolostron/cluster-lifecycle-api/view/v1beta1
 # github.com/stolostron/kubernetes-dependency-watches v0.10.2
@@ -1073,7 +1073,7 @@ k8s.io/client-go/util/keyutil
 k8s.io/client-go/util/retry
 k8s.io/client-go/util/watchlist
 k8s.io/client-go/util/workqueue
-# k8s.io/code-generator v0.35.0 => k8s.io/code-generator v0.29.5
+# k8s.io/code-generator v0.35.3 => k8s.io/code-generator v0.29.5
 ## explicit; go 1.21
 k8s.io/code-generator
 k8s.io/code-generator/cmd/applyconfiguration-gen
