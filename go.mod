@@ -11,9 +11,9 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.9.1
 	github.com/stretchr/testify v1.10.0
-	k8s.io/api v0.32.3
-	k8s.io/apimachinery v0.32.3
-	k8s.io/client-go v0.32.2
+	k8s.io/api v0.32.13
+	k8s.io/apimachinery v0.32.13
+	k8s.io/client-go v0.32.13
 	k8s.io/klog v1.0.0
 	open-cluster-management.io/api v0.16.1
 	open-cluster-management.io/governance-policy-propagator v0.16.0
@@ -27,7 +27,7 @@ require (
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20240918064238-a5e71b599118
 	golang.org/x/sys v0.35.0
 	gopkg.in/yaml.v3 v3.0.1
-	k8s.io/code-generator v0.32.2
+	k8s.io/code-generator v0.32.13
 	open-cluster-management.io/config-policy-controller v0.16.0
 	sigs.k8s.io/structured-merge-diff/v4 v4.6.0
 	sigs.k8s.io/yaml v1.4.0
@@ -107,11 +107,9 @@ require (
 	google.golang.org/protobuf v1.36.5 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.32.2 // indirect
 	k8s.io/apiserver v0.32.2 // indirect
 	k8s.io/component-base v0.32.2 // indirect
-	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/gengo/v2 v2.0.0-20240911193312-2b36238f13e9 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20241105132330-32ad38e42d3f // indirect
@@ -122,6 +120,6 @@ require (
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v1.0.1
 
-replace k8s.io/code-generator => k8s.io/code-generator v0.29.5
+replace k8s.io/code-generator => k8s.io/code-generator v0.32.13
 
 replace golang.org/x/net => github.com/openshift-sustaining/net v0.43.0
