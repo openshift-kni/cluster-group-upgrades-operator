@@ -11,7 +11,7 @@ require (
 	github.com/operator-framework/api v0.10.4
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/cobra v1.3.0
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
+	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
 	github.com/stretchr/testify v1.7.1
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
