@@ -33,3 +33,4 @@ COPY --from=builder /app/.konflux/catalog/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
 LABEL operators.operatorframework.io.index.configs.v1=/configs
+LABEL com.redhat.fbc.openshift.version='["5.0"]'
