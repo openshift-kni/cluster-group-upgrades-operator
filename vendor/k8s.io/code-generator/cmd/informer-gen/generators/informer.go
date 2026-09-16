@@ -21,9 +21,9 @@ import (
 	"io"
 	"strings"
 
-	"k8s.io/gengo/v2/generator"
-	"k8s.io/gengo/v2/namer"
-	"k8s.io/gengo/v2/types"
+	"k8s.io/gengo/generator"
+	"k8s.io/gengo/namer"
+	"k8s.io/gengo/types"
 
 	"k8s.io/code-generator/cmd/client-gen/generators/util"
 	clientgentypes "k8s.io/code-generator/cmd/client-gen/types"
@@ -34,7 +34,7 @@ import (
 // informerGenerator produces a file of listers for a given GroupVersion and
 // type.
 type informerGenerator struct {
-	generator.GoGenerator
+	generator.DefaultGen
 	outputPackage             string
 	groupPkgName              string
 	groupVersion              clientgentypes.GroupVersion
@@ -86,7 +86,6 @@ func (g *informerGenerator) GenerateType(c *generator.Context, t *types.Type, w 
 		"cacheNewSharedIndexInformer":     c.Universe.Function(cacheNewSharedIndexInformer),
 		"cacheSharedIndexInformer":        c.Universe.Type(cacheSharedIndexInformer),
 		"clientSetInterface":              clientSetInterface,
-		"contextTODO":                     c.Universe.Type(contextTODOFunc),
 		"group":                           namer.IC(g.groupGoName),
 		"informerFor":                     informerFor,
 		"interfacesTweakListOptionsFunc":  c.Universe.Type(types.Name{Package: g.internalInterfacesPackage, Name: "TweakListOptionsFunc"}),
@@ -152,13 +151,13 @@ func NewFiltered$.type|public$Informer(client $.clientSetInterface|raw$$if .name
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$($if .namespaced$namespace$end$).List($.contextTODO|raw$(), options)
+				return client.$.group$$.version$().$.type|publicPlural$($if .namespaced$namespace$end$).List(context.TODO(), options)
 			},
 			WatchFunc: func(options $.v1ListOptions|raw$) ($.watchInterface|raw$, error) {
 				if tweakListOptions != nil {
 					tweakListOptions(&options)
 				}
-				return client.$.group$$.version$().$.type|publicPlural$($if .namespaced$namespace$end$).Watch($.contextTODO|raw$(), options)
+				return client.$.group$$.version$().$.type|publicPlural$($if .namespaced$namespace$end$).Watch(context.TODO(), options)
 			},
 		},
 		&$.type|raw${},
