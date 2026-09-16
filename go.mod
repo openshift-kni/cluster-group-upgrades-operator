@@ -9,10 +9,10 @@ require (
 	github.com/onsi/gomega v1.19.0
 	github.com/openshift/build-machinery-go v0.0.0-20220429084610-baff9f8d23b3
 	github.com/operator-framework/api v0.10.4
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/spf13/cobra v1.3.0
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20221107031926-6f0a02d2aaf5
-	github.com/stretchr/testify v1.7.1
+	github.com/stretchr/testify v1.10.0
 	k8s.io/api v0.23.9
 	k8s.io/apimachinery v0.23.9
 	k8s.io/client-go v12.0.0+incompatible
@@ -25,7 +25,7 @@ require (
 
 require (
 	go.uber.org/zap v1.21.0
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
+	golang.org/x/sys v0.13.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.23.5
 )
