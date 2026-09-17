@@ -109,9 +109,11 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
+	gopkg.in/yaml.v2 v2.4.0 // indirect
 	k8s.io/apiextensions-apiserver v0.34.3 // indirect
 	k8s.io/apiserver v0.34.3 // indirect
 	k8s.io/component-base v0.34.3 // indirect
+	k8s.io/gengo v0.0.0-20230829151522-9cce18d56c01 // indirect
 	k8s.io/gengo/v2 v2.0.0-20250604051438-85fd79dbfd9f // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20250710124328-f3f2b991d03b // indirect
@@ -124,6 +126,6 @@ require (
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v1.0.1
 
-replace k8s.io/code-generator => k8s.io/code-generator v0.34.10
+replace k8s.io/code-generator => k8s.io/code-generator v0.29.5
 
 replace golang.org/x/net => github.com/openshift-sustaining/net v0.50.0

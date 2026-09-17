@@ -19,16 +19,18 @@ package generators
 import (
 	"io"
 
-	yaml "go.yaml.in/yaml/v2"
-	"k8s.io/gengo/v2/generator"
-	"k8s.io/gengo/v2/namer"
-	"k8s.io/gengo/v2/types"
+	"gopkg.in/yaml.v2"
+
 	"k8s.io/kube-openapi/pkg/schemaconv"
+
+	"k8s.io/gengo/generator"
+	"k8s.io/gengo/namer"
+	"k8s.io/gengo/types"
 )
 
 // utilGenerator generates the ForKind() utility function.
 type internalGenerator struct {
-	generator.GoGenerator
+	generator.DefaultGen
 	outputPackage string
 	imports       namer.ImportTracker
 	typeModels    *typeModels
@@ -69,12 +71,11 @@ func (g *internalGenerator) GenerateType(c *generator.Context, _ *types.Type, w 
 		return err
 	}
 	sw.Do(schemaBlock, map[string]interface{}{
-		"schemaYAML":   string(schemaYAML),
-		"smdParser":    smdParser,
-		"smdNewParser": smdNewParser,
-		"fmtSprintf":   fmtSprintf,
-		"syncOnce":     syncOnce,
-		"yamlObject":   yamlObject,
+		"schemaYAML":    string(schemaYAML),
+		"smdParser":     smdParser,
+		"smdNewParser":  smdNewParser,
+		"yamlObject":    yamlObject,
+		"yamlUnmarshal": yamlUnmarshal,
 	})
 
 	return sw.Error()
@@ -86,13 +87,13 @@ func Parser() *{{.smdParser|raw}} {
 		var err error
 		parser, err = {{.smdNewParser|raw}}(schemaYAML)
 		if err != nil {
-			panic({{.fmtSprintf|raw}}("Failed to parse schema: %v", err))
+			panic(fmt.Sprintf("Failed to parse schema: %v", err))
 		}
 	})
 	return parser
 }
 
-var parserOnce {{.syncOnce|raw}}
+var parserOnce sync.Once
 var parser *{{.smdParser|raw}}
 var schemaYAML = {{.yamlObject|raw}}(` + "`{{.schemaYAML}}`" + `)
 `
