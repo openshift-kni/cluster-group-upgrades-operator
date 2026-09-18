@@ -17,5 +17,5 @@
 # Recovery
 - key: recovery_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.21.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-21@sha256:b31b9dde8c713c46ccc773f943959eecced3adf4745aad3941bebea127b7b6bb
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-21@sha256:9282cef60831dd13760d4052f1620e4bcd4a359bbf372e89241579d35fcbee8d
 #
