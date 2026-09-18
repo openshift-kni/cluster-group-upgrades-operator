@@ -693,14 +693,14 @@ k8s.io/utils/net
 k8s.io/utils/pointer
 k8s.io/utils/strings/slices
 k8s.io/utils/trace
-# open-cluster-management.io/api v0.11.0
+# open-cluster-management.io/api v0.12.0
 ## explicit; go 1.19
 open-cluster-management.io/api/cluster/v1
-# open-cluster-management.io/governance-policy-propagator v0.8.0
-## explicit; go 1.18
+# open-cluster-management.io/governance-policy-propagator v0.10.0
+## explicit; go 1.19
 open-cluster-management.io/governance-policy-propagator/api/v1
-# open-cluster-management.io/multicloud-operators-subscription v0.6.0
-## explicit; go 1.17
+# open-cluster-management.io/multicloud-operators-subscription v0.8.0
+## explicit; go 1.18
 open-cluster-management.io/multicloud-operators-subscription/pkg/apis/apps/placementrule/v1
 # sigs.k8s.io/controller-runtime v0.14.7
 ## explicit; go 1.19

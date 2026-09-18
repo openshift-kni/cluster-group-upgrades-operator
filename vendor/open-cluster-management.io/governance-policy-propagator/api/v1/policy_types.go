@@ -24,25 +24,65 @@ const (
 // PolicyTemplate template for custom security policy
 type PolicyTemplate struct {
 	// +kubebuilder:pruning:PreserveUnknownFields
+	// A Kubernetes object defining the policy to apply to a managed cluster
 	ObjectDefinition runtime.RawExtension `json:"objectDefinition"`
+
+	// Additional PolicyDependencies that only apply to this template
+	ExtraDependencies []PolicyDependency `json:"extraDependencies,omitempty"`
+
+	// Ignore this template's Pending status when calculating the overall Policy status
+	IgnorePending bool `json:"ignorePending,omitempty"`
 }
 
 // ComplianceState shows the state of enforcement
 type ComplianceState string
 
 const (
-	// Compliant is an ComplianceState
+	// Compliant is a ComplianceState
 	Compliant ComplianceState = "Compliant"
 
-	// NonCompliant is an ComplianceState
+	// NonCompliant is a ComplianceState
 	NonCompliant ComplianceState = "NonCompliant"
+
+	// Pending is a ComplianceState
+	Pending ComplianceState = "Pending"
 )
+
+// Each PolicyDependency defines an object reference which must be in a certain compliance
+// state before the policy should be created.
+type PolicyDependency struct {
+	metav1.TypeMeta `json:",inline"`
+
+	// The name of the object to be checked
+	Name string `json:"name"`
+
+	// The namespace of the object to be checked (optional)
+	Namespace string `json:"namespace,omitempty"`
+
+	// The ComplianceState (at path .status.compliant) required before the policy should be created
+	// +kubebuilder:validation:Enum=Compliant;Pending;NonCompliant
+	Compliance ComplianceState `json:"compliance"`
+}
 
 // PolicySpec defines the desired state of Policy
 type PolicySpec struct {
-	Disabled          bool              `json:"disabled"`
-	RemediationAction RemediationAction `json:"remediationAction,omitempty"` // Enforce, Inform
-	PolicyTemplates   []*PolicyTemplate `json:"policy-templates"`
+	// This provides the ability to enable and disable your policies.
+	Disabled bool `json:"disabled"`
+
+	// If set to true (default), all the policy's labels and annotations will be copied to the replicated policy.
+	// If set to false, only the policy framework specific policy labels and annotations will be copied to the
+	// replicated policy.
+	// +kubebuilder:validation:Optional
+	CopyPolicyMetadata *bool `json:"copyPolicyMetadata,omitempty"`
+
+	// This value (Enforce or Inform) will override the remediationAction on each template
+	RemediationAction RemediationAction `json:"remediationAction,omitempty"`
+
+	// Used to create one or more policies to apply to a managed cluster
+	PolicyTemplates []*PolicyTemplate `json:"policy-templates"`
+
+	// PolicyDependencies that apply to each template in this Policy
+	Dependencies []PolicyDependency `json:"dependencies,omitempty"`
 }
 
 // PlacementDecision defines the decision made by controller
@@ -87,7 +127,7 @@ type PolicyStatus struct {
 	Placement []*Placement                  `json:"placement,omitempty"` // used by root policy
 	Status    []*CompliancePerClusterStatus `json:"status,omitempty"`    // used by root policy
 
-	// +kubebuilder:validation:Enum=Compliant;NonCompliant
+	// +kubebuilder:validation:Enum=Compliant;Pending;NonCompliant
 	ComplianceState ComplianceState       `json:"compliant,omitempty"` // used by replicated policy
 	Details         []*DetailsPerTemplate `json:"details,omitempty"`   // used by replicated policy
 }
