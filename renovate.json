@@ -183,6 +183,18 @@
                 "gomod"
             ],
             "constraintsFiltering": "strict"
+        },
+        {
+            "description": "Disable gomod updates on all release branches by default. New release branches are excluded automatically until explicitly added to the re-enable rule below.",
+            "matchManagers": ["gomod"],
+            "matchBaseBranches": ["/^release-/"],
+            "enabled": false
+        },
+        {
+            "description": "Re-enable gomod updates on actively maintained release branches only.",
+            "matchManagers": ["gomod"],
+            "matchBaseBranches": ["release-5.0", "release-4.22"],
+            "enabled": true
         }
     ],
     "prConcurrentLimit": 0,
