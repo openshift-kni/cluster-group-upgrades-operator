@@ -1,21 +1,21 @@
 ---
 # Manager
 - key: manager
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-0@sha256:a586a55e2335c80a145db49f2a64fd1327961393ba31818aa927eae170ec2f29
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator:5.1.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-1@sha256:fa35d1f170638071230a0a4c8399d75238e337a4e62471613b1c062726dd8c77
 #
 # Aztp
 - key: aztp_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-0@sha256:24f5851d0d7a200ac7321584918f06d6ef6cecddbe8bab011401beb8a9910221
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:5.1.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-1@sha256:7d592ff4de301eaf650cc1f15bfb276d706aa7f41c9da62812b5aa70c3733231
 #
 # Precache
 - key: precache_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0@sha256:3ce0ac01b8780ecb22034b12f21847fc182777dee8bac0c9cdcaffa14dfb8e88
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:5.1.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-1@sha256:705a1922a8ed3e2b14668968cb56303a7fd16fa8168d7876e39c3ed6854065f3
 #
 # Recovery
 - key: recovery_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-0@sha256:5b792ca2b6225ba120e48e6f68a5ec98136146d756622ca1e37ce2d1318c78f1
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:5.1.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-1@sha256:0bc48cafdfbb80ff7e719b0e32551b0821cbd8ae606dcece0bda5fc27f3177cc
 #

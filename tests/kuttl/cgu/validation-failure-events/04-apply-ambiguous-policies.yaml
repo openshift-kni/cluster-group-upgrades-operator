@@ -1,0 +1,18 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: oc create namespace aaa
+    namespaced: true
+  - command: oc create namespace bbb
+    namespaced: true
+  - command: oc apply --namespace=aaa -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=bbb -f ../../../../deploy/acm/policies/all_policies/policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-aaa-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply --namespace=spoke1 -f ../../../../deploy/acm/policies/all_policies/child-bbb-ns-policy2-common-pao-sub-policy.yaml
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/upgrades/validation-failure-events/cgu-ambiguous-policies.yaml
+    namespaced: true

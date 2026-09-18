@@ -678,6 +678,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 						if len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) != 0 &&
 							clusterGroupUpgrade.Status.Status.CurrentBatch <= len(clusterGroupUpgrade.Spec.RemediationStrategy.Canaries) {
 							r.Log.Info("Canaries batch timed out")
+							r.sendEventCGUBatchUpgradeTimedout(ctx, clusterGroupUpgrade)
 							utils.SetStatusCondition(
 								&clusterGroupUpgrade.Status.Conditions,
 								utils.ConditionTypes.Progressing,
@@ -856,7 +857,14 @@ func (r *ClusterGroupUpgradeReconciler) updateCurrentBatchProgress(
 	isSoaking := false
 	isProgressing := false
 
+	clustersBefore := make(map[string]bool)
+	for _, cluster := range clusterGroupUpgrade.Status.Clusters {
+		clustersBefore[cluster.Name] = true
+	}
+
+	var batchClusters []string
 	for _, clusterName := range clusterGroupUpgrade.Status.RemediationPlan[batchIndex] {
+		batchClusters = append(batchClusters, clusterName)
 
 		isClusterCompleted, soak, progressing, err := r.updateClusterProgress(ctx, clusterGroupUpgrade, clusterName)
 		if soak {
@@ -874,7 +882,15 @@ func (r *ClusterGroupUpgradeReconciler) updateCurrentBatchProgress(
 	}
 
 	if isBatchComplete {
-		r.sendEventCGUBatchUpgradeSuccess(ctx, clusterGroupUpgrade)
+		// To avoid sending duplicated events, we'll only send it if the batch has just finished, which
+		// is the case when all clusters (or the remaining ones) in the batch have been added to the status
+		// section in this very same reconcile.
+		for _, clusterName := range batchClusters {
+			if !clustersBefore[clusterName] {
+				r.sendEventCGUBatchUpgradeSuccess(ctx, clusterGroupUpgrade)
+				break
+			}
+		}
 	}
 
 	r.Log.Info("[updateCurrentBatchProgress]", "plan", clusterGroupUpgrade.Status.Status.CurrentBatchRemediationProgress, "isBatchComplete", isBatchComplete)

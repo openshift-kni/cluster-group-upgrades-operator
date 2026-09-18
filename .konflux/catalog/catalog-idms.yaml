@@ -7,5 +7,5 @@ metadata:
 spec:
   imageDigestMirrors:
   - mirrors:
-    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-0
+    - quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-bundle-5-1
     source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-operator-bundle

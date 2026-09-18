@@ -1,0 +1,196 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-canary-timeout-fail
+  namespace: default
+spec:
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke4
+  - spoke6
+  enable: true
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  - policy2-common-pao-sub-policy
+  remediationStrategy:
+    canaries:
+    - spoke1
+    - spoke2
+    maxConcurrency: 2
+    timeout: 240
+status:
+  conditions:
+  - message: All selected clusters are valid
+    reason: ClusterSelectionCompleted
+    status: 'True'
+    type: ClustersSelected
+  - message: Completed validation
+    reason: ValidationCompleted
+    status: 'True'
+    type: Validated
+  - message: Remediating non-compliant policies
+    reason: InProgress
+    status: 'True'
+    type: Progressing
+  managedPoliciesForUpgrade:
+  - name: policy1-common-cluster-version-policy
+    namespace: default
+  - name: policy2-common-pao-sub-policy
+    namespace: default
+  managedPoliciesNs:
+    policy1-common-cluster-version-policy: default
+    policy2-common-pao-sub-policy: default
+  placementBindings:
+  - cgu-canary-timeout-fail-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-canary-timeout-fail-policy2-common-pao-sub-policy-placement-kuttl
+  placements:
+  - cgu-canary-timeout-fail-policy1-common-cluster-version-policy-placement-kuttl
+  - cgu-canary-timeout-fail-policy2-common-pao-sub-policy-placement-kuttl
+  remediationPlan:
+  - - spoke1
+  - - spoke2
+  - - spoke4
+    - spoke6
+  safeResourceNames:
+    default/cgu-canary-timeout-fail-policy1-common-cluster-version-policy-placement: cgu-canary-timeout-fail-policy1-common-cluster-version-policy-placement-kuttl
+    default/cgu-canary-timeout-fail-policy2-common-pao-sub-policy-placement: cgu-canary-timeout-fail-policy2-common-pao-sub-policy-placement-kuttl
+  status:
+    currentBatch: 1
+    currentBatchRemediationProgress:
+      spoke1:
+        policyIndex: 0
+        state: InProgress
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke1
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke2
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke4
+---
+apiVersion: cluster.open-cluster-management.io/v1
+kind: ManagedCluster
+metadata:
+  labels:
+    ztp-running: ''
+  name: spoke6
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+kind: Event
+message: ClusterGroupUpgrade cgu-canary-timeout-fail started remediating policies
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: batch index 1 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/event-type: batch
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+type: Normal
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: cluster spoke1 upgrade started'
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+reason: CguStarted
+reportingComponent: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationStarted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: global
+  namespace: default
+note: ClusterGroupUpgrade cgu-canary-timeout-fail started remediating policies
+reason: CguStarted
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+reportingController: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInBatchStarted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/batch-clusters: spoke1
+    cgu.openshift.io/event-type: batch
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-canary-timeout-fail: batch index 1 upgrade started'
+reason: CguStarted
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+reportingController: ClusterGroupUpgrade
+type: Normal
+---
+action: RemediationInClusterStarted
+apiVersion: events.k8s.io/v1
+kind: Event
+metadata:
+  annotations:
+    cgu.openshift.io/event-type: cluster
+  namespace: default
+note: 'ClusterGroupUpgrade cgu-canary-timeout-fail: cluster spoke1 upgrade started'
+reason: CguStarted
+regarding:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  name: cgu-canary-timeout-fail
+  namespace: default
+related:
+  apiVersion: cluster.open-cluster-management.io/v1
+  kind: ManagedCluster
+  name: spoke1
+reportingController: ClusterGroupUpgrade
+type: Normal

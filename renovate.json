@@ -55,7 +55,22 @@
         ]
     },
     "gomod": {
-        "enabled": false
+        "enabled": true,
+        "postUpdateOptions": [
+            "gomodUpdateImportPaths",
+            "gomodTidy"
+        ],
+        "packageRules": [
+            {
+                "matchManagers": [
+                    "gomod"
+                ],
+                "matchDepTypes": [
+                    "indirect"
+                ],
+                "enabled": false
+            }
+        ]
     },
     "packageRules": [
         {
@@ -82,6 +97,92 @@
             "matchUpdateTypes": [
                 "minor"
             ]
+        },
+        {
+            "description": "Migrated from Dependabot: enable Go module updates and auto-merge digest/patch/minor once CI passes. Also re-enables minor for gomod, overriding the global minor disable above. Major updates are left as normal PRs for manual review.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchUpdateTypes": [
+                "digest",
+                "patch",
+                "minor"
+            ],
+            "enabled": true,
+            "ignoreTests": false,
+            "addLabels": [
+                "allow-automatic-merge"
+            ]
+        },
+        {
+            "description": "Group the Kubernetes ecosystem into a single PR.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "k8s.io/**",
+                "sigs.k8s.io/**"
+            ],
+            "groupName": "kubernetes"
+        },
+        {
+            "description": "Group golang.org/x updates.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "golang.org/x/**"
+            ],
+            "groupName": "golang.org/x"
+        },
+        {
+            "description": "Group open-cluster-management.io updates.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "open-cluster-management.io/**"
+            ],
+            "groupName": "ocm"
+        },
+        {
+            "description": "Group ginkgo and gomega together.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "github.com/onsi/ginkgo/v2",
+                "github.com/onsi/gomega"
+            ],
+            "groupName": "ginkgo"
+        },
+        {
+            "description": "Skip noisy onsi patch bumps (matches previous Dependabot policy).",
+            "matchManagers": [
+                "gomod"
+            ],
+            "matchPackageNames": [
+                "github.com/onsi/**"
+            ],
+            "matchUpdateTypes": [
+                "patch"
+            ],
+            "enabled": false
+        },
+        {
+            "description": "Only allow patch updates for the Go toolchain directive on release branches. Prevents minor/major bumps (e.g. go1.22.4 → go1.27.1) while still allowing security patches (e.g. go1.22.4 → go1.22.9).",
+            "matchManagers": ["gomod"],
+            "matchDepTypes": ["toolchain"],
+            "matchUpdateTypes": ["minor", "major"],
+            "matchBaseBranches": ["/^release-/"],
+            "enabled": false
+        },
+        {
+            "description": "Only propose Go module updates compatible with each branch's existing go directive. Renovate never bumps the go directive itself (its default), and this skips dependency updates whose new version would require a newer Go than the branch targets. Since the config is read from the default branch but the go directive is read per branch, release branches (e.g. go 1.24) are protected from updates that need a newer toolchain, while main follows its own go version.",
+            "matchManagers": [
+                "gomod"
+            ],
+            "constraintsFiltering": "strict"
         }
     ],
     "prConcurrentLimit": 0,

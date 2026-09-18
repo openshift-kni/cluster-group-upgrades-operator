@@ -1,0 +1,16 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-invalid-policies
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+spec:
+  enable: false
+  clusters:
+  - spoke1
+  managedPolicies:
+  - policy-invalid-hub-template
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240

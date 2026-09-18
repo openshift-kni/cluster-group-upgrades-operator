@@ -1,0 +1,33 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-canary-timeout-fail
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+spec:
+  actions:
+    afterCompletion:
+      addClusterLabels:
+        ztp-done: ''
+      deleteClusterLabels:
+        ztp-running: ''
+      deleteObjects: true
+    beforeEnable:
+      addClusterLabels:
+        ztp-running: ''
+  managedPolicies:
+    - policy1-common-cluster-version-policy
+    - policy2-common-pao-sub-policy
+  enable: false
+  clusters:
+  - spoke1
+  - spoke2
+  - spoke4
+  - spoke6
+  remediationStrategy:
+    canaries:
+    - spoke1
+    - spoke2
+    maxConcurrency: 2
+    timeout: 240

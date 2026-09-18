@@ -249,6 +249,7 @@ func Test_sendEventCGUValidationFailureMissingClusters(t *testing.T) {
 	assert.Equal(t, CGUEventActionValidate, ev.Action)
 	assert.Contains(t, ev.Note, "missing clusters")
 	assert.Contains(t, ev.Note, "cluster-a,cluster-b")
+	assert.Equal(t, CGUAnnEventGlobalUpgrade, ev.Annotations[CGUEventAnnotationKeyEvType])
 	assert.Equal(t, "2", ev.Annotations[CGUEventAnnotationKeyMissingClustersCount])
 	assert.Equal(t, "cluster-a,cluster-b", ev.Annotations[CGUEventAnnotationKeyMissingClustersList])
 }
@@ -318,6 +319,7 @@ func Test_sendEventCGUVPoliciesValidationFailure(t *testing.T) {
 			assert.Equal(t, CGUEventActionValidate, ev.Action)
 			assert.Contains(t, ev.Note, tt.wantMsgContains)
 
+			assert.Equal(t, CGUAnnEventGlobalUpgrade, ev.Annotations[CGUEventAnnotationKeyEvType])
 			for k, v := range tt.wantAnnotations {
 				assert.Equal(t, v, ev.Annotations[k], "annotation %s", k)
 			}

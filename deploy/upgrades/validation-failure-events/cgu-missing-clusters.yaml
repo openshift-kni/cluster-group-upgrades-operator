@@ -1,0 +1,17 @@
+apiVersion: ran.openshift.io/v1alpha1
+kind: ClusterGroupUpgrade
+metadata:
+  name: cgu-missing-clusters
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+spec:
+  enable: false
+  clusters:
+  - nonexistent-spoke-1
+  - nonexistent-spoke-2
+  managedPolicies:
+  - policy1-common-cluster-version-policy
+  remediationStrategy:
+    maxConcurrency: 1
+    timeout: 240

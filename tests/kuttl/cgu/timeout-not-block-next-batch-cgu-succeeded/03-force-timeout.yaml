@@ -1,0 +1,15 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  # After batch 2 finished, mark spoke1 (timed-out batch) policies Compliant
+  # while the remaining overall CGU timeout is still elapsing.
+  - command: oc --namespace=default patch policy.policy.open-cluster-management.io/policy1-common-cluster-version-policy --type=merge --subresource=status --patch '{"status":{"compliant":"NonCompliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"Compliant"},{"clustername":"spoke4","clusternamespace":"spoke4","compliant":"Compliant"},{"clustername":"spoke6","clusternamespace":"spoke6","compliant":"NonCompliant"}]}}'
+    ignoreFailure: false
+  - command: oc --namespace=default patch policy.policy.open-cluster-management.io/policy2-common-pao-sub-policy --type=merge --subresource=status --patch '{"status":{"compliant":"NonCompliant","status":[{"clustername":"spoke1","clusternamespace":"spoke1","compliant":"Compliant"},{"clustername":"spoke2","clusternamespace":"spoke2","compliant":"Compliant"},{"clustername":"spoke4","clusternamespace":"spoke4","compliant":"Compliant"}]}}'
+    ignoreFailure: false
+
+  # Give time to cgu controller to process the policies status updates before forcing the reconciler requeue with maxConcurrency=1
+  # Otherwise, the subsequent reconcile might get an outdated (cached) cgu status, which would cause it to send the same CguSuccess event twice.
+  - command: sleep 5
+  - command: oc --namespace=default patch clustergroupupgrade.ran.openshift.io/cgu-upgrade-complete --patch '{"spec":{"remediationStrategy":{"maxConcurrency":1}}}' --type=merge

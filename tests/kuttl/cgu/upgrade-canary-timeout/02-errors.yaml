@@ -1,0 +1,44 @@
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: batch index 2 upgrade started'
+reason: CguStarted
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: batch index 3 upgrade started'
+reason: CguStarted
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: cluster spoke2 upgrade started'
+reason: CguStarted
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: cluster spoke4 upgrade started'
+reason: CguStarted
+---
+apiVersion: v1
+involvedObject:
+  apiVersion: ran.openshift.io/v1alpha1
+  kind: ClusterGroupUpgrade
+  namespace: default
+kind: Event
+message: 'ClusterGroupUpgrade cgu-canary-timeout-fail: cluster spoke6 upgrade started'
+reason: CguStarted
