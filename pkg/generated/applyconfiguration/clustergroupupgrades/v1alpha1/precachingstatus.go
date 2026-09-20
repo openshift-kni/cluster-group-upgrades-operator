@@ -17,15 +17,17 @@ limitations under the License.
 
 package v1alpha1
 
-// PrecachingStatusApplyConfiguration represents an declarative configuration of the PrecachingStatus type for use
+// PrecachingStatusApplyConfiguration represents a declarative configuration of the PrecachingStatus type for use
 // with apply.
+//
+// PrecachingStatus defines the observed pre-caching status
 type PrecachingStatusApplyConfiguration struct {
 	Spec     *PrecachingSpecApplyConfiguration `json:"spec,omitempty"`
 	Status   map[string]string                 `json:"status,omitempty"`
 	Clusters []string                          `json:"clusters,omitempty"`
 }
 
-// PrecachingStatusApplyConfiguration constructs an declarative configuration of the PrecachingStatus type for use with
+// PrecachingStatusApplyConfiguration constructs a declarative configuration of the PrecachingStatus type for use with
 // apply.
 func PrecachingStatus() *PrecachingStatusApplyConfiguration {
 	return &PrecachingStatusApplyConfiguration{}

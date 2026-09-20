@@ -17,14 +17,16 @@ limitations under the License.
 
 package v1alpha1
 
-// ManagedPolicyForUpgradeApplyConfiguration represents an declarative configuration of the ManagedPolicyForUpgrade type for use
+// ManagedPolicyForUpgradeApplyConfiguration represents a declarative configuration of the ManagedPolicyForUpgrade type for use
 // with apply.
+//
+// ManagedPolicyForUpgrade defines the observed state of a Policy
 type ManagedPolicyForUpgradeApplyConfiguration struct {
 	Name      *string `json:"name,omitempty"`
 	Namespace *string `json:"namespace,omitempty"`
 }
 
-// ManagedPolicyForUpgradeApplyConfiguration constructs an declarative configuration of the ManagedPolicyForUpgrade type for use with
+// ManagedPolicyForUpgradeApplyConfiguration constructs a declarative configuration of the ManagedPolicyForUpgrade type for use with
 // apply.
 func ManagedPolicyForUpgrade() *ManagedPolicyForUpgradeApplyConfiguration {
 	return &ManagedPolicyForUpgradeApplyConfiguration{}

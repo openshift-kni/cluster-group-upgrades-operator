@@ -17,8 +17,10 @@ limitations under the License.
 
 package v1alpha1
 
-// PrecachingSpecApplyConfiguration represents an declarative configuration of the PrecachingSpec type for use
+// PrecachingSpecApplyConfiguration represents a declarative configuration of the PrecachingSpec type for use
 // with apply.
+//
+// PrecachingSpec defines the pre-caching software spec derived from policies
 type PrecachingSpecApplyConfiguration struct {
 	PlatformImage                *string  `json:"platformImage,omitempty"`
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`
@@ -28,7 +30,7 @@ type PrecachingSpecApplyConfiguration struct {
 	AdditionalImages             []string `json:"additionalImages,omitempty"`
 }
 
-// PrecachingSpecApplyConfiguration constructs an declarative configuration of the PrecachingSpec type for use with
+// PrecachingSpecApplyConfiguration constructs a declarative configuration of the PrecachingSpec type for use with
 // apply.
 func PrecachingSpec() *PrecachingSpecApplyConfiguration {
 	return &PrecachingSpecApplyConfiguration{}

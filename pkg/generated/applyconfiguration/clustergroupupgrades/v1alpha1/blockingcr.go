@@ -17,14 +17,16 @@ limitations under the License.
 
 package v1alpha1
 
-// BlockingCRApplyConfiguration represents an declarative configuration of the BlockingCR type for use
+// BlockingCRApplyConfiguration represents a declarative configuration of the BlockingCR type for use
 // with apply.
+//
+// BlockingCR defines the Upgrade CRs that block the current CR from running if not completed
 type BlockingCRApplyConfiguration struct {
 	Name      *string `json:"name,omitempty"`
 	Namespace *string `json:"namespace,omitempty"`
 }
 
-// BlockingCRApplyConfiguration constructs an declarative configuration of the BlockingCR type for use with
+// BlockingCRApplyConfiguration constructs a declarative configuration of the BlockingCR type for use with
 // apply.
 func BlockingCR() *BlockingCRApplyConfiguration {
 	return &BlockingCRApplyConfiguration{}

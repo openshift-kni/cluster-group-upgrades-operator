@@ -17,14 +17,16 @@ limitations under the License.
 
 package v1alpha1
 
-// ActionsApplyConfiguration represents an declarative configuration of the Actions type for use
+// ActionsApplyConfiguration represents a declarative configuration of the Actions type for use
 // with apply.
+//
+// Actions defines the actions to be done either before or after the managedPolicies are remediated
 type ActionsApplyConfiguration struct {
 	BeforeEnable    *BeforeEnableApplyConfiguration    `json:"beforeEnable,omitempty"`
 	AfterCompletion *AfterCompletionApplyConfiguration `json:"afterCompletion,omitempty"`
 }
 
-// ActionsApplyConfiguration constructs an declarative configuration of the Actions type for use with
+// ActionsApplyConfiguration constructs a declarative configuration of the Actions type for use with
 // apply.
 func Actions() *ActionsApplyConfiguration {
 	return &ActionsApplyConfiguration{}

@@ -17,18 +17,31 @@ limitations under the License.
 
 package v1alpha1
 
-// AfterCompletionApplyConfiguration represents an declarative configuration of the AfterCompletion type for use
+// AfterCompletionApplyConfiguration represents a declarative configuration of the AfterCompletion type for use
 // with apply.
+//
+// AfterCompletion defines the actions to be done after upgrade is completed
 type AfterCompletionApplyConfiguration struct {
-	AddClusterLabels         map[string]string `json:"addClusterLabels,omitempty"`
-	DeleteClusterLabels      map[string]string `json:"deleteClusterLabels,omitempty"`
-	RemoveClusterLabels      []string          `json:"removeClusterLabels,omitempty"`
-	AddClusterAnnotations    map[string]string `json:"addClusterAnnotations,omitempty"`
-	RemoveClusterAnnotations []string          `json:"removeClusterAnnotations,omitempty"`
-	DeleteObjects            *bool             `json:"deleteObjects,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be added to the defined clusters.
+	AddClusterLabels map[string]string `json:"addClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster labels
+	// to be deleted for the defined clusters.
+	//
+	// Deprecated: Use RemoveClusterLabels instead.
+	DeleteClusterLabels map[string]string `json:"deleteClusterLabels,omitempty"`
+	// This field defines a list of labels to be removed for the defined clusters.
+	RemoveClusterLabels []string `json:"removeClusterLabels,omitempty"`
+	// This field defines a map of key/value pairs that identify the cluster annotations
+	// to be added or updated to the defined clusters.
+	AddClusterAnnotations map[string]string `json:"addClusterAnnotations,omitempty"`
+	// This field defines a list of annotations to be removed for the defined clusters.
+	RemoveClusterAnnotations []string `json:"removeClusterAnnotations,omitempty"`
+	// This field defines whether clean up the resources created for upgrade
+	DeleteObjects *bool `json:"deleteObjects,omitempty"`
 }
 
-// AfterCompletionApplyConfiguration constructs an declarative configuration of the AfterCompletion type for use with
+// AfterCompletionApplyConfiguration constructs a declarative configuration of the AfterCompletion type for use with
 // apply.
 func AfterCompletion() *AfterCompletionApplyConfiguration {
 	return &AfterCompletionApplyConfiguration{}
