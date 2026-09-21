@@ -18,171 +18,35 @@ limitations under the License.
 package fake
 
 import (
-	"context"
-	json "encoding/json"
-	"fmt"
-
 	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/applyconfiguration/clustergroupupgrades/v1alpha1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	labels "k8s.io/apimachinery/pkg/labels"
-	types "k8s.io/apimachinery/pkg/types"
-	watch "k8s.io/apimachinery/pkg/watch"
-	testing "k8s.io/client-go/testing"
+	typedclustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/generated/clientset/versioned/typed/clustergroupupgrades/v1alpha1"
+	gentype "k8s.io/client-go/gentype"
 )
 
-// FakeClusterGroupUpgrades implements ClusterGroupUpgradeInterface
-type FakeClusterGroupUpgrades struct {
+// fakeClusterGroupUpgrades implements ClusterGroupUpgradeInterface
+type fakeClusterGroupUpgrades struct {
+	*gentype.FakeClientWithListAndApply[*v1alpha1.ClusterGroupUpgrade, *v1alpha1.ClusterGroupUpgradeList, *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration]
 	Fake *FakeRanV1alpha1
-	ns   string
 }
 
-var clustergroupupgradesResource = v1alpha1.SchemeGroupVersion.WithResource("clustergroupupgrades")
-
-var clustergroupupgradesKind = v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgrade")
-
-// Get takes name of the clusterGroupUpgrade, and returns the corresponding clusterGroupUpgrade object, and an error if there is any.
-func (c *FakeClusterGroupUpgrades) Get(ctx context.Context, name string, options v1.GetOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewGetAction(clustergroupupgradesResource, c.ns, name), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
+func newFakeClusterGroupUpgrades(fake *FakeRanV1alpha1, namespace string) typedclustergroupupgradesv1alpha1.ClusterGroupUpgradeInterface {
+	return &fakeClusterGroupUpgrades{
+		gentype.NewFakeClientWithListAndApply[*v1alpha1.ClusterGroupUpgrade, *v1alpha1.ClusterGroupUpgradeList, *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration](
+			fake.Fake,
+			namespace,
+			v1alpha1.SchemeGroupVersion.WithResource("clustergroupupgrades"),
+			v1alpha1.SchemeGroupVersion.WithKind("ClusterGroupUpgrade"),
+			func() *v1alpha1.ClusterGroupUpgrade { return &v1alpha1.ClusterGroupUpgrade{} },
+			func() *v1alpha1.ClusterGroupUpgradeList { return &v1alpha1.ClusterGroupUpgradeList{} },
+			func(dst, src *v1alpha1.ClusterGroupUpgradeList) { dst.ListMeta = src.ListMeta },
+			func(list *v1alpha1.ClusterGroupUpgradeList) []*v1alpha1.ClusterGroupUpgrade {
+				return gentype.ToPointerSlice(list.Items)
+			},
+			func(list *v1alpha1.ClusterGroupUpgradeList, items []*v1alpha1.ClusterGroupUpgrade) {
+				list.Items = gentype.FromPointerSlice(items)
+			},
+		),
+		fake,
 	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// List takes label and field selectors, and returns the list of ClusterGroupUpgrades that match those selectors.
-func (c *FakeClusterGroupUpgrades) List(ctx context.Context, opts v1.ListOptions) (result *v1alpha1.ClusterGroupUpgradeList, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewListAction(clustergroupupgradesResource, clustergroupupgradesKind, c.ns, opts), &v1alpha1.ClusterGroupUpgradeList{})
-
-	if obj == nil {
-		return nil, err
-	}
-
-	label, _, _ := testing.ExtractFromListOptions(opts)
-	if label == nil {
-		label = labels.Everything()
-	}
-	list := &v1alpha1.ClusterGroupUpgradeList{ListMeta: obj.(*v1alpha1.ClusterGroupUpgradeList).ListMeta}
-	for _, item := range obj.(*v1alpha1.ClusterGroupUpgradeList).Items {
-		if label.Matches(labels.Set(item.Labels)) {
-			list.Items = append(list.Items, item)
-		}
-	}
-	return list, err
-}
-
-// Watch returns a watch.Interface that watches the requested clusterGroupUpgrades.
-func (c *FakeClusterGroupUpgrades) Watch(ctx context.Context, opts v1.ListOptions) (watch.Interface, error) {
-	return c.Fake.
-		InvokesWatch(testing.NewWatchAction(clustergroupupgradesResource, c.ns, opts))
-
-}
-
-// Create takes the representation of a clusterGroupUpgrade and creates it.  Returns the server's representation of the clusterGroupUpgrade, and an error, if there is any.
-func (c *FakeClusterGroupUpgrades) Create(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.CreateOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewCreateAction(clustergroupupgradesResource, c.ns, clusterGroupUpgrade), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// Update takes the representation of a clusterGroupUpgrade and updates it. Returns the server's representation of the clusterGroupUpgrade, and an error, if there is any.
-func (c *FakeClusterGroupUpgrades) Update(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateAction(clustergroupupgradesResource, c.ns, clusterGroupUpgrade), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// UpdateStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating UpdateStatus().
-func (c *FakeClusterGroupUpgrades) UpdateStatus(ctx context.Context, clusterGroupUpgrade *v1alpha1.ClusterGroupUpgrade, opts v1.UpdateOptions) (*v1alpha1.ClusterGroupUpgrade, error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewUpdateSubresourceAction(clustergroupupgradesResource, "status", c.ns, clusterGroupUpgrade), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// Delete takes name of the clusterGroupUpgrade and deletes it. Returns an error if one occurs.
-func (c *FakeClusterGroupUpgrades) Delete(ctx context.Context, name string, opts v1.DeleteOptions) error {
-	_, err := c.Fake.
-		Invokes(testing.NewDeleteActionWithOptions(clustergroupupgradesResource, c.ns, name, opts), &v1alpha1.ClusterGroupUpgrade{})
-
-	return err
-}
-
-// DeleteCollection deletes a collection of objects.
-func (c *FakeClusterGroupUpgrades) DeleteCollection(ctx context.Context, opts v1.DeleteOptions, listOpts v1.ListOptions) error {
-	action := testing.NewDeleteCollectionAction(clustergroupupgradesResource, c.ns, listOpts)
-
-	_, err := c.Fake.Invokes(action, &v1alpha1.ClusterGroupUpgradeList{})
-	return err
-}
-
-// Patch applies the patch and returns the patched clusterGroupUpgrade.
-func (c *FakeClusterGroupUpgrades) Patch(ctx context.Context, name string, pt types.PatchType, data []byte, opts v1.PatchOptions, subresources ...string) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, name, pt, data, subresources...), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// Apply takes the given apply declarative configuration, applies it and returns the applied clusterGroupUpgrade.
-func (c *FakeClusterGroupUpgrades) Apply(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	if clusterGroupUpgrade == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(clusterGroupUpgrade)
-	if err != nil {
-		return nil, err
-	}
-	name := clusterGroupUpgrade.Name
-	if name == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
-	}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, *name, types.ApplyPatchType, data), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
-}
-
-// ApplyStatus was generated because the type contains a Status member.
-// Add a +genclient:noStatus comment above the type to avoid generating ApplyStatus().
-func (c *FakeClusterGroupUpgrades) ApplyStatus(ctx context.Context, clusterGroupUpgrade *clustergroupupgradesv1alpha1.ClusterGroupUpgradeApplyConfiguration, opts v1.ApplyOptions) (result *v1alpha1.ClusterGroupUpgrade, err error) {
-	if clusterGroupUpgrade == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade provided to Apply must not be nil")
-	}
-	data, err := json.Marshal(clusterGroupUpgrade)
-	if err != nil {
-		return nil, err
-	}
-	name := clusterGroupUpgrade.Name
-	if name == nil {
-		return nil, fmt.Errorf("clusterGroupUpgrade.Name must be provided to Apply")
-	}
-	obj, err := c.Fake.
-		Invokes(testing.NewPatchSubresourceAction(clustergroupupgradesResource, c.ns, *name, types.ApplyPatchType, data, "status"), &v1alpha1.ClusterGroupUpgrade{})
-
-	if obj == nil {
-		return nil, err
-	}
-	return obj.(*v1alpha1.ClusterGroupUpgrade), err
 }

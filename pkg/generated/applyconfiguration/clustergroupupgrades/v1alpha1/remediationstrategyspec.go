@@ -17,15 +17,20 @@ limitations under the License.
 
 package v1alpha1
 
-// RemediationStrategySpecApplyConfiguration represents an declarative configuration of the RemediationStrategySpec type for use
+// RemediationStrategySpecApplyConfiguration represents a declarative configuration of the RemediationStrategySpec type for use
 // with apply.
+//
+// EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
+// NOTE: json tags are required.  Any new fields you add must have json tags for the fields to be serialized.
+// RemediationStrategySpec defines the remediation policy
 type RemediationStrategySpecApplyConfiguration struct {
+	// Canaries defines the list of managed clusters that should be remediated first when remediateAction is set to enforce
 	Canaries       []string `json:"canaries,omitempty"`
 	MaxConcurrency *int     `json:"maxConcurrency,omitempty"`
 	Timeout        *int     `json:"timeout,omitempty"`
 }
 
-// RemediationStrategySpecApplyConfiguration constructs an declarative configuration of the RemediationStrategySpec type for use with
+// RemediationStrategySpecApplyConfiguration constructs a declarative configuration of the RemediationStrategySpec type for use with
 // apply.
 func RemediationStrategySpec() *RemediationStrategySpecApplyConfiguration {
 	return &RemediationStrategySpecApplyConfiguration{}

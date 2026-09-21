@@ -31,7 +31,7 @@ require (
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.35.8
 	open-cluster-management.io/config-policy-controller v0.19.0
-	sigs.k8s.io/structured-merge-diff/v4 v4.7.0
+	sigs.k8s.io/structured-merge-diff/v6 v6.3.2
 	sigs.k8s.io/yaml v1.6.0
 )
 
@@ -126,9 +126,6 @@ require (
 	sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 	sigs.k8s.io/randfill v1.0.0 // indirect
-	sigs.k8s.io/structured-merge-diff/v6 v6.3.2 // indirect
 )
 
 replace github.com/imdario/mergo => github.com/imdario/mergo v1.0.1
-
-replace k8s.io/code-generator => k8s.io/code-generator v0.35.8

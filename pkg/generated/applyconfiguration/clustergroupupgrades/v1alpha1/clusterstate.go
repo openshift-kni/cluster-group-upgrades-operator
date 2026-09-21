@@ -17,8 +17,10 @@ limitations under the License.
 
 package v1alpha1
 
-// ClusterStateApplyConfiguration represents an declarative configuration of the ClusterState type for use
+// ClusterStateApplyConfiguration represents a declarative configuration of the ClusterState type for use
 // with apply.
+//
+// ClusterState defines the final state of a cluster
 type ClusterStateApplyConfiguration struct {
 	Name                *string                               `json:"name,omitempty"`
 	State               *string                               `json:"state,omitempty"`
@@ -26,7 +28,7 @@ type ClusterStateApplyConfiguration struct {
 	CurrentManifestWork *ManifestWorkStatusApplyConfiguration `json:"currentManifestWork,omitempty"`
 }
 
-// ClusterStateApplyConfiguration constructs an declarative configuration of the ClusterState type for use with
+// ClusterStateApplyConfiguration constructs a declarative configuration of the ClusterState type for use with
 // apply.
 func ClusterState() *ClusterStateApplyConfiguration {
 	return &ClusterStateApplyConfiguration{}

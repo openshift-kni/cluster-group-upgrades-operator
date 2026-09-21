@@ -17,14 +17,16 @@ limitations under the License.
 
 package v1alpha1
 
-// PolicyStatusApplyConfiguration represents an declarative configuration of the PolicyStatus type for use
+// PolicyStatusApplyConfiguration represents a declarative configuration of the PolicyStatus type for use
 // with apply.
+//
+// PolicyStatus defines the status of a certain policy
 type PolicyStatusApplyConfiguration struct {
 	Name   *string `json:"name,omitempty"`
 	Status *string `json:"status,omitempty"`
 }
 
-// PolicyStatusApplyConfiguration constructs an declarative configuration of the PolicyStatus type for use with
+// PolicyStatusApplyConfiguration constructs a declarative configuration of the PolicyStatus type for use with
 // apply.
 func PolicyStatus() *PolicyStatusApplyConfiguration {
 	return &PolicyStatusApplyConfiguration{}
