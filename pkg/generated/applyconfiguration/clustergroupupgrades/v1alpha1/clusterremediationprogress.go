@@ -21,16 +21,19 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// ClusterRemediationProgressApplyConfiguration represents an declarative configuration of the ClusterRemediationProgress type for use
+// ClusterRemediationProgressApplyConfiguration represents a declarative configuration of the ClusterRemediationProgress type for use
 // with apply.
+//
+// ClusterRemediationProgress stores the remediation progress of a cluster
 type ClusterRemediationProgressApplyConfiguration struct {
+	// State should be one of the following: NotStarted, InProgress, Completed
 	State             *string  `json:"state,omitempty"`
 	ManifestWorkIndex *int     `json:"manifestWorkIndex,omitempty"`
 	PolicyIndex       *int     `json:"policyIndex,omitempty"`
 	FirstCompliantAt  *v1.Time `json:"firstCompliantAt,omitempty"`
 }
 
-// ClusterRemediationProgressApplyConfiguration constructs an declarative configuration of the ClusterRemediationProgress type for use with
+// ClusterRemediationProgressApplyConfiguration constructs a declarative configuration of the ClusterRemediationProgress type for use with
 // apply.
 func ClusterRemediationProgress() *ClusterRemediationProgressApplyConfiguration {
 	return &ClusterRemediationProgressApplyConfiguration{}

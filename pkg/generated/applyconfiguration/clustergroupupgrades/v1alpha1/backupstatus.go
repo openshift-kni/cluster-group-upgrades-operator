@@ -21,15 +21,17 @@ import (
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// BackupStatusApplyConfiguration represents an declarative configuration of the BackupStatus type for use
+// BackupStatusApplyConfiguration represents a declarative configuration of the BackupStatus type for use
 // with apply.
+//
+// BackupStatus defines the observed backup status
 type BackupStatusApplyConfiguration struct {
 	StartedAt *v1.Time          `json:"startedAt,omitempty"`
 	Status    map[string]string `json:"status,omitempty"`
 	Clusters  []string          `json:"clusters,omitempty"`
 }
 
-// BackupStatusApplyConfiguration constructs an declarative configuration of the BackupStatus type for use with
+// BackupStatusApplyConfiguration constructs a declarative configuration of the BackupStatus type for use with
 // apply.
 func BackupStatus() *BackupStatusApplyConfiguration {
 	return &BackupStatusApplyConfiguration{}

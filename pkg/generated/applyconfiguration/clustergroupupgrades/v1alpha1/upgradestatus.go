@@ -18,21 +18,23 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	clustergroupupgradesv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// UpgradeStatusApplyConfiguration represents an declarative configuration of the UpgradeStatus type for use
+// UpgradeStatusApplyConfiguration represents a declarative configuration of the UpgradeStatus type for use
 // with apply.
+//
+// UpgradeStatus defines the observed state of the upgrade
 type UpgradeStatusApplyConfiguration struct {
-	StartedAt                       *v1.Time                                        `json:"startedAt,omitempty"`
-	CompletedAt                     *v1.Time                                        `json:"completedAt,omitempty"`
-	CurrentBatch                    *int                                            `json:"currentBatch,omitempty"`
-	CurrentBatchStartedAt           *v1.Time                                        `json:"currentBatchStartedAt,omitempty"`
-	CurrentBatchRemediationProgress map[string]*v1alpha1.ClusterRemediationProgress `json:"currentBatchRemediationProgress,omitempty"`
+	StartedAt                       *v1.Time                                                            `json:"startedAt,omitempty"`
+	CompletedAt                     *v1.Time                                                            `json:"completedAt,omitempty"`
+	CurrentBatch                    *int                                                                `json:"currentBatch,omitempty"`
+	CurrentBatchStartedAt           *v1.Time                                                            `json:"currentBatchStartedAt,omitempty"`
+	CurrentBatchRemediationProgress map[string]*clustergroupupgradesv1alpha1.ClusterRemediationProgress `json:"currentBatchRemediationProgress,omitempty"`
 }
 
-// UpgradeStatusApplyConfiguration constructs an declarative configuration of the UpgradeStatus type for use with
+// UpgradeStatusApplyConfiguration constructs a declarative configuration of the UpgradeStatus type for use with
 // apply.
 func UpgradeStatus() *UpgradeStatusApplyConfiguration {
 	return &UpgradeStatusApplyConfiguration{}
@@ -74,9 +76,9 @@ func (b *UpgradeStatusApplyConfiguration) WithCurrentBatchStartedAt(value v1.Tim
 // and returns the receiver, so that objects can be build by chaining "With" function invocations.
 // If called multiple times, the entries provided by each call will be put on the CurrentBatchRemediationProgress field,
 // overwriting an existing map entries in CurrentBatchRemediationProgress field with the same key.
-func (b *UpgradeStatusApplyConfiguration) WithCurrentBatchRemediationProgress(entries map[string]*v1alpha1.ClusterRemediationProgress) *UpgradeStatusApplyConfiguration {
+func (b *UpgradeStatusApplyConfiguration) WithCurrentBatchRemediationProgress(entries map[string]*clustergroupupgradesv1alpha1.ClusterRemediationProgress) *UpgradeStatusApplyConfiguration {
 	if b.CurrentBatchRemediationProgress == nil && len(entries) > 0 {
-		b.CurrentBatchRemediationProgress = make(map[string]*v1alpha1.ClusterRemediationProgress, len(entries))
+		b.CurrentBatchRemediationProgress = make(map[string]*clustergroupupgradesv1alpha1.ClusterRemediationProgress, len(entries))
 	}
 	for k, v := range entries {
 		b.CurrentBatchRemediationProgress[k] = v
