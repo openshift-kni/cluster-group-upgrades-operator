@@ -1,6 +1,6 @@
 # The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
 ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.19
-ARG BUILDER_IMAGE=brew.registry.redhat.io/rh-osbs/openshift-golang-builder:rhel_9_golang_1.23
+ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.23-rhel9@sha256:50d66d211c063b0b9c32c57e7a6a41937355428bceac3efa64391a2ee581f33f
 
 # fix the catalog (talm exclusive, naming issue)
 FROM ${BUILDER_IMAGE} AS builder
