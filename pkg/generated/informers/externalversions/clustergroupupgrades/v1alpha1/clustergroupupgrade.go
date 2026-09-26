@@ -33,11 +33,39 @@ import (
 )
 
 // ClusterGroupUpgradeInformer provides access to a shared informer and lister for
-// ClusterGroupUpgrades.
+// ClusterGroupUpgrades. Prefer using the type-safe variant (see [TypedClusterGroupUpgradeInformer]).
 type ClusterGroupUpgradeInformer interface {
 	Informer() cache.SharedIndexInformer
 	Lister() clustergroupupgradesv1alpha1.ClusterGroupUpgradeLister
 }
+
+// TypedClusterGroupUpgradeInformer provides access to a shared informer and lister for
+// ClusterGroupUpgrades, including the type-safe TypedInformer variant.
+// It is a superset of ClusterGroupUpgradeInformer.
+type TypedClusterGroupUpgradeInformer interface {
+	Informer() cache.SharedIndexInformer
+	TypedInformer() ClusterGroupUpgradeIndexInformer
+	Lister() clustergroupupgradesv1alpha1.ClusterGroupUpgradeLister
+}
+
+// ClusterGroupUpgradeIndexInformer is a wrapper around the underlying [cache.SharedIndexInformer]
+// with type-safe variants of several methods.
+type ClusterGroupUpgradeIndexInformer cache.TypedSharedIndexInformer[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
+
+// ClusterGroupUpgradeHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerFuncs] for ClusterGroupUpgrade.
+type ClusterGroupUpgradeHandlerFuncs = cache.TypedResourceEventHandlerFuncs[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
+
+// ClusterGroupUpgradeDetailedHandlerFuncs is a specialization of [cache.TypedResourceEventHandlerDetailedFuncs] for ClusterGroupUpgrade.
+type ClusterGroupUpgradeDetailedHandlerFuncs = cache.TypedResourceEventHandlerDetailedFuncs[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
+
+// ClusterGroupUpgradeFilteringHandler is a specialization of [cache.TypedFilteringResourceEventHandler] for ClusterGroupUpgrade.
+type ClusterGroupUpgradeFilteringHandler = cache.TypedFilteringResourceEventHandler[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
+
+// ClusterGroupUpgradeIndexers is a specialization of [cache.TypedIndexers] for ClusterGroupUpgrade.
+type ClusterGroupUpgradeIndexers = cache.TypedIndexers[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
+
+// DeletedClusterGroupUpgrade is a specialization of [cache.DeletedObject] for ClusterGroupUpgrade.
+type DeletedClusterGroupUpgrade = cache.DeletedObject[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade]
 
 type clusterGroupUpgradeInformer struct {
 	factory          internalinterfaces.SharedInformerFactory
@@ -48,25 +76,49 @@ type clusterGroupUpgradeInformer struct {
 // NewClusterGroupUpgradeInformer constructs a new informer for ClusterGroupUpgrade type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedClusterGroupUpgradeInformer]).
 func NewClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers) cache.SharedIndexInformer {
 	return NewClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers})
+}
+
+// NewTypedClusterGroupUpgradeInformer constructs a new informer for ClusterGroupUpgrade type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ClusterGroupUpgradeIndexers) ClusterGroupUpgradeIndexInformer {
+	return NewTypedClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers)})
 }
 
 // NewFilteredClusterGroupUpgradeInformer constructs a new informer for ClusterGroupUpgrade type.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedFilteredClusterGroupUpgradeInformer]).
 func NewFilteredClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers cache.Indexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) cache.SharedIndexInformer {
-	return NewClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+	return NewTypedClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: indexers, TweakListOptions: tweakListOptions})
+}
+
+// NewTypedFilteredClusterGroupUpgradeInformer constructs a new informer for ClusterGroupUpgrade type.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedFilteredClusterGroupUpgradeInformer(client versioned.Interface, namespace string, resyncPeriod time.Duration, indexers ClusterGroupUpgradeIndexers, tweakListOptions internalinterfaces.TweakListOptionsFunc) ClusterGroupUpgradeIndexInformer {
+	return NewTypedClusterGroupUpgradeInformerWithOptions(client, namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.TypedIndexersToIndexers(indexers), TweakListOptions: tweakListOptions})
 }
 
 // NewClusterGroupUpgradeInformerWithOptions constructs a new informer for ClusterGroupUpgrade type with additional options.
 // Always prefer using an informer factory to get a shared informer instead of getting an independent
 // one. This reduces memory footprint and number of connections to the server.
+// If you really need an independent one, prefer using the type-safe variant (see [NewTypedClusterGroupUpgradeInformerWithOptions]).
 func NewClusterGroupUpgradeInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) cache.SharedIndexInformer {
+	return NewTypedClusterGroupUpgradeInformerWithOptions(client, namespace, options)
+}
+
+// NewTypedClusterGroupUpgradeInformerWithOptions constructs a new informer for ClusterGroupUpgrade type with additional options.
+// Always prefer using an informer factory to get a shared informer instead of getting an independent
+// one. This reduces memory footprint and number of connections to the server.
+func NewTypedClusterGroupUpgradeInformerWithOptions(client versioned.Interface, namespace string, options internalinterfaces.InformerOptions) ClusterGroupUpgradeIndexInformer {
 	gvr := schema.GroupVersionResource{Group: "ran.openshift.io", Version: "v1alpha1", Resource: "clustergroupupgrades"}
 	identifier := options.InformerName.WithResource(gvr)
 	tweakListOptions := options.TweakListOptions
-	return cache.NewSharedIndexInformerWithOptions(
+	return cache.NewTypedSharedIndexInformer[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade](cache.NewSharedIndexInformerWithOptions(
 		cache.ToListWatcherWithWatchListSemantics(&cache.ListWatch{
 			ListFunc: func(opts v1.ListOptions) (runtime.Object, error) {
 				if tweakListOptions != nil {
@@ -99,17 +151,57 @@ func NewClusterGroupUpgradeInformerWithOptions(client versioned.Interface, names
 			Indexers:     options.Indexers,
 			Identifier:   identifier,
 		},
-	)
+	))
 }
 
 func (f *clusterGroupUpgradeInformer) defaultInformer(client versioned.Interface, resyncPeriod time.Duration) cache.SharedIndexInformer {
-	return NewClusterGroupUpgradeInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
+	return NewTypedClusterGroupUpgradeInformerWithOptions(client, f.namespace, internalinterfaces.InformerOptions{ResyncPeriod: resyncPeriod, Indexers: cache.Indexers{cache.NamespaceIndex: cache.MetaNamespaceIndexFunc}, InformerName: f.factory.InformerName(), TweakListOptions: f.tweakListOptions})
 }
 
 func (f *clusterGroupUpgradeInformer) Informer() cache.SharedIndexInformer {
-	return f.factory.InformerFor(&apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer)
+	return f.TypedInformer()
+}
+
+func (f *clusterGroupUpgradeInformer) TypedInformer() ClusterGroupUpgradeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade](f.factory.InformerFor(&apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade{}, f.defaultInformer))
 }
 
 func (f *clusterGroupUpgradeInformer) Lister() clustergroupupgradesv1alpha1.ClusterGroupUpgradeLister {
 	return clustergroupupgradesv1alpha1.NewClusterGroupUpgradeLister(f.Informer().GetIndexer())
+}
+
+// ToTypedClusterGroupUpgradeInformer converts an untyped informer into a TypedClusterGroupUpgradeInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ClusterGroupUpgrade. If that is not the case, calling type-safe methods of the returned
+// TypedClusterGroupUpgradeInformer leads to runtime panics. A safer alternative is to pass
+// around a TypedClusterGroupUpgradeInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToTypedClusterGroupUpgradeInformer(informer ClusterGroupUpgradeInformer) TypedClusterGroupUpgradeInformer {
+	if informer, ok := informer.(TypedClusterGroupUpgradeInformer); ok {
+		return informer
+	}
+	return &clusterGroupUpgradeTypedInformerAdapter{informer}
+}
+
+type clusterGroupUpgradeTypedInformerAdapter struct {
+	ClusterGroupUpgradeInformer
+}
+
+func (a *clusterGroupUpgradeTypedInformerAdapter) TypedInformer() ClusterGroupUpgradeIndexInformer {
+	return cache.NewTypedSharedIndexInformer[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade](a.Informer())
+}
+
+// ToClusterGroupUpgradeIndexInformer converts an untyped informer into a ClusterGroupUpgradeIndexInformer.
+//
+// WARNING: this conversion is only safe if the informer handles objects of type
+// *ClusterGroupUpgrade. If that is not the case, calling type-safe methods of the returned
+// ClusterGroupUpgradeIndexInformer leads to runtime panics. A safer alternative is to pass
+// around a ClusterGroupUpgradeIndexInformer instances that was obtained from a
+// SharedInformerFactory.
+func ToClusterGroupUpgradeIndexInformer(informer cache.SharedIndexInformer) ClusterGroupUpgradeIndexInformer {
+	if informer, ok := informer.(ClusterGroupUpgradeIndexInformer); ok {
+		return informer
+	}
+	return cache.NewTypedSharedIndexInformer[*apiclustergroupupgradesv1alpha1.ClusterGroupUpgrade](informer)
 }
