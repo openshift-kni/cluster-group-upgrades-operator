@@ -38,3 +38,4 @@ entries:
   # v4.22.1 bundle
   - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:f3360742b2908ae2235f37825a953a9225d044a57e17098e1dfa9996a3a9948c
     schema: olm.bundle
+# end of catalog template
