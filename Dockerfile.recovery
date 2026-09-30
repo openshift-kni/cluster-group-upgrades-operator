@@ -28,7 +28,7 @@ COPY recovery/ recovery/
 # Otherwise compile normally
 RUN if [[ "${KONFLUX}" == "true" ]]; then \
         echo "Compiling with fips" && \
-        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime -a -o upgrade-recovery recovery/main.go; \
+        GOFIPS140=v1.26.0 GOEXPERIMENT=strictfipsruntime CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build -mod=vendor -tags strictfipsruntime,no_openssl -a -o upgrade-recovery recovery/main.go; \
     else \
         echo "Compiling without fips" && \
         CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build -mod=vendor -a -o upgrade-recovery recovery/main.go; \
