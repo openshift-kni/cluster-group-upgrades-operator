@@ -329,10 +329,10 @@ func (r *ClusterGroupUpgradeReconciler) getPrecacheSpecTemplateData(
 // ensuring user-supplied strings are safely embedded as map values.
 func buildPrecacheSpecConfigMapAction(data templateData) *unstructured.Unstructured {
 	cmData := map[string]interface{}{
-		"operators.indexes":             strings.Join(data.Operators.Indexes, "\n"),
-		"operators.packagesAndChannels": strings.Join(data.Operators.PackagesAndChannels, "\n"),
-		"excludePrecachePatterns":       strings.Join(data.ExcludePrecachePatterns, "\n"),
-		"additionalImages":              strings.Join(data.AdditionalImages, "\n"),
+		"operators.indexes":             formatPrecacheList(data.Operators.Indexes),
+		"operators.packagesAndChannels": formatPrecacheList(data.Operators.PackagesAndChannels),
+		"excludePrecachePatterns":       formatPrecacheList(data.ExcludePrecachePatterns),
+		"additionalImages":              formatPrecacheList(data.AdditionalImages),
 		"platform.image":                data.PlatformImage,
 		"spaceRequired":                 data.SpaceRequired,
 	}
@@ -362,6 +362,15 @@ func buildPrecacheSpecConfigMapAction(data templateData) *unstructured.Unstructu
 			},
 		},
 	}
+}
+
+// formatPrecacheList terminates every entry with a newline so shell read loops
+// process the final entry, while keeping empty lists empty.
+func formatPrecacheList(values []string) string {
+	if len(values) == 0 {
+		return ""
+	}
+	return strings.Join(values, "\n") + "\n"
 }
 
 // includePreCachingConfigs retrieves the PreCachingConfigCR associated to the CGU

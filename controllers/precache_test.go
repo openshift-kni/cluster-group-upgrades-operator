@@ -2,12 +2,18 @@ package controllers
 
 import (
 	"bytes"
+	"context"
+	"os"
+	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"text/template"
+	"time"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/templates"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 )
@@ -149,10 +155,10 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 				SpaceRequired:           "45",
 			},
 			expected: map[string]interface{}{
-				"operators.indexes":             "registry.example.com:5000/redhat-operators:v4.11",
-				"operators.packagesAndChannels": "ptp-operator:4.9\nsriov-network-operator:4.9",
-				"excludePrecachePatterns":       "aws\nthanos",
-				"additionalImages":              "image1:tag\nimage2:tag",
+				"operators.indexes":             "registry.example.com:5000/redhat-operators:v4.11\n",
+				"operators.packagesAndChannels": "ptp-operator:4.9\nsriov-network-operator:4.9\n",
+				"excludePrecachePatterns":       "aws\nthanos\n",
+				"additionalImages":              "image1:tag\nimage2:tag\n",
 				"platform.image":                "quay.io/openshift-release-dev/ocp-release@sha256:abc123",
 				"spaceRequired":                 "45",
 			},
@@ -194,10 +200,10 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 				SpaceRequired:           "10",
 			},
 			expected: map[string]interface{}{
-				"operators.indexes":             "# not-a-comment",
-				"operators.packagesAndChannels": "operator:4.9\n    extra-key: extra-value",
-				"excludePrecachePatterns":       "pattern\nother: true",
-				"additionalImages":              `image:tag", "extra": "field`,
+				"operators.indexes":             "# not-a-comment\n",
+				"operators.packagesAndChannels": "operator:4.9\n    extra-key: extra-value\n",
+				"excludePrecachePatterns":       "pattern\nother: true\n",
+				"additionalImages":              `image:tag", "extra": "field` + "\n",
 				"platform.image":                "",
 				"spaceRequired":                 "10",
 			},
@@ -232,6 +238,74 @@ func TestPrecache_buildPrecacheSpecConfigMapAction(t *testing.T) {
 			cmData := tmpl["data"].(map[string]interface{})
 			for key, expectedValue := range tc.expected {
 				assert.Equal(t, expectedValue, cmData[key], "mismatch for ConfigMap data key %q", key)
+			}
+		})
+	}
+}
+
+func TestPrecache_additionalImagesPull(t *testing.T) {
+	precacheDirectory, err := filepath.Abs("../pre-cache")
+	require.NoError(t, err)
+
+	testCases := []struct {
+		name          string
+		images        []string
+		expectedError bool
+	}{
+		{name: "empty list"},
+		{name: "single image", images: []string{"valid:latest"}},
+		{name: "multiple images", images: []string{"valid:latest", "other:latest"}},
+		{name: "single invalid image", images: []string{"invalid:latest"}, expectedError: true},
+		{name: "invalid final image", images: []string{"valid:latest", "invalid:latest"}, expectedError: true},
+	}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			directory := t.TempDir()
+			action := buildPrecacheSpecConfigMapAction(templateData{AdditionalImages: testCase.images})
+			images, found, err := unstructured.NestedString(action.Object, "spec", "kube", "template", "data", "additionalImages")
+			require.NoError(t, err)
+			require.True(t, found)
+			imagesFile := filepath.Join(directory, "additionalImages")
+			require.NoError(t, os.WriteFile(imagesFile, []byte(images), 0o600))
+			platformFile := filepath.Join(directory, "platformImages")
+			require.NoError(t, os.WriteFile(platformFile, nil, 0o600))
+			pullLog := filepath.Join(directory, "pull.log")
+			require.NoError(t, os.WriteFile(pullLog, nil, 0o600))
+
+			// Mock the container tool so the actual pull script runs without a registry.
+			containerTool := filepath.Join(directory, "container-tool")
+			require.NoError(t, os.WriteFile(containerTool, []byte(`#!/bin/bash
+if [[ $1 == pull ]]; then
+    printf '%s\n' "${@: -1}" >> "$PULL_LOG"
+    [[ ${@: -1} != invalid:latest ]]
+else
+    exit 1
+fi
+`), 0o700))
+
+			ctx, cancel := context.WithTimeout(t.Context(), 30*time.Second)
+			defer cancel()
+			command := exec.CommandContext(ctx, "bash", filepath.Join(precacheDirectory, "pull.sh"))
+			// Bound output collection if a child process keeps the script's pipes open.
+			command.WaitDelay = time.Second
+			command.Env = append(os.Environ(), "TEST_ENV=true", "cwd="+precacheDirectory,
+				"container_tool="+containerTool, "pull_spec_file="+platformFile,
+				"additional_images_spec_file="+imagesFile, "PULL_LOG="+pullLog)
+			output, err := command.CombinedOutput()
+			require.NoError(t, ctx.Err(), "pull script must finish before the timeout: %s", output)
+			if testCase.expectedError {
+				assert.Error(t, err, "invalid images must fail precaching: %s", output)
+			} else {
+				require.NoError(t, err, "valid images must succeed: %s", output)
+			}
+			pulls, err := os.ReadFile(pullLog)
+			require.NoError(t, err)
+			if len(testCase.images) == 0 {
+				assert.Empty(t, pulls, "empty lists must not pull images")
+			}
+			for _, image := range testCase.images {
+				assert.Contains(t, strings.Split(string(pulls), "\n"), image, "every additional image must be pulled")
 			}
 		})
 	}
@@ -316,9 +390,7 @@ spec:
 	newKube := newObj.Object["spec"].(map[string]interface{})["kube"].(map[string]interface{})
 	newCMData := newKube["template"].(map[string]interface{})["data"].(map[string]interface{})
 
-	// The old template produces values with trailing whitespace/newlines from the
-	// {{ range }} iteration. Trim both sides before comparing to verify functional
-	// equivalence (the pre-cache workload trims values when reading them).
+	// Scalar values should match the old template exactly.
 	for _, key := range []string{"platform.image", "spaceRequired"} {
 		assert.Equal(t, oldCMData[key], newCMData[key], "scalar field %q differs", key)
 	}
@@ -327,8 +399,9 @@ spec:
 	// whitespace per element. Compare the trimmed, split lines.
 	arrayKeys := []string{"operators.indexes", "operators.packagesAndChannels", "excludePrecachePatterns", "additionalImages"}
 	for _, key := range arrayKeys {
-		oldVal := strings.TrimSpace(oldCMData[key].(string))
-		newVal := strings.TrimSpace(newCMData[key].(string))
+		oldVal := oldCMData[key].(string)
+		newVal := newCMData[key].(string)
+		assert.True(t, strings.HasSuffix(newVal, "\n"), "array field %q must end with a newline for shell read loops", key)
 
 		oldLines := splitAndTrim(oldVal)
 		newLines := splitAndTrim(newVal)
