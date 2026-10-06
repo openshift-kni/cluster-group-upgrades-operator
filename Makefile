@@ -207,6 +207,7 @@ unittests: pre-cache-unit-test
 .PHONY: common-deps-update
 common-deps-update:	controller-gen kustomize
 	go mod tidy
+	go mod vendor
 
 
 .PHONY: ci-job
