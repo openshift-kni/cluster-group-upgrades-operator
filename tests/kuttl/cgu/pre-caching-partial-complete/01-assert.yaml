@@ -154,8 +154,9 @@ spec:
       data:
         additionalImages: ""
         excludePrecachePatterns: ""
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           ptp-operator:4.9
           sriov-network-operator:4.9
           performance-addon-operator:4.9
@@ -238,8 +239,9 @@ spec:
       data:
         additionalImages: ""
         excludePrecachePatterns: ""
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           ptp-operator:4.9
           sriov-network-operator:4.9
           performance-addon-operator:4.9
@@ -322,8 +324,9 @@ spec:
       data:
         additionalImages: ""
         excludePrecachePatterns: ""
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           ptp-operator:4.9
           sriov-network-operator:4.9
           performance-addon-operator:4.9
@@ -406,8 +409,9 @@ spec:
       data:
         additionalImages: ""
         excludePrecachePatterns: ""
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           ptp-operator:4.9
           sriov-network-operator:4.9
           performance-addon-operator:4.9
