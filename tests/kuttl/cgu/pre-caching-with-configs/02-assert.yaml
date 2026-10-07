@@ -165,16 +165,17 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           performance-addon-operator:stable
           ptp-operator:stable
           sriov-network-operator:stable
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
-        excludePrecachePatterns: |-
+        excludePrecachePatterns: |
           aws
           azure
-        additionalImages: |-
+        additionalImages: |
           image1:latest
           image2:latest
         spaceRequired: '40'
@@ -253,16 +254,17 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           performance-addon-operator:stable
           ptp-operator:stable
           sriov-network-operator:stable
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
-        excludePrecachePatterns: |-
+        excludePrecachePatterns: |
           aws
           azure
-        additionalImages: |-
+        additionalImages: |
           image1:latest
           image2:latest
         spaceRequired: '40'
@@ -341,16 +343,17 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           performance-addon-operator:stable
           ptp-operator:stable
           sriov-network-operator:stable
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
-        excludePrecachePatterns: |-
+        excludePrecachePatterns: |
           aws
           azure
-        additionalImages: |-
+        additionalImages: |
           image1:latest
           image2:latest
         spaceRequired: '40'
@@ -429,16 +432,17 @@ spec:
     template:
       apiVersion: v1
       data:
-        operators.indexes: e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
-        operators.packagesAndChannels: |-
+        operators.indexes: |
+          e27-h01-000-r650.rdu2.scalelab.redhat.com:5000/olm-mirror/redhat-operator-index:v4.11
+        operators.packagesAndChannels: |
           performance-addon-operator:stable
           ptp-operator:stable
           sriov-network-operator:stable
         platform.image: quay.io/openshift-release-dev/ocp-release@sha256:c91c0faf7ae3c480724a935b3dab7e5f49aae19d195b12f3a4ae38f8440ea96b
-        excludePrecachePatterns: |-
+        excludePrecachePatterns: |
           aws
           azure
-        additionalImages: |-
+        additionalImages: |
           image1:latest
           image2:latest
         spaceRequired: '40'
