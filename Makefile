@@ -314,7 +314,9 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-check
 bundle-check: bundle
-	hack/check-git-tree.sh
+	# Workaround for CI which adds phantom dependencies to go.sum
+	go mod tidy
+	$(PROJECT_DIR)/hack/check-git-tree.sh
 
 .PHONY: bundle-run
 bundle-run: # Install bundle on cluster using operator sdk. Index image is require due to upstream issue: https://github.com/operator-framework/operator-registry/issues/984
