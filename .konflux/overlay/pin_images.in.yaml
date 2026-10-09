@@ -22,5 +22,5 @@
 # Kube RBAC Proxy
 - key: kube_rbac
   source: quay.io/openshift/origin-kube-rbac-proxy:4.16
-  target: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v4.16@sha256:5a3eb628ded8ec22675d922127f1386355bd39e227fe1a236134dc811cc74f84
+  target: registry.redhat.io/openshift4/ose-kube-rbac-proxy-rhel9:v4.16@sha256:8d0b5fa89f9c66cde572aefdc3fdc86c6b60b92de0c7afc72b2886913ab4fe5a
 #
