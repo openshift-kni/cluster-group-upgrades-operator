@@ -40,7 +40,7 @@ RUN COVER_FLAG=""; \
     fi && \
     if [[ "${KONFLUX}" == "true" ]]; then \
         echo "Compiling with fips" && \
-        GOEXPERIMENT=strictfipsruntime CGO_ENABLED=1 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build ${COVER_FLAG} -mod=vendor -tags strictfipsruntime -a -o manager main.go; \
+        GOFIPS140=v1.26.0 GOEXPERIMENT=strictfipsruntime CGO_ENABLED=0 GOOS=linux GOARCH=${GOARCH} GO111MODULE=on go build ${COVER_FLAG} -mod=vendor -tags strictfipsruntime,no_openssl -a -o manager main.go; \
     else \
         echo "Compiling without fips" && \
         CGO_ENABLED=0 GOOS=linux GO111MODULE=on go build ${COVER_FLAG} -mod=vendor -a -o manager main.go; \
