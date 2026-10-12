@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
-	github.com/openshift/controller-runtime-common v0.0.0-20260813135806-e1187ec555fc
+	github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
 	golang.org/x/sys v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
@@ -77,7 +77,7 @@ require (
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.3-0.20250322232337-35a7c28c31ee // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/openshift/library-go v0.0.0-20260904093542-946ee696bcb5 // indirect
+	github.com/openshift/library-go v0.0.0-20261001144932-192662696fc7 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/prometheus/client_golang v1.24.1 // indirect
 	github.com/prometheus/client_model v0.6.2 // indirect
@@ -115,9 +115,9 @@ require (
 	google.golang.org/protobuf v1.36.12-0.20260120151049-f2248ac996af // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.13.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
-	k8s.io/apiextensions-apiserver v0.37.0 // indirect
-	k8s.io/apiserver v0.37.0 // indirect
-	k8s.io/component-base v0.37.0 // indirect
+	k8s.io/apiextensions-apiserver v0.37.1 // indirect
+	k8s.io/apiserver v0.37.1 // indirect
+	k8s.io/component-base v0.37.1 // indirect
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-openapi v0.0.0-20260721132016-d427ff9ee9ad // indirect
