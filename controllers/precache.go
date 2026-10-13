@@ -5,10 +5,9 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
-
 	"strings"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/api/v1alpha1"
@@ -84,7 +83,7 @@ func (r *ClusterGroupUpgradeReconciler) getImageForVersionFromUpdateGraph(
 
 	defer res.Body.Close()
 
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := io.ReadAll(res.Body)
 	if err != nil && len(body) > 0 {
 		return "", fmt.Errorf("unable to read body from response: %w", err)
 	}

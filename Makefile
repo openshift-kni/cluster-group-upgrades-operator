@@ -12,7 +12,7 @@ BASHATE_VERSION ?= 2.1.1
 CONTROLLER_GEN_VERSION ?= v0.4.1
 
 # GOLANGCI_LINT_VERSION defines the golangci-lint version to download from GitHub releases.
-GOLANGCI_LINT_VERSION ?= v1.46.0
+GOLANGCI_LINT_VERSION ?= v1.51.1
 
 # KUSTOMIZE_VERSION defines the kustomize version to download from go modules.
 KUSTOMIZE_VERSION ?= v4@v4.5.4
@@ -314,7 +314,9 @@ bundle-push: ## Push the bundle image.
 
 .PHONY: bundle-check
 bundle-check: bundle
-	hack/check-git-tree.sh
+	# Workaround for CI which adds phantom dependencies to go.sum
+	go mod tidy
+	$(PROJECT_DIR)/hack/check-git-tree.sh
 
 .PHONY: bundle-run
 bundle-run: # Install bundle on cluster using operator sdk. Index image is require due to upstream issue: https://github.com/operator-framework/operator-registry/issues/984
