@@ -26,7 +26,7 @@ require (
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
-	github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
+	github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
 	golang.org/x/sys v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.37.1
