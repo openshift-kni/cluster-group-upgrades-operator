@@ -273,7 +273,7 @@ github.com/spf13/cobra
 # github.com/spf13/pflag v1.0.10
 ## explicit; go 1.12
 github.com/spf13/pflag
-# github.com/stolostron/cluster-lifecycle-api v0.0.0-20260330032750-43755d6ceb09
+# github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
 ## explicit; go 1.25.0
 github.com/stolostron/cluster-lifecycle-api/action/v1beta1
 github.com/stolostron/cluster-lifecycle-api/view/v1beta1
