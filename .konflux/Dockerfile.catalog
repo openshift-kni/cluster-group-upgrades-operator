@@ -2,7 +2,7 @@
 ARG OPM_IMAGE=registry.redhat.io/openshift5/ose-operator-registry-rhel9:v5.0
 
 # CNF-18555: When there is a Konflux build available for this then we need to update from the brew image
-ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.26-rhel9@sha256:56e4f92857c4662bb2151cbb7aa55aa8b1e790126adc64dacd835dfed02dfca4
+ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.26-rhel9@sha256:cdb2b291b842dc836be849d735d47a80c13a910bdd61a95933167bbaff6b8bc3
 
 # fix the catalog (talm exclusive, naming issue)
 FROM ${BUILDER_IMAGE} AS builder
