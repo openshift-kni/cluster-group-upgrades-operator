@@ -12,7 +12,7 @@
 # Precache
 - key: precache_img
   source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.20.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20@sha256:f7d16d2416cf56bcbca0b7d3b3d18cfe90b7c510e64f86fa3f571dde301c2cb2
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-20@sha256:1eccdc86a12735e5ed3175d1337cd2adb680d9a39fd6c2027f48e48753af3a19
 #
 # Recovery
 - key: recovery_img
