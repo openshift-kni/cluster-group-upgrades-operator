@@ -531,14 +531,30 @@ stops being a failure the moment the CRD appears (see D10). TALM therefore canno
 reliably convert a mis-targeted apply into a prompt runtime failure at all — which is
 precisely why the check has to happen before the rollout rather than during it.
 
-**A cluster that can never complete is expensive at fleet scale.** A batch does not
-complete until every cluster in it finishes or times out, so one such cluster holds its
-whole batch open for the full `rolloutStrategy.Timeout`, and every subsequent batch waits
-behind it. Costs are therefore multiplicative, not additive: affected clusters spread
-across *b* batches can add up to *b* × timeout of wall-clock before the operator learns
-anything — on a fleet-sized rollout with generous per-action timeouts, hours to days.
-(Improving batch completion so one stuck cluster does not gate the rest is a known
-backlog item, currently unprioritised. The hub-side design must not assume it is fixed.)
+**A mis-target that is invisible until runtime costs the whole plan item's budget.**
+The engine already guards against a single stuck cluster monopolising the timeout:
+`CalculateBatchTimeout` (`controllers/utils/batches.go:10`, called at
+`clustergroupupgrade_controller.go:664`) gives each batch a fair share —
+`remainingTime / remainingBatches`, where `remainingTime` subtracts the time already
+spent — and its comment says so explicitly ("so that we don't let the entire timeout be
+consumed by a single batch that gets stuck"). The last batch receives whatever is left.
+A CGU-wide check at `:585` remains as a backstop. On batch timeout the default
+`BatchTimeoutAction: Continue` records final state for that batch's clusters and
+advances to the next; `Abort`, or a timeout on a canary batch, ends the CGU instead.
+
+So one *isolated* bad cluster is contained: it wastes its batch's share and the rollout
+continues with slightly less time for what remains. That is the case the design already
+handles well.
+
+The mis-targeting case is different, and worse, because the mismatch is not one unlucky
+cluster — it is a **class** of spokes, so it is likely present in *every* batch. Every
+batch then runs to its fair share and times out, the full budget is consumed, and the
+CGU finishes `TimedOut` having upgraded nothing. Bounded, but total. A fleet-wide
+mis-target is therefore not a slow rollout, it is a wasted maintenance window — and the
+operator learns the reason only from manifest status buried under a generic timeout.
+(Improving batch completion so one stuck cluster does not gate the rest of its batch is
+a known backlog item, currently unprioritised. The hub-side design must not assume it is
+fixed.)
 
 Both of these argue the same way: a mismatch that is *detectable up front* must never be
 allowed to reach the rollout, in either direction.
@@ -701,9 +717,64 @@ reference names in the IBGU condition. Overlaps CNF-28671 but on the hub side of
    | `"False"` | LCA explicitly reported the stage failed — **terminal** |
    | `"True"` | complete |
 
-   Reacting to `"False"` turns a full-timeout stall into an immediate, correctly
-   attributed failure. Confirm first that LCA never recovers from a failed stage without
-   an Idle transition, which would make `"False"` non-terminal.
+   Reacting to `"False"` lets a batch finish as soon as its last live cluster finishes,
+   instead of running out its share of the timeout, and attributes the failure
+   correctly. Confirm first that LCA never recovers from a failed stage without an Idle
+   transition, which would make `"False"` non-terminal.
+
+   **Feasibility: there is one clean seam, but this is an engine change, not a status
+   tweak.** The CGU engine deliberately treats policy and manifestwork rollouts the
+   same way, and progress is modelled as a *monotonically advancing index* with no
+   channel for terminal failure. `getClusterProgress`
+   (`clustergroupupgrade_controller.go:961`) is the single polymorphic point, returning
+   `(currentIndex, isSoaking, err)` and dispatching to
+   `getNextNonCompliantPolicyForCluster` or `getNextManifestWorkForCluster`.
+   `updateClusterProgress` (`:900`) then interprets it: `index >= size` ⇒ `Completed`,
+   otherwise stay `InProgress`. The only other exit is the CGU-wide timeout.
+
+   Widening that one return to carry a terminal-failure signal is the clean change, and
+   the policy/manifestwork asymmetry it creates is **semantically honest rather than a
+   special case**: policy compliance genuinely has no terminal state, since a
+   NonCompliant policy may become Compliant at any time, so the policy path has nothing
+   to report and correctly always returns none.
+
+   What makes it more than a one-liner is the knock-ons:
+
+   1. A new per-cluster progress state. `ClusterRemediationProgress.State` is specified
+      as NotStarted / InProgress / Completed (`types.go:221,230-232`); `Failed` has to
+      be added. Additive to the CRD status, but it is API surface.
+   2. A `Failed` branch in `updateClusterProgress` that nils the index, emits an event,
+      cleans up ManagedClusterViews, and reports "done" so the batch is not blocked.
+   3. Batch-completion semantics change: `isBatchComplete` must count `Failed` as
+      terminal-done.
+   4. Per-cluster final state is currently only written on the timeout path.
+      `addClustersStatusOnTimeout` (`:775`) is what populates `Status.Clusters[]`, and
+      the only constants are `ClusterRemediationComplete` / `ClusterRemediationTimedout`
+      (`constants.go:28-29`). Early failure needs a `ClusterRemediationFailed` and a
+      path that runs outside the timeout handler — reusing `timedout` would be a lie in
+      user-visible status.
+   5. **A product decision, not just plumbing:** if a batch finishes with some clusters
+      `Failed`, is the CGU `Succeeded`, `TimedOut`, or something new, and does the plan
+      continue to the next batch? Today neither outcome fits.
+   6. IBGU consumes these states — `syncStatusWithCGUs`
+      (`imagebasedgroupupgrade.go:205-226`) switches on exactly the two existing
+      constants. A third needs a case, mapping to `ClusterState.FailedActions`, which
+      already exists, so that part is natural.
+
+   **Worth doing, but it is an optimisation rather than a safety fix.** Per-batch fair
+   shares (D4) already bound the damage from a stuck cluster, and `BatchTimeoutAction:
+   Continue` already keeps the rollout moving. What early detection adds is reclaiming
+   each batch's unused share — material on a fleet-wide mis-target, where otherwise
+   every batch runs out its full allowance — plus a correctly attributed failure instead
+   of a generic timeout. That is a real benefit, but it does not prevent a class of
+   failure, so it should be scoped as its own story with item 5 settled up front rather
+   than carried as a bullet here.
+
+   **Cheaper fallback if the engine change is rejected:** report only. Surface the
+   terminal failure message in `Status.Clusters` and conditions as soon as it is seen,
+   without touching the state machine. The operator learns the cause within a reconcile
+   instead of at timeout. It does not stop the budget draining, so it buys the
+   diagnostic half of the benefit for a small fraction of the work.
 
    **Rejected: treating an absent feedback value as a broken-rule signal.** Absence is
    the normal state for the whole duration of a stage, because the `*Completed`
@@ -794,6 +865,13 @@ early, and ship TALM first.
 | CGU plan order sorted by the last dash-token of the CGU name, as a string | `controllers/utils/common.go:145` |
 | CGU ownership label is `ibgu: <name>`, no kind discriminator | `controllers/utils/constants.go:185` |
 | `getFieldValue` returns `""` for both absent and non-matching feedback | `controllers/utils/manifestwork.go:79` |
+| Each batch gets a fair share of the remaining budget (`remainingTime / remainingBatches`); last batch takes the rest | `controllers/utils/batches.go:10`, called at `clustergroupupgrade_controller.go:664` |
+| CGU-wide timeout remains as a backstop | `controllers/clustergroupupgrade_controller.go:585` |
+| On batch timeout, default `BatchTimeoutAction: Continue` advances to the next batch; `Abort` or a canary batch ends the CGU | `controllers/clustergroupupgrade_controller.go:673-726`, `pkg/api/.../types.go:96-103,191` |
+| `addClustersStatusOnTimeout` records final state only for the batch that timed out | `controllers/clustergroupupgrade_controller.go:775,794` |
+| Progress is a monotonic index with no terminal-failure channel; single dispatch point for both rollout types | `controllers/clustergroupupgrade_controller.go:961,900` |
+| Per-cluster progress states are NotStarted / InProgress / Completed only | `pkg/api/clustergroupupgrades/v1alpha1/types.go:221,230-232` |
+| Only two cluster final-state constants exist | `controllers/utils/constants.go:28-29` |
 | `isManifestWorkReady` cannot distinguish "failed to apply" from "not yet applied" | `controllers/utils/manifestwork.go:57` |
 | Per-cluster ManifestWork created by verbatim template copy | `controllers/utils/manifestwork.go:134` |
 | CGU `Enable *bool`; gate sits after cluster selection but before the remediation plan is built | `pkg/api/clustergroupupgrades/v1alpha1/types.go:141`, `controllers/clustergroupupgrade_controller.go:383,1120` |
