@@ -288,7 +288,7 @@ Some ibgu actions only run on managed clusters that have certain labels
 
 Notice that Rollback only selects clusters that have upgrade completed label. If upgrade fails almost always the hub cluster and IBGU controller can not manage the spoke cluster. So we rely on the IBU autorollback to handle failed upgrades.
 
-`Abort` ibgu action only runs when `lcm.openshit.io/ibgu-upgrade-completed` is not present.
+`Abort` ibgu action only runs when `lcm.openshift.io/ibgu-upgrade-completed` is not present.
 
 IBGU applies these labels according to its current status. After a successful `Abort`, `FinalizeUpgrade`, `FinalizeRollback` or `AbortOnFailure` IBGU removes these labels from the respective managed cluster.
 
