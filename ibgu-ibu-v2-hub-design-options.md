@@ -1247,6 +1247,44 @@ strip `ownerReferences` (dangling hub refs can get the object garbage-collected 
 spoke) and `generation`. Given CNF-26659 settles that BackupSpec has no status
 subresource and no controller, stale `status` and `finalizers` are not concerns.
 
+**Work-agent RBAC.** The pull-secret copy is not a precedent. Today's copies are core
+resources — the Secret into `openshift-lifecycle-agent` (`imagebasedgroupupgrade.go:428`),
+the ConfigMaps wherever their ref points — and they apply with no RBAC shipped for them,
+so the work agent's default grant evidently covers core namespaced resources. It does not
+cover `lca.openshift.io`: TALM already has to ship
+`open-cluster-management:klusterlet-work:ibu-role`, aggregated into the agent via
+`open-cluster-management.io/aggregate-to-work: "true"` and granting `imagebasedupgrades`
+only (`manifestworkreplicaset.go:175-188`; `docs/ibgu/README.md:46`). `BackupSpec` is a
+new resource in that same group, so it stands where the IBU stands, not where the Secret
+does. Spoke scope does not change this — aggregated ClusterRoles grant cluster-wide, so
+6A and 6B′ need the same rule. (The OCM klusterlet manifests are not vendored, so the
+agent's exact default grant is inferred from this behaviour rather than read; if LCA
+aggregates a `BackupSpec` role into `admin` and the agent is bound to `admin`, it might
+already be covered. The explicit rule is correct either way.)
+
+- **Add a `backupspecs` rule to the existing `ibu-role`, not a new manifest.** A separate
+  ClusterRole would be one more manifest and shift the completion index, which counts
+  manifests (`:120`); an extra rule on the same object does not. Minimum verbs are
+  `get`, `create`, `update`, `patch`; `delete` is unnecessary under `Orphan` (8A) but
+  harmless, and matching the IBU rule's verb set is simpler. `ibu-role` is already on the
+  list restored across the pivot (`docs/ibgu/README.md:12,46`), so the rule carries with
+  it.
+- **Apply the ClusterRole first.** Manifests are ordered extra manifests, then the
+  ClusterRole, then the IBU (`:211-213`). With `BackupSpec` among the extras, the first
+  Prep after a TALM upgrade applies it before the role gains the rule and is forbidden;
+  the work agent retries, so it converges, but by accident and with `Applied=False`
+  showing in the meantime. Moving the ClusterRole to the front keeps the IBU last, so its
+  index (`1+len(manifests)`) is unchanged. RBAC aggregation is itself asynchronous, so
+  the first attempt can still be refused once; the reorder narrows the window rather
+  than closing it. `GeneratePermissionsManifestWorkReplicaset` (`:125`) would ship the
+  role ahead of time but has no caller outside tests.
+- **Hub-side RBAC is separate and small:** get/list/watch on TALM's own hub kind
+  (`BackupContent` or `BackupSet`) via kubebuilder markers. Nothing is needed for LCA's
+  `BackupSpec` on the hub — TALM only serialises it into the manifest.
+- **Not covered here:** an 8C reap done by `ManagedClusterAction` runs through ACM's
+  work-manager addon under its own identity, not the work agent, and its permissions
+  would need checking separately.
+
 **Deletion.** Manifests currently carry `DeleteOption: Orphan` (`manifestworkreplicaset.go:161`
 and `:233`), so copied content survives the manifestwork.
 
