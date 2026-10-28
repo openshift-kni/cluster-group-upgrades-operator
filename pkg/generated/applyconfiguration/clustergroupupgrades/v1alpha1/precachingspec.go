@@ -20,7 +20,10 @@ package v1alpha1
 // PrecachingSpecApplyConfiguration represents a declarative configuration of the PrecachingSpec type for use
 // with apply.
 //
-// PrecachingSpec defines the pre-caching software spec derived from policies
+// PrecachingSpec defines the pre-caching software spec derived from policies.
+//
+// Deprecated: PrecachingSpec will be removed in a future release alongside the pre-caching feature.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PrecachingSpecApplyConfiguration struct {
 	PlatformImage                *string  `json:"platformImage,omitempty"`
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`

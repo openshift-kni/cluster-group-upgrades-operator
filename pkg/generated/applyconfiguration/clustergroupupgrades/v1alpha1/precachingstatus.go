@@ -20,7 +20,10 @@ package v1alpha1
 // PrecachingStatusApplyConfiguration represents a declarative configuration of the PrecachingStatus type for use
 // with apply.
 //
-// PrecachingStatus defines the observed pre-caching status
+// PrecachingStatus defines the observed pre-caching status.
+//
+// Deprecated: PrecachingStatus will be removed in a future release alongside the pre-caching feature.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PrecachingStatusApplyConfiguration struct {
 	Spec     *PrecachingSpecApplyConfiguration `json:"spec,omitempty"`
 	Status   map[string]string                 `json:"status,omitempty"`

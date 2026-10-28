@@ -8,7 +8,7 @@ Cluster Group Upgrades operator is a Kubernetes operator that facilitates softwa
 Cluster Group Upgrades operator uses the following CRDs:
 
 * **ClusterGroupUpgrade**
-* **PreCachingConfig**
+* **PreCachingConfig** (deprecated as of TALM 5.1 — use `lcm.openshift.io/ImageBasedGroupUpgrade` instead)
 
 and it contains the following controllers:
 
@@ -48,10 +48,10 @@ A full table of the conditions and their appropriate reasons and types are:
   `Validated` | True | ValidationCompleted| Completed validation |
   | | False | NotAllManagedPoliciesExist| Missing managed policies: policyList,  invalid managed policies: policyList |
   | | False | InvalidPlatformImage | Error related to platform image |
-  `PrecacheSpecValid` | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
+  `PrecacheSpecValid` *(deprecated)* | True | PrecacheSpecIsWellFormed | Precaching spec is valid and consistent |
   | | False | PrecacheSpecIncomplete| Precaching spec is incomplete |
   | | False | PrecacheSpecIncomplete| Precaching spec is incomplete: failed to get PreCachingConfig resource due to PreCachingConfig.ran.openshift.io "xxx" not found |
-  `PrecachingSucceeded` | True | PrecachingCompleted | Precaching is completed for all clusters|
+  `PrecachingSucceeded` *(deprecated)* | True | PrecachingCompleted | Precaching is completed for all clusters|
   | | True | PartiallyDone | Precaching failed for x clusters | 
   | | False | InProgress | Precaching is not completed | 
   | | False | InProgress | Precaching is in progress for x clusters | 
@@ -116,6 +116,7 @@ Annotations that carry unbounded comma-separated lists (e.g. batch clusters, tim
 | Warning | CguValidationFailure | RemediationOnHoldDueToValidationFailure | ClusterGroupUpgrade `<cgu-name>`: validation failure (missing policies): `<missing-policy-name1, missing-policy-name2>` | cgu.openshift.io/event-type: global<br>cgu.openshift.io/missing-policies: `<missing-policy-name1, missing-policy-name2>` | — | Any policy does not exist |
 | Warning | CguValidationFailure | RemediationOnHoldDueToValidationFailure | ClusterGroupUpgrade `<cgu-name>`: validation failure (invalid policies): `<invalid-policy-name1, invalid-policy-name2>` | cgu.openshift.io/event-type: global<br>cgu.openshift.io/invalid-policies: `<invalid-policy-name1, invalid-policy-name2>` | — | Any policy is invalid |
 | Warning | CguValidationFailure | RemediationOnHoldDueToValidationFailure | ClusterGroupUpgrade `<cgu-name>`: validation failure (ambiguous policies): `<ambiguous-policy-name1, ambiguous-policy-name2>` | cgu.openshift.io/event-type: global<br>cgu.openshift.io/ambiguous-policies: `<ambiguous-policy-name1, ambiguous-policy-name2>` | — | Any policy is duplicated across different namespaces |
+| Warning | PreCachingDeprecated | DeprecationWarning | spec.preCaching and spec.preCachingConfigRef are deprecated as of TALM 5.1. Use lcm.openshift.io/ImageBasedGroupUpgrade instead. This feature will be removed in a future release. | cgu.openshift.io/event-type: global | — | A CGU with `spec.preCaching: true` or `spec.preCachingConfigRef` set is reconciled |
 
 
 ## The managedclusterForCGU controller
@@ -124,9 +125,17 @@ The managedclusterForCGU controller is designed to automatically create the **Cl
 
 It monitors the **Ready** state of each **ManagedCluster** CR on the hub cluster. For any managed cluster in the **Ready** state without a "ztp-done" label applied, the managedclusterForCGU controller automatically creates a **ClusterGroupUpgrade** CR in the "ztp-install" namespace with a list of ordered cluster associated RHACM policies that are generated during the ZTP workflow.  The clustergroupupgrade controller then remediates the set of RHACM configuration policies that are listed in the auto-created **ClusterGroupUpgrade** CR to push the configuration CRs to the managed cluster. If there are no policies for the managed cluster at the time when the cluster becomes **Ready**, a **ClusterGroupUpgrade** CR with no policies will be created. Upon completion of the **ClusterGroupUpgrade** the managed cluster will be labeled as "ztp-done". If there are policies needed to be applied for that managed cluster the user should manually create a **ClusterGroupUpgrade** as a day-2 operation.
 
-## Precaching
+## Precaching (deprecated)
 
-Found [here](/docs/pre-cache)
+> **Deprecated**: The TALM pre-caching feature (`spec.preCaching`, `spec.preCachingConfigRef`, `PreCachingConfig`)
+> is deprecated as of TALM 5.1 and will be removed in a future release.
+> Migrate to image-based upgrades with [`lcm.openshift.io/ImageBasedGroupUpgrade`](/docs/ibgu), whose Prep
+> stage pre-caches the images the upgrade needs on each spoke (see the lifecycle-agent
+> [image-based upgrade guide](https://github.com/openshift-kni/lifecycle-agent/blob/main/docs/image-based-upgrade.md)).
+> This is a different, seed-image-based upgrade
+> workflow, not a drop-in replacement for policy-based pre-caching.
+
+Legacy documentation found [here](/docs/pre-cache)
 
 ## How to deploy
 
@@ -134,7 +143,10 @@ Found [here](/docs/pre-cache)
 2. Run **make deploy IMG=*your_repo_image***
 
 Depending on how the ClusterGroupUpgrade CR is defined, the operator may create pre-caching workloads on the spoke clusters. To specify custom workload images, follow the example below.
-### How to deploy with pre-caching
+### How to deploy with pre-caching (deprecated)
+
+> **Deprecated**: Pre-caching via TALM is deprecated as of 5.1. See [Precaching (deprecated)](#precaching-deprecated) for the migration path.
+
 1. Run **make docker-build docker-push IMG=*your_repo_image***
 1. Run **PRECACHE_IMG=*your_precache_repo_image* make docker-build-precache docker-push-precache**
 1. Run **make deploy IMG=*your_repo_image* PRECACHE_IMG=*your_precache_repo_image***

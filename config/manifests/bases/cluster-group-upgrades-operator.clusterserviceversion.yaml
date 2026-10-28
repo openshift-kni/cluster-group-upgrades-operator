@@ -147,6 +147,9 @@ spec:
           matching the selector.
           If required, the pre-caching process starts immediately on all clusters irrespectively of
           the value of the "enable" flag
+
+          Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead; the IBGU Prep
+          stage handles image pre-staging. This field will be removed in a future release.
         displayName: PreCaching
         path: preCaching
         x-descriptors:
@@ -154,6 +157,9 @@ spec:
       - description: |-
           This field specifies a reference to a pre-caching config custom resource that contains the additional
           pre-caching configurations.
+
+          Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead.
+          This field will be removed in a future release.
         displayName: PreCachingConfigRef
         path: preCachingConfigRef
         x-descriptors:

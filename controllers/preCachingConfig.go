@@ -1,3 +1,4 @@
+//nolint:staticcheck // SA1019: implements the deprecated pre-caching API until it is removed.
 package controllers
 
 import (

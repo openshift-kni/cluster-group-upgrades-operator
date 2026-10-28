@@ -161,6 +161,7 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	switch reconcileTime {
 	case utils.ReconcileNow:
 		r.sendEventCGUCreated(ctx, clusterGroupUpgrade)
+		r.warnIfPreCachingDeprecated(ctx, clusterGroupUpgrade)
 		nextReconcile = requeueImmediately()
 		return
 	case utils.StopReconciling:
