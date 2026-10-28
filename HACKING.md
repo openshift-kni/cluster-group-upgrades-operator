@@ -16,12 +16,13 @@ To see all `make` targets, run `make help`
 
 ## Linter tests
 
-As of this writing, four linters are run by the `make ci-job` command:
+As of this writing, the following linters are run by the `make ci-job` command (along with `go vet`, unit tests,
+bindata verification and bundle checks):
 
-* golint
 * golangci-lint
 * shellcheck
 * bashate
+* yamllint
 
 These tests will be run automatically as part of the ci-job test post a pull request an update. Failures will mean your pull request
 cannot be merged. It is recommended that you run `make ci-job` regularly as part of development.

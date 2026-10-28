@@ -28,26 +28,26 @@ An example PreCachingConfig CR is presented below.
 apiVersion: ran.openshift.io/v1alpha1
 kind: PreCachingConfig
 metadata:
-name: exampleconfig
-namespace: default
+  name: exampleconfig
+  namespace: default
 spec:
-overrides: <1>
-  preCacheImage: quay.io/test_images/pre-cache:latest
-  platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-  operatorsIndexes:
-  - registry.example.com:5000/custom-redhat-operators:1.0.0
-  operatorsPackagesAndChannels:
-  - local-storage-operator: stable
-  - ptp-operator: stable
-  - sriov-network-operator: stable
-spaceRequired: 30Gi <2>
-excludePrecachePatterns: <3>
-- aws
-- vsphere
-additionalImages: <4>
-- quay.io/exampleconfig/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-- quay.io/exampleconfig/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adfaef
-- quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
+  overrides: # <1>
+    preCacheImage: quay.io/test_images/pre-cache:latest
+    platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+    operatorsIndexes:
+    - registry.example.com:5000/custom-redhat-operators:1.0.0
+    operatorsPackagesAndChannels:
+    - local-storage-operator:stable
+    - ptp-operator:stable
+    - sriov-network-operator:stable
+  spaceRequired: 30Gi # <2>
+  excludePrecachePatterns: # <3>
+  - aws
+  - vsphere
+  additionalImages: # <4>
+  - quay.io/exampleconfig/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+  - quay.io/exampleconfig/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adfaef
+  - quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
 ```
 **Note**
   * `<1>` The following fields can be configured to override the default TALO derived values: `preCacheImage`, `platformImage`, `operatorsIndexes`, and the `operatorsPackagesAndChannels`. These fields are automatically populated primarily from the policies of the managed clusters if left unspecified.
@@ -81,13 +81,14 @@ Please note that pre-caching functionality is implemented using ManagedClusterAc
 ![State machine](assets/states.png)
 
 ##### States #####
-- PrecacheNotStarted is the initial state all clusters are automatically assigned to on the first reconciliation pass of the TALO CR. Upon entry TALO deletes spoke pre-caching namespace and hub view resources that might have remained from the prior incomplete attempts. TALO also creates a new ManagedClusterView resource for the spoke pre-caching namespace to verify its deletion in the PrecachePreparing state
-- PrecachePreparing state is for waiting for the cleanup completion
-- PrecacheStarting state is for the creation of pre-caching job pre-requisites and the job itself
-- PrecacheActive - the job is in "Active" state
-- PrecacheSucceeded - a final state reached when the pre-cache job has succeeded
+The state names below are the values reported per cluster in the CGU `status.precaching.status` field. The diagram above uses older names that add a `Precache` prefix (e.g. `PrecacheNotStarted` for `NotStarted`, `PrecachePreparing` for `PreparingToStart`).
+- NotStarted is the initial state all clusters are automatically assigned to on the first reconciliation pass of the TALO CR. Upon entry TALO deletes spoke pre-caching namespace and hub view resources that might have remained from the prior incomplete attempts. TALO also creates a new ManagedClusterView resource for the spoke pre-caching namespace to verify its deletion in the PreparingToStart state
+- PreparingToStart state is for waiting for the cleanup completion
+- Starting state is for the creation of pre-caching job pre-requisites and the job itself
+- Active - the job is in "Active" state
+- Succeeded - a final state reached when the pre-cache job has succeeded
 - PrecacheTimeout - a final state meaning that artifact pre-caching has been partially done
-- PrecacheUnrecoverableError - a final state reached when the job ends with a non-zero exit code
+- UnrecoverableError - a final state reached when the job ends with a non-zero exit code
 
 ##### Transitions #####
 1. Start transition occurs when no prior status exists for TALO CR

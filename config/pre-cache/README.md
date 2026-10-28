@@ -41,9 +41,9 @@ spec:
     operatorsIndexes:
       - registry.example.com:5000/custom-redhat-operators:1.0.0
     operatorsPackagesAndChannels:
-      - local-storage-operator: stable
-      - ptp-operator: stable
-      - sriov-network-operator: stable
+      - local-storage-operator:stable
+      - ptp-operator:stable
+      - sriov-network-operator:stable
   excludePrecachePatterns:
     - aws
     - vsphere
