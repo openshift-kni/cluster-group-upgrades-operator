@@ -412,7 +412,7 @@ thing at compile time for condition type names.
 | **3C** ManagedClusterView on the LCA CSV (or the IBU CRD's served versions) | Ground truth, read from the spoke itself; TALM already has View helpers in `utils/multicloud_util.go` | New per-cluster API objects and a reconcile wait before the plan can start; cost scales with fleet size; the hub still has to map a version to a capability |
 | **3D** No detection — trust the user's label selector | Zero cost | The failure it permits is a silent no-backup upgrade. Unacceptable on its own |
 | **3E** Dry-run probe ManifestWork | Tests the real apply path | Heavyweight; another round trip; still needs somewhere to report the result |
-| **3F** LCA publishes its capabilities as a ClusterClaim | The idiomatic ACM mechanism for a spoke to assert a fact to the hub. Surfaces as `ManagedCluster.status.clusterClaims`, so the hub reads the whole fleet in **one List** — no per-cluster objects, no reconcile wait. Type is already vendored (`vendor/open-cluster-management.io/api/cluster/v1/types.go:168,188`) and TALM already holds `managedclusters` get/list/watch, so the hub side costs nothing new. Removes the version→capability table entirely and serves every future contract change | Requires an LCA change, so not unilateral. **Cannot be retrofitted into already-shipped LCA versions**, so "claim absent" stays ambiguous between a pre-feature LCA and broken claim sync. Becomes a public contract LCA must then maintain |
+| **3F** LCA publishes its capabilities as a ClusterClaim | The idiomatic ACM mechanism for a spoke to assert a fact to the hub. Surfaces as `ManagedCluster.status.clusterClaims`, so the hub reads the whole fleet in **one List** — no per-cluster objects, no reconcile wait. Type is already vendored (`vendor/open-cluster-management.io/api/cluster/v1/types.go:168,188`) and TALM already holds `managedclusters` get/list/watch, so the hub side costs nothing new. Removes the version→capability table entirely and serves every future contract change | Requires an LCA change, so not unilateral. **Cannot be retrofitted into already-shipped LCA versions**, so "claim absent" stays ambiguous between a pre-feature LCA, a truncated claim (see the cap note below) and an LCA-side failure. A broken sync path shows as *staleness* rather than absence, and is caught by the availability gate below, not by the claim. Becomes a public contract LCA must then maintain |
 
 **Recommendation: 3F, with 3C as the fallback** for clusters whose LCA predates the
 claim. Never 3D alone.
@@ -448,6 +448,60 @@ Design notes:
   this is not LCA's call alone — **confirm what ACM reserves by default** before relying
   on 3F. If LCA's claim cannot be made reserved, 3F inherits a silent failure mode and
   3C becomes materially more attractive.
+
+### A missing claim is not a sign that ACM is broken — check that directly, first
+
+The three spoke-to-hub paths in play run through different agents, so the failure of one
+says little about the others:
+
+| Mechanism | Spoke component | Surfaces on the hub as |
+|---|---|---|
+| ClusterClaim (3F) | OCM registration agent (klusterlet) | `ManagedCluster.status.clusterClaims` |
+| ManifestWork via MWRS — the IBGU's only delivery path today | OCM work agent (klusterlet) | ManifestWork status feedback |
+| ManagedClusterView / Action (3C) | ACM work-manager addon — not core OCM; the types are vendored from `stolostron/cluster-lifecycle-api` (`clustergroupupgrade_controller.go:49`) | MCV status |
+
+Read against that, the causes of an absent claim are:
+
+1. **LCA predates the claim** — the expected case, and the reason the fallback exists.
+   ACM is healthy; MCV and ManifestWork both work.
+2. **Truncated by the custom-claim cap** — the registration agent is working as designed;
+   MCV is unaffected.
+3. **LCA down, or its claim controller failing** — nothing in ACM is broken, and MCV can
+   still read the LCA CSV because it does not go through LCA.
+4. **Spoke unreachable or its agents broken** — the only case where MCV and ManifestWork
+   are also dead. It should present as *stale* claims rather than absent ones, since the
+   hub is not expected to clear `status.clusterClaims` when the lease expires (to confirm
+   against OCM's hub registration controller; only the API is vendored here). The
+   hub-visible signal is `ManagedClusterConditionAvailable` going Unknown or False.
+
+So the pre-flight should not infer ACM health from the claim. It should check it, and in
+this order, per cluster:
+
+1. **Available.** `ManagedClusterConditionAvailable` not `True` → fail closed with
+   "cluster unavailable"; do not consult the claim or the fallback. TALM already applies
+   the same gate to the precache path, for the same reason — a View can be stale when the
+   cluster stops updating it (`managedClusterResources.go:544-546`). The IBGU controller
+   has no such check today.
+2. **Claim.** Present and recognised → use it (D4 decides what follows).
+3. **Fallback (3C).** Claim absent → read the LCA CSV by MCV. If the CSV shows an LCA
+   version older than the one that first ships the claim, map it as 3C describes. If it
+   shows a version that *should* publish the claim, the claim was truncated or LCA's claim
+   controller is failing → fail closed with that specific reason.
+4. **Fallback unavailable.** MCV does not resolve → "unknown", fail closed (D4), reporting
+   the fallback path rather than the LCA as the cause.
+
+Two consequences worth recording:
+
+- **3C adds a dependency the IBGU does not have today.** Every IBGU action goes through
+  MWRS→ManifestWork, which needs only the OCM work agent. The fallback additionally needs
+  the work-manager addon. Distinguishing step 4 from a genuine LCA problem means reading
+  that addon's `ManagedClusterAddOn` status — a read TALM does not do today, and likely
+  new RBAC.
+- **The fallback makes truncation diagnosable.** Without 3C, a truncated claim and a
+  pre-feature LCA look identical, and the cap problem above is a blocked upgrade whose
+  cause is invisible from the hub. With the step-3 version comparison, it becomes a named
+  condition. That is an argument for keeping 3C even after the claim has shipped, at least
+  until the claim is confirmed exempt from the cap.
 
 ### Future: selecting by claim rather than verifying with it
 
@@ -592,6 +646,10 @@ handed to each CGU rather than a superset of it.
 - Treat unknown generation as a mismatch. Fail closed.
 - Surface it as an IBGU condition naming the offending clusters and the generation
   detected for each, so the operator can fix the selector or the fleet rather than guess.
+  Where the generation is unknown, name *why*, using the reasons from the D3 check order:
+  cluster unavailable, claim missing on an LCA that should publish it, or fallback (MCV)
+  unavailable. Each points at a different owner — ACM, LCA, the work-manager addon — and
+  a bare "unknown" points at none.
 - Provide an explicit opt-out annotation for lab use.
 - Cost depends on D3. Under 3F it is a single List of ManagedClusters. Under the 3C
   fallback it is N ManagedClusterViews up front — a real but bounded one-time cost,
