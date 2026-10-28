@@ -32,6 +32,10 @@ entries:
       - name: topology-aware-lifecycle-manager.v4.21.5
         replaces: topology-aware-lifecycle-manager.v4.21.4
         skipRange: '>=4.20.0 <4.21.5'
+      # v4.21.6
+      - name: topology-aware-lifecycle-manager.v4.21.6
+        replaces: topology-aware-lifecycle-manager.v4.21.5
+        skipRange: '>=4.20.0 <4.21.6'
     name: stable
     package: topology-aware-lifecycle-manager
     schema: olm.channel
@@ -60,6 +64,10 @@ entries:
       - name: topology-aware-lifecycle-manager.v4.21.5
         replaces: topology-aware-lifecycle-manager.v4.21.4
         skipRange: '>=4.20.0 <4.21.5'
+      # v4.21.6
+      - name: topology-aware-lifecycle-manager.v4.21.6
+        replaces: topology-aware-lifecycle-manager.v4.21.5
+        skipRange: '>=4.20.0 <4.21.6'
     name: "4.21"
     package: topology-aware-lifecycle-manager
     schema: olm.channel
@@ -79,6 +87,9 @@ entries:
   - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:4863996cc5f162dbb77a43fad7d5ef8f336b7e3fb04812c8627a6b9afd3d52f4
     schema: olm.bundle
     # v4.21.5 bundle
+  - image: registry.redhat.io/openshift4/topology-aware-lifecycle-manager-operator-bundle@sha256:d533524e2155998f0d26e3db53418b5cd4ee8ac2c5f404631ecf208556fd93ba
+    schema: olm.bundle
+    # v4.21.6 bundle
   # The url for this last entry is updated by telco5g-konflux/scripts/catalog/update-catalog-template.sh automatically
   - image: placeholder.will.be.updated.by.telco5g-konflux.scripts.catalog.update-catalog-template.sh
     schema: olm.bundle
