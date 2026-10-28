@@ -26,7 +26,7 @@ func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.Imag
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
+			Path: `.status.conditions[?(@.type=="Idle")].reason`,
 		},
 		{
 			Name: "idleConditionMessages",
@@ -47,7 +47,7 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason'`,
+			Path: `.status.conditions[?(@.type=="Idle")].reason`,
 		},
 		{
 			Name: "idleConditionMessages",
@@ -68,7 +68,7 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.Im
 		},
 		{
 			Name: "upgradeInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="UpgradeInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="UpgradeInProgress")].message`,
 		},
 		{
 			Name: "upgradeCompletedConditionMessages",
@@ -89,7 +89,7 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 		},
 		{
 			Name: "rollbackInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="RollbackInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="RollbackInProgress")].message`,
 		},
 		{
 			Name: "rollbackCompletedConditionMessages",
@@ -110,7 +110,7 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 		},
 		{
 			Name: "prepInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="PrepInProgress")].message'`,
+			Path: `.status.conditions[?(@.type=="PrepInProgress")].message`,
 		},
 		{
 			Name: "prepCompletedConditionMessages",
