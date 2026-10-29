@@ -19,7 +19,7 @@ Maintenance windows configuration is not provisioned by TALO. A user applies TAL
 
 ## PreCachingConfig CR ##
 A user can specify additional images to be pre-cached by creating a **PreCachingConfig** CR and referencing it in the TALO CR. 
-The **PreCachingConfig** CR also provides an opportunity to the user to specify overrides for platform-related images which are 
+The **PreCachingConfig** CR also provides an opportunity to the user to override the operator packages and channels which are 
 automatically derived by TALO. 
 
 An example PreCachingConfig CR is presented below.
@@ -32,10 +32,6 @@ metadata:
   namespace: default
 spec:
   overrides: # <1>
-    preCacheImage: quay.io/test_images/pre-cache:latest
-    platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-    operatorsIndexes:
-    - registry.example.com:5000/custom-redhat-operators:1.0.0
     operatorsPackagesAndChannels:
     - local-storage-operator:stable
     - ptp-operator:stable
@@ -50,7 +46,7 @@ spec:
   - quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
 ```
 **Note**
-  * `<1>` The following fields can be configured to override the default TALO derived values: `preCacheImage`, `platformImage`, `operatorsIndexes`, and the `operatorsPackagesAndChannels`. These fields are automatically populated primarily from the policies of the managed clusters if left unspecified.
+  * `<1>` `operatorsPackagesAndChannels` can be configured to override the TALO derived operator packages and channels, which are otherwise populated from the policies of the managed clusters. The `preCacheImage`, `platformImage`, and `operatorsIndexes` override fields are deprecated and ignored by the controller.
   * `<2>` Specifies the minimum required disk space on the managed cluster in Gibibytes. If unspecified, TALO applies a default value which pertains to the platform images.
   * `<3>` Specifies the list of patterns to filter out images that are not necessary for the cluster version update.
   * `<4>` Specifies the list of additional images to be pre-cached.
