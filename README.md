@@ -69,6 +69,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | MissingBlockingCR | Missing blocking CRs: ... |
   | | False | IncompleteBlockingCR | Blocking CRs that are not completed: ... | 
   `Succeeded`| True | Completed| All clusters are compliant with all the managed policies |
+  | | True | Completed | All clusters already compliant with the specified managed policies |
   | | False | TimedOut | Policy remediation took too long |
 
 When a timeout is hit only on the canary batch or on some clusters, the `TimedOut` message is suffixed with " on canary clusters" or " on some clusters".
