@@ -1,20 +1,277 @@
-# IBGU / IBU v2 — Hub-Side Design Options
+# IBGU and the IBU BackupSpec change — Hub-Side Design Record
 
 Working document for the TALM (hub) side of CNF-26657 "Remove OADP requirement".
 Scope: everything that changes in `openshift-kni/cluster-group-upgrades-operator`
-because LCA replaces `spec.oadpContent` with a BackupSpec reference list.
+because LCA adds a BackupSpec reference list to the IBU alongside `spec.oadpContent`.
 
-**Status of inputs.** For this exercise, two things that CNF-26659 currently records
-as settled are treated as **open**:
+**Status.** LCA has answered every hub-side question on CNF-26659 (see "Answers from LCA"
+near the end): there is no IBU v2 for now; the BackupSpec reference list is an optional
+field added to IBU v1, mutually exclusive with `spec.oadpContent` by a CEL rule on
+`ImageBasedUpgradeSpec`; `oadpContent` stays honoured as a deprecated input until a removal
+release that is still TBD; BackupSpec is namespaced, read only from
+`openshift-lifecycle-agent`, referenced by name only, and its content is an exported spec
+type; and LCA re-reads BackupSpec in Upgrade pre-pivot. The decisions below are final on
+that basis. The per-decision sections after the record are kept as the record of the
+alternatives considered and why they lost; where an answer changed the analysis, the
+section says so.
 
-- whether the IBU API moves to `v2` or absorbs the change additively in `v1`
-- whether BackupSpec is cluster-scoped or namespaced, on the spoke and on the hub
-
-Everything else from CNF-26659 is taken as given: BackupSpec is LCA-owned, inert
-(no controller, no status subresource), validated only during IBU Prep, with no
-runtime translation of Velero-format ConfigMaps.
+The IBU field is called `backupSpecs` here, following LCA's sketch; LCA has not fixed the
+name, and nothing below depends on it.
 
 Code facts cited below are verified against this repo at `main`; see the appendix.
+
+---
+
+## Decision record (CNF-28677)
+
+### D1 — IBGU API shape: **1A(ii), additive field in LCA v1, single IBGU version**
+
+- **Outcome.** IBGU stays `lcm.openshift.io/v1alpha1` with `ibuSpec` embedding
+  `lcav1.ImageBasedUpgradeSpec` unchanged. Revendoring LCA brings in `backupSpecs` and the
+  `oadpContent`/`backupSpecs` mutual-exclusion rule; TALM adds no field, version or kind.
+- **Why.** LCA keeps honouring `oadpContent` (Q1), so nothing breaks and the change is
+  purely additive. That removes the IBU-generation coexistence requirement that drove
+  every other option. An IBGU sets `oadpContent`, `backupSpecs` or neither; neither stays
+  valid and means no application backup, as today.
+- **Rejected.** 1B (sibling fields), 1C (new IBGU version — also unsafe under `None`
+  conversion), 1D (new kind), 1E (passthrough — loses hub validation), 1F (no
+  coexistence). All of them solve a coexistence problem LCA's answer removed.
+- **Verify in the revendor story.** The mutual-exclusion rule is placed on the spec type
+  so the IBGU CRD inherits it. Confirm the regenerated
+  `lcm.openshift.io_imagebasedgroupupgrades.yaml` carries it under `ibuSpec`. This could
+  not be checked here — the repo's `bin/controller-gen` is a Linux build — and no
+  type-level rule on `ImageBasedUpgradeSpec` exists yet to compare against; LCA's existing
+  rules are all on the `ImageBasedUpgrade` object (`vendor/.../imagebasedupgrade/v1/types.go:31-36`)
+  and so are not inherited. If the rule does not arrive, add the same rule on the IBGU
+  `ibuSpec` field rather than weakening the requirement.
+- **Deferred, owner LCA.** The `oadpContent` removal release reopens D1. Revisit when LCA
+  schedules it.
+
+### D2 — Cluster-list resolution: **2B, IBGU resolves once — as its own story, not on the OADP critical path**
+
+- **Outcome.** IBGU resolves the base selector once, freezes the set at plan item 0,
+  evaluates per-item eligibility from ManagedCluster labels, intersects with existing
+  ManagedClusters on every item, and passes `spec.clusters` to each CGU.
+- **Why.** Removes per-item drift and the label-write race, and makes the set the D4
+  pre-flight validates the set that runs.
+- **Rejected.** 2A (keeps the race); 2C (does not remove drift, and needs a CGU change);
+  deriving eligibility from `ibgu.Status.Clusters` (breaks cross-IBGU plans).
+- **Scope.** D4 does not depend on it (the base set is a superset of every item's set),
+  so it ships separately.
+
+### D3 — Spoke capability detection: **one value, the expected seed format version — from the LCA ClusterClaim, else from a field on the LCA CSV by MCV; the seed image's format from its OCI label**
+
+- **Outcome.** The pre-flight compares the seed format version each spoke's LCA expects
+  with the seed image's.
+  - **One value covers both axes.** LCA delivers the seed format bump and `backupSpecs` in
+    the same release, so an LCA expecting the bumped format (or later) supports
+    `backupSpecs`, and one that does not, does not. Customers may still migrate in two
+    waves — seed format first, BackupSpec later — but there is no product split. *Holds
+    only while the two ship together everywhere, including every z-stream the bump is
+    backported to* (D11).
+  - **Spoke side, per cluster, in order:**
+    1. `ManagedClusterConditionAvailable` must be `True`, else "cluster unavailable".
+    2. LCA's ClusterClaim (CNF-28926) carrying the expected seed format version.
+    3. Claim absent — whether the LCA predates the claim, the claim was truncated, or
+       LCA failed to publish it — read the same value from a field LCA publishes on its
+       CSV, by MCV. A truncated claim therefore costs one MCV read, not a blocked IBGU.
+       An LCA whose CSV has no such field predates the bump, so it expects the pre-bump
+       format: one fixed value, not a table.
+    4. If the MCV does not resolve, the expected format is unknown.
+  - **Image side:** TALM reads the `com.openshift.lifecycle-agent.seed_format_version`
+    label of `ibuSpec.seedImageRef.image` from the registry, once per IBGU at pre-flight,
+    using the pull secret the IBGU already references (`seedImageRef.pullSecretRef`, read
+    from the IBGU namespace as today, `imagebasedgroupupgrade.go:408`). A registry that
+    cannot be reached, or an image without the label, is "unknown".
+- **Why.** The owner of the contract publishes it, and the hub only reads it. The claim
+  is one List for the whole fleet; the CSV field answers the same question where the
+  claim is missing. No LCA-version-to-capability table exists anywhere on the hub. The
+  OCI label is ground truth for the image and needs no IBGU API change.
+- **Settled with LCA (CNF-28926, CNF-28772).**
+  - LCA publishes the expected seed format version as both the ClusterClaim value and a
+    CSV field, from the release carrying the bump onwards, in every z-stream it is
+    backported to; publication is part of the backport unit.
+  - BackupSpec support is not published separately; the hub derives it as seed format ≥
+    the first format that supports `backupSpecs`.
+  - LCA exports from its API package the seed format constant, the claim name, the CSV
+    field key and the first seed format that supports `backupSpecs`. The seed format
+    constant lives in `internal/common/consts.go` today (`SeedFormatVersion = 4` on the
+    local LCA clone), so it has to move or be re-exported. A constant compiled into TALM
+    reflects TALM's vendored LCA, not each spoke, so it names and interprets the
+    published value; it does not replace reading it.
+- **Open, to agree in CNF-28926.** The claim name, the CSV field key and the value
+  format. And whether ACM reserves a claim suffix for LCA or the claim stays custom and
+  truncatable — a cost question now, since truncation only sends the hub to the CSV.
+- **Rejected.**
+  - 3A (labels — unvalidated); 3B (ACM does not surface LCA capabilities); 3D (no
+    detection — the `backupSpecs` failure is silent no-backup); 3E (probe ManifestWork —
+    heavyweight).
+  - A hub-side LCA version table, in any form: it encodes LCA's release and backport
+    decisions in TALM.
+  - Blocking on a missing claim when the CSV answers: truncation is an OCM cap, not a
+    spoke fault, and the CSV read is exact.
+  - An MCV on the IBU CRD schema: answers `backupSpecs` but not the seed format.
+  - Declaring the seed format on the IBGU: a new immutable field, and a wrong value that
+    happens to match the spokes passes pre-flight.
+- **Costs accepted.**
+  - The CSV read is two MCV hops. A CSV's name carries its version
+    (`lifecycle-agent.v<x.y.z>`), and an MCV fetches one named object, so TALM views the
+    LCA Subscription for `status.installedCSV`, then that CSV — the same pattern the
+    precache path uses for Subscriptions (`controllers/utils/multicloud_util.go:43`). The
+    Subscription name is set by ZTP or the customer, so TALM needs it configured, with
+    the ZTP default as the default. A fixed-name LCA-owned object would need one hop; the
+    CSV was chosen because it is where an operator's capabilities conventionally live.
+  - The MCV path needs ACM's work-manager addon, which no IBGU action uses today.
+  - New registry egress from the hub, plus a registry client dependency to vendor. In
+    disconnected installs the target is the mirror registry the spokes already pull from;
+    the hub must trust its CA. The label is read once; LCA's own equality check at Prep
+    remains the backstop if a tag moves afterwards.
+
+### D4 — Mismatch or unknown: **4A, fail closed; `backupSpecs` requires a bumped-format seed image**
+
+- **Outcome.** Before the first CGU is created:
+  1. **Hub-only rule.** If the IBGU sets `ibuSpec.backupSpecs` and the seed image's format
+     is older than the first format that supports `backupSpecs`, reject the IBGU. An
+     old-format seed can never work with `backupSpecs`, and this needs no spoke read.
+  2. **Per cluster, over the resolved base set:** block if the spoke's expected seed
+     format differs from the image's, or cannot be determined (cluster unavailable, MCV
+     unresolved, image label unreadable). Checked for every IBGU.
+
+  Together these cover `backupSpecs`: a spoke that passes (2) expects the image's format,
+  which (1) has already required to be one that supports `backupSpecs`. IBGUs that set
+  `oadpContent` or neither need only (2). The condition names each cluster and the
+  reason, since each points at a different owner (ACM, LCA, the work-manager addon, the
+  registry). An explicit opt-out annotation exists for lab use.
+- **Why.**
+  - **Check 1 is a safety check.** LCA's seed check is a hard equality between the seed
+    image's label and the LCA's compiled-in constant
+    (`lifecycle-agent/controllers/prep_handlers.go:229-246`), and pre-bump LCAs have it
+    too. So an IBGU that sets `backupSpecs` with a *pre-bump* seed, sent to a pre-bump
+    LCA, passes the seed check; the older IBU CRD prunes `backupSpecs`; and the spoke
+    upgrades with no application backup. Nothing on the spoke can see it. The
+    "cannot reach Upgrade" argument holds only for a new-format seed, so check 1 is the
+    one guard for this combination.
+  - **Check 2 is an early warning.** A seed format mismatch is caught by LCA in Prep and
+    reported loudly. Blocking it up front avoids a Prep cycle per cluster and, since a
+    mismatch is a property of a class of spokes, the drain of every batch's timeout
+    share (see the D4 analysis), for the price of one validation pass.
+- **Rejected.** 4B (fail open — turns a detection gap into silent no-backup, or into a
+  wasted maintenance window); 4C (per-cluster skip — breaks one-fleet-per-IBGU and
+  batching).
+
+### D5 — Delivery: **5A, TALM copies BackupSpec content from the hub**
+
+- **Outcome.** The Prep manifestwork carries the BackupSpec objects for the refs, ahead of
+  the IBU. Policy delivery of BackupSpecs referenced by an IBGU is not supported in this
+  release.
+- **Why.** "Curated sets per upgrade path" is TALM-managed content; 5A lets TALM order
+  delivery before Prep and fail closed on a missing reference. Because the refs reuse
+  LCA's own field (D6), adding 5B later would not change the IBGU schema.
+- **Rejected.** 5B (IBGU cannot wait for a policy before Prep); 5C (hybrid — failures
+  become undiagnosable).
+
+### D6 — BackupSpec shape: **6B′ on the spoke, 6C on the hub, refs reuse `ibuSpec.backupSpecs`**
+
+- **Outcome.**
+  - Spoke: LCA's namespaced `BackupSpec` in `openshift-lifecycle-agent`, using LCA's
+    exported namespace constant (Q3).
+  - Hub: a new TALM-owned, namespaced kind (working name `BackupContent`), one object per
+    backup definition, in the IBGU's namespace. Its `spec.template` embeds LCA's exported
+    BackupSpec spec type (Q4). Its spec is immutable.
+  - IBGU: no new field. The author lists hub entry names in `ibuSpec.backupSpecs`; the
+    same names are the spoke object names; `createIBU` stays a pure copy.
+- **Why.** Q3 and Q4 are exactly the two asks that made this clean. Name-only refs plus a
+  fixed read namespace mean the hub and spoke names coincide, so the IBU's field can be
+  the IBGU's authoring field: one surface, nothing to keep in sync, immutability already
+  provided by `ibuSpec`'s `self == oldSelf`.
+- **Rejected.** 6A (cluster-scoped spoke object — LCA chose namespaced); 6B as written
+  (namespace in the ref recreates the phantom-namespace hack); 6D (hub *set* objects —
+  needs a sibling field, a CEL rule and a delivery-dependent schema, for per-set
+  validation nobody has asked for); using LCA's own CRD on the hub (one schema for a
+  mixed fleet); inlining content in the IBGU (defeats reuse across IBGUs).
+- **Cost accepted.** The IBGU schema now tracks LCA's field shape, which LCA has
+  acknowledged is a hub-visible API from the first release.
+
+### D7 — Where the hub reads: **7B-restricted, the IBGU's own namespace, no override**
+
+- **Outcome.** A ref resolves to the hub entry of that name in the IBGU's namespace. The
+  copy is written to LCA's namespace; the hub namespace never reaches the spoke.
+- **Why.** Names are unique by construction, and it is what lets one name mean both the
+  hub entry and the spoke object.
+- **Rejected.** 7A (ref's namespace — carries the phantom namespace forward); 7C
+  (explicit source field — more surface for nothing).
+
+### D8 — Copy semantics and lifecycle: **8A, keep `Orphan`; bare names; explicit RBAC**
+
+- **Outcome.**
+  - Copies keep `DeleteOption: Orphan` and survive the Prep manifestwork, which the CGU
+    deletes before Upgrade runs.
+  - Spoke name = hub entry name; no IBGU name or hub namespace in it.
+  - Strip `resourceVersion`, `managedFields`, `creationTimestamp`, `uid`,
+    `ownerReferences`, `generation`; set the namespace to LCA's constant.
+  - Add a `backupspecs` rule to the existing `ibu-role`, and apply the ClusterRole ahead
+    of the extra manifests.
+  - Content is pinned when the Prep CGU creates its MWRS (below, D6 question 2); hub
+    entry immutability makes that explicit rather than surprising.
+- **Why.** LCA re-reads BackupSpec in Upgrade pre-pivot and fails terminally if it is
+  missing or changed (Q6), so the copy must outlive the Prep work.
+- **Rejected.** 8B (delete with the manifestwork — removes Upgrade's input).
+- **Deferred.** 8C (an explicit reap): accumulation is bounded to one small object per
+  entry per spoke, overwritten by name on the next path.
+
+### D9 — Unresolvable reference: **9A, fail the IBGU before the first CGU — for plans that contain `Prep`**
+
+- **Outcome.** Every `backupSpecs` name must resolve to a hub entry before the first CGU
+  is created; otherwise a condition names the missing entries. The same check replaces
+  today's warn-and-skip for `oadpContent` ConfigMaps, which is a silent no-backup bug.
+  Plans without a `Prep` item (a follow-up `[['Upgrade']]` IBGU) skip the hub existence
+  check: they copy nothing, and a missing or changed spoke copy is already a terminal LCA
+  failure at pre-pivot (Q6). Such a plan must carry the same `backupSpecs` list as the
+  IBGU that ran Prep.
+- **Rejected.** 9B (fail at Prep — wastes a rollout cycle); 9C (status quo — silent);
+  requiring hub entries for Upgrade-only plans (checks an object the plan does not use).
+
+### D10 — Status-feedback robustness: **item 2 now (item 3 already fixed); item 1 report-only now, engine change as its own story**
+
+- **Outcome.** Source condition type names from LCA's API package (CNF-28751; Q7 confirms
+  they are stable). The five malformed JSONPaths (OCPBUGS-132380) are already fixed
+  (`7e434d1d7`, #13813). Surface an
+  LCA-reported `<Stage>Completed=False` in IBGU status as soon as it is seen. The CGU
+  engine change for early terminal failure is a separate story, gated on the product
+  decision of what a batch with failed clusters means.
+- **Rejected.** Treating absent feedback, or `ManifestApplied=False`, as terminal.
+
+### D11 — Release sequencing: **TALM can ship first**
+
+- **Outcome.** The revendored TALM may ship before, with or after the LCA release that
+  adds `backupSpecs`. Shipping first is safe because D4 blocks any IBGU that sets the
+  field against a spoke without it; IBGUs using `oadpContent` behave as today.
+- **Backport unit (recorded in CNF-28772).** PR#7818, the seed format bump, the
+  BackupSpec API and the seed format publication (CNF-28926) ship in the same release and
+  are backported together, never split. D3's single-value design depends on it: an LCA
+  with the bump but without the CSV field would be read as pre-bump.
+- **Seed format.** The pre-flight (D3, D4) must ship no later than the first LCA carrying
+  the seed format bump that TALM users will target, or IBGUs spanning the rollout window
+  lose the up-front block.
+- **Deferred.** The `oadpContent` removal release.
+
+### Implementation stories (opened from CNF-28677)
+
+All under CNF-26657 and linked to the spike; "blocked by" mirrors the Blocks links.
+
+| Story | Scope | Blocked by |
+|---|---|---|
+| CNF-29239 | Revendor LCA for `backupSpecs`; regenerate the IBGU CRD; verify the inherited mutual-exclusion rule (D1) | CNF-26659, CNF-28926, CNF-28751 |
+| CNF-29240 | Hub `BackupContent` CRD: types, deepcopy, immutability rule, RBAC, samples (D6) | CNF-29239 |
+| CNF-29241 | BackupSpec delivery: copy from the IBGU namespace into LCA's namespace, metadata stripping, `ibu-role` rule and ordering, `Orphan` (D5, D7, D8) | CNF-29240 |
+| CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupSpecs` rule, availability gate, claim read, Subscription→CSV MCV fallback, fail-closed conditions, opt-out annotation (D3, D4) | CNF-29239, CNF-28926 |
+| CNF-29243 | Reference resolution for `Prep` plans, including the `oadpContent` ConfigMap path (D9) | CNF-29240 |
+| CNF-29244 | Cluster-list resolution 2B (D2) | — |
+| CNF-29245 | Adopt CNF-28751 condition types; report-only terminal failure (D10) | CNF-28751 |
+| CNF-29246 | CGU engine early terminal-failure detection, with the batch-outcome decision (D10) | product decision |
+| CNF-29247 | Documentation, samples and kuttl coverage; downstream in TELCODOCS-3009 | CNF-29241, CNF-29242, CNF-29243 |
+
+OCPBUGS-132380 (malformed feedback JSONPaths) is already fixed.
 
 ---
 
@@ -25,7 +282,7 @@ D1  IBGU API shape across LCA generations      <- the structural decision
  |
  +- D2  Who owns cluster-list resolution        <- independent; NOT required by D4
  |
- +- D3  How the hub learns a spoke's IBU generation
+ +- D3  How the hub learns a spoke's LCA capability
  |   +- D4  What the hub does on mismatch / unknown
  |
  +- D5  Who delivers BackupSpec CRs to the spoke
@@ -38,16 +295,15 @@ D10 Status-feedback robustness       <- independent, can land immediately
 D11 Release sequencing               <- depends on D1
 ```
 
-D1 and D5 are the two that actually need a decision meeting. D2 is independently
-worth doing. D6 is mostly a question *for* LCA now — an exported content type, name-only
-references and a fixed read namespace settle it — and the rest follow. Those same two asks
-also decide whether the IBGU needs a new reference field at all: with name-only refs and a
-fixed read namespace, a per-entry reference list (6C) can reuse LCA's own field inside
-`ibuSpec`, and only a set reference (6D) needs a sibling.
+All eleven are decided; see the record above. The map is kept because the dependencies
+still explain the order of the stories: LCA's answers settled D1 and D6, D6 settled D7,
+and D8 and D9 follow from Q6.
 
 ---
 
 ## D1. How does IBGU express the IBU spec across LCA generations?
+
+> **Decided: 1A(ii)** (LCA Q1). The options below are the record of what was weighed; 1B–1F solve a coexistence problem LCA's answer removed.
 
 **Context.** `ImageBasedGroupUpgrade.spec.ibuSpec` embeds `lcav1.ImageBasedUpgradeSpec`
 wholesale, is required, and is immutable via CEL `self == oldSelf`
@@ -129,7 +385,7 @@ check (D4). What changes is their character, not their necessity:
 | Axis | Failure mode | Pre-flight is |
 |---|---|---|
 | IBU API generation | silent prune, no backup, Prep reports success | a **safety** requirement — and 1A(ii) removes this axis entirely |
-| Seed format version | LCA reports the stage failed; surfaces as `<Stage>Completed=False` (D10) | an **efficiency** requirement — it avoids a wasted Prep cycle per cluster and the batch stalls that follow |
+| Seed format version | LCA reports the stage failed; surfaces as `<Stage>Completed=False` (D10) | an **efficiency** requirement — it avoids a wasted Prep cycle per cluster and the batch stalls that follow. Decided as a blocking check all the same (D4): the stall is fleet-wide when a whole class of spokes mismatches |
 
 Detecting the seed axis needs one thing the API axis does not: the hub must know the
 *seed image's* format version, not only the spoke's expectation. Options:
@@ -144,8 +400,10 @@ Detecting the seed axis needs one thing the API axis does not: the hub must know
 - **No detection** — let Prep fail. Loud, but costs a Prep cycle per cluster plus the
   batch stalls described in D4.
 
-The declared-field option is the cheap 80% and is probably where to start; registry
-inspection is better UX but a larger step for the hub.
+**Decided: inspect the OCI label from the hub** (D3). Ground truth for the image, no
+IBGU API change; the price is registry egress from the hub and a registry client
+dependency. The declared field was rejected because a wrong value that happens to match
+the spokes passes the pre-flight.
 
 **The real cost of 1A(ii)** is that a deprecation with no forcing function does not
 complete. Customers who are never obliged to migrate largely will not, and the old input
@@ -290,6 +548,8 @@ So: push 1A(ii), fall back to **1D** on the assumption of long coexistence.
 
 ## D2. Who owns cluster-list resolution?
 
+> **Decided: 2B**, as its own story off the OADP critical path.
+
 **Context.** Today IBGU resolves nothing. `ensureCGUForPlanItem` passes
 `clusterLabelSelectors` straight through to each generated CGU
 (`controllers/utils/manifestworkreplicaset.go:335`), narrowed per plan item by
@@ -390,7 +650,9 @@ reproducible at all. Labels stay authoritative.
 
 ---
 
-## D3. How does the hub learn which IBU generation a spoke speaks?
+## D3. How does the hub learn what a spoke's LCA supports?
+
+> **Decided:** one capability value, the expected seed format version, read from the LCA claim (3F) or else from a field on the LCA CSV by MCV, behind an availability gate; the seed image's format from its OCI label. `backupSpecs` support ships with the seed format bump, so it follows from that value. The analysis below was written for the IBU-generation question and carries over.
 
 Needed by every D1 option except 1F. This is new machinery whichever way it goes: TALM
 reads **no** spoke version or capability information today — no `openshiftVersion`, no
@@ -446,8 +708,8 @@ Design notes:
   cap entirely (`:95-101`). LCA's claim should use one. The reserved suffix list is
   configured on the spoke registration agent (`--reserved-cluster-claim-suffixes`), so
   this is not LCA's call alone — **confirm what ACM reserves by default** before relying
-  on 3F. If LCA's claim cannot be made reserved, 3F inherits a silent failure mode and
-  3C becomes materially more attractive.
+  on 3F. If LCA's claim cannot be made reserved, truncation sends affected clusters down
+  the 3C path (decided form below), which costs an MCV read but stays correct.
 
 ### A missing claim is not a sign that ACM is broken — check that directly, first
 
@@ -483,10 +745,12 @@ this order, per cluster:
    cluster stops updating it (`managedClusterResources.go:544-546`). The IBGU controller
    has no such check today.
 2. **Claim.** Present and recognised → use it (D4 decides what follows).
-3. **Fallback (3C).** Claim absent → read the LCA CSV by MCV. If the CSV shows an LCA
-   version older than the one that first ships the claim, map it as 3C describes. If it
-   shows a version that *should* publish the claim, the claim was truncated or LCA's claim
-   controller is failing → fail closed with that specific reason.
+3. **Fallback (3C, decided form).** Claim absent → read the expected seed format from
+   the field LCA publishes on its CSV, by MCV (Subscription → `installedCSV` → CSV). This
+   covers an LCA older than the claim, a truncated claim and an LCA-side fault alike, and
+   costs one MCV read rather than a blocked IBGU. A CSV without the field means a pre-bump
+   LCA. *(Earlier drafts read the CSV version and mapped it through a hub-side table, or
+   read the IBU CRD schema; both are rejected — see the record.)*
 4. **Fallback unavailable.** MCV does not resolve → "unknown", fail closed (D4), reporting
    the fallback path rather than the LCA as the cause.
 
@@ -497,11 +761,11 @@ Two consequences worth recording:
   the work-manager addon. Distinguishing step 4 from a genuine LCA problem means reading
   that addon's `ManagedClusterAddOn` status — a read TALM does not do today, and likely
   new RBAC.
-- **The fallback makes truncation diagnosable.** Without 3C, a truncated claim and a
-  pre-feature LCA look identical, and the cap problem above is a blocked upgrade whose
-  cause is invisible from the hub. With the step-3 version comparison, it becomes a named
-  condition. That is an argument for keeping 3C even after the claim has shipped, at least
-  until the claim is confirmed exempt from the cap.
+- **The fallback defuses truncation.** Without 3C, a truncated claim and a pre-feature
+  LCA look identical, and the cap problem above becomes a blocked upgrade whose cause is
+  invisible from the hub. With the CSV field, a truncated claim costs one MCV read. That
+  is the reason to keep 3C even after the claim has shipped; the cap exemption becomes a
+  cost question, not a correctness one.
 
 ### Future: selecting by claim rather than verifying with it
 
@@ -556,6 +820,8 @@ thing to produce it.
 ---
 
 ## D4. What does the hub do on mismatch, or when the generation is unknown?
+
+> **Decided: 4A, fail closed** on a seed format mismatch or unknown, for every IBGU; plus a hub-only rule rejecting `backupSpecs` with a pre-bump seed image. The "both directions" analysis below was written for an IBU v2; with 1A(ii) only new-field → old-LCA remains, and the hub-only rule covers it.
 
 **The rule itself is not a D4 choice.** TALM must only ever send an IBU at the generation
 the spoke actually speaks, and *both* directions violate that:
@@ -660,6 +926,8 @@ handed to each CGU rather than a superset of it.
 
 ## D5. Who delivers BackupSpec CRs to the spoke?
 
+> **Decided: 5A.**
+
 | Option | Pros | Cons |
 |---|---|---|
 | **5A** TALM copies from hub (today's ConfigMap model, retargeted) | Self-contained; IBGU controls ordering; matches "curated sets per upgrade path" | Hub needs a BackupSpec representation (see D6); more copy machinery to get right |
@@ -674,6 +942,8 @@ mandatory, not optional. Rule out 5C.
 ---
 
 ## D6. BackupSpec scoping — reframed as two objects rather than one scope
+
+> **Decided: 6B′ (LCA Q3) on the spoke, 6C on the hub, refs in `ibuSpec.backupSpecs`.**
 
 The *hub library object* below is only relevant under 5A. The spoke-side scope and the
 shape of the reference matter under either delivery model — which is the argument for
@@ -711,13 +981,13 @@ D6's remaining choice:
 - **6C with name-only refs (recommended).** The hub entry `dpa-config` in the IBGU's
   namespace becomes the spoke object `dpa-config` in the namespace LCA owns. The list the
   author writes is exactly the list the IBU needs, so it goes in
-  `spec.ibuSpec.backupRefs` — LCA's own field, which is already part of the IBGU schema
+  `spec.ibuSpec.backupSpecs` — LCA's own field, which is already part of the IBGU schema
   because the spec is embedded (`types.go:33`). No sibling, no `!has()` rule forbidding
   one, no second source of truth.
 - **6D with set refs.** The IBGU input is one set reference; the IBU needs N item names
   TALM synthesises (`<set>-<index>`). Different strings in different counts, so the input
   cannot live in the output field. The sibling (`backupSetRefs`) is required, together
-  with `!has(self.ibuSpec.backupRefs)`.
+  with `!has(self.ibuSpec.backupSpecs)`.
 - **6C with a namespaced ref, or any hub-only refinement on the ref.** Same as 6D: once
   the ref carries something the spoke ref does not, the lists differ and the sibling is
   required.
@@ -730,10 +1000,10 @@ refs", which is a small but real loss of the "the IBU spec is LCA's spec" proper
 
 **Why reuse is preferred where it applies:**
 
-- **One authoring surface across 5A and 5B.** Delivery is still open. With reuse the IBGU
-  looks the same whichever wins — only whether TALM copies the content differs. With a
-  sibling, switching to policy delivery changes the IBGU schema, which is a user-facing
-  change riding on a decision the spike has not made.
+- **One authoring surface across 5A and 5B.** D5 chose 5A, but with reuse the IBGU would
+  look the same under 5B — only whether TALM copies the content differs. With a sibling,
+  adding policy delivery later would change the IBGU schema, a user-facing change riding
+  on a delivery decision.
 - **Nothing to keep in sync.** No CEL rule forbidding the embedded field, no validation
   that two lists agree, no "which one is authoritative" in the docs and samples.
 - **Immutability for free.** `ibuSpec` is already `self == oldSelf`, so refs cannot be
@@ -777,16 +1047,23 @@ are written, not who checks them.
    The alternative previously proposed here — identical names plus a uniqueness check
    across the referenced set — is now unnecessary: 7B-restricted handles it with less
    machinery, and 6D removes the question entirely.
-2. **Content pinning.** `ensureManifests` runs on every reconcile (`:100`) and
-   `createIBU` is called per plan item (`:292`), so copied content tracks the hub object
-   continuously. Editing a library entry mid-IBGU means later batches get different backup
-   input than earlier ones. Today's ConfigMap path has exactly the same property. Make the
-   library entry's spec immutable and treat changes as "new entry, new IBGU" — consistent
-   with how `ibuSpec` already works.
+2. **Content pinning.** *(Corrected; an earlier draft said copied content tracks the hub
+   object continuously. It does not.)* `ensureManifests` runs on every reconcile
+   (`:100`), but `ensureCGUForPlanItem` returns early once the plan item's CGU exists
+   (`:282-287`), and the MWRS is created once and never updated — the update path is a
+   `TODO` that only logs (`:334-351`). Every cluster's ManifestWork is then stamped from
+   that template (`controllers/utils/manifestwork.go:134-157`). So the content is pinned
+   at the moment the Prep CGU is created, for every batch. Today's ConfigMap path behaves
+   the same way. The hazard is the opposite one: an edit to a hub entry after that point
+   is silently ignored by the running IBGU. Making the entry's spec immutable turns that
+   into "new entry, new IBGU", consistent with `ibuSpec`. On the spoke, the work agent
+   reverts edits to a copy while the Prep ManifestWork exists; once the CGU deletes it
+   (`Orphan`), a spoke-side edit sticks and LCA's pre-pivot re-read picks it up — LCA's
+   concern, covered by its pre-pivot re-validation (CNF-28671).
 3. **One name, two objects.** Under reuse the same string is a hub entry name and a spoke
    object name. That is deliberate rather than sloppy — one rule, stated once (D8 and 6B′),
    relied on twice — but the docs have to say it plainly: an author reading
-   `backupRefs: [{name: dpa-config}]` should understand that TALM will *make* `dpa-config`
+   `backupSpecs: [{name: dpa-config}]` should understand that TALM will *make* `dpa-config`
    exist on the spoke, not that it already does.
 
 ### Two asks on CNF-26659 that make this clean rather than merely possible
@@ -873,7 +1150,7 @@ kind: ImageBasedUpgrade
 metadata:
   name: upgrade
 spec:
-  backupRefs:                        # name-only, no namespace anywhere
+  backupSpecs:                        # name-only, no namespace anywhere
     - name: dpa-config
 ```
 
@@ -889,7 +1166,7 @@ spec: <lcav1.BackupSpecSpec>
 
 **Where the refs live: in LCA's own field, reused.** Because the spoke name is the entry
 name, the list the author writes is the list the IBU needs. It goes in
-`spec.ibuSpec.backupRefs` — LCA's field, already present in the IBGU schema because the
+`spec.ibuSpec.backupSpecs` — LCA's field, already present in the IBGU schema because the
 spec is embedded (`types.go:33`) — and the IBGU carries no second reference field:
 
 ```yaml
@@ -905,7 +1182,7 @@ spec:
       image: quay.io/example/seed:4.22.3
       pullSecretRef:
         name: pull-secret
-    backupRefs:                      # LCA's field: the hub entry name, and the spoke name
+    backupSpecs:                      # LCA's field: the hub entry name, and the spoke name
       - name: dpa-config
   clusterLabelSelectors:
     - matchLabels:
@@ -925,7 +1202,7 @@ the `BackupSpec` object behind the name, copied into LCA's namespace as the Prep
 spec:
   stage: Prep
   seedImageRef: { version: 4.22.3, image: quay.io/example/seed:4.22.3, pullSecretRef: { name: pull-secret } }
-  backupRefs:
+  backupSpecs:
     - name: dpa-config   # unchanged from the IBGU; LCA reads it from its own namespace
 ```
 
@@ -1024,7 +1301,7 @@ the IBGU's own namespace (7B-restricted):
 spec:
   ibuSpec:
     seedImageRef: ...
-    backupRefs:                     # LCA's field, reused: the hub entry name (see above)
+    backupSpecs:                     # LCA's field, reused: the hub entry name (see above)
       - name: dpa-config            # namespace omitted: the ref cannot point elsewhere
   plan: ...
 ```
@@ -1051,7 +1328,7 @@ inline list of LCA content specs, with no per-item names:
 ```yaml
 kind: BackupSet                     # lcm.openshift.io/v1alpha1, namespaced
 spec:
-  backupSpecs:
+  items:
     - <lcav1.BackupSpecSpec>        # unnamed, ordered
     - <lcav1.BackupSpecSpec>
 ```
@@ -1087,7 +1364,7 @@ same names before anything reads them (D8, constraint 2).
 | Item-level reuse across sets | yes | no; a shared item is duplicated |
 | Failure granularity | per reference | the whole set fails closed, which is correct but coarser |
 | Dependency on D6 ask 1 | nice to have | effectively required, or the list holds whole objects and meaningless `metadata` inside a spec |
-| IBGU authoring field | LCA's own `backupRefs`, reused | a new sibling plus a `!has()` rule |
+| IBGU authoring field | LCA's own `backupSpecs`, reused | a new sibling plus a `!has()` rule |
 
 Composability survives: an IBGU can reference several sets, and derived names
 `<set>-<index>` keep them distinct within a path. Diagnostics survive too, since derived
@@ -1100,7 +1377,7 @@ uniqueness contract, because a set's items never share a spoke with another set'
 
 **6D's price is the reference field.** A set ref and its derived item names are different
 strings in different counts, so the IBU's ref list cannot be the IBGU's input: 6D needs a
-TALM-owned sibling (`backupSetRefs`), a CEL rule forbidding `ibuSpec.backupRefs`, and a
+TALM-owned sibling (`backupSetRefs`), a CEL rule forbidding `ibuSpec.backupSpecs`, and a
 `createIBU` that rewrites the spec instead of copying it. It also makes the IBGU's shape
 depend on D5 — under policy delivery there is no set to compute names from. 6C with
 name-only refs avoids all three, because the spoke name is the entry name.
@@ -1166,8 +1443,8 @@ the spoke — rather than a position in a list.
 
 ### The options as originally posed, if the pair is not split
 
-Recorded because the spike must show the rejected alternatives, and because one of them
-is the fallback if LCA declines ask 1.
+Recorded because the spike must show the rejected alternatives. One of them was the
+fallback had LCA declined ask 1; LCA accepted both asks (Q3, Q4), so none is needed.
 
 | Option | Pros | Cons |
 |---|---|---|
@@ -1194,6 +1471,8 @@ content change becomes a new IBGU. Reuse decides this, not scope.
 ---
 
 ## D7. Where does the hub read the content from?
+
+> **Decided: 7B-restricted.**
 
 The two existing copy paths disagree, and that disagreement is the root of the
 fake-namespace workaround:
@@ -1240,6 +1519,8 @@ namespace-rewriting approach is the one to keep.
 ---
 
 ## D8. Copy semantics and lifecycle on the spoke
+
+> **Decided: 8A** (LCA Q6), bare names, explicit `ibu-role` rule.
 
 **Metadata stripping.** The current helper clears `ResourceVersion`, `ManagedFields`,
 `CreationTimestamp`, `UID` (`:449-452`) — right for a ConfigMap. For a CR it should also
@@ -1336,17 +1617,17 @@ under 6B′ the whole accumulation sits in one namespace where an 8C sweep is a 
    If concurrent overlap is ever to be supported, qualification comes back and so does the
    need for an ownership guard; the two belong together.
 
-**Open point for D9:** a follow-up Upgrade-only IBGU — one that resumes a path whose
-`Prep` ran under an earlier IBGU — may find the referenced hub entries gone while the
-spoke copies remain. Either the pre-flight still requires the hub object (fail closed,
-small friction on resume) or plans without a `Prep` item are exempt from the existence
-check.
-Fail-closed is defensible — the IBGU is a record of intent — but it should be a recorded
-choice, not an accident.
+**Follow-up Upgrade-only IBGUs (decided in D9).** An IBGU that resumes a path whose
+`Prep` ran under an earlier IBGU may find the referenced hub entries gone while the spoke
+copies remain. Plans without a `Prep` item are exempt from the hub existence check: they
+copy nothing, and LCA already fails terminally at pre-pivot if a spoke copy is missing or
+changed (Q6). Requiring the hub object would test an object the plan never uses.
 
 ---
 
 ## D9. Behaviour when a referenced BackupSpec cannot be resolved
+
+> **Decided: 9A** for plans containing `Prep`, including the `oadpContent` path; Upgrade-only plans exempt.
 
 Today a missing source logs a warning and `continue`s (`:444`), and Prep proceeds. This
 is worse than it looks: the completion index is derived from the gathered count —
@@ -1364,14 +1645,21 @@ nothing logs above Info.
 **Recommendation: 9A**, validated alongside the D4 generation check, with the unresolved
 reference names in the IBGU condition. Overlaps CNF-28671 but on the hub side of the line.
 
-One case must not be treated as a failed reference: a follow-up Upgrade-only IBGU resuming
-a path whose content an earlier IBGU already copied. Nothing is copied at that point, so the
-check either applies only to plans carrying a `Prep` item, or it must consult the spoke —
-see the open point in D8.
+One case is not treated as a failed reference: a follow-up Upgrade-only IBGU resuming a
+path whose content an earlier IBGU already copied. The check applies only to plans
+carrying a `Prep` item (D8). Such a follow-up must carry the same `backupSpecs` list as
+the IBGU that ran Prep: LCA forbids changing the reference list while an IBU is in
+progress (CNF-26659), so a different list would be refused on apply and the Upgrade work
+would never land.
+
+The same check also replaces today's warn-and-skip for `oadpContent` ConfigMaps. It runs
+before the first CGU is created, so IBGUs already in progress are unaffected.
 
 ---
 
 ## D10. Status-feedback robustness (independent of everything above)
+
+> **Decided:** item 2 now (item 3 already fixed); item 1 report-only now, engine change as its own story.
 
 1. **Act on `is<Stage>Completed == "False"`, which is a genuine terminal signal.**
    `IsManifestWorkCompleted` (`controllers/utils/manifestwork.go:37`) only asks whether
@@ -1468,13 +1756,16 @@ see the open point in D8.
    controller-support package with no stability contract; relocating them to
    `api/imagebasedupgrade/v1` makes a rename a compile error in TALM at vendor-bump time.
 3. **Fix the five malformed JSONPaths** (OCPBUGS-132380) — diagnostic-only, but they
-   suppress exactly the message you need when 1 and 2 fail.
+   suppressed exactly the message you need when 1 and 2 fail. **Done** (`7e434d1d7`,
+   #13813).
 
-All three can land ahead of any D1 decision.
+Items 1 and 2 can land ahead of the rest of this work.
 
 ---
 
 ## D11. Release sequencing
+
+> **Decided: TALM can ship first** — see the record. The bullets below were written for an IBU v2 and are superseded; they are kept because they are why 1C was also rejected on sequencing grounds.
 
 - A v2-capable TALM must ship **no later than** the LCA carrying IBU v2, or the hub
   cannot drive upgraded spokes.
@@ -1488,39 +1779,31 @@ early, and ship TALM first.
 
 ---
 
-## Questions for LCA (CNF-26659)
+## Answers from LCA (CNF-26659)
 
-1. **Will LCA keep *honouring* `oadpContent` as a deprecated input alongside BackupSpec
-   (D1 option 1A(ii))?** This is the highest-value question in the list. CNF-26659
-   currently settles the opposite ("LCA never reads the Velero format at runtime in
-   v2"), but PR#7818 already keeps the Velero CR format, so this is a decision not to
-   delete shipping code rather than to build anything. A yes removes the hub's
-   coexistence requirement, justifies LCA staying on `v1`, and removes the forced
-   migration behind most of CNF-28772's Wave 2 pain. If yes, pair it with a declared
-   removal release so the deprecation completes.
-2. If `oadpContent` is retained in the schema but **not** honoured (1A(i)): is a
-   populated `oadpContent` rejected during Prep, or silently ignored? The field would
-   still be in the schema, so the spoke can see it — this is a specifiable behaviour,
-   and the answer decides whether 1A(i) has one silent mis-targeting direction or two.
-3. BackupSpec scope: cluster-scoped or namespaced? Settled decision 2 says
-   "name + namespace"; the YAML example omits the namespace. These disagree. D6's
-   preference is **namespaced, in one namespace LCA owns and exports as a constant, with
-   name-only references** (6B′) — a namespace in the ref carries no meaning to LCA and only
-   creates a hub-side prerequisite. If LCA will not own and fix a read namespace,
-   **cluster-scoped on the spoke with name-only references** (6A) is the fallback; either
-   way the ref itself must not carry a namespace. Note one consequence for LCA: under 6C
-   the IBGU reuses this field as its own authoring field, so changing its shape in a later
-   release becomes a hub-visible API change rather than an internal LCA one.
-4. **Can the BackupSpec content be exported as a named spec type** (D6 ask 1), so the hub
-   type can embed the same struct instead of duplicating or wrapping it? If not, TALM
-   wraps the whole object and both sides carry a schema they have to keep in step.
-5. During the release where LCA still serves IBU v1 for conversion, what happens to a v1
-   IBU created by the hub — is `oadpContent` readable, or pruned to v2 at rest? The
-   ticket's own open item ("confirm the exact pruning behaviour of a None-strategy
-   conversion on read") governs whether TALM can ever safely emit v1 to a v2 spoke.
-6. Does LCA re-read BackupSpec after Prep (decides D8)?
-7. Are the IBU status condition type names stable across the change? (Recorded as an
-   assumption; CNF-28751 is the enforcement mechanism.)
+Asked in an earlier draft of this document; answered on CNF-26659 and recorded on
+CNF-28677. Each answer is tied to the decision it settled.
+
+| # | Question | Answer | Settles |
+|---|---|---|---|
+| 1 | Keep honouring `oadpContent` as a deprecated input (1A(ii))? | **Yes.** No IBU v2 for now; the removal release is TBD | D1 → 1A(ii); D4 loses the reverse direction; D11 |
+| 2 | If retained but not honoured, is a populated `oadpContent` rejected or ignored? | **Not applicable** — it stays honoured | — |
+| 3 | BackupSpec scope? | **Namespaced, read only from `openshift-lifecycle-agent`** (exported constant), name-only references (6B′) | D6 spoke side; D7; field reuse |
+| 4 | Export the content as a named spec type? | **Yes** | D6 hub kind embeds it |
+| 5 | v1 IBU behaviour during a v1→v2 conversion release? | **Not applicable** — no v2 in this release | — |
+| 6 | Does LCA re-read BackupSpec after Prep? | **Yes**, in Upgrade pre-pivot, where the backup is taken; a missing or changed BackupSpec there fails terminally (CNF-28671) | D8 → 8A; D9 Upgrade-only carve-out |
+| 7 | IBU condition type names stable across the change? | **Yes**; CNF-28751 enforces it through the exported type | D10 item 2 |
+| — | *Not asked:* | `oadpContent` and `backupSpecs` are mutually exclusive, by a CEL rule on `ImageBasedUpgradeSpec` so the IBGU CRD inherits it; an IBU with neither stays valid | D1 (verify inheritance in the revendor story) |
+
+**Also settled, in CNF-28772 and CNF-28926:** PR#7818, the seed format bump, the
+BackupSpec API and the seed format publication form one backport unit, never split; LCA
+publishes the expected seed format version as a ClusterClaim and a CSV field; BackupSpec
+support is derived on the hub from that value; LCA exports the seed format constant, the
+claim name, the CSV field key and the first seed format that supports `backupSpecs`
+(D3, D4, D11).
+
+**Deferred, owner LCA:** the `oadpContent` removal release, and with it whether removal
+is an IBU v2, a field removal in v1, or needs a seed format bump. D1 and D11 reopen then.
 
 ---
 
@@ -1544,7 +1827,7 @@ early, and ship TALM first.
 | Copied manifests orphaned on delete | `controllers/utils/manifestworkreplicaset.go:233` |
 | IBU apiVersion derived from a local scheme, not hardcoded | `controllers/utils/manifestworkreplicaset.go:241` |
 | Seven functions typed on `*lcav1.ImageBasedUpgrade` | `controllers/utils/manifestworkreplicaset.go:20,41,62,83,104,170,241` |
-| Five malformed feedback JSONPaths (OCPBUGS-132380) | `controllers/utils/manifestworkreplicaset.go:29,50,71,92,113` |
+| Five malformed feedback JSONPaths (OCPBUGS-132380) — fixed | `7e434d1d7` (#13813); previously `controllers/utils/manifestworkreplicaset.go:29,50,71,92,113` |
 | Action resolved from the last dash-token of the MWRS name | `controllers/utils/manifestworkreplicaset.go:351` |
 | CGU plan order sorted by the last dash-token of the CGU name, as a string | `controllers/utils/common.go:145` |
 | CGU ownership label is `ibgu: <name>`, no kind discriminator | `controllers/utils/constants.go:185` |
@@ -1558,6 +1841,11 @@ early, and ship TALM first.
 | Only two cluster final-state constants exist | `controllers/utils/constants.go:28-29` |
 | `isManifestWorkReady` cannot distinguish "failed to apply" from "not yet applied" | `controllers/utils/manifestwork.go:57` |
 | Per-cluster ManifestWork created by verbatim template copy | `controllers/utils/manifestwork.go:134` |
+| MWRS created once per plan item and never updated (update path is a `TODO`); no MWRS work once the item's CGU exists | `controllers/imagebasedgroupupgrade.go:282-287,334-351` |
+| CGU deletes the previous per-cluster ManifestWork before creating the next, and previous batches' at each batch start | `controllers/manifestwork.go:44-55,132-139`, `controllers/clustergroupupgrade_controller.go:571-572` |
+| `ibgu-*-completed` labels persist after the IBGU is deleted; cleared only by Abort / AbortOnFailure / FinalizeUpgrade / FinalizeRollback | `controllers/imagebasedgroupupgrade.go:135-166` |
+| Work-agent ClusterRole `ibu-role` grants `imagebasedupgrades` only; shipped inside each stage MWRS after the extra manifests | `controllers/utils/manifestworkreplicaset.go:175-188,211-213` |
+| LCA's existing CEL rules sit on the `ImageBasedUpgrade` object, not on the spec type, so the IBGU CRD does not inherit them | `vendor/github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1/types.go:31-36` |
 | CGU `Enable *bool`; gate sits after cluster selection but before the remediation plan is built | `pkg/api/clustergroupupgrades/v1alpha1/types.go:141`, `controllers/clustergroupupgrade_controller.go:383,1120` |
 | `validateCR` hard-fails when a listed cluster is not a ManagedCluster | `controllers/clustergroupupgrade_controller.go:1345-1347` |
 | `maxConcurrency` auto-clamps to the cluster count | `controllers/clustergroupupgrade_controller.go:1367-1372` |
