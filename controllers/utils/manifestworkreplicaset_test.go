@@ -240,7 +240,7 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "upgradeInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"UpgradeInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"UpgradeInProgress\")].message"
                 },
                 {
                   "name": "upgradeCompletedConditionMessages",
@@ -378,7 +378,7 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "idleConditionReason",
-                  "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
+                  "path": ".status.conditions[?(@.type==\"Idle\")].reason"
                 },
                 {
                   "name": "idleConditionMessages",
@@ -515,7 +515,7 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "idleConditionReason",
-                  "path": ".status.conditions[?(@.type==\"Idle\")].reason'"
+                  "path": ".status.conditions[?(@.type==\"Idle\")].reason"
                 },
                 {
                   "name": "idleConditionMessages",
@@ -653,7 +653,7 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "rollbackInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"RollbackInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"RollbackInProgress\")].message"
                 },
                 {
                   "name": "rollbackCompletedConditionMessages",
@@ -790,7 +790,7 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
                 },
                 {
                   "name": "prepInProgressConditionMessage",
-                  "path": ".status.conditions[?(@.type==\"PrepInProgress\")].message'"
+                  "path": ".status.conditions[?(@.type==\"PrepInProgress\")].message"
                 },
                 {
                   "name": "prepCompletedConditionMessages",
