@@ -116,13 +116,6 @@ type ClusterGroupUpgradeSpec struct {
 	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
 
-	// This field determines whether the cluster would be running a backup prior to the upgrade.
-	//
-	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
-	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.Backup is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality"
-	//+kubebuilder:default=false
-	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="Backup",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
-	Backup bool `json:"backup,omitempty"`
 	// This field determines whether container image pre-caching will be done on all the clusters
 	// matching the selector.
 	// If required, the pre-caching process starts immediately on all clusters irrespectively of
@@ -286,14 +279,6 @@ type PrecachingStatus struct {
 	Clusters []string `json:"clusters,omitempty"`
 }
 
-// BackupStatus defines the observed backup status
-type BackupStatus struct {
-	StartedAt metav1.Time       `json:"startedAt,omitempty"`
-	Status    map[string]string `json:"status,omitempty"`
-	//+kubebuilder:deprecatedversion:warning="BackupStatus.Clusters is deprecated"
-	Clusters []string `json:"clusters,omitempty"`
-}
-
 // ClusterGroupUpgradeStatus defines the observed state of ClusterGroupUpgrade
 type ClusterGroupUpgradeStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
@@ -327,8 +312,6 @@ type ClusterGroupUpgradeStatus struct {
 	Status UpgradeStatus `json:"status,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Precaching"
 	Precaching *PrecachingStatus `json:"precaching,omitempty"`
-	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Backup"
-	Backup *BackupStatus `json:"backup,omitempty"`
 	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Computed Maximum Concurrency"
 	ComputedMaxConcurrency int `json:"computedMaxConcurrency,omitempty"`
 }

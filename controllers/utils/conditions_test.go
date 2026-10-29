@@ -31,7 +31,7 @@ func TestSetStatusCondition(t *testing.T) {
 			"Setting same condition should not change order",
 			[]metav1.Condition{
 				{
-					Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionTrue,
+					Type: string(ConditionTypes.Validated), Status: metav1.ConditionTrue,
 				},
 				{
 					Type: string(ConditionTypes.Progressing),
@@ -39,21 +39,21 @@ func TestSetStatusCondition(t *testing.T) {
 			},
 			[]metav1.Condition{
 				{
-					Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionTrue,
+					Type: string(ConditionTypes.Validated), Status: metav1.ConditionTrue,
 				},
 				{
 					Type: string(ConditionTypes.Progressing),
 				},
 			},
 			metav1.Condition{
-				Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionTrue,
+				Type: string(ConditionTypes.Validated), Status: metav1.ConditionTrue,
 			},
 		},
 		{
 			"Change in the status should change the order",
 			[]metav1.Condition{
 				{
-					Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionTrue,
+					Type: string(ConditionTypes.Validated), Status: metav1.ConditionTrue,
 				},
 				{
 					Type: string(ConditionTypes.Progressing),
@@ -64,11 +64,11 @@ func TestSetStatusCondition(t *testing.T) {
 					Type: string(ConditionTypes.Progressing),
 				},
 				{
-					Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionFalse,
+					Type: string(ConditionTypes.Validated), Status: metav1.ConditionFalse,
 				},
 			},
 			metav1.Condition{
-				Type: string(ConditionTypes.BackupSuceeded), Status: metav1.ConditionFalse,
+				Type: string(ConditionTypes.Validated), Status: metav1.ConditionFalse,
 			},
 		},
 	}

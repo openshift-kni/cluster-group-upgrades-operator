@@ -9,13 +9,13 @@ oc apply -k samples/precache
 ```
 ### Note on catalogsource policy ###
 When working with a disconnected registry, cluster administrators will have to create such a policy for the cluster to function. For connected environments, spoke clusters are preconfigured with default catalog sources (such as redhat-operators), and no catalog source policy will be necessary. 
-Precaching, however, requires a catalog source policy to be explicitly configured on the hub cluster. The example catalog source policy for working with default registry is provided in [catsrc-policy.yaml](catsrc-policy.yaml)
+Precaching, however, requires a catalog source policy to be explicitly configured on the hub cluster. The example catalog source policy for working with default registry is provided in [catsrc-parent-policy.yaml](catsrc-parent-policy.yaml)
 
 ## Running the controller ##
 ```bash
 make run
 ```
-To run with custom pre-caching / backup images, add the correspondent environment variables, for example:
+To run with custom pre-caching images, add the corresponding environment variable, for example:
 ```bash
 PRECACHE_IMG=<my registry>/<my repository>/<my image>:<tag> make run
 ```

@@ -75,11 +75,3 @@ run:
   concurrency: 6
   timeout: 5m
   tests: false
-
-issues:
-  exclude-rules:
-    # Exclude unused warning for compareBackupToDisk - it's used in Linux-only code
-    - path: recovery/cmd/backup_size.go
-      linters:
-        - unused
-      text: "compareBackupToDisk"

@@ -427,54 +427,6 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			)
 			nextReconcile = requeueWithMediumInterval()
 		} else {
-			err = r.reconcileBackup(ctx, clusterGroupUpgrade, clusters)
-			if err != nil {
-				r.Log.Error(err, "reconcileBackup error")
-				return
-			}
-
-			if clusterGroupUpgrade.Status.Backup != nil {
-				backupCondition := meta.FindStatusCondition(clusterGroupUpgrade.Status.Conditions, string(utils.ConditionTypes.BackupSuceeded))
-				if backupCondition == nil || backupCondition.Status == metav1.ConditionFalse {
-					utils.SetStatusCondition(
-						&clusterGroupUpgrade.Status.Conditions,
-						utils.ConditionTypes.Progressing,
-						utils.ConditionReasons.NotStarted,
-						metav1.ConditionFalse,
-						"Cluster backup is in progress",
-					)
-					err = r.updateStatus(ctx, clusterGroupUpgrade)
-					nextReconcile = requeueWithShortInterval()
-					return
-				}
-			}
-			// Update the clusters list based on the backup results
-			clusters = r.filterFailedBackupClusters(clusterGroupUpgrade, clusters)
-
-			// Check if there were any issues with the backup
-			if len(clusters) == 0 && len(clusterGroupUpgrade.Status.RemediationPlan) != 0 {
-				// We expected to remediate some clusters but currently have none
-				// There should already be a condition present describing the issue we just need to set succeeded and requeue once
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Progressing,
-					utils.ConditionReasons.Completed,
-					metav1.ConditionFalse,
-					"No clusters available for remediation (Backup failed)",
-				)
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Succeeded,
-					utils.ConditionReasons.Failed,
-					metav1.ConditionFalse,
-					"No clusters available for remediation (Backup failed)",
-				)
-				// Requeue is required here since we need to come back and check the succeeded condition for final cleanup
-				nextReconcile = requeueImmediately()
-				err = r.updateStatus(ctx, clusterGroupUpgrade)
-				return
-			}
-
 			if clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUCompletionModeAnn] == utils.PartialBlockingCGUCompletion && clusterGroupUpgrade.GetAnnotations()[utils.BlockingCGUClusterFiltering] == "true" {
 				clusters, err = r.filterNonCompletedClustersInBlockingCRs(ctx, clusterGroupUpgrade, clusters)
 				if err != nil {
@@ -1218,7 +1170,7 @@ func (r *ClusterGroupUpgradeReconciler) getAllClustersForUpgrade(ctx context.Con
 	return clusterNames, nil
 }
 
-// filterFailedPrecachingClusters filters the input cluster list by removing any clusters which failed to perform their backup.
+// filterFailedPrecachingClusters filters the input cluster list by removing any clusters which failed to perform pre-caching.
 func (r *ClusterGroupUpgradeReconciler) filterFailedPrecachingClusters(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) []string {
 	var clustersList []string
 	if clusterGroupUpgrade.Status.Precaching != nil {
@@ -1231,22 +1183,6 @@ func (r *ClusterGroupUpgradeReconciler) filterFailedPrecachingClusters(clusterGr
 		clustersList = clusters
 	}
 	r.Log.Info("filterFailedPrecachingClusters: ", "clustersList", clustersList)
-	return clustersList
-}
-
-// filterFailedBackupClusters filters the input cluster list by removing any clusters which failed to perform their backup.
-func (r *ClusterGroupUpgradeReconciler) filterFailedBackupClusters(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, clusters []string) []string {
-	var clustersList []string
-	if clusterGroupUpgrade.Status.Backup != nil {
-		for _, name := range clusters {
-			if clusterGroupUpgrade.Status.Backup.Status[name] == BackupStateSucceeded {
-				clustersList = append(clustersList, name)
-			}
-		}
-	} else {
-		clustersList = clusters
-	}
-	r.Log.Info("filterFailedBackupClusters:", "clustersList", clustersList)
 	return clustersList
 }
 
@@ -1398,7 +1334,7 @@ func (r *ClusterGroupUpgradeReconciler) handleCguFinalizer(
 			// additional cleanup if CGU is not completed yet or deleteObject is set to false
 			if clusterGroupUpgrade.Status.Status.CompletedAt.IsZero() || !shouldDeleteObjects(clusterGroupUpgrade) {
 				r.Log.Info("Final cleanup for in prgress CGU or deleteObject set to false")
-				// Include placements, placementBindings, precaching/backup job/manageClusterView/Action and ManifestWork for current batch
+				// Include placements, placementBindings, precaching job/manageClusterView/Action and ManifestWork for current batch
 				if err := r.deleteResources(ctx, clusterGroupUpgrade); err != nil {
 					return utils.StopReconciling, err
 				}

@@ -14,8 +14,3 @@
   production: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9
   staging: registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9
 #
-# Recovery
-- key: recovery_img
-  production: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-recovery-rhel9
-  staging: registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-recovery-rhel9
-#

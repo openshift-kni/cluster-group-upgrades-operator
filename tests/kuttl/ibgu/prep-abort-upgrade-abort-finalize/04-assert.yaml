@@ -76,7 +76,6 @@ spec:
     beforeEnable:
       addClusterAnnotations:
         import.open-cluster-management.io/disable-auto-import: "true"
-  backup: false
   clusterLabelSelectors:
   - matchExpressions:
     - key: name

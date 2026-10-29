@@ -7,7 +7,6 @@ spec:
   clusters:
   - spoke1
   enable: true
-  backup: true
   preCaching: true
   managedPolicies:
   - policy1-common-cluster-version-policy

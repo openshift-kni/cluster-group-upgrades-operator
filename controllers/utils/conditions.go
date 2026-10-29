@@ -11,8 +11,6 @@ type ConditionType string
 
 // ConditionTypes define the different types of conditions that will be set
 var ConditionTypes = struct {
-	// CGU
-	BackupSuceeded     ConditionType
 	ClustersSelected   ConditionType
 	PrecacheSpecValid  ConditionType
 	PrecachingSuceeded ConditionType
@@ -20,7 +18,6 @@ var ConditionTypes = struct {
 	Succeeded          ConditionType
 	Validated          ConditionType
 }{
-	BackupSuceeded:     "BackupSuceeded",
 	ClustersSelected:   "ClustersSelected",
 	PrecacheSpecValid:  "PrecacheSpecValid",
 	PrecachingSuceeded: "PrecachingSuceeded",
@@ -37,7 +34,6 @@ var ConditionReasons = struct {
 	Completed                     ConditionReason
 	ClusterSelectionCompleted     ConditionReason
 	ValidationCompleted           ConditionReason
-	BackupCompleted               ConditionReason
 	PrecachingCompleted           ConditionReason
 	Failed                        ConditionReason
 	IncompleteBlockingCR          ConditionReason
@@ -48,7 +44,6 @@ var ConditionReasons = struct {
 	NotAllManifestTemplatesExist  ConditionReason
 	AmbiguousManagedPoliciesNames ConditionReason
 	NotEnabled                    ConditionReason
-	NotStarted                    ConditionReason
 	ClusterNotFound               ConditionReason
 	NotPresent                    ConditionReason
 	PartiallyDone                 ConditionReason
@@ -61,7 +56,6 @@ var ConditionReasons = struct {
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
 	ValidationCompleted:           "ValidationCompleted",
-	BackupCompleted:               "BackupCompleted",
 	PrecachingCompleted:           "PrecachingCompleted",
 	Failed:                        "Failed",
 	IncompleteBlockingCR:          "IncompleteBlockingCR",
@@ -72,7 +66,6 @@ var ConditionReasons = struct {
 	NotAllManifestTemplatesExist:  "NotAllManifestTemplatesExist",
 	AmbiguousManagedPoliciesNames: "AmbiguousManagedPoliciesNames",
 	NotEnabled:                    "NotEnabled",
-	NotStarted:                    "NotStarted",
 	ClusterNotFound:               "ClusterNotFound",
 	NotPresent:                    "NotPresent",
 	PartiallyDone:                 "PartiallyDone",

@@ -4,7 +4,6 @@ metadata:
   name: cgu
   namespace: default
 spec:
-  backup: false
   clusters:
   - spoke6
   - spoke2

@@ -35,8 +35,6 @@ func ForKind(kind schema.GroupVersionKind) interface{} {
 		return &clustergroupupgradesv1alpha1.ActionsApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("AfterCompletion"):
 		return &clustergroupupgradesv1alpha1.AfterCompletionApplyConfiguration{}
-	case v1alpha1.SchemeGroupVersion.WithKind("BackupStatus"):
-		return &clustergroupupgradesv1alpha1.BackupStatusApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BeforeEnable"):
 		return &clustergroupupgradesv1alpha1.BeforeEnableApplyConfiguration{}
 	case v1alpha1.SchemeGroupVersion.WithKind("BlockingCR"):
