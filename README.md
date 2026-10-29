@@ -35,9 +35,9 @@ The ClusterGroupUpgrade controller is designed to perform an upgrade to a group 
 
 The states generally are represented by Conditions using appropriate reasons and types. The general workflow is:
 
-ClusterSelected -> Validated -> PrecacheSpecValid -> PrecachingSucceeded -> BackupSucceeded -> Progressing -> Succeeded
+ClustersSelected -> Validated -> PrecacheSpecValid -> PrecachingSucceeded -> Progressing -> Succeeded
 
-Note that if Backup is not set to true, then the BackupSuceeded condition will not be present, and similarly if precaching is not set to true then neither precaching condition will be present.
+Note that if precaching is not set to true then neither precaching condition will be present.
 
 A full table of the conditions and their appropriate reasons and types are:
 
@@ -56,14 +56,9 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | InProgress | Precaching is not completed | 
   | | False | InProgress | Precaching is in progress for x clusters | 
   | | False | Failed | Precaching failed for all clusters |
-  `BackupSucceeded` | True | BackupCompleted | Backup is completed for all clusters|
-  | | True | PartiallyDone | Backup failed for x clusters |
-  | | False | InProgress | Backup is in progress for x clusters|
-  | | False | Failed | Backup failed for all the clusters |
   `Progressing`| True | InProgress| Remediating non-compliant policies|
   | | False | Completed | All clusters are compliant with all the managed policies |
   | | False | TimedOut | Policy remediation took too long |
-  | | False | NotStarted | The Cluster backup is in progress |
   | | False | NotEnabled| Not enabled |
   | | False | MissingBlockingCR | Missing blocking CRs: ... |
   | | False | IncompleteBlockingCR | Blocking CRs that are not completed: ... | 
@@ -129,9 +124,6 @@ The managedclusterForCGU controller is designed to automatically create the **Cl
 
 It monitors the **Ready** state of each **ManagedCluster** CR on the hub cluster. For any managed cluster in the **Ready** state without a "ztp-done" label applied, the managedclusterForCGU controller automatically creates a **ClusterGroupUpgrade** CR in the "ztp-install" namespace with a list of ordered cluster associated RHACM policies that are generated during the ZTP workflow.  The clustergroupupgrade controller then remediates the set of RHACM configuration policies that are listed in the auto-created **ClusterGroupUpgrade** CR to push the configuration CRs to the managed cluster. If there are no policies for the managed cluster at the time when the cluster becomes **Ready**, a **ClusterGroupUpgrade** CR with no policies will be created. Upon completion of the **ClusterGroupUpgrade** the managed cluster will be labeled as "ztp-done". If there are policies needed to be applied for that managed cluster the user should manually create a **ClusterGroupUpgrade** as a day-2 operation.
 
-## Backup-recovery
-
-Found [here](/docs/backup-recovery)
 ## Precaching
 
 Found [here](/docs/pre-cache)
@@ -141,16 +133,11 @@ Found [here](/docs/pre-cache)
 1. Run **make docker-build docker-push IMG=*your_repo_image***
 2. Run **make deploy IMG=*your_repo_image***
 
-Depending on how the ClusterGroupUpgrade CR is defined, the operator may create pre-caching and/or recovery workloads on the spoke clusters. To specify custom workload images, follow the examples below.
+Depending on how the ClusterGroupUpgrade CR is defined, the operator may create pre-caching workloads on the spoke clusters. To specify custom workload images, follow the example below.
 ### How to deploy with pre-caching
 1. Run **make docker-build docker-push IMG=*your_repo_image***
 1. Run **PRECACHE_IMG=*your_precache_repo_image* make docker-build-precache docker-push-precache**
 1. Run **make deploy IMG=*your_repo_image* PRECACHE_IMG=*your_precache_repo_image***
-
-### How to deploy with failed upgrade recovery
-1. Run **make docker-build docker-push IMG=*your_repo_image***
-1. Run **RECOVERY_IMG=*your_recovery_repo_image* make docker-build-recovery docker-push-recovery**
-1. Run **make deploy IMG=*your_repo_image* RECOVERY_IMG=*your_recovery_repo_image***
 
 ### How to deploy bundle
 The operator sdk can be used to run, upgrade, or remove a bundle on a cluster.

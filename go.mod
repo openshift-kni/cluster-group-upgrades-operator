@@ -9,8 +9,8 @@ require (
 	github.com/openshift/api v0.0.0-20261027123455-77c45d1bcab3
 	github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b
 	github.com/operator-framework/api v0.45.0
-	github.com/sirupsen/logrus v1.10.2
-	github.com/spf13/cobra v1.10.2
+	github.com/sirupsen/logrus v1.10.2 // indirect
+	github.com/spf13/cobra v1.10.2 // indirect
 	github.com/stretchr/testify v1.12.1
 	k8s.io/api v0.37.1
 	k8s.io/apimachinery v0.37.1
@@ -27,7 +27,6 @@ require (
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
 	github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
-	golang.org/x/sys v0.49.0
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.37.1
 	open-cluster-management.io/config-policy-controller v0.20.1
@@ -105,6 +104,7 @@ require (
 	golang.org/x/net v0.59.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.23.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	golang.org/x/term v0.46.0 // indirect
 	golang.org/x/text v0.42.0 // indirect
 	golang.org/x/time v0.16.0 // indirect

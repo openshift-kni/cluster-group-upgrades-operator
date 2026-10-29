@@ -20,7 +20,6 @@ spec:
     - policy1-common-cluster-version-policy
     - policy2-common-pao-sub-policy
   enable: false
-  backup: true
   preCaching: true
   clusters:
   - spoke1

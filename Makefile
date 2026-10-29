@@ -77,7 +77,6 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(VERSION)
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
-RECOVERY_IMG ?= $(IMAGE_TAG_BASE)-recovery:$(VERSION)
 AZTP_IMG ?= $(IMAGE_TAG_BASE)-aztp:$(VERSION)
 
 CRD_OPTIONS ?= "crd"
@@ -137,20 +136,6 @@ SHELL = /usr/bin/env GOFLAGS=$(GOFLAGS) bash -o pipefail
 
 .SHELLFLAGS = -ec
 
-# Include the bindata makefile
-include ./vendor/github.com/openshift/build-machinery-go/make/targets/openshift/bindata.mk
-
-# This will call a macro called "add-bindata" which will generate bindata specific targets based on the parameters:
-# $0 - macro name
-# $1 - target suffix
-# $2 - input dirs
-# $3 - prefix
-# $4 - pkg
-# $5 - output
-# It will generate targets {update,verify}-bindata-$(1) logically grouping them in unsuffixed versions of these targets
-# and also hooked into {update,verify}-generated for broader integration.
-$(call add-bindata,recovery,./recovery/bindata/...,recovery/bindata,generated,recovery/generated/zz_generated.bindata.go)
-
 # Kind configuration
 KIND_NAME ?= test-upgrades-operator
 KIND_ACM_NAMESPACE ?= open-cluster-management
@@ -201,16 +186,6 @@ vet: ## Run go vet against code.
 unittests: pre-cache-unit-test
 	@echo "Running unittests"
 	go test -v -coverprofile=coverage.out -covermode=atomic ./controllers/...
-	@echo "Running backup unittests"
-	go test -v -coverprofile=recovery-coverage.out -covermode=atomic ./recovery/cmd/...
-	@echo "Merging coverage files"
-	@if [ -f recovery-coverage.out ]; then \
-		echo "mode: atomic" > coverage-combined.out; \
-		tail -n +2 coverage.out >> coverage-combined.out 2>/dev/null || true; \
-		tail -n +2 recovery-coverage.out >> coverage-combined.out 2>/dev/null || true; \
-		mv coverage-combined.out coverage.out; \
-		rm -f recovery-coverage.out; \
-	fi
 	@echo "Coverage report generated: coverage.out"
 
 .PHONY: common-deps-update
@@ -220,7 +195,7 @@ common-deps-update:	controller-gen kustomize
 
 
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet golangci-lint unittests verify-bindata shellcheck bashate yamllint bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests shellcheck bashate yamllint bundle-check
 
 # Set the paths to the binaries in the local bin directory
 BASHATE = $(LOCALBIN)/bashate
@@ -271,10 +246,10 @@ build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) go run ./main.go --skip-tls-profile
+	PRECACHE_IMG=${PRECACHE_IMG} AZTP_IMG=$(AZTP_IMG) go run ./main.go --skip-tls-profile
 
 debug: manifests generate fmt vet ## Run a controller from your host that accepts remote attachment.
-	PRECACHE_IMG=${PRECACHE_IMG} RECOVERY_IMG=${RECOVERY_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go -- --skip-tls-profile
+	PRECACHE_IMG=${PRECACHE_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go -- --skip-tls-profile
 
 docker-build: ## Build container image with the manager.
 	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
@@ -291,16 +266,10 @@ docker-build-precache: ## Build pre-cache workload container image.
 docker-push-precache: ## push pre-cache workload container image.
 	${ENGINE} push ${PRECACHE_IMG}
 
-docker-build-recovery: ## Build recovery container image
-	${ENGINE} build -t ${RECOVERY_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.recovery .
-
-docker-push-recovery: ## Push recovery container image.
-	${ENGINE} push ${RECOVERY_IMG}
-
 docker-build-aztp: ## Build aztp container image
 	${ENGINE} build -t ${AZTP_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.aztp .
 
-docker-push-aztp: ## Push recovery container image.
+docker-push-aztp: ## Push aztp container image.
 	${ENGINE} push ${AZTP_IMG}
 ##@ Deployment
 
@@ -311,7 +280,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) RECOVERY_IMG=$(RECOVERY_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
@@ -320,7 +289,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --apis-dir pkg/api/ -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) RECOVERY_IMG=$(RECOVERY_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	sed -i '/^[[:space:]]*createdAt:/d' bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml

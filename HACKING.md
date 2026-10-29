@@ -30,18 +30,12 @@ cannot be merged. It is recommended that you run `make ci-job` regularly as part
 
 GO has automated formatting. To update code and ensure it is formatted properly, run:<br>`make fmt`
 
-## Updates to bindata
-
-When updating files in a `bindata` directory (eg. `recovery/bindata/update-recovery.sh`), you will need to regenerate the
-corresponding go code by running:<br>
-`make update-bindata`
-
 ## Building image
 
 There are three images built in this repo:
 * cluster-group-upgrades-operator
 * cluster-group-upgrades-operator-precache
-* cluster-group-upgrades-operator-recovery
+* topology-aware-lifecycle-manager-aztp
 
 There are make variables you can set when building the images to customize how they are built and tagged. For example, you can set
 ENGINE=podman if your build system uses podman instead of docker. To use a custom repository, you can use the IMAGE_TAG_BASE variable.
@@ -54,6 +48,6 @@ To build and push the cluster-group-upgrades-operator-precache image:
 `make docker-build-precache ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`
 `make docker-push-precache ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`
 
-To build and push the cluster-group-upgrades-operator-recovery image:
-`make docker-build-recovery ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`
-`make docker-push-recovery ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`
+To build and push the aztp image:
+`make docker-build-aztp ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`
+`make docker-push-aztp ENGINE=podman VERSION=latest IMAGE_TAG_BASE=quay.io/${MY_REPO_ID}/cluster-group-upgrades-operator`

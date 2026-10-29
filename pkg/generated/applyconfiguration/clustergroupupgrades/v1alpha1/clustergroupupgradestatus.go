@@ -44,7 +44,6 @@ type ClusterGroupUpgradeStatusApplyConfiguration struct {
 	Clusters                              []ClusterStateApplyConfiguration            `json:"clusters,omitempty"`
 	Status                                *UpgradeStatusApplyConfiguration            `json:"status,omitempty"`
 	Precaching                            *PrecachingStatusApplyConfiguration         `json:"precaching,omitempty"`
-	Backup                                *BackupStatusApplyConfiguration             `json:"backup,omitempty"`
 	ComputedMaxConcurrency                *int                                        `json:"computedMaxConcurrency,omitempty"`
 }
 
@@ -198,14 +197,6 @@ func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithStatus(value *UpgradeS
 // If called multiple times, the Precaching field is set to the value of the last call.
 func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithPrecaching(value *PrecachingStatusApplyConfiguration) *ClusterGroupUpgradeStatusApplyConfiguration {
 	b.Precaching = value
-	return b
-}
-
-// WithBackup sets the Backup field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Backup field is set to the value of the last call.
-func (b *ClusterGroupUpgradeStatusApplyConfiguration) WithBackup(value *BackupStatusApplyConfiguration) *ClusterGroupUpgradeStatusApplyConfiguration {
-	b.Backup = value
 	return b
 }
 

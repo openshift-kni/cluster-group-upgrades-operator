@@ -52,7 +52,6 @@ metadata:
     kind: ImageBasedGroupUpgrade
     name: upgrade-4.15.0
 spec:
-  backup: false
   clusterLabelSelectors:
   - matchExpressions:
     - key: name

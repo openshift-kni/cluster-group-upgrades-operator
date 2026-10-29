@@ -232,7 +232,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	nextState, currentState := PrecacheStateStarting, PrecacheStateStarting
 	var condition string
 
-	condition, err := r.getStartingConditions(ctx, cluster, precacheJobView[0].resourceName, precache)
+	condition, err := r.getStartingConditions(ctx, cluster, precacheJobView[0].resourceName)
 	if err != nil {
 		return currentState, err
 	}
@@ -254,7 +254,7 @@ func (r *ClusterGroupUpgradeReconciler) handleStarting(ctx context.Context,
 	case NoJobFoundOnSpoke:
 		r.Log.Info("[precachingFsm]", "currentState", currentState, "condition", NoJobFoundOnSpoke,
 			"cluster", cluster, "nextState", PrecacheStateStarting)
-		err = r.deployWorkload(ctx, clusterGroupUpgrade, cluster, precache, precacheJobView[0].resourceName, precacheCreateTemplates)
+		err = r.deployPrecachingWorkload(ctx, clusterGroupUpgrade, cluster, precacheJobView[0].resourceName, precacheCreateTemplates)
 		if err != nil {
 			return currentState, err
 		}

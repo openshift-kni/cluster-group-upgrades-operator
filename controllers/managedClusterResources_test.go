@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/apimachinery/pkg/runtime/serializer/yaml"
 	"k8s.io/apimachinery/pkg/types"
@@ -704,6 +705,140 @@ func Test_checkViewProcessing(t *testing.T) {
 			if got != tt.want {
 				t.Errorf("checkViewProcessing() = %v, want %v", got, tt.want)
 			}
+		})
+	}
+}
+
+// precacheMCV builds a ManagedClusterView as the spoke would report it. message drives
+// checkViewProcessing: a message ending in "not found" means the view exists but the
+// resource it mirrors does not yet.
+func precacheMCV(name, cluster, message string, extra map[string]interface{}) *unstructured.Unstructured {
+	obj := &unstructured.Unstructured{Object: map[string]interface{}{}}
+	obj.SetGroupVersionKind(viewGroupVersionKind())
+	obj.SetName(name)
+	obj.SetNamespace(cluster)
+	// A view only reports Processing=true once the resource it mirrors exists; a
+	// "...not found" message comes with Processing=false.
+	processing := string(metav1.ConditionTrue)
+	if message != "" {
+		processing = string(metav1.ConditionFalse)
+	}
+	status := map[string]interface{}{
+		"conditions": []interface{}{
+			map[string]interface{}{
+				"type":    viewv1beta1.ConditionViewProcessing,
+				"status":  processing,
+				"message": message,
+			},
+		},
+	}
+	for k, v := range extra {
+		status[k] = v
+	}
+	obj.Object["status"] = status
+	return obj
+}
+
+// TestMCR_getStartingConditions covers the precaching FSM entry condition: only the
+// dependency views and the precache job view feed the result.
+func TestMCR_getStartingConditions(t *testing.T) {
+	const (
+		cluster   = "spoke1"
+		notFound  = "resource not found"
+		jobStatus = "status"
+	)
+	jobView := precacheJobView[0].resourceName
+
+	dependencyViews := func(message string) []runtime.Object {
+		objs := make([]runtime.Object, 0, len(precacheDependenciesViewTemplates))
+		for _, item := range precacheDependenciesViewTemplates {
+			objs = append(objs, precacheMCV(item.resourceName, cluster, message, nil))
+		}
+		return objs
+	}
+
+	testcases := []struct {
+		name    string
+		objs    []runtime.Object
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "no dependency views yet",
+			objs: nil,
+			want: DependenciesViewNotPresent,
+		},
+		{
+			name: "dependency view mirrors a missing resource",
+			objs: dependencyViews(notFound),
+			want: DependenciesNotPresent,
+		},
+		{
+			name: "dependency view without status conditions",
+			objs: func() []runtime.Object {
+				objs := []runtime.Object{
+					&unstructured.Unstructured{Object: map[string]interface{}{
+						"apiVersion": "view.open-cluster-management.io/v1beta1",
+						"kind":       "ManagedClusterView",
+						"metadata": map[string]interface{}{
+							"name":      precacheDependenciesViewTemplates[0].resourceName,
+							"namespace": cluster,
+						},
+					}},
+				}
+				for _, item := range precacheDependenciesViewTemplates[1:] {
+					objs = append(objs, precacheMCV(item.resourceName, cluster, "", nil))
+				}
+				return objs
+			}(),
+			want:    UnforeseenCondition,
+			wantErr: true,
+		},
+		{
+			name: "dependencies ready, job view missing",
+			objs: dependencyViews(""),
+			want: NoJobView,
+		},
+		{
+			name: "job view mirrors a missing job",
+			objs: append(dependencyViews(""), precacheMCV(jobView, cluster, notFound, nil)),
+			want: NoJobFoundOnSpoke,
+		},
+		{
+			name: "job active",
+			objs: append(dependencyViews(""), precacheMCV(jobView, cluster, "", map[string]interface{}{
+				"result": map[string]interface{}{
+					jobStatus: map[string]interface{}{"active": int64(1)},
+				},
+			})),
+			want: JobActive,
+		},
+		{
+			name: "job succeeded",
+			objs: append(dependencyViews(""), precacheMCV(jobView, cluster, "", map[string]interface{}{
+				"result": map[string]interface{}{
+					jobStatus: map[string]interface{}{"succeeded": int64(1)},
+				},
+			})),
+			want: JobSucceeded,
+		},
+	}
+
+	for _, tc := range testcases {
+		t.Run(tc.name, func(t *testing.T) {
+			r := &ClusterGroupUpgradeReconciler{
+				Client: fake.NewClientBuilder().WithScheme(scheme.Scheme).WithRuntimeObjects(tc.objs...).Build(),
+				Log:    logr.Discard(),
+				Scheme: scheme.Scheme,
+			}
+
+			got, err := r.getStartingConditions(context.TODO(), cluster, jobView)
+			if tc.wantErr {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

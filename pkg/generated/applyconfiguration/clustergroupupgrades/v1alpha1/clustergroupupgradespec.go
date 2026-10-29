@@ -27,10 +27,6 @@ import (
 // TODO add validation so manifest templates and managed policies are not used at the same time
 // ClusterGroupUpgradeSpec defines the desired state of ClusterGroupUpgrade
 type ClusterGroupUpgradeSpecApplyConfiguration struct {
-	// This field determines whether the cluster would be running a backup prior to the upgrade.
-	//
-	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade instead for SNO upgrades with built-in backup/rollback functionality
-	Backup *bool `json:"backup,omitempty"`
 	// This field determines whether container image pre-caching will be done on all the clusters
 	// matching the selector.
 	// If required, the pre-caching process starts immediately on all clusters irrespectively of
@@ -91,14 +87,6 @@ type ClusterGroupUpgradeSpecApplyConfiguration struct {
 // apply.
 func ClusterGroupUpgradeSpec() *ClusterGroupUpgradeSpecApplyConfiguration {
 	return &ClusterGroupUpgradeSpecApplyConfiguration{}
-}
-
-// WithBackup sets the Backup field in the declarative configuration to the given value
-// and returns the receiver, so that objects can be built by chaining "With" function invocations.
-// If called multiple times, the Backup field is set to the value of the last call.
-func (b *ClusterGroupUpgradeSpecApplyConfiguration) WithBackup(value bool) *ClusterGroupUpgradeSpecApplyConfiguration {
-	b.Backup = &value
-	return b
 }
 
 // WithPreCaching sets the PreCaching field in the declarative configuration to the given value
