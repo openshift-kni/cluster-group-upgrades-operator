@@ -409,9 +409,9 @@ complete-kuttl-test: complete-deployment kuttl-test stop-test-proxy
 pre-cache-unit-test: ## Run pre-cache scripts unit tests
 	cwd=pre-cache ./pre-cache/test.sh
 
-test-kustomize: ## Validate all kustomization.yaml files can build successfully
+test-kustomize: kustomize ## Validate all kustomization.yaml files can build successfully
 	@echo "Running kustomize validation"
-	$(PROJECT_DIR)/hack/test-kustomize.sh
+	PATH="$(dir $(KUSTOMIZE)):$${PATH}" $(PROJECT_DIR)/hack/test-kustomize.sh
 
 ##@ Tools and linting
 
