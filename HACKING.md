@@ -16,8 +16,8 @@ To see all `make` targets, run `make help`
 
 ## Linter tests
 
-As of this writing, the following linters are run by the `make ci-job` command (along with `go vet`, unit tests,
-bindata verification and bundle checks):
+As of this writing, the following linters are run by the `make ci-job` command (along with `go vet`, unit tests
+and bundle checks):
 
 * golangci-lint
 * shellcheck
