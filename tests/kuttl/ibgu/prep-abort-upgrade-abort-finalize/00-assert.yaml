@@ -119,7 +119,7 @@ spec:
       - name: isPrepCompleted
         path: .status.conditions[?(@.type=="PrepCompleted")].status
       - name: prepInProgressConditionMessage
-        path: .status.conditions[?(@.type=="PrepInProgress")].message'
+        path: .status.conditions[?(@.type=="PrepInProgress")].message
       - name: prepCompletedConditionMessages
         path: .status.conditions[?(@.type=="PrepCompleted")].message
       type: JSONPaths
@@ -182,7 +182,7 @@ spec:
       - name: isPrepCompleted
         path: .status.conditions[?(@.type=="PrepCompleted")].status
       - name: prepInProgressConditionMessage
-        path: .status.conditions[?(@.type=="PrepInProgress")].message'
+        path: .status.conditions[?(@.type=="PrepInProgress")].message
       - name: prepCompletedConditionMessages
         path: .status.conditions[?(@.type=="PrepCompleted")].message
       type: JSONPaths
