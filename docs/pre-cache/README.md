@@ -1,4 +1,13 @@
 # Cluster upgrades - image pre-caching #
+
+> **Deprecated**: The TALM pre-caching feature (`spec.preCaching`, `spec.preCachingConfigRef`,
+> `PreCachingConfig`) is deprecated as of TALM 5.1 and will be removed in a future release.
+> Migrate to image-based upgrades with [`lcm.openshift.io/ImageBasedGroupUpgrade`](/docs/ibgu), whose Prep
+> stage pre-caches the images the upgrade needs on each spoke (see the lifecycle-agent
+> [image-based upgrade guide](https://github.com/openshift-kni/lifecycle-agent/blob/main/docs/image-based-upgrade.md)).
+> This is a different, seed-image-based upgrade
+> workflow, not a drop-in replacement for policy-based pre-caching.
+
 ## Background ##
 Cluster upgrades need to be completed within a 4 hour maintenance window.  This also needs to include time to resolve a failed upgrade.\
 There are several gigabytes of artifacts that need to be downloaded to the spoke for a full upgrade.\
@@ -28,26 +37,26 @@ An example PreCachingConfig CR is presented below.
 apiVersion: ran.openshift.io/v1alpha1
 kind: PreCachingConfig
 metadata:
-name: exampleconfig
-namespace: default
+  name: exampleconfig
+  namespace: default
 spec:
-overrides: <1>
-  preCacheImage: quay.io/test_images/pre-cache:latest
-  platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-  operatorsIndexes:
-  - registry.example.com:5000/custom-redhat-operators:1.0.0
-  operatorsPackagesAndChannels:
-  - local-storage-operator: stable
-  - ptp-operator: stable
-  - sriov-network-operator: stable
-spaceRequired: 30Gi <2>
-excludePrecachePatterns: <3>
-- aws
-- vsphere
-additionalImages: <4>
-- quay.io/exampleconfig/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
-- quay.io/exampleconfig/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adfaef
-- quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
+  overrides: <1>
+    preCacheImage: quay.io/test_images/pre-cache:latest
+    platformImage: quay.io/openshift-release-dev/ocp-release@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+    operatorsIndexes:
+      - registry.example.com:5000/custom-redhat-operators:1.0.0
+    operatorsPackagesAndChannels:
+      - local-storage-operator: stable
+      - ptp-operator: stable
+      - sriov-network-operator: stable
+  spaceRequired: 30Gi <2>
+  excludePrecachePatterns: <3>
+    - aws
+    - vsphere
+  additionalImages: <4>
+    - quay.io/exampleconfig/application1@sha256:3d5800990dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47e2e1ef
+    - quay.io/exampleconfig/application2@sha256:3d5800123dee7cd4727d3fe238a97e2d2976d3808fc925ada29c559a47adfaef
+    - quay.io/exampleconfig/applicationN@sha256:4fe1334adfafadsf987123adfffdaf1243340adfafdedga0991234afdadfsa09
 ```
 **Note**
   * `<1>` The following fields can be configured to override the default TALO derived values: `preCacheImage`, `platformImage`, `operatorsIndexes`, and the `operatorsPackagesAndChannels`. These fields are automatically populated primarily from the policies of the managed clusters if left unspecified.

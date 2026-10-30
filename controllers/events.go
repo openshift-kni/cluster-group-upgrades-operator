@@ -44,10 +44,13 @@ const (
 	CGUEventReasonTimedout = "CguTimedout"
 
 	CGUEventReasonValidationFailure = "CguValidationFailure"
+
+	CGUEventReasonPreCachingDeprecated = "PreCachingDeprecated"
 )
 
 // CGU Event Actions
 const (
+	CGUEventActionPreCachingDeprecated       = "DeprecationWarning"
 	CGUEventActionBuildingRemediationPlan    = "BuildingRemediationPlan"
 	CGUEventActionStartRemediation           = "RemediationStarted"
 	CGUEventActionCompleteRemediation        = "RemediationCompleted"
@@ -62,6 +65,9 @@ const (
 
 // CGU Event Messages
 const (
+	CGUEventMsgPreCachingDeprecated = "spec.preCaching and spec.preCachingConfigRef are deprecated as of TALM 5.1. " +
+		"Use lcm.openshift.io/ImageBasedGroupUpgrade instead. This feature will be removed in a future release."
+
 	CGUEventMsgFmtCreated           = "New ClusterGroupUpgrade found: %s"
 	CGUEventMsgFmtStarted           = "ClusterGroupUpgrade %s started remediating policies"
 	CGUEventMsgFmtUpgradeSuccess    = "ClusterGroupUpgrade %s succeeded remediating policies"
@@ -615,4 +621,19 @@ func getTotalClustersNum(cgu *cguv1alpha1.ClusterGroupUpgrade) int {
 	}
 
 	return total
+}
+
+func (r *ClusterGroupUpgradeReconciler) sendEventPreCachingDeprecated(ctx context.Context, cgu *cguv1alpha1.ClusterGroupUpgrade) {
+	evAnns := map[string]string{
+		CGUEventAnnotationKeyEvType: CGUAnnEventGlobalUpgrade,
+	}
+
+	r.emitEvent(ctx, cgu,
+		evAnns,
+		corev1.EventTypeWarning,
+		CGUEventReasonPreCachingDeprecated,
+		CGUEventActionPreCachingDeprecated,
+		CGUEventMsgPreCachingDeprecated,
+		nil,
+	)
 }

@@ -254,6 +254,46 @@ func Test_sendEventCGUValidationFailureMissingClusters(t *testing.T) {
 	assert.Equal(t, "cluster-a,cluster-b", ev.Annotations[CGUEventAnnotationKeyMissingClustersList])
 }
 
+func Test_warnIfPreCachingDeprecated(t *testing.T) {
+	tests := []struct {
+		name       string
+		preCaching bool
+		configRef  ranv1alpha1.PreCachingConfigCR
+		wantEvent  bool
+	}{
+		{name: "pre-caching disabled and no config ref", wantEvent: false},
+		{name: "pre-caching enabled", preCaching: true, wantEvent: true},
+		{name: "config ref set without pre-caching", configRef: ranv1alpha1.PreCachingConfigCR{Name: "cfg", Namespace: "default"}, wantEvent: true},
+		{name: "pre-caching enabled with config ref", preCaching: true, configRef: ranv1alpha1.PreCachingConfigCR{Name: "cfg", Namespace: "default"}, wantEvent: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			reconciler, fakeClient := newTestReconciler(t)
+			cgu := newTestCGU()
+			cgu.Spec.PreCaching = tt.preCaching
+			cgu.Spec.PreCachingConfigRef = tt.configRef
+
+			reconciler.warnIfPreCachingDeprecated(t.Context(), cgu)
+
+			var eventList eventsv1.EventList
+			assert.NoError(t, fakeClient.List(t.Context(), &eventList))
+			if !tt.wantEvent {
+				assert.Empty(t, eventList.Items)
+				return
+			}
+			assert.Len(t, eventList.Items, 1)
+			ev := eventList.Items[0]
+			assert.Equal(t, "Warning", ev.Type)
+			assert.Equal(t, CGUEventReasonPreCachingDeprecated, ev.Reason)
+			assert.Equal(t, CGUEventActionPreCachingDeprecated, ev.Action)
+			assert.Equal(t, CGUEventMsgPreCachingDeprecated, ev.Note)
+			assert.Equal(t, CGUAnnEventGlobalUpgrade, ev.Annotations[CGUEventAnnotationKeyEvType])
+			assert.Equal(t, cgu.Name, ev.Regarding.Name)
+		})
+	}
+}
+
 func Test_sendEventCGUVPoliciesValidationFailure(t *testing.T) {
 	tests := []struct {
 		name            string

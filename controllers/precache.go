@@ -1,3 +1,4 @@
+//nolint:staticcheck // SA1019: implements the deprecated pre-caching API until it is removed.
 package controllers
 
 import (
@@ -23,6 +24,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
+
+// warnIfPreCachingDeprecated logs and emits a deprecation Warning Event when the CGU uses pre-caching.
+func (r *ClusterGroupUpgradeReconciler) warnIfPreCachingDeprecated(ctx context.Context, cgu *ranv1alpha1.ClusterGroupUpgrade) {
+	if !cgu.Spec.PreCaching && cgu.Spec.PreCachingConfigRef == (ranv1alpha1.PreCachingConfigCR{}) {
+		return
+	}
+	r.Log.Info(CGUEventMsgPreCachingDeprecated, "cgu", cgu.Namespace+"/"+cgu.Name)
+	r.sendEventPreCachingDeprecated(ctx, cgu)
+}
 
 // reconcilePrecaching provides the main precaching entry point
 // returns: 			error

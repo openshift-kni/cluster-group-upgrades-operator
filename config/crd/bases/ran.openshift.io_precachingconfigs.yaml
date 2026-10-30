@@ -14,10 +14,17 @@ spec:
     singular: precachingconfig
   scope: Namespaced
   versions:
-  - name: v1alpha1
+  - deprecated: true
+    deprecationWarning: ran.openshift.io/v1alpha1 PreCachingConfig is deprecated,
+      use lcm.openshift.io/ImageBasedGroupUpgrade instead
+    name: v1alpha1
     schema:
       openAPIV3Schema:
-        description: PreCachingConfig is the Schema for the precachingconfigs API
+        description: |-
+          PreCachingConfig is the Schema for the precachingconfigs API
+
+          Deprecated: PreCachingConfig will be removed in a future release.
+          Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
         properties:
           apiVersion:
             description: |-
@@ -37,7 +44,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: PreCachingConfigSpec defines the desired state of PreCachingConfig
+            description: |-
+              PreCachingConfigSpec defines the desired state of PreCachingConfig.
+
+              Deprecated: PreCachingConfigSpec will be removed in a future release.
+              Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
             properties:
               additionalImages:
                 description: List of additional image pull specs for the pre-caching

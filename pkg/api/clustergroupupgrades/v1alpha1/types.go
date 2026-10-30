@@ -120,11 +120,19 @@ type ClusterGroupUpgradeSpec struct {
 	// matching the selector.
 	// If required, the pre-caching process starts immediately on all clusters irrespectively of
 	// the value of the "enable" flag
+	//
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead; the IBGU Prep
+	// stage handles image pre-staging. This field will be removed in a future release.
 	//+kubebuilder:default=false
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.preCaching is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PreCaching",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:bool"}
 	PreCaching bool `json:"preCaching,omitempty"`
 	// This field specifies a reference to a pre-caching config custom resource that contains the additional
 	// pre-caching configurations.
+	//
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead.
+	// This field will be removed in a future release.
+	//+kubebuilder:deprecatedversion:warning="ClusterGroupUpgradeSpec.preCachingConfigRef is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead"
 	//+operator-sdk:csv:customresourcedefinitions:type=spec,displayName="PreCachingConfigRef",xDescriptors={"urn:alm:descriptor:com.tectonic.ui:text"}
 	PreCachingConfigRef PreCachingConfigCR `json:"preCachingConfigRef,omitempty"`
 	// This field determines when the CGU starts. While false, the CGU doesn't start.
@@ -261,7 +269,10 @@ type ClusterState struct {
 	CurrentManifestWork *ManifestWorkStatus `json:"currentManifestWork,omitempty"`
 }
 
-// PrecachingSpec defines the pre-caching software spec derived from policies
+// PrecachingSpec defines the pre-caching software spec derived from policies.
+//
+// Deprecated: PrecachingSpec will be removed in a future release alongside the pre-caching feature.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PrecachingSpec struct {
 	PlatformImage                string   `json:"platformImage,omitempty"`
 	OperatorsIndexes             []string `json:"operatorsIndexes,omitempty"`
@@ -271,7 +282,10 @@ type PrecachingSpec struct {
 	AdditionalImages             []string `json:"additionalImages,omitempty"`
 }
 
-// PrecachingStatus defines the observed pre-caching status
+// PrecachingStatus defines the observed pre-caching status.
+//
+// Deprecated: PrecachingStatus will be removed in a future release alongside the pre-caching feature.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PrecachingStatus struct {
 	Spec   *PrecachingSpec   `json:"spec,omitempty"`
 	Status map[string]string `json:"status,omitempty"`
@@ -359,7 +373,10 @@ type PlatformPreCachingSpec struct {
 	PreCacheImage string `json:"preCacheImage,omitempty"`
 }
 
-// PreCachingConfigSpec defines the desired state of PreCachingConfig
+// PreCachingConfigSpec defines the desired state of PreCachingConfig.
+//
+// Deprecated: PreCachingConfigSpec will be removed in a future release.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PreCachingConfigSpec struct {
 	// Important: Run "make generate" to regenerate code after modifying this file
 
@@ -374,8 +391,12 @@ type PreCachingConfigSpec struct {
 }
 
 //+kubebuilder:object:root=true
+//+kubebuilder:deprecatedversion:warning="ran.openshift.io/v1alpha1 PreCachingConfig is deprecated, use lcm.openshift.io/ImageBasedGroupUpgrade instead"
 
 // PreCachingConfig is the Schema for the precachingconfigs API
+//
+// Deprecated: PreCachingConfig will be removed in a future release.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PreCachingConfig struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -386,6 +407,9 @@ type PreCachingConfig struct {
 //+kubebuilder:object:root=true
 
 // PreCachingConfigList contains a list of PreCachingConfig
+//
+// Deprecated: PreCachingConfigList will be removed in a future release.
+// Use lcm.openshift.io/ImageBasedGroupUpgrade instead.
 type PreCachingConfigList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`

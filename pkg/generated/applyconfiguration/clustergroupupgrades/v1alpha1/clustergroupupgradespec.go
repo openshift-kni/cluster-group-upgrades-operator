@@ -31,9 +31,15 @@ type ClusterGroupUpgradeSpecApplyConfiguration struct {
 	// matching the selector.
 	// If required, the pre-caching process starts immediately on all clusters irrespectively of
 	// the value of the "enable" flag
+	//
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead; the IBGU Prep
+	// stage handles image pre-staging. This field will be removed in a future release.
 	PreCaching *bool `json:"preCaching,omitempty"`
 	// This field specifies a reference to a pre-caching config custom resource that contains the additional
 	// pre-caching configurations.
+	//
+	// Deprecated: Use lcm.openshift.io/ImageBasedGroupUpgrade (IBGU) instead.
+	// This field will be removed in a future release.
 	PreCachingConfigRef *PreCachingConfigCRApplyConfiguration `json:"preCachingConfigRef,omitempty"`
 	// This field determines when the CGU starts. While false, the CGU doesn't start.
 	// Once set to true, policy rollout starts on the clusters, one batch at a time.

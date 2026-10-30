@@ -1,4 +1,13 @@
 # Pre-caching manual test #
+
+> **Deprecated**: The TALM pre-caching feature (`spec.preCaching`, `spec.preCachingConfigRef`,
+> `PreCachingConfig`) is deprecated as of TALM 5.1 and will be removed in a future release.
+> Migrate to image-based upgrades with [`lcm.openshift.io/ImageBasedGroupUpgrade`](/docs/ibgu), whose Prep
+> stage pre-caches the images the upgrade needs on each spoke (see the lifecycle-agent
+> [image-based upgrade guide](https://github.com/openshift-kni/lifecycle-agent/blob/main/docs/image-based-upgrade.md)).
+> This is a different, seed-image-based upgrade
+> workflow, not a drop-in replacement for policy-based pre-caching.
+
 This directory contains samples for manual standalone pre-caching testing.
 All the commands provided here must be executed from the main project directory with KUBECONFIG environment variable initialized and pointing to the ACM hub cluster.
 ## Mocks and workarounds ##
@@ -9,7 +18,7 @@ oc apply -k samples/precache
 ```
 ### Note on catalogsource policy ###
 When working with a disconnected registry, cluster administrators will have to create such a policy for the cluster to function. For connected environments, spoke clusters are preconfigured with default catalog sources (such as redhat-operators), and no catalog source policy will be necessary. 
-Precaching, however, requires a catalog source policy to be explicitly configured on the hub cluster. The example catalog source policy for working with default registry is provided in [catsrc-parent-policy.yaml](catsrc-parent-policy.yaml)
+Precaching, however, requires a catalog source policy to be explicitly configured on the hub cluster. The example catalog source policy for working with default registry is provided in [catsrc-parent-policy.yaml](catsrc-parent-policy.yaml) and [catsrc-child-policy.yaml](catsrc-child-policy.yaml)
 
 ## Running the controller ##
 ```bash

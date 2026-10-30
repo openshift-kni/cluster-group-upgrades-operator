@@ -1,4 +1,13 @@
 # OCP upgrade image pre-cache #
+
+> **Deprecated**: The TALM pre-caching feature (`spec.preCaching`, `spec.preCachingConfigRef`,
+> `PreCachingConfig`) is deprecated as of TALM 5.1 and will be removed in a future release.
+> Migrate to image-based upgrades with [`lcm.openshift.io/ImageBasedGroupUpgrade`](/docs/ibgu), whose Prep
+> stage pre-caches the images the upgrade needs on each spoke (see the lifecycle-agent
+> [image-based upgrade guide](https://github.com/openshift-kni/lifecycle-agent/blob/main/docs/image-based-upgrade.md)).
+> This is a different, seed-image-based upgrade
+> workflow, not a drop-in replacement for policy-based pre-caching.
+
 This directory contains image pre-caching example reference-configurations.
 Overrides may be required to force pre-cache workload or payload image configurations.
 Supported  pre-caching configurations:
