@@ -18,7 +18,7 @@ make complete-deployment
 ## Integration tests using kuttl and kind
 Prerequisites:
 - [kind](https://kind.sigs.k8s.io/docs/user/quick-start/)
-- [kubectl-kuttl](https://kuttl.dev/docs/#install-kuttl-cli)
+- [kubectl-kuttl](https://github.com/kudobuilder/kuttl)
 
 ```bash
  make kind-deps-update
