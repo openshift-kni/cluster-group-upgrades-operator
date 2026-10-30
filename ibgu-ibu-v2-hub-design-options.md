@@ -602,9 +602,35 @@ Design points:
   so the base set is a conservative superset of every plan item's set. One resolution
   covers the whole plan.
 - **Freeze at plan item 0, and let plan item 0's CGU `spec.clusters` be the record.**
-  No separate copy in IBGU status. Size is not a constraint: a few thousand cluster
-  names is ~100–200 KB against a ~1.5 MB object limit, and `maxConcurrency` already
-  auto-clamps to the cluster count (`clustergroupupgrade_controller.go:1367-1372`).
+  No separate copy in IBGU status. `maxConcurrency` already auto-clamps to the cluster
+  count (`clustergroupupgrade_controller.go:1367-1372`). Size is not a constraint *for
+  2B*, but see the timeout note below.
+- **Object size: what 2B adds, and what it does not change.** A CGU already carries every
+  cluster name twice in status — `remediationPlan` (all names, by batch) and
+  `status.clusters` (one entry per finished cluster) — so `spec.clusters` adds a third
+  list of bare names. Estimated against etcd's default ~1.5 MiB request limit (synthetic
+  but realistic OCM conditions and LCA feedback, not a measured object):
+
+  | Clusters in one CGU | Name length | All complete, today | All complete, with 2B | All timed out, with 2B |
+  |---|---|---|---|---|
+  | 1,000 | 25 chars | 82 KiB | 109 KiB | ~2.0 MiB |
+  | 3,500 | 25 chars | 287 KiB | 383 KiB | ~6.9 MiB |
+  | 3,500 | 63 chars (DNS label max) | 547 KiB | 772 KiB | ~7.3 MiB |
+
+  2B costs 28–66 bytes per cluster, about 100–225 KiB at 3,500 clusters, and a normal
+  rollout stays near half the limit even with maximum-length names. The risk is
+  elsewhere and pre-dates 2B: a timed-out cluster's `status.clusters` entry carries its
+  ManifestWork status (`addClustersStatusOnTimeout` → `handleManifestWorkTimeoutForCluster`,
+  `controllers/manifestwork.go`), trimmed to one condition per ready manifest or to all
+  conditions without feedback otherwise (`:113-117`). That is about 1.2 KB per cluster
+  for the ClusterRole and IBU, about 2 KB with two BackupSpecs, against about 56 bytes
+  for a completed one — so roughly **770–780 timed-out clusters in one CGU** exhaust the
+  object regardless of names or 2B. IBGU puts the whole fleet in one CGU per plan item,
+  so a fleet-wide timeout above that size (registry outage, a seed pull slower than the
+  timeout) would leave the CGU unable to write its status. The D4 pre-flight removes the
+  seed-format cause, not the others. The fix belongs to the timeout path — record only
+  the failing manifest's reason and message, or move the detail to an event — and is
+  separate from 2B (not yet filed).
 - **Evaluate per-plan-item eligibility from ManagedCluster labels, in IBGU.** Apply the
   predicate table above against the frozen set rather than handing the selector to the
   CGU. The labels stay load-bearing — see the rejected approach below for why they
