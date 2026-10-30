@@ -60,7 +60,7 @@ spec:
     - The need for image pre-caching
     - A reference to a PreCachingConfig resource should the user desire to pre-cache additional images or override TALO derived images
 - If image pre-caching is required, user creates and applies an optional PreCachingConfig CR that defines:
-  - Overrides for TALO derived platform related images
+  - Overrides for the TALO derived operator packages and channels
   - Platform related images to be excluded from the cluster version update
   - Additional images to be pre-cached
   - Minimum disk space required for the pre-cached images

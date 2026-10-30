@@ -62,7 +62,7 @@ A full table of the conditions and their appropriate reasons and types are:
   | | False | InProgress | Precaching is in progress for x clusters | 
   | | False | Failed | Precaching failed for all clusters |
   `Progressing`| True | InProgress| Remediating non-compliant policies|
-  | | True | WaitingForPlacement | Placement "x" in namespace "y" cannot select clusters: ... |
+  | | True | WaitingForPlacement | Placement "x" in namespace "y" cannot select clusters: ... Create a ManagedClusterSetBinding for the "default" ManagedClusterSet in the policy namespace. |
   | | False | Completed | All clusters are compliant with all the managed policies |
   | | False | TimedOut | Policy remediation took too long |
   | | False | NotEnabled| Not enabled |
@@ -111,7 +111,7 @@ A few important ones to consider are:
   * In this state, the controller will remove all the *managedPolicies* copies created for the **ClusterGroupUpgrade**. This is to ensure that changes are not made after the **ClusterGroupUpgrade** has passed its specified timeout. The user may re-run the **ClusterGroupUpgrade** again (perhaps with a longer timeout) if they still need to enforce changes on the clusters.
 * **Completed**
   * In this state, the upgrades of the clusters are complete
-  * If the *action.afterCompletion.deleteObjects* field is set to **true** (which is the default value), the controller will delete the underlying RHACM objects (policies, placement bindings, placements, managed cluster views) once the upgrade completes. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful.
+  * If the *action.afterCompletion.deleteObjects* field is set to **true** (which is the default value), the controller will delete the underlying RHACM objects (policies, placement bindings, placements, managed cluster views, ManifestWorks, precaching jobs and ManagedClusterActions) once the upgrade completes. This is to avoid having RHACM Hub to continously check for compliance since the upgrade has been successful.
 
 ### Events
 The CGU reconciler emits kubernetes events while reconciling the policies in the clusters of the remediation plan. Successfull reconciliations would only emit events with CguCreated, CguStarted an CguSuccess reason, but CguStarted and CguSuccess are used for both global and batch scopes. `global` applies to the whole CGU reconciliation while `batch` applies to the current batch being remediated. Annotations are used to add extra payload, like the list of clusters being remediated in the current batch, or information related to validation failures (missing clusters, policies...). The CguTimedout event will appear always twice: one for the batch that timedout and other for the whole CGU (global).
