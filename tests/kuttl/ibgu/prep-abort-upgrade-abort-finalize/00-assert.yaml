@@ -52,14 +52,10 @@ metadata:
     kind: ImageBasedGroupUpgrade
     name: upgrade-4.15.0
 spec:
-  clusterLabelSelectors:
-  - matchExpressions:
-    - key: name
-      operator: In
-      values:
-      - spoke1
-      - spoke4
-      - spoke6
+  clusters:
+  - spoke1
+  - spoke4
+  - spoke6
   enable: true
   manifestWorkTemplates:
   - upgrade-4.15.0-prep

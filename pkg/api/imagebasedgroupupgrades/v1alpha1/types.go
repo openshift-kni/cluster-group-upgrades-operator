@@ -61,6 +61,11 @@ type ClusterState struct {
 	CompletedActions []ActionMessage `json:"completedActions,omitempty"`
 	FailedActions    []ActionMessage `json:"failedActions,omitempty"`
 	CurrentAction    *ActionMessage  `json:"currentAction,omitempty"`
+	// Dropped indicates the cluster was part of the frozen cluster set but no
+	// longer exists as a ManagedCluster, so it was dropped from the rollout.
+	Dropped bool `json:"dropped,omitempty"`
+	// DroppedReason explains why the cluster was dropped from the rollout.
+	DroppedReason string `json:"droppedReason,omitempty"`
 }
 
 // ImageBasedGroupUpgradeStatus is the status field for ImageBasedGroupUpgrade
