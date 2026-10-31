@@ -145,6 +145,13 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 		}
 		cluster := &clusterv1.ManagedCluster{}
 		if err := r.Get(ctx, types.NamespacedName{Name: clusterState.Name}, cluster); err != nil {
+			if errors.IsNotFound(err) {
+				// The cluster was removed mid-rollout. It is reported separately as
+				// dropped; skip it here so a vanished cluster does not fail the whole
+				// reconcile and block later plan items.
+				r.Log.Info("managed cluster no longer exists, skipping label update", "cluster", clusterState.Name)
+				continue
+			}
 			r.Log.Error(err, "failed to get managed cluster")
 			failedClusters = append(failedClusters, clusterState.Name)
 			continue
@@ -190,6 +197,10 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 }
 
 func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	// Capture which clusters were already reported as dropped so markDroppedClusters
+	// can emit a Warning event only the first time each one is observed as dropped.
+	prevDropped := droppedClusterNames(ibgu)
+
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
@@ -247,7 +258,7 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 		return clusters[i].Name < clusters[j].Name
 	})
 	ibgu.Status.Clusters = clusters
-	return nil
+	return r.markDroppedClusters(ctx, ibgu, cguList, prevDropped)
 }
 
 func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem, planItemIndex int) string {
@@ -269,6 +280,176 @@ func createIBU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *lcav1.ImageBasedUpgra
 		}
 	}
 	return ibu
+}
+
+// droppedClusterReason is recorded on cluster states that were part of the
+// frozen cluster set but no longer exist as ManagedClusters.
+const droppedClusterReason = "ManagedCluster no longer exists; dropped from rollout"
+
+// resolveBaseClusters returns the names of the ManagedClusters matching the
+// IBGU's clusterLabelSelectors. This is the base set that gets frozen at plan
+// item 0. Multiple selectors are unioned, mirroring CGU selector semantics.
+func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
+	set := make(map[string]struct{})
+	for i := range ibgu.Spec.ClusterLabelSelectors {
+		selector, err := metav1.LabelSelectorAsSelector(&ibgu.Spec.ClusterLabelSelectors[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid cluster label selector: %w", err)
+		}
+		mcList := &clusterv1.ManagedClusterList{}
+		if err := r.List(ctx, mcList, &client.ListOptions{LabelSelector: selector}); err != nil {
+			return nil, fmt.Errorf("failed to list managed clusters: %w", err)
+		}
+		for _, mc := range mcList.Items {
+			set[mc.GetName()] = struct{}{}
+		}
+	}
+	names := make([]string, 0, len(set))
+	for name := range set {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names, nil
+}
+
+// getFrozenClusterSet returns the cluster set frozen at plan item 0, read back
+// from plan item 0's CGU spec.clusters. Every later plan item is narrowed from
+// this record rather than re-resolving the selector.
+func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) ([]string, error) {
+	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
+	for i := range cguList.Items {
+		if cguList.Items[i].GetName() == cguName {
+			return cguList.Items[i].Spec.Clusters, nil
+		}
+	}
+	return nil, fmt.Errorf("plan item 0 CGU %q not found, cannot determine frozen cluster set", cguName)
+}
+
+// resolveClustersForPlanItem determines the frozen base set for the plan item
+// (resolved live from the selector at plan item 0, read back from plan item 0's
+// CGU afterwards), intersects it with the ManagedClusters that still exist, and
+// narrows it to those eligible for the plan item. It returns the sorted list of
+// clusters the plan item's CGU should target; vanished clusters are reported
+// separately each reconcile by markDroppedClusters.
+func (r *IBGUReconciler) resolveClustersForPlanItem(
+	ctx context.Context,
+	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+) ([]string, error) {
+	var frozen []string
+	var err error
+	if planItemIndex == 0 {
+		frozen, err = r.resolveBaseClusters(ctx, ibgu)
+	} else {
+		frozen, err = getFrozenClusterSet(ibgu, cguList)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	selected := []string{}
+	for _, name := range frozen {
+		cluster := &clusterv1.ManagedCluster{}
+		if getErr := r.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
+			if errors.IsNotFound(getErr) {
+				// Dropped from the rollout; excluded so the CGU is not created with a
+				// missing cluster (which validateCR would hard-fail on).
+				continue
+			}
+			return nil, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
+		}
+		if utils.ClusterMatchesPlanItem(cluster.GetLabels(), planItem) {
+			selected = append(selected, name)
+		}
+	}
+	sort.Strings(selected)
+	return selected, nil
+}
+
+// droppedClusterNames returns the set of cluster names currently marked as
+// dropped in the IBGU status.
+func droppedClusterNames(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) map[string]bool {
+	dropped := make(map[string]bool)
+	for _, cs := range ibgu.Status.Clusters {
+		if cs.Dropped {
+			dropped[cs.Name] = true
+		}
+	}
+	return dropped
+}
+
+// markDroppedClusters re-derives, from the frozen set recorded in plan item 0's
+// CGU, which clusters no longer exist as ManagedClusters and marks them dropped
+// in the IBGU status. It runs every reconcile so the marker is durable (it is not
+// lost when syncStatusWithCGUs rebuilds Status.Clusters), and emits a Warning
+// event only for clusters not already reported as dropped (prevDropped).
+func (r *IBGUReconciler) markDroppedClusters(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList, prevDropped map[string]bool,
+) error {
+	if len(ibgu.Spec.Plan) == 0 {
+		return nil
+	}
+	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
+	var frozen []string
+	found := false
+	for i := range cguList.Items {
+		if cguList.Items[i].GetName() == cguName {
+			frozen = cguList.Items[i].Spec.Clusters
+			found = true
+			break
+		}
+	}
+	if !found {
+		// Plan item 0's CGU does not exist yet, so nothing is frozen.
+		return nil
+	}
+
+	dropped := []string{}
+	for _, name := range frozen {
+		cluster := &clusterv1.ManagedCluster{}
+		err := r.Get(ctx, types.NamespacedName{Name: name}, cluster)
+		if err == nil {
+			continue
+		}
+		if !errors.IsNotFound(err) {
+			return fmt.Errorf("failed to get managed cluster %q: %w", name, err)
+		}
+		dropped = append(dropped, name)
+	}
+	if len(dropped) == 0 {
+		return nil
+	}
+
+	index := make(map[string]int, len(ibgu.Status.Clusters))
+	for i := range ibgu.Status.Clusters {
+		index[ibgu.Status.Clusters[i].Name] = i
+	}
+	for _, name := range dropped {
+		if i, exist := index[name]; exist {
+			ibgu.Status.Clusters[i].Dropped = true
+			ibgu.Status.Clusters[i].DroppedReason = droppedClusterReason
+		} else {
+			// A cluster dropped at plan item 0 appears in no CGU status.
+			ibgu.Status.Clusters = append(ibgu.Status.Clusters, ibguv1alpha1.ClusterState{
+				Name:          name,
+				Dropped:       true,
+				DroppedReason: droppedClusterReason,
+			})
+		}
+		if !prevDropped[name] {
+			r.Log.Info("ManagedCluster dropped from rollout", "cluster", name, "ibgu", ibgu.GetName())
+			if r.Recorder != nil {
+				r.Recorder.Event(ibgu, corev1.EventTypeWarning, "ClusterDropped",
+					fmt.Sprintf("ManagedCluster %q no longer exists and was dropped from the rollout", name))
+			}
+		}
+	}
+	sort.Slice(ibgu.Status.Clusters, func(i, j int) bool {
+		return ibgu.Status.Clusters[i].Name < ibgu.Status.Clusters[j].Name
+	})
+	return nil
 }
 
 func (r *IBGUReconciler) ensureCGUForPlanItem(
@@ -330,6 +511,24 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
 	}
+
+	// Resolve the frozen cluster set for this plan item: the base set is frozen at
+	// plan item 0, every later item is narrowed from that record and intersected
+	// with the ManagedClusters that still exist.
+	selected, err := r.resolveClustersForPlanItem(ctx, ibgu, planItem, planItemIndex, cguList)
+	if err != nil {
+		return false, fmt.Errorf("error resolving clusters for plan item: %w", err)
+	}
+	if len(selected) == 0 {
+		// No cluster is eligible for this plan item (e.g. an AbortOnFailure step
+		// when nothing failed, or every frozen cluster has been deleted). There is
+		// nothing to remediate, so skip creating a CGU — an empty spec.clusters
+		// would be rejected by the CGU controller — and treat the item as completed.
+		r.Log.Info("No eligible clusters for plan item, skipping CGU creation",
+			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
+		return true, nil
+	}
+
 	for _, mwrs := range manifestWorkReplicaSets {
 		foundMWRS := &mwv1alpha1.ManifestWorkReplicaSet{}
 		err := r.Get(ctx, types.NamespacedName{Name: mwrs.Name, Namespace: mwrs.Namespace}, foundMWRS)
@@ -357,9 +556,9 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		annotations[utils.NameSuffixAnnotation] = suffix
 	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
-		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, annotations, disableAutoImport)
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, selected, annotations, disableAutoImport)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
-	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
+	err = ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
 		return false, fmt.Errorf("error setting owner reference for cgu: %w", err)
 	}

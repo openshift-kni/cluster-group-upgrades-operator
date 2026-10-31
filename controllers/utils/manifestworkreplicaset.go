@@ -261,52 +261,49 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	return dst.Bytes(), err
 }
 
-func getLabelSelectorForPlanItem(
-	currentSelector []metav1.LabelSelector, planItem *ibguv1alpha1.PlanItem,
-) []metav1.LabelSelector {
-	result := []metav1.LabelSelector{}
-	for _, m := range currentSelector {
-		selector := m.DeepCopy()
-		if selector.MatchLabels == nil {
-			selector.MatchLabels = make(map[string]string)
-		}
-		switch planItem.Actions[0] {
-		case ibguv1alpha1.Abort:
-			if selector.MatchExpressions == nil {
-				selector.MatchExpressions = make([]metav1.LabelSelectorRequirement, 0)
-			}
-			selector.MatchExpressions = append(
-				selector.MatchExpressions, metav1.LabelSelectorRequirement{
-					Key: fmt.Sprintf(IBGUActionCompletedLabelTemplate,
-						strings.ToLower(ibguv1alpha1.Upgrade)),
-					Operator: metav1.LabelSelectorOpDoesNotExist,
-				})
-		case ibguv1alpha1.Rollback:
-			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
-		case ibguv1alpha1.FinalizeUpgrade:
-			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
-		case ibguv1alpha1.FinalizeRollback:
-			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Rollback))] = ""
-		case ibguv1alpha1.AbortOnFailure:
-			selectorPrep := selector.DeepCopy()
-			selector.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Upgrade))] = ""
-			selectorPrep.MatchLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
-			result = append(result, *selectorPrep)
-
-		case ibguv1alpha1.Upgrade:
-			selector.MatchLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep))] = ""
-		default:
-			return currentSelector
-		}
-		result = append(result, *selector)
+// ClusterMatchesPlanItem reports whether a ManagedCluster carrying the given
+// labels is eligible for the plan item. IBGU resolves the cluster set once and
+// evaluates per-plan-item eligibility here, against the ManagedCluster labels
+// written by ensureClusterLabels, instead of handing a narrowed label selector
+// to each generated CGU. The narrowing mirrors what getLabelSelectorForPlanItem
+// used to express as extra selector requirements, keyed on the plan item's first
+// action. Composite or Prep-first items (and any unrecognised first action) match
+// the whole frozen base set.
+func ClusterMatchesPlanItem(clusterLabels map[string]string, planItem *ibguv1alpha1.PlanItem) bool {
+	if len(planItem.Actions) == 0 {
+		return true
 	}
-	return result
+	hasCompleted := func(action string) bool {
+		_, ok := clusterLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(action))]
+		return ok
+	}
+	hasFailed := func(action string) bool {
+		_, ok := clusterLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(action))]
+		return ok
+	}
+	switch planItem.Actions[0] {
+	case ibguv1alpha1.Abort:
+		return !hasCompleted(ibguv1alpha1.Upgrade)
+	case ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeUpgrade:
+		return hasCompleted(ibguv1alpha1.Upgrade)
+	case ibguv1alpha1.FinalizeRollback:
+		return hasCompleted(ibguv1alpha1.Rollback)
+	case ibguv1alpha1.AbortOnFailure:
+		return hasFailed(ibguv1alpha1.Prep) || hasFailed(ibguv1alpha1.Upgrade)
+	case ibguv1alpha1.Upgrade:
+		return hasCompleted(ibguv1alpha1.Prep)
+	default:
+		return true
+	}
 }
 
-// GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem
+// GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem.
+// The cluster set is resolved and frozen by the IBGU reconciler and passed in as
+// an explicit clusters list, so the generated CGU targets spec.clusters rather
+// than a (per-plan-item narrowed) spec.clusterLabelSelectors.
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
-	templateNames []string, annotations map[string]string, disableAutoImport bool,
+	templateNames, clusters []string, annotations map[string]string, disableAutoImport bool,
 ) *ranv1alpha1.ClusterGroupUpgrade {
 	enable := true
 	beforeEnable := ranv1alpha1.BeforeEnable{}
@@ -332,7 +329,7 @@ func GenerateClusterGroupUpgradeForPlanItem(
 			Annotations: annotations,
 		},
 		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
-			ClusterLabelSelectors: getLabelSelectorForPlanItem(ibgu.Spec.ClusterLabelSelectors, planItem),
+			Clusters:              clusters,
 			Enable:                &enable,
 			ManifestWorkTemplates: templateNames,
 			RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{

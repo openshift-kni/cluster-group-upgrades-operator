@@ -7,7 +7,6 @@ import (
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
 )
@@ -151,7 +150,7 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 		},
 	}
 
-	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, map[string]string{}, true)
+	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, []string{"cluster1", "cluster2"}, map[string]string{}, true)
 
 	json, _ := ObjectToJSON(cgu)
 	expected := `
@@ -179,12 +178,9 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
         }
       }
     },
-    "clusterLabelSelectors": [
-      {
-        "matchLabels": {
-          "common": "true"
-        }
-      }
+    "clusters": [
+      "cluster1",
+      "cluster2"
     ],
     "enable": true,
     "manifestWorkTemplates": [
@@ -927,135 +923,121 @@ func TestGetActionsFromCGU(t *testing.T) {
 	}
 }
 
-func TestGetLabelSelectorForPlanItem(t *testing.T) {
+func TestClusterMatchesPlanItem(t *testing.T) {
+	const (
+		prepCompleted     = "lcm.openshift.io/ibgu-prep-completed"
+		upgradeCompleted  = "lcm.openshift.io/ibgu-upgrade-completed"
+		rollbackCompleted = "lcm.openshift.io/ibgu-rollback-completed"
+		prepFailed        = "lcm.openshift.io/ibgu-prep-failed"
+		upgradeFailed     = "lcm.openshift.io/ibgu-upgrade-failed"
+	)
 	tests := []struct {
-		name           string
-		currentSelctor []metav1.LabelSelector
-		expected       []metav1.LabelSelector
-		planItem       ibguv1alpha1.PlanItem
+		name          string
+		clusterLabels map[string]string
+		planItem      ibguv1alpha1.PlanItem
+		expected      bool
 	}{
 		{
-			name: "no extra selector",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.Prep},
-			},
+			name:          "Prep matches any cluster (base set)",
+			clusterLabels: map[string]string{"common": "true"},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Prep}},
+			expected:      true,
 		},
 		{
-			name: "finalizeUpgrade",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true",
-						"lcm.openshift.io/ibgu-upgrade-completed": ""},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.FinalizeUpgrade},
-			},
+			name:          "composite Prep-first item matches base set",
+			clusterLabels: nil,
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade}},
+			expected:      true,
 		},
 		{
-			name: "abortOnFailure",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true",
-						"lcm.openshift.io/ibgu-upgrade-failed": ""},
-				},
-				{
-					MatchLabels: map[string]string{"common": "true",
-						"lcm.openshift.io/ibgu-prep-failed": ""},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.AbortOnFailure},
-			},
+			name:          "Upgrade matches only prep-completed clusters",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Upgrade}},
+			expected:      true,
 		},
 		{
-			name: "finalizeRollback",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true",
-						"lcm.openshift.io/ibgu-rollback-completed": ""},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.FinalizeRollback},
-			},
+			name:          "Upgrade skips clusters without prep-completed",
+			clusterLabels: map[string]string{"common": "true"},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Upgrade}},
+			expected:      false,
 		},
 		{
-			name: "Rollback",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-				{
-					MatchLabels: map[string]string{"group": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true",
-						"lcm.openshift.io/ibgu-upgrade-completed": ""},
-				},
-				{
-					MatchLabels: map[string]string{"group": "true",
-						"lcm.openshift.io/ibgu-upgrade-completed": ""},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.Rollback},
-			},
+			name:          "Abort matches clusters without upgrade-completed",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Abort}},
+			expected:      true,
 		},
 		{
-			name: "Abort",
-			currentSelctor: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-				},
-			},
-			expected: []v1.LabelSelector{
-				{
-					MatchLabels: map[string]string{"common": "true"},
-					MatchExpressions: []v1.LabelSelectorRequirement{
-						{
-							Key:      "lcm.openshift.io/ibgu-upgrade-completed",
-							Operator: metav1.LabelSelectorOpDoesNotExist,
-						},
-					},
-				},
-			},
-			planItem: ibguv1alpha1.PlanItem{
-				Actions: []string{ibguv1alpha1.Abort},
-			},
+			name:          "Abort skips clusters with upgrade-completed",
+			clusterLabels: map[string]string{upgradeCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Abort}},
+			expected:      false,
+		},
+		{
+			name:          "Rollback matches upgrade-completed clusters",
+			clusterLabels: map[string]string{upgradeCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Rollback}},
+			expected:      true,
+		},
+		{
+			name:          "Rollback skips clusters without upgrade-completed",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Rollback}},
+			expected:      false,
+		},
+		{
+			name:          "FinalizeUpgrade matches upgrade-completed clusters",
+			clusterLabels: map[string]string{upgradeCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.FinalizeUpgrade}},
+			expected:      true,
+		},
+		{
+			name:          "FinalizeUpgrade skips clusters without upgrade-completed",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.FinalizeUpgrade}},
+			expected:      false,
+		},
+		{
+			name:          "FinalizeRollback matches rollback-completed clusters",
+			clusterLabels: map[string]string{rollbackCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.FinalizeRollback}},
+			expected:      true,
+		},
+		{
+			name:          "FinalizeRollback skips clusters without rollback-completed",
+			clusterLabels: map[string]string{upgradeCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.FinalizeRollback}},
+			expected:      false,
+		},
+		{
+			name:          "AbortOnFailure matches prep-failed clusters",
+			clusterLabels: map[string]string{prepFailed: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.AbortOnFailure}},
+			expected:      true,
+		},
+		{
+			name:          "AbortOnFailure matches upgrade-failed clusters",
+			clusterLabels: map[string]string{upgradeFailed: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.AbortOnFailure}},
+			expected:      true,
+		},
+		{
+			name:          "AbortOnFailure skips clusters without a failed label",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.AbortOnFailure}},
+			expected:      false,
+		},
+		{
+			name:          "cluster with no labels only matches base-set items",
+			clusterLabels: nil,
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Upgrade}},
+			expected:      false,
 		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got := getLabelSelectorForPlanItem(test.currentSelctor, &test.planItem)
-			assert.ElementsMatch(t, test.expected, got)
+			got := ClusterMatchesPlanItem(test.clusterLabels, &test.planItem)
+			assert.Equal(t, test.expected, got)
 		})
 	}
 }
