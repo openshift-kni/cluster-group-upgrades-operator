@@ -315,14 +315,16 @@ func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, ibgu *ibguv1al
 // getFrozenClusterSet returns the cluster set frozen at plan item 0, read back
 // from plan item 0's CGU spec.clusters. Every later plan item is narrowed from
 // this record rather than re-resolving the selector.
-func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) ([]string, error) {
+func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) []string {
 	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
 	for i := range cguList.Items {
 		if cguList.Items[i].GetName() == cguName {
-			return cguList.Items[i].Spec.Clusters, nil
+			return cguList.Items[i].Spec.Clusters
 		}
 	}
-	return nil, fmt.Errorf("plan item 0 CGU %q not found, cannot determine frozen cluster set", cguName)
+	// Plan item 0 completed without a CGU because it had no eligible clusters,
+	// so the frozen set is empty.
+	return nil
 }
 
 // resolveClustersForPlanItem determines the frozen base set for the plan item
@@ -338,14 +340,14 @@ func (r *IBGUReconciler) resolveClustersForPlanItem(
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) ([]string, error) {
 	var frozen []string
-	var err error
 	if planItemIndex == 0 {
+		var err error
 		frozen, err = r.resolveBaseClusters(ctx, ibgu)
+		if err != nil {
+			return nil, err
+		}
 	} else {
-		frozen, err = getFrozenClusterSet(ibgu, cguList)
-	}
-	if err != nil {
-		return nil, err
+		frozen = getFrozenClusterSet(ibgu, cguList)
 	}
 
 	selected := []string{}
