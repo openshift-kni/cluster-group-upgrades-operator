@@ -231,15 +231,21 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Rejected.** 9B (fail at Prep — wastes a rollout cycle); 9C (status quo — silent);
   requiring hub entries for Upgrade-only plans (checks an object the plan does not use).
 
-### D10 — Status-feedback robustness: **item 2 now (item 3 already fixed); item 1 report-only now, engine change as its own story**
+### D10 — Status-feedback robustness: **item 2 now (item 3 already fixed); item 1 report-only**
 
 - **Outcome.** Source condition type names from LCA's API package (CNF-28751; Q7 confirms
   they are stable). The five malformed JSONPaths (OCPBUGS-132380) are already fixed
   (`7e434d1d7`, #13813). Surface an
-  LCA-reported `<Stage>Completed=False` in IBGU status as soon as it is seen. The CGU
-  engine change for early terminal failure is a separate story, gated on the product
-  decision of what a batch with failed clusters means.
-- **Rejected.** Treating absent feedback, or `ManifestApplied=False`, as terminal.
+  LCA-reported `<Stage>Completed=False` in IBGU status as soon as it is seen, without
+  changing the CGU state machine.
+- **Product decision: report only.** The CGU engine is not changed to end a cluster's
+  batch early on a terminal LCA failure; the cluster still waits out its batch's timeout
+  share. Per-batch fair shares (D4) already bound the cost, the pre-flight (D4) removes
+  the fleet-wide seed-format cause, and the engine change would need a new per-cluster
+  state and new batch-outcome semantics for an optimisation rather than a safety fix.
+- **Rejected.** The CGU engine change for early terminal failure, for this work (above) —
+  kept as a standalone future improvement, CNF-29246 under the TALM future-enhancements
+  epic CNF-6791; treating absent feedback, or `ManifestApplied=False`, as terminal.
 
 ### D11 — Release sequencing: **TALM can ship first**
 
@@ -268,7 +274,6 @@ All under CNF-26657 and linked to the spike; "blocked by" mirrors the Blocks lin
 | CNF-29243 | Reference resolution for `Prep` plans, including the `oadpContent` ConfigMap path (D9) | CNF-29240 |
 | CNF-29244 | Cluster-list resolution 2B (D2) | — |
 | CNF-29245 | Adopt CNF-28751 condition types; report-only terminal failure (D10) | CNF-28751 |
-| CNF-29246 | CGU engine early terminal-failure detection, with the batch-outcome decision (D10) | product decision |
 | CNF-29247 | Documentation, samples and kuttl coverage; downstream in TELCODOCS-3009 | CNF-29241, CNF-29242, CNF-29243 |
 
 OCPBUGS-132380 (malformed feedback JSONPaths) is already fixed.
@@ -1685,7 +1690,7 @@ before the first CGU is created, so IBGUs already in progress are unaffected.
 
 ## D10. Status-feedback robustness (independent of everything above)
 
-> **Decided:** item 2 now (item 3 already fixed); item 1 report-only now, engine change as its own story.
+> **Decided:** item 2 now (item 3 already fixed); item 1 report-only — the product decision; the CGU engine change below is not pursued.
 
 1. **Act on `is<Stage>Completed == "False"`, which is a genuine terminal signal.**
    `IsManifestWorkCompleted` (`controllers/utils/manifestwork.go:37`) only asks whether
@@ -1755,10 +1760,9 @@ before the first CGU is created, so IBGUs already in progress are unaffected.
    each batch's unused share — material on a fleet-wide mis-target, where otherwise
    every batch runs out its full allowance — plus a correctly attributed failure instead
    of a generic timeout. That is a real benefit, but it does not prevent a class of
-   failure, so it should be scoped as its own story with item 5 settled up front rather
-   than carried as a bullet here.
+   failure. *(Decided: not pursued; see the record.)*
 
-   **Cheaper fallback if the engine change is rejected:** report only. Surface the
+   **Report only (decided).** Surface the
    terminal failure message in `Status.Clusters` and conditions as soon as it is seen,
    without touching the state machine. The operator learns the cause within a reconcile
    instead of at timeout. It does not stop the budget draining, so it buys the
