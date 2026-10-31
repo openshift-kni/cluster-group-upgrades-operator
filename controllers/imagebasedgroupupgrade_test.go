@@ -1518,6 +1518,50 @@ func TestResolveClustersUsesSyncedStatus(t *testing.T) {
 	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
 }
 
+// TestResolveClustersAbortedClusterNotReselected verifies that a cluster which has
+// already completed an Abort/Finalize is not re-selected by a later plan item even
+// though the synced IBGU status still records its earlier failed action. When the
+// abort completed, ensureClusterLabels cleared the cluster's IBGU action labels;
+// effectiveActionLabels must not resurrect them from the synced status, or a second
+// AbortOnFailure would re-abort a cluster that is already done.
+func TestResolveClustersAbortedClusterNotReselected(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.AbortOnFailure}},
+	})
+	// cluster1 failed Prep earlier and was already aborted (completed AbortOnFailure),
+	// so its ManagedCluster action labels have been cleared. cluster2 failed Upgrade
+	// and has not been aborted yet.
+	ibgu.Status.Clusters = []ibguv1alpha1.ClusterState{
+		{Name: "cluster1",
+			FailedActions:    []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}},
+			CompletedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.AbortOnFailure}}},
+		{Name: "cluster2",
+			FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade}}},
+	}
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	prepCGU := completedPrepCGU([]string{"cluster1", "cluster2"})
+	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+	// Neither ManagedCluster carries IBGU action labels: cluster1's were cleared when
+	// its abort completed; cluster2's upgrade-failed label has not been written yet.
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster2", map[string]string{"common": "true"})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, cgu))
+	// Only cluster2 is aborted; the already-aborted cluster1 is not re-selected.
+	assert.Equal(t, []string{"cluster2"}, cgu.Spec.Clusters)
+}
+
 // TestReconcileLastBatchCompletesWithSucceeded drives the full Reconcile loop to
 // verify that when a plan item's final batch completes in the same status write
 // that sets the CGU's Succeeded condition, the next plan item becomes eligible in

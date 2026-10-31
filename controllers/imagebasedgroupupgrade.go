@@ -359,13 +359,27 @@ func effectiveActionLabels(clusterLabels map[string]string, state *ibguv1alpha1.
 	for k, v := range clusterLabels {
 		merged[k] = v
 	}
-	if state != nil {
-		for _, action := range state.CompletedActions {
-			merged[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
+	if state == nil {
+		return merged
+	}
+	// A completed Abort/Finalize clears all IBGU action labels on the
+	// ManagedCluster (see ensureClusterLabels). Mirror that clearing here so the
+	// synced status does not resurrect action labels the ManagedCluster has had
+	// removed: otherwise a cluster that already completed an Abort/Finalize would
+	// still carry its earlier failed/completed actions in status and be re-selected
+	// by a later plan item (e.g. a second AbortOnFailure re-aborting a cluster that
+	// was already aborted for an earlier failure).
+	for _, action := range state.CompletedActions {
+		if slices.Contains([]string{ibguv1alpha1.AbortOnFailure, ibguv1alpha1.Abort,
+			ibguv1alpha1.FinalizeUpgrade, ibguv1alpha1.FinalizeRollback}, action.Action) {
+			return merged
 		}
-		for _, action := range state.FailedActions {
-			merged[fmt.Sprintf(utils.IBGUActionFailedLabelTemplate, strings.ToLower(action.Action))] = ""
-		}
+	}
+	for _, action := range state.CompletedActions {
+		merged[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
+	}
+	for _, action := range state.FailedActions {
+		merged[fmt.Sprintf(utils.IBGUActionFailedLabelTemplate, strings.ToLower(action.Action))] = ""
 	}
 	return merged
 }
