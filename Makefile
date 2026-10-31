@@ -195,7 +195,7 @@ common-deps-update:	controller-gen kustomize
 
 
 .PHONY: ci-job
-ci-job: common-deps-update generate fmt vet golangci-lint unittests shellcheck bashate yamllint bundle-check
+ci-job: common-deps-update generate fmt vet golangci-lint unittests shellcheck bashate yamllint test-kustomize bundle-check
 
 # Set the paths to the binaries in the local bin directory
 BASHATE = $(LOCALBIN)/bashate
@@ -408,6 +408,10 @@ complete-kuttl-test: complete-deployment kuttl-test stop-test-proxy
 
 pre-cache-unit-test: ## Run pre-cache scripts unit tests
 	cwd=pre-cache ./pre-cache/test.sh
+
+test-kustomize: kustomize ## Validate all kustomization.yaml files can build successfully
+	@echo "Running kustomize validation"
+	PATH="$(dir $(KUSTOMIZE)):$${PATH}" $(PROJECT_DIR)/hack/test-kustomize.sh
 
 ##@ Tools and linting
 
