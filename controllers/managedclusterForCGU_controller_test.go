@@ -130,6 +130,65 @@ func TestControllerReconciler(t *testing.T) {
 			},
 		},
 		{
+			name: "not ready managed cluster with accelerated-ztp label is a no-op",
+			objs: []client.Object{
+				&clusterv1.ManagedCluster{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:              "testSpoke",
+						CreationTimestamp: metav1.Now(),
+						Labels:            map[string]string{"accelerated-ztp": "full"},
+					},
+					Status: clusterv1.ManagedClusterStatus{
+						Conditions: []metav1.Condition{
+							{
+								Type:   clusterv1.ManagedClusterConditionAvailable,
+								Status: metav1.ConditionFalse,
+							},
+						},
+					},
+				},
+				// Child policies in the cluster namespace. Before AZTP was removed, a
+				// not-ready cluster carrying the accelerated-ztp label plus child
+				// policies drove extractAztpPolicies past its empty-policy guard and
+				// into building the <cluster>-aztp ConfigMap, which failed with
+				// "aztp failure: can't retrieve aztp image pull spec" (AZTP_IMG unset),
+				// surfacing as a reconcile error. The label is now ignored, so reconcile
+				// is a clean no-op: no error and no ConfigMap.
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ztp-common.common-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-common.common-config-policy"},
+					},
+				},
+				&policiesv1.Policy{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "ztp-group.group-du-config-policy",
+						Namespace: "testSpoke",
+						Labels:    map[string]string{utils.ChildPolicyLabel: "ztp-group.group-du-config-policy"},
+					},
+				},
+			},
+			request: reconcile.Request{
+				NamespacedName: types.NamespacedName{
+					Name: "testSpoke",
+				},
+			},
+			validateFunc: func(t *testing.T, result ctrl.Result, runtimeClient client.Client) {
+				if result != doNotRequeue() {
+					t.Errorf("expect no requeue")
+				}
+				// The accelerated-ztp label is no longer handled, so no <cluster>-aztp
+				// ConfigMap must be created (reconcile returning no error is asserted by
+				// the shared test harness below).
+				configMap := &corev1.ConfigMap{}
+				err := runtimeClient.Get(context.TODO(), types.NamespacedName{Name: "testSpoke-aztp", Namespace: "testSpoke"}, configMap)
+				if !errors.IsNotFound(err) {
+					t.Errorf("expected no aztp ConfigMap to be created, but got err=%v", err)
+				}
+			},
+		},
+		{
 			name: "managed cluster is ready but no child policies",
 			objs: []client.Object{
 				&clusterv1.ManagedCluster{
