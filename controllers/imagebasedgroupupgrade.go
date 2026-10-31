@@ -27,6 +27,7 @@ import (
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -91,18 +92,12 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		r.Log.Error(err, "Failed to get IBGU")
 		return requeueWithError(err)
 	}
-	err = r.ensureClusterLabels(ctx, ibgu)
-	if err != nil {
-		r.Log.Error(err, "error ensuring cluster labels")
-		return requeueWithError(err)
-	}
-
-	err = r.ensureManifests(ctx, ibgu)
-	if err != nil {
-		r.Log.Error(err, "error ensure manifests")
-		return requeueWithError(err)
-	}
-
+	// Sync status from the owned CGUs first so plan-item eligibility in
+	// ensureManifests is resolved from the latest CGU status and the
+	// ManagedCluster labels it drives. This matters when the final batch of a plan
+	// item completes in the same status write that sets the CGU's Succeeded
+	// condition: syncing first makes that completion visible to the next plan item
+	// in the same reconcile, instead of a reconcile later.
 	err = r.syncStatusWithCGUs(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error syncing status with CGUs")
@@ -112,6 +107,12 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 	err = r.ensureClusterLabels(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensuring cluster labels")
+		return requeueWithError(err)
+	}
+
+	err = r.ensureManifests(ctx, ibgu)
+	if err != nil {
+		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
 	}
 
@@ -327,6 +328,48 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 	return nil
 }
 
+// hasPlanItem0CGU reports whether plan item 0's CGU already exists in cguList.
+func hasPlanItem0CGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) bool {
+	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
+	for i := range cguList.Items {
+		if cguList.Items[i].GetName() == cguName {
+			return true
+		}
+	}
+	return false
+}
+
+// ibguReportsCompletion reports whether the IBGU's Progressing condition records
+// that all plan steps have completed.
+func ibguReportsCompletion(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
+	cond := meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Progressing))
+	return cond != nil && cond.Reason == string(utils.ConditionReasons.Completed)
+}
+
+// effectiveActionLabels returns the ManagedCluster labels augmented with the IBGU
+// action completed/failed labels implied by this IBGU's freshly synced status for
+// the cluster. Plan-item eligibility for this IBGU's own progress is decided from
+// both sources: the synced status reflects the final batch even when its
+// completion landed in the same write that set the CGU's Succeeded condition
+// (before ensureClusterLabels has written the matching labels), while the
+// ManagedCluster labels remain the authoritative carrier for plans that span
+// IBGUs (e.g. a separate Abort IBGU acting on another IBGU's completed clusters).
+func effectiveActionLabels(clusterLabels map[string]string, state *ibguv1alpha1.ClusterState) map[string]string {
+	merged := make(map[string]string, len(clusterLabels))
+	for k, v := range clusterLabels {
+		merged[k] = v
+	}
+	if state != nil {
+		for _, action := range state.CompletedActions {
+			merged[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
+		}
+		for _, action := range state.FailedActions {
+			merged[fmt.Sprintf(utils.IBGUActionFailedLabelTemplate, strings.ToLower(action.Action))] = ""
+		}
+	}
+	return merged
+}
+
 // resolveClustersForPlanItem determines the frozen base set for the plan item
 // (resolved live from the selector at plan item 0, read back from plan item 0's
 // CGU afterwards), intersects it with the ManagedClusters that still exist, and
@@ -341,6 +384,14 @@ func (r *IBGUReconciler) resolveClustersForPlanItem(
 ) ([]string, error) {
 	var frozen []string
 	if planItemIndex == 0 {
+		// Once the IBGU has reported completion while plan item 0 created no CGU,
+		// plan item 0 resolved to zero eligible clusters and the rollout finished
+		// empty. Treat that result as final: do not re-resolve the selector, so a
+		// ManagedCluster that appears afterwards does not restart a completed, empty
+		// rollout.
+		if !hasPlanItem0CGU(ibgu, cguList) && ibguReportsCompletion(ibgu) {
+			return nil, nil
+		}
 		var err error
 		frozen, err = r.resolveBaseClusters(ctx, ibgu)
 		if err != nil {
@@ -348,6 +399,14 @@ func (r *IBGUReconciler) resolveClustersForPlanItem(
 		}
 	} else {
 		frozen = getFrozenClusterSet(ibgu, cguList)
+	}
+
+	// Index this IBGU's freshly synced per-cluster status so eligibility can be
+	// decided from the completed/failed actions it records as well as the
+	// ManagedCluster labels (see effectiveActionLabels).
+	statusByName := make(map[string]*ibguv1alpha1.ClusterState, len(ibgu.Status.Clusters))
+	for i := range ibgu.Status.Clusters {
+		statusByName[ibgu.Status.Clusters[i].Name] = &ibgu.Status.Clusters[i]
 	}
 
 	selected := []string{}
@@ -361,7 +420,7 @@ func (r *IBGUReconciler) resolveClustersForPlanItem(
 			}
 			return nil, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
 		}
-		if utils.ClusterMatchesPlanItem(cluster.GetLabels(), planItem) {
+		if utils.ClusterMatchesPlanItem(effectiveActionLabels(cluster.GetLabels(), statusByName[name]), planItem) {
 			selected = append(selected, name)
 		}
 	}

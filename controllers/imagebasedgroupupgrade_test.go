@@ -1484,6 +1484,111 @@ func TestReconcileVanishedClusterDoesNotBlock(t *testing.T) {
 	assert.True(t, findClusterState(updated, "cluster1").Dropped)
 }
 
+// TestResolveClustersUsesSyncedStatus verifies that plan-item eligibility is
+// decided from the freshly synced IBGU status as well as the ManagedCluster
+// labels: a cluster whose completion was recorded in status (e.g. the final batch
+// completing in the same write that set the CGU's Succeeded condition) is eligible
+// for the next plan item even though its ManagedCluster label has not been written
+// yet.
+func TestResolveClustersUsesSyncedStatus(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+	// Synced status records cluster1 as having completed Prep; its ManagedCluster
+	// label has not been written yet.
+	ibgu.Status.Clusters = []ibguv1alpha1.ClusterState{
+		{Name: "cluster1", CompletedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}}},
+	}
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	prepCGU := completedPrepCGU([]string{"cluster1"})
+	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
+	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+}
+
+// TestReconcileLastBatchCompletesWithSucceeded drives the full Reconcile loop to
+// verify that when a plan item's final batch completes in the same status write
+// that sets the CGU's Succeeded condition, the next plan item becomes eligible in
+// the same reconcile. Reconcile syncs CGU status before resolving manifests, so
+// the completion recorded on plan item 0's CGU is visible to plan item 1 without
+// waiting a reconcile for the ManagedCluster labels to be written first.
+func TestReconcileLastBatchCompletesWithSucceeded(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+
+	// Plan item 0's CGU reports Succeeded and, in the same status, both clusters as
+	// complete - but the ManagedClusters do not carry the prep-completed label yet.
+	prepCGU := completedPrepCGU([]string{"cluster1", "cluster2"})
+	prepCGU.Status.Clusters = []v1alpha1.ClusterState{
+		{Name: "cluster1", State: utils.ClusterRemediationComplete},
+		{Name: "cluster2", State: utils.ClusterRemediationComplete},
+	}
+
+	fakeClient := fake.NewClientBuilder().WithScheme(testscheme).
+		WithStatusSubresource(&ibguv1alpha1.ImageBasedGroupUpgrade{}).
+		WithObjects(ibgu, &prepCGU,
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
+			managedClusterWithLabels("cluster2", map[string]string{"common": "true"})).
+		Build()
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: "name", Namespace: "namespace"}}
+
+	_, err := reconciler.Reconcile(context.TODO(), req)
+	assert.NoError(t, err)
+
+	// The Upgrade CGU is created for both clusters in the same reconcile.
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
+	assert.Equal(t, []string{"cluster1", "cluster2"}, cgu.Spec.Clusters)
+}
+
+// TestEnsureManifestsItem0ZeroIsFinalAfterCompletion verifies that once the IBGU
+// has reported completion while plan item 0 created no CGU (it resolved to zero
+// eligible clusters), a ManagedCluster that later matches the selector does not
+// restart the finished, empty rollout: plan item 0's zero result is final.
+func TestEnsureManifestsItem0ZeroIsFinalAfterCompletion(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+	// IBGU already reported completion; no plan item 0 CGU exists.
+	utils.SetStatusCondition(&ibgu.Status.Conditions,
+		utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
+		metav1.ConditionFalse, "All plan steps are completed")
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	// A cluster that now matches the selector and the Upgrade predicate appears
+	// after completion; it must not pull plan item 0 back into a rollout.
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("late", map[string]string{
+			"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	err = reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-upgrade-0", Namespace: "namespace"}, cgu)
+	assert.True(t, apierrors.IsNotFound(err))
+}
+
 // findClusterState returns the ClusterState for the named cluster, or nil.
 func findClusterState(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, name string) *ibguv1alpha1.ClusterState {
 	for i := range ibgu.Status.Clusters {
