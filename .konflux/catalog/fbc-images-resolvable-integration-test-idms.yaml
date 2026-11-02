@@ -29,6 +29,9 @@ spec:
         - registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-operator-bundle
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-operator-bundle
     - mirrors:
+        - registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-aztp-rhel9
+      source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-aztp-rhel9
+    - mirrors:
         - registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9
       source: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9
     - mirrors:
