@@ -335,6 +335,27 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
 	assert.JSONEq(t, expectedRaw, json)
 }
 
+// TestFeedbackPathsSourcedFromExportedConditionTypes exercises the compile-time
+// link to LCA's exported condition types: the generated feedback JSONPaths and
+// rule names must match what the helpers build from lcav1.ConditionTypes. If LCA
+// renamed a condition type at a vendor bump, this test (and the build) would break
+// instead of the mismatch stalling silently at runtime.
+func TestFeedbackPathsSourcedFromExportedConditionTypes(t *testing.T) {
+	mwrs, err := GenerateUpgradeManifestWorkReplicaset("ibu-upgrade", "namespace", ibu)
+	assert.NoError(t, err)
+	jsonPaths := mwrs.Spec.ManifestWorkTemplate.ManifestConfigs[0].FeedbackRules[0].JsonPaths
+
+	// The completion-status rule is named and pathed from lcav1.ConditionTypes.UpgradeCompleted.
+	assert.Equal(t, isCompletedFeedbackName(lcav1.ConditionTypes.UpgradeCompleted), jsonPaths[0].Name)
+	assert.Equal(t, conditionFieldPath(lcav1.ConditionTypes.UpgradeCompleted, "status"), jsonPaths[0].Path)
+
+	// And those helpers really consume the exported condition type values, so the
+	// emitted feedback remains byte-identical to the previous literals.
+	assert.Equal(t, "isUpgradeCompleted", isCompletedFeedbackName(lcav1.ConditionTypes.UpgradeCompleted))
+	assert.Equal(t, `.status.conditions[?(@.type=="UpgradeCompleted")].status`,
+		conditionFieldPath(lcav1.ConditionTypes.UpgradeCompleted, "status"))
+}
+
 func TestAbortManifestworkReplicaset(t *testing.T) {
 	ibu := &lcav1.ImageBasedUpgrade{
 		ObjectMeta: v1.ObjectMeta{

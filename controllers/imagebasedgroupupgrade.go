@@ -197,6 +197,19 @@ func (r *IBGUReconciler) ensureClusterLabels(ctx context.Context, ibgu *ibguv1al
 	return fmt.Errorf("failed to ensure cluster labels for %v", failedClusters)
 }
 
+// appendFailedActionOnce records a failed action on the cluster state unless an
+// entry for the same action already exists. It guards against a duplicate entry
+// when a cluster is seen by both the report-only detection and the timeout path
+// within a single reconcile.
+func appendFailedActionOnce(state *ibguv1alpha1.ClusterState, failed ibguv1alpha1.ActionMessage) {
+	for _, existing := range state.FailedActions {
+		if existing.Action == failed.Action {
+			return
+		}
+	}
+	state.FailedActions = append(state.FailedActions, failed)
+}
+
 func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	// Capture which clusters were already reported as dropped so markDroppedClusters
 	// can emit a Warning event only the first time each one is observed as dropped.
@@ -248,6 +261,29 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 				}
 				m[clusterName].CompletedActions = append(m[clusterName].CompletedActions,
 					utils.GetFirstNActionMessagesFromCGU(&cgu, *progress.ManifestWorkIndex)...)
+
+				// Report-only: when LCA reports a terminal <Stage>Completed=False on the
+				// live ManifestWork, surface it in the IBGU status within the reconcile it
+				// is first seen. The CGU state machine only distinguishes complete vs
+				// not-complete, so the cluster stays InProgress until its batch timeout;
+				// reading the ManifestWork directly is what makes the failure visible early.
+				if progress.State == ranv1alpha1.InProgress {
+					mw, err := utils.GetManifestWorkForCluster(ctx, r.Client, &cgu, *progress.ManifestWorkIndex, clusterName)
+					if err == nil {
+						if failed, msg := utils.GetStageFailureFromManifestWork(mw); failed {
+							action := utils.GetActionFromMWRSName(cgu.Spec.ManifestWorkTemplates[*progress.ManifestWorkIndex])
+							appendFailedActionOnce(m[clusterName], ibguv1alpha1.ActionMessage{Action: action, Message: msg})
+						}
+					} else if client.IgnoreNotFound(err) != nil {
+						// Report-only detection must not block the authoritative status
+						// sync: log and continue so a transient ManifestWork read error
+						// does not skip the Status.Clusters write and dropped-cluster
+						// bookkeeping below. A missing ManifestWork is expected (the stage
+						// is simply still being applied) and is ignored silently.
+						r.Log.Error(err, "failed to read manifestwork for report-only failure detection",
+							"cluster", clusterName)
+					}
+				}
 			}
 		}
 	}
@@ -644,6 +680,21 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	return false, nil
 }
 
+// countInProgressStageFailures returns the number of clusters that are still
+// progressing an action but have already had an LCA stage failure surfaced via
+// the report-only detection (a FailedActions entry alongside a CurrentAction). It
+// drives the augmented Progressing message so an observed failure is reflected in
+// the IBGU conditions without adding a new condition type.
+func countInProgressStageFailures(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
+	count := 0
+	for _, cs := range ibgu.Status.Clusters {
+		if cs.CurrentAction != nil && len(cs.FailedActions) > 0 {
+			count++
+		}
+	}
+	return count
+}
+
 func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
@@ -661,11 +712,18 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		if !completed {
 			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
 				"planItem actions", planItem.Actions)
+			msg := fmt.Sprintf("Waiting for plan step %d to be completed", i)
+			// Report-only: surface that LCA has already reported a stage failure on
+			// in-progress clusters, without introducing a new condition type. The step
+			// stays Progressing; the cluster detail lives in Status.Clusters[].failedActions.
+			if n := countInProgressStageFailures(ibgu); n > 0 {
+				msg = fmt.Sprintf("%s; %d cluster(s) reported a stage failure", msg, n)
+			}
 			utils.SetStatusCondition(&ibgu.Status.Conditions,
 				utils.ConditionTypes.Progressing,
 				utils.ConditionReasons.InProgress,
 				metav1.ConditionTrue,
-				fmt.Sprintf("Waiting for plan step %d to be completed", i))
+				msg)
 			return nil
 		}
 	}

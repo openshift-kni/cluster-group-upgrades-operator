@@ -16,24 +16,41 @@ import (
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 )
 
+// conditionFieldPath builds the feedback JSONPath for a field of an IBU status
+// condition, e.g. `.status.conditions[?(@.type=="UpgradeCompleted")].status`.
+// Sourcing the condition type from lcav1.ConditionTypes links the feedback paths
+// to LCA's public API at compile time: a renamed IBU condition type becomes a
+// build error at vendor-bump time instead of a silent runtime stall.
+func conditionFieldPath(ct lcav1.ConditionType, field string) string {
+	return fmt.Sprintf(`.status.conditions[?(@.type==%q)].%s`, string(ct), field)
+}
+
+// isCompletedFeedbackName returns the feedback-rule name for a stage's
+// completion-status check, e.g. "isUpgradeCompleted". The generator and the
+// report-only stage-failure detector both derive the name through this helper so
+// they always agree on it.
+func isCompletedFeedbackName(ct lcav1.ConditionType) string {
+	return "is" + string(ct)
+}
+
 // GenerateAbortManifestWorkReplicaset returns a populated ManifestWorkReplicaSet for abort stage of an ImageBasedUpgrade
 func GenerateAbortManifestWorkReplicaset(name, namespace string, ibu *lcav1.ImageBasedUpgrade) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
 	ibu.Spec.Stage = lcav1.Stages.Idle
 	jsonPaths := []mwv1.JsonPath{
 		{
-			Name: "isIdle",
-			Path: `.status.conditions[?(@.type=="Idle")].status`,
+			Name: isCompletedFeedbackName(lcav1.ConditionTypes.Idle),
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "status"),
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "reason"),
 		},
 		{
 			Name: "idleConditionMessages",
-			Path: `.status.conditions[?(@.type=="Idle")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "message"),
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, isCompletedFeedbackName(lcav1.ConditionTypes.Idle))
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
@@ -42,19 +59,19 @@ func GenerateFinalizeManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 	ibu.Spec.Stage = lcav1.Stages.Idle
 	jsonPaths := []mwv1.JsonPath{
 		{
-			Name: "isIdle",
-			Path: `.status.conditions[?(@.type=="Idle")].status`,
+			Name: isCompletedFeedbackName(lcav1.ConditionTypes.Idle),
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "status"),
 		},
 		{
 			Name: "idleConditionReason",
-			Path: `.status.conditions[?(@.type=="Idle")].reason`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "reason"),
 		},
 		{
 			Name: "idleConditionMessages",
-			Path: `.status.conditions[?(@.type=="Idle")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.Idle, "message"),
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isIdle")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, isCompletedFeedbackName(lcav1.ConditionTypes.Idle))
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
@@ -63,19 +80,19 @@ func GenerateUpgradeManifestWorkReplicaset(name, namespace string, ibu *lcav1.Im
 	ibu.Spec.Stage = lcav1.Stages.Upgrade
 	jsonPaths := []mwv1.JsonPath{
 		{
-			Name: "isUpgradeCompleted",
-			Path: `.status.conditions[?(@.type=="UpgradeCompleted")].status`,
+			Name: isCompletedFeedbackName(lcav1.ConditionTypes.UpgradeCompleted),
+			Path: conditionFieldPath(lcav1.ConditionTypes.UpgradeCompleted, "status"),
 		},
 		{
 			Name: "upgradeInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="UpgradeInProgress")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.UpgradeInProgress, "message"),
 		},
 		{
 			Name: "upgradeCompletedConditionMessages",
-			Path: `.status.conditions[?(@.type=="UpgradeCompleted")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.UpgradeCompleted, "message"),
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isUpgradeCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, isCompletedFeedbackName(lcav1.ConditionTypes.UpgradeCompleted))
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
@@ -84,19 +101,19 @@ func GenerateRollbackManifestWorkReplicaset(name, namespace string, ibu *lcav1.I
 	ibu.Spec.Stage = lcav1.Stages.Rollback
 	jsonPaths := []mwv1.JsonPath{
 		{
-			Name: "isRollbackCompleted",
-			Path: `.status.conditions[?(@.type=="RollbackCompleted")].status`,
+			Name: isCompletedFeedbackName(lcav1.ConditionTypes.RollbackCompleted),
+			Path: conditionFieldPath(lcav1.ConditionTypes.RollbackCompleted, "status"),
 		},
 		{
 			Name: "rollbackInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="RollbackInProgress")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.RollbackInProgress, "message"),
 		},
 		{
 			Name: "rollbackCompletedConditionMessages",
-			Path: `.status.conditions[?(@.type=="RollbackCompleted")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.RollbackCompleted, "message"),
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, "isRollbackCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1, isCompletedFeedbackName(lcav1.ConditionTypes.RollbackCompleted))
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, []mwv1.Manifest{})
 }
 
@@ -105,19 +122,19 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 	ibu.Spec.Stage = lcav1.Stages.Prep
 	jsonPaths := []mwv1.JsonPath{
 		{
-			Name: "isPrepCompleted",
-			Path: `.status.conditions[?(@.type=="PrepCompleted")].status`,
+			Name: isCompletedFeedbackName(lcav1.ConditionTypes.PrepCompleted),
+			Path: conditionFieldPath(lcav1.ConditionTypes.PrepCompleted, "status"),
 		},
 		{
 			Name: "prepInProgressConditionMessage",
-			Path: `.status.conditions[?(@.type=="PrepInProgress")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.PrepInProgress, "message"),
 		},
 		{
 			Name: "prepCompletedConditionMessages",
-			Path: `.status.conditions[?(@.type=="PrepCompleted")].message`,
+			Path: conditionFieldPath(lcav1.ConditionTypes.PrepCompleted, "message"),
 		},
 	}
-	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1+len(manifests), "isPrepCompleted")
+	expectedValueAnn := fmt.Sprintf(manifestWorkExpectedValuesAnnotationTemplate, 1+len(manifests), isCompletedFeedbackName(lcav1.ConditionTypes.PrepCompleted))
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, manifests)
 }
 
