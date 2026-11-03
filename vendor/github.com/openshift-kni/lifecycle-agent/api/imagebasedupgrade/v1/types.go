@@ -48,17 +48,62 @@ type ImageBasedUpgrade struct {
 // ImageBasedUpgradeStage defines the type for the IBU stage field
 type ImageBasedUpgradeStage string
 
-// Stages defines the string values for valid stages
+// idleValue is the shared string literal used by both the Idle stage and the
+// Idle condition type. They intentionally share the same value, so a single
+// private constant removes the duplication (and the goconst suppression) while
+// making that intended equality explicit.
+const idleValue = "Idle"
+
+// Stages defines the string values for valid stages.
+//
+// Although declared as a var for ergonomic field access, its fields form a
+// stable public contract and must be treated as immutable: do not reassign
+// Stages or any of its fields at runtime.
 var Stages = struct {
 	Idle     ImageBasedUpgradeStage
 	Prep     ImageBasedUpgradeStage
 	Upgrade  ImageBasedUpgradeStage
 	Rollback ImageBasedUpgradeStage
 }{
-	Idle:     "Idle",
+	Idle:     idleValue,
 	Prep:     "Prep",
 	Upgrade:  "Upgrade",
 	Rollback: "Rollback",
+}
+
+// ConditionType is a string representing the condition's type
+type ConditionType string
+
+// ConditionTypes define the different types of conditions that will be set.
+//
+// Although declared as a var for ergonomic field access, its fields form a
+// stable consumer contract (downstream consumers such as TALM string-match
+// these values) and must be treated as immutable: do not reassign
+// ConditionTypes or any of its fields at runtime.
+var ConditionTypes = struct {
+	Idle               ConditionType
+	PrepInProgress     ConditionType
+	PrepCompleted      ConditionType
+	UpgradeInProgress  ConditionType
+	UpgradeCompleted   ConditionType
+	RollbackInProgress ConditionType
+	RollbackCompleted  ConditionType
+	SeedGenInProgress  ConditionType
+	SeedGenCompleted   ConditionType
+	ConfigInProgress   ConditionType
+	ConfigCompleted    ConditionType
+}{
+	Idle:               idleValue,
+	PrepInProgress:     "PrepInProgress",
+	PrepCompleted:      "PrepCompleted",
+	UpgradeInProgress:  "UpgradeInProgress",
+	UpgradeCompleted:   "UpgradeCompleted",
+	RollbackInProgress: "RollbackInProgress",
+	RollbackCompleted:  "RollbackCompleted",
+	SeedGenInProgress:  "SeedGenInProgress",
+	SeedGenCompleted:   "SeedGenCompleted",
+	ConfigInProgress:   "ConfigInProgress",
+	ConfigCompleted:    "ConfigCompleted",
 }
 
 // ImageBasedUpgradeSpec defines the desired state of ImageBasedUpgrade
@@ -170,8 +215,4 @@ type ImageBasedUpgradeList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []ImageBasedUpgrade `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&ImageBasedUpgrade{}, &ImageBasedUpgradeList{})
 }

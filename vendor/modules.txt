@@ -108,7 +108,7 @@ github.com/go-openapi/swag/yamlutils
 # github.com/go-task/slim-sprig/v3 v3.0.0
 ## explicit; go 1.20
 github.com/go-task/slim-sprig/v3
-# github.com/google/cel-go v0.30.0
+# github.com/google/cel-go v0.31.0
 ## explicit; go 1.23.0
 github.com/google/cel-go/cel
 github.com/google/cel-go/cel/async
@@ -211,8 +211,8 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-kni/lifecycle-agent v0.0.0-20250227204303-42df68297836
-## explicit; go 1.22.4
+# github.com/openshift-kni/lifecycle-agent v0.0.0-20261103174148-7c90a3dd1631
+## explicit; go 1.26.3
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
 # github.com/openshift/api v0.0.0-20261104213817-ae934b7cbfb4
 ## explicit; go 1.26.0
@@ -230,10 +230,10 @@ github.com/openshift/build-machinery-go/scripts
 # github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
 ## explicit; go 1.26.0
 github.com/openshift/controller-runtime-common/pkg/tls
-# github.com/openshift/library-go v0.0.0-20261001144932-192662696fc7
+# github.com/openshift/library-go v0.0.0-20261021093739-9467096e1b0d
 ## explicit; go 1.26.0
 github.com/openshift/library-go/pkg/crypto
-# github.com/operator-framework/api v0.45.0
+# github.com/operator-framework/api v0.46.0
 ## explicit; go 1.26.3
 github.com/operator-framework/api/pkg/lib/release
 github.com/operator-framework/api/pkg/lib/version
@@ -389,7 +389,7 @@ golang.org/x/exp/slices
 golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
-# golang.org/x/net v0.59.0
+# golang.org/x/net v0.60.0
 ## explicit; go 1.26.0
 golang.org/x/net/html
 golang.org/x/net/html/atom
@@ -407,7 +407,7 @@ golang.org/x/net/websocket
 ## explicit; go 1.26.0
 golang.org/x/oauth2
 golang.org/x/oauth2/internal
-# golang.org/x/sync v0.23.0
+# golang.org/x/sync v0.24.0
 ## explicit; go 1.26.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
@@ -417,10 +417,10 @@ golang.org/x/sys/plan9
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/term v0.46.0
+# golang.org/x/term v0.47.0
 ## explicit; go 1.26.0
 golang.org/x/term
-# golang.org/x/text v0.42.0
+# golang.org/x/text v0.43.0
 ## explicit; go 1.26.0
 golang.org/x/text/cases
 golang.org/x/text/encoding
@@ -454,7 +454,7 @@ golang.org/x/text/unicode/norm
 # golang.org/x/time v0.16.0
 ## explicit; go 1.26.0
 golang.org/x/time/rate
-# golang.org/x/tools v0.50.0
+# golang.org/x/tools v0.51.0
 ## explicit; go 1.26.0
 golang.org/x/tools/cover
 golang.org/x/tools/go/ast/astutil
@@ -464,7 +464,6 @@ golang.org/x/tools/go/gcexportdata
 golang.org/x/tools/go/packages
 golang.org/x/tools/go/types/objectpath
 golang.org/x/tools/imports
-golang.org/x/tools/internal/aliases
 golang.org/x/tools/internal/event
 golang.org/x/tools/internal/event/core
 golang.org/x/tools/internal/event/keys
@@ -674,7 +673,7 @@ k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 k8s.io/api/storagemigration/v1
 k8s.io/api/storagemigration/v1beta1
-# k8s.io/apiextensions-apiserver v0.37.1
+# k8s.io/apiextensions-apiserver v0.37.2
 ## explicit; go 1.26.0
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
@@ -742,7 +741,7 @@ k8s.io/apimachinery/pkg/version
 k8s.io/apimachinery/pkg/watch
 k8s.io/apimachinery/third_party/forked/golang/json
 k8s.io/apimachinery/third_party/forked/golang/reflect
-# k8s.io/apiserver v0.37.1
+# k8s.io/apiserver v0.37.2
 ## explicit; go 1.26.0
 k8s.io/apiserver/pkg/apis/apiserver
 k8s.io/apiserver/pkg/apis/apiserver/install
@@ -1116,7 +1115,7 @@ k8s.io/code-generator/pkg/apidefinitions
 k8s.io/code-generator/pkg/namer
 k8s.io/code-generator/pkg/util
 k8s.io/code-generator/third_party/forked/golang/reflect
-# k8s.io/component-base v0.37.1
+# k8s.io/component-base v0.37.2
 ## explicit; go 1.26.0
 k8s.io/component-base/cli/flag
 k8s.io/component-base/compatibility
@@ -1209,7 +1208,7 @@ open-cluster-management.io/api/work/v1alpha1
 # open-cluster-management.io/config-policy-controller v0.20.1
 ## explicit; go 1.26.3
 open-cluster-management.io/config-policy-controller/api/v1
-# open-cluster-management.io/governance-policy-propagator v0.20.0
+# open-cluster-management.io/governance-policy-propagator v0.20.1
 ## explicit; go 1.26.0
 open-cluster-management.io/governance-policy-propagator/api/v1
 # sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0
