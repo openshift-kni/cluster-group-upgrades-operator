@@ -51,6 +51,6 @@ entries:
     schema: olm.bundle
   # v5.0.0 bundle
   # The url for this last entry is updated by telco5g-konflux/scripts/catalog/update-catalog-template.sh automatically
-  - image: placeholder.will.be.updated.by.telco5g-konflux.scripts.catalog.update-catalog-template.sh
+  - image: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-operator-bundle@sha256:c2b278ab6f229dd7dfe37cabd91cc3a29b1057b55086fd0405ff781843730776
     schema: olm.bundle
 schema: olm.template.basic
