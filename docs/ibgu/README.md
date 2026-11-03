@@ -207,6 +207,12 @@ for every action in the plan item, generate the corresponding IBU. Create a mani
 For prep, the manifestworkreplicaset also conatins the manifests in the `oadpContent`. Also if the seed image pull secret is present on the hub, in the same namespace as the IBGU CR, controller will add the secret to manifest list. The secret will be recreated on the spokes in the `openshift-lifectcycle-agent` namespace.
 After creating all the manifestworkreplicasets create a cgu containing the manifestworkreplicasets. If the upgrade action is in the plan item, the cgu will disable auto import before start and re enables it after completion.
 
+### Resolving the cluster set
+Rather than handing each generated cgu the `spec.clusterLabelSelectors` and letting every cgu resolve its own cluster set, IBGU resolves the cluster set **once** and freezes it:
+- At plan item 0, IBGU resolves `spec.clusterLabelSelectors` against the `ManagedClusters` and records the resulting list in plan item 0's cgu `spec.clusters`. That cgu's `spec.clusters` is the frozen record for the whole IBGU; `ManagedClusters` added after this point do not join the rollout.
+- For every later plan item, IBGU reads the frozen set back from plan item 0's cgu and narrows it per plan item by evaluating the `ibgu-<action>-(completed|failed)` labels on each `ManagedCluster` (the same predicate table that used to be expressed as extra selector requirements), passing the resulting names to the cgu as `spec.clusters`.
+- On every plan item the frozen set is intersected with the `ManagedClusters` that still exist. A cluster that has been deleted mid-rollout is **dropped** (so it does not block later plan items): it is reported in `status.clusters[].dropped` with a `droppedReason`, and a Warning event is emitted. `ManagedCluster` labels remain the authoritative carrier across IBGUs, so a separate `Abort` IBGU still narrows correctly.
+
 ## Sync status
 ibgu lists all cgus that are created by this ibgu and sorts them by the planIndex so that order of actions in the status will be correct. It then reads the status of cgus and add failed and completed actions to clusters field of ibgu. For failed actions ibgu also gathers the reason and message for that condition.
 

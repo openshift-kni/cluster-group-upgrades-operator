@@ -262,6 +262,15 @@ spec:
                       required:
                       - action
                       type: object
+                    dropped:
+                      description: |-
+                        Dropped indicates the cluster was part of the frozen cluster set but no
+                        longer exists as a ManagedCluster, so it was dropped from the rollout.
+                      type: boolean
+                    droppedReason:
+                      description: DroppedReason explains why the cluster was dropped
+                        from the rollout.
+                      type: string
                     failedActions:
                       items:
                         description: ActionMessage defines the action and its message
