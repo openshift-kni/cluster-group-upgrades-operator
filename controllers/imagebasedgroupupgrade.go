@@ -682,14 +682,23 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 
 // countInProgressStageFailures returns the number of clusters that are still
 // progressing an action but have already had an LCA stage failure surfaced via
-// the report-only detection (a FailedActions entry alongside a CurrentAction). It
-// drives the augmented Progressing message so an observed failure is reflected in
-// the IBGU conditions without adding a new condition type.
+// the report-only detection for that same action (a FailedActions entry whose
+// action matches the cluster's CurrentAction). It drives the augmented
+// Progressing message so an observed failure is reflected in the IBGU conditions
+// without adding a new condition type. Matching the action avoids counting a
+// stale cross-step timeout (e.g. an earlier Prep/Upgrade failure carried into a
+// later AbortOnFailure step) as an in-progress failure.
 func countInProgressStageFailures(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
 	count := 0
 	for _, cs := range ibgu.Status.Clusters {
-		if cs.CurrentAction != nil && len(cs.FailedActions) > 0 {
-			count++
+		if cs.CurrentAction == nil {
+			continue
+		}
+		for _, failed := range cs.FailedActions {
+			if failed.Action == cs.CurrentAction.Action {
+				count++
+				break
+			}
 		}
 	}
 	return count

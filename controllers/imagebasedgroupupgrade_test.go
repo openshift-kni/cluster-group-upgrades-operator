@@ -550,6 +550,21 @@ func TestCountInProgressStageFailures(t *testing.T) {
 			want: 1,
 		},
 		{
+			name: "in-progress cluster whose failure is from a different action is not counted",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
+				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
+					Clusters: []ibguv1alpha1.ClusterState{
+						{
+							Name:          "spoke1",
+							CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.AbortOnFailure},
+							FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade, Message: "timed out"}},
+						},
+					},
+				},
+			},
+			want: 0,
+		},
+		{
 			name: "terminal failed cluster without a current action is not counted",
 			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
 				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
