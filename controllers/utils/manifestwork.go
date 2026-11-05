@@ -5,14 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"strconv"
+	"strings"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
 	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// terminalCompletionConditions lists the <Stage>Completed IBU condition types for
+// which a "False" feedback value is a genuine terminal stage failure. Idle is
+// deliberately excluded: its condition reports "False" for the whole normal
+// duration of an Abort/Finalize and only flips to "True" on completion, so
+// Idle=False is not a failure.
+var terminalCompletionConditions = []lcav1.ConditionType{
+	lcav1.ConditionTypes.PrepCompleted,
+	lcav1.ConditionTypes.UpgradeCompleted,
+	lcav1.ConditionTypes.RollbackCompleted,
+}
 
 const manifestWorkExpectedValuesAnnotation = "openshift-cluster-group-upgrades/expectedValues"
 const manifestWorkExpectedValuesAnnotationTemplate = `[{"manifestIndex":%d,"name":"%s","value":"True"}]`
@@ -109,6 +122,53 @@ func IsManifestConditionReady(mc *mwv1.ManifestCondition) bool {
 		}
 	}
 	return applied && available && synced
+}
+
+// GetStageFailureFromManifestWork reports whether LCA has terminally failed the
+// current stage on the spoke and returns the LCA failure message. A failure is a
+// <Stage>Completed=False feedback value (for a stage in terminalCompletionConditions)
+// on a manifest that is applied, available and has synced its feedback.
+//
+// Absent feedback and ManifestApplied=False are NOT treated as failures: an
+// unsynced or not-yet-created condition just means the stage is still in progress.
+// This is report-only; it does not change the CGU state machine. The returned
+// message is sourced from the ManifestWork feedback, falling back to a generic
+// message when LCA reported no detail.
+func GetStageFailureFromManifestWork(mw *mwv1.ManifestWork) (bool, string) {
+	if mw == nil {
+		return false, ""
+	}
+	watched := make(map[string]lcav1.ConditionType, len(terminalCompletionConditions))
+	for _, ct := range terminalCompletionConditions {
+		watched[isCompletedFeedbackName(ct)] = ct
+	}
+	for i := range mw.Status.ResourceStatus.Manifests {
+		mc := &mw.Status.ResourceStatus.Manifests[i]
+		// Only trust a manifest whose feedback is applied, available and synced.
+		if !IsManifestConditionReady(mc) {
+			continue
+		}
+		for _, fieldValue := range mc.StatusFeedbacks.Values {
+			ct, ok := watched[fieldValue.Name]
+			if !ok {
+				continue
+			}
+			if fieldValue.Value.Type != mwv1.String || fieldValue.Value.String == nil {
+				continue
+			}
+			if *fieldValue.Value.String != string(v1.ConditionFalse) {
+				continue
+			}
+			msg := strings.TrimSpace(GetConditionMessageFromManifestWorkStatus(
+				&ranv1alpha1.ManifestWorkStatus{Status: mw.Status.ResourceStatus}))
+			if msg == "" {
+				msg = fmt.Sprintf("LCA reported stage %s failed",
+					strings.TrimSuffix(string(ct), "Completed"))
+			}
+			return true, msg
+		}
+	}
+	return false, ""
 }
 
 // GetManifestWorkForCluster returns the manifest work instance for the given spoke

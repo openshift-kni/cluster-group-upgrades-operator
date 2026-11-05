@@ -34,6 +34,7 @@ func init() {
 	testscheme.AddKnownTypes(v1alpha1.SchemeGroupVersion, &v1alpha1.ClusterGroupUpgrade{})
 	testscheme.AddKnownTypes(mwv1alpha1.SchemeGroupVersion, &mwv1alpha1.ManifestWorkReplicaSet{})
 	testscheme.AddKnownTypes(mwv1alpha1.SchemeGroupVersion, &mwv1alpha1.ManifestWorkReplicaSetList{})
+	testscheme.AddKnownTypes(mwv1.SchemeGroupVersion, &mwv1.ManifestWork{}, &mwv1.ManifestWorkList{})
 	testscheme.AddKnownTypes(clusterv1.SchemeGroupVersion, &clusterv1.ManagedClusterList{})
 }
 
@@ -61,9 +62,12 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 	}
 
 	two := 2
+	falseStr := "False"
+	lcaFailureMsg := "LCA: upgrade failed on spoke9"
 	tests := []struct {
 		name                   string
 		CGUs                   []v1alpha1.ClusterGroupUpgrade
+		manifestWorks          []mwv1.ManifestWork
 		expectedClustersStatus []ibguv1alpha1.ClusterState
 	}{
 		{
@@ -326,6 +330,147 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "in progress cluster with LCA-reported stage failure",
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name-upgrade",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{"name-upgrade"},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						// Pin the generated ManifestWork name so the report-only path reads
+						// the ManifestWork created below instead of a random-suffixed name.
+						SafeResourceNames: map[string]string{
+							"/namespace.name-upgrade": "mw-spoke9-upgrade",
+						},
+						Status: v1alpha1.UpgradeStatus{
+							CurrentBatchRemediationProgress: map[string]*v1alpha1.ClusterRemediationProgress{
+								"spoke9": {
+									ManifestWorkIndex: new(int),
+									State:             "InProgress",
+								},
+							},
+						},
+					},
+				},
+			},
+			manifestWorks: []mwv1.ManifestWork{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "mw-spoke9-upgrade",
+						Namespace: "spoke9",
+					},
+					Status: mwv1.ManifestWorkStatus{
+						ResourceStatus: mwv1.ManifestResourceStatus{
+							Manifests: []mwv1.ManifestCondition{
+								{
+									ResourceMeta: mwv1.ManifestResourceMeta{Ordinal: 0},
+									Conditions: []v1.Condition{
+										{Type: mwv1.ManifestApplied, Status: v1.ConditionTrue},
+										{Type: mwv1.ManifestAvailable, Status: v1.ConditionTrue},
+										{Type: "StatusFeedbackSynced", Status: v1.ConditionTrue},
+									},
+									StatusFeedbacks: mwv1.StatusFeedbackResult{
+										Values: []mwv1.FeedbackValue{
+											{
+												Name:  "isUpgradeCompleted",
+												Value: mwv1.FieldValue{Type: mwv1.String, String: &falseStr},
+											},
+											{
+												Name:  "upgradeCompletedConditionMessages",
+												Value: mwv1.FieldValue{Type: mwv1.String, String: &lcaFailureMsg},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedClustersStatus: []ibguv1alpha1.ClusterState{
+				{
+					Name:          "spoke9",
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Upgrade},
+					FailedActions: []ibguv1alpha1.ActionMessage{
+						{Action: ibguv1alpha1.Upgrade, Message: "LCA: upgrade failed on spoke9"},
+					},
+				},
+			},
+		},
+		{
+			name: "in progress cluster with no stage failure reported",
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name-upgrade",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{"name-upgrade"},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						SafeResourceNames: map[string]string{
+							"/namespace.name-upgrade": "mw-spoke9-upgrade",
+						},
+						Status: v1alpha1.UpgradeStatus{
+							CurrentBatchRemediationProgress: map[string]*v1alpha1.ClusterRemediationProgress{
+								"spoke9": {
+									ManifestWorkIndex: new(int),
+									State:             "InProgress",
+								},
+							},
+						},
+					},
+				},
+			},
+			manifestWorks: []mwv1.ManifestWork{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "mw-spoke9-upgrade",
+						Namespace: "spoke9",
+					},
+					Status: mwv1.ManifestWorkStatus{
+						ResourceStatus: mwv1.ManifestResourceStatus{
+							Manifests: []mwv1.ManifestCondition{
+								{
+									ResourceMeta: mwv1.ManifestResourceMeta{Ordinal: 0},
+									Conditions: []v1.Condition{
+										{Type: mwv1.ManifestApplied, Status: v1.ConditionTrue},
+										{Type: mwv1.ManifestAvailable, Status: v1.ConditionTrue},
+										{Type: "StatusFeedbackSynced", Status: v1.ConditionTrue},
+									},
+									StatusFeedbacks: mwv1.StatusFeedbackResult{
+										Values: []mwv1.FeedbackValue{
+											{
+												Name:  "upgradeInProgressConditionMessage",
+												Value: mwv1.FieldValue{Type: mwv1.String, String: &lcaFailureMsg},
+											},
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			expectedClustersStatus: []ibguv1alpha1.ClusterState{
+				{
+					Name:          "spoke9",
+					CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Upgrade},
+				},
+			},
+		},
 	}
 	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
 		ObjectMeta: v1.ObjectMeta{
@@ -361,6 +506,12 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 					panic(err)
 				}
 			}
+			for _, mw := range test.manifestWorks {
+				mw := mw
+				if err := fakeClient.Create(context.TODO(), &mw); err != nil {
+					panic(err)
+				}
+			}
 			if err != nil {
 				t.Errorf("error in creating fake client")
 			}
@@ -368,6 +519,83 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
+		})
+	}
+}
+
+func TestCountInProgressStageFailures(t *testing.T) {
+	tests := []struct {
+		name string
+		ibgu *ibguv1alpha1.ImageBasedGroupUpgrade
+		want int
+	}{
+		{
+			name: "no clusters",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{},
+			want: 0,
+		},
+		{
+			name: "in-progress cluster with a reported stage failure is counted",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
+				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
+					Clusters: []ibguv1alpha1.ClusterState{
+						{
+							Name:          "spoke1",
+							CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Upgrade},
+							FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade, Message: "boom"}},
+						},
+					},
+				},
+			},
+			want: 1,
+		},
+		{
+			name: "in-progress cluster whose failure is from a different action is not counted",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
+				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
+					Clusters: []ibguv1alpha1.ClusterState{
+						{
+							Name:          "spoke1",
+							CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.AbortOnFailure},
+							FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade, Message: "timed out"}},
+						},
+					},
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "terminal failed cluster without a current action is not counted",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
+				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
+					Clusters: []ibguv1alpha1.ClusterState{
+						{
+							Name:          "spoke1",
+							FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade, Message: "timed out"}},
+						},
+					},
+				},
+			},
+			want: 0,
+		},
+		{
+			name: "in-progress cluster with no failure is not counted",
+			ibgu: &ibguv1alpha1.ImageBasedGroupUpgrade{
+				Status: ibguv1alpha1.ImageBasedGroupUpgradeStatus{
+					Clusters: []ibguv1alpha1.ClusterState{
+						{
+							Name:          "spoke1",
+							CurrentAction: &ibguv1alpha1.ActionMessage{Action: ibguv1alpha1.Upgrade},
+						},
+					},
+				},
+			},
+			want: 0,
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.want, countInProgressStageFailures(test.ibgu))
 		})
 	}
 }
