@@ -24,17 +24,17 @@ that receives any of them. The unit is never split.
 | Piece | What it does | Ticket |
 |---|---|---|
 | OADP removal | LCA's own local backup/restore replaces OADP/Velero. Still reads the Velero-format content in `oadpContent` ConfigMaps. | CNF-22167 (PR#7818) |
-| Seed format bump | `SeedFormatVersion` increases. Every existing seed image is invalidated and must be rebuilt with the new `lca-cli`. | CNF-22167 |
-| BackupContent API | New LCA CRD `BackupContent` (`lca.openshift.io/v1`, namespaced, read only from `openshift-lifecycle-agent`) and a new optional IBU v1 field `backupContent` listing those objects by name. Mutually exclusive with `spec.oadpContent`. | CNF-26659, CNF-28671 |
+| Seed format bump | `SeedFormatVersion` goes from 4 to 5. Every existing seed image is invalidated and must be rebuilt with the new `lca-cli`. | CNF-22167 |
+| BackupContent API | New LCA CRD `BackupContent` (`lca.openshift.io/v1`, plural `backupcontents`, namespaced; spec type `BackupContentSpec`) and a new optional IBU v1 field `backupContent` listing those objects by name. References resolve in LCA's install namespace (default `openshift-lifecycle-agent`, exported as `ibuv1.DefaultNamespace`). At most one of `backupContent` and `spec.oadpContent` may be set; neither is valid. | CNF-26659 (API, PR #10403), CNF-29691 (engine), CNF-28671 |
 | Seed format publication | LCA publishes the seed format it expects as a ClusterClaim and as a field on its CSV, and exports the related constants from its API package. | CNF-28926 |
 
 ### Hub side (TALM / IBGU)
 
 | Change | Story |
 |---|---|
-| Revendor LCA; IBGU gains `ibuSpec.backupContent` through the embedded spec, and inherits the mutual-exclusion rule. No new IBGU version or kind. | CNF-29239 |
+| Revendor LCA; IBGU gains `ibuSpec.backupContent` through the embedded spec, and inherits the at-most-one rule. No new IBGU version or kind. | CNF-29239 |
 | New hub CRD `BackupContent` (`lcm.openshift.io/v1alpha1`, namespaced): one curated backup definition per object, embedding LCA's BackupContent spec type. Same kind name as LCA's spoke CRD, different API group. Spec is immutable. | CNF-29240 |
-| TALM copies the referenced hub BackupContent entries to the spoke as LCA BackupContent objects, in the Prep manifestwork, into `openshift-lifecycle-agent`, same name. | CNF-29241 |
+| TALM copies the referenced hub BackupContent entries to the spoke as LCA BackupContent objects, in the Prep manifestwork, into `ibuv1.DefaultNamespace` (`openshift-lifecycle-agent`, LCA's default install namespace), same name. Spokes with LCA installed elsewhere are not supported and fail loudly. | CNF-29241 |
 | Pre-flight before the first CGU: seed format compatibility per spoke, plus a hub-only safety rule for `backupContent`. Fails closed. | CNF-29242 |
 | Unresolvable references (hub BackupContent or `oadpContent` ConfigMap) block the IBGU instead of being silently skipped. | CNF-29243 |
 | IBGU resolves the cluster list once (independent of OADP removal). | CNF-29244 |
@@ -113,7 +113,7 @@ cluster and the reason.
 
 - LCA reads its BackupContent objects **twice**: validated in Prep, re-read at Upgrade
   pre-pivot where the backup is taken. One missing or invalid at pre-pivot fails the Upgrade
-  terminally, before the pivot.
+  terminally, before the pivot (CNF-29691).
 - TALM ships copies only in the Prep manifestwork, with `DeleteOption: Orphan`, so they
   survive the CGU deleting that manifestwork before Upgrade runs.
 - Content is **pinned** when the Prep CGU starts: editing a hub BackupContent afterwards is
@@ -134,12 +134,13 @@ cluster and the reason.
 | Spoke BackupContent schema | required `kind` per entry; types, bounds; unknown fields pruned silently (accepted); strict-validation guidance | CNF-26659, CNF-28671 |
 | Reference validation (Prep) | dangling or duplicate reference fails Prep naming the entry; all failures collected in one pass | CNF-28671 |
 | Semantic validation (Prep) | unresolvable kind, singular forms (`job` vs `jobs`), wrong scope, ambiguous bare kind, missing namespace, wave coherence, `names` that don't exist, `labelSelector` semantics (filters only entries without `names`) | CNF-28671 |
-| Pre-pivot re-validation | Spoke BackupContent edited invalid or deleted after Prep → terminal Upgrade failure before pivot, not requeued | CNF-28671 |
+| Pre-pivot re-validation | Spoke BackupContent edited invalid or deleted after Prep → terminal Upgrade failure before pivot, not requeued | CNF-29691, CNF-28671 |
+| Install namespace | references resolve in LCA's install namespace (`MY_POD_NAMESPACE`), same as `seedImageRef.pullSecretRef`; with LCA installed outside `openshift-lifecycle-agent`, a BackupContent copied into `openshift-lifecycle-agent` is a dangling reference and fails Prep | CNF-28671 |
 | Backup content | namespaced and cluster-scoped resources, `names`, exclusions, `labelSelector`, `backupWave`/`restoreWave` ordering (independent; omitted = last wave) | CNF-26659 |
 | Restore | PV `claimRef` always cleared; `logicalvolumes` status always restored; server-side dry-run of everything before first apply, failures collected, abort without mutation; CRD-not-yet-established case | CNF-26659, CNF-28671 |
 | Backup-source message | `PrepCompleted` message names the validated BackupContent objects, or `oadpContent` ConfigMaps with deprecation note, or "no application backup configured"; composes with the extramanifests warning | CNF-28671 |
 | Deprecated path | `oadpContent` behaviour unchanged, including existing `ValidateBackupConfigmaps` checks | CNF-28671 |
-| On-disk layout | frozen across the pivot: `<wave>_<name>/`, `<NNNNN>_<kind>_<namespace>_<name>.yaml`, `checksums.sha256`, identical from both input paths | CNF-26659 |
+| On-disk layout | stable across the pivot: `<wave>_<name>/`, `<NNNNN>_<kind>_<namespace>_<name>.yaml`, `checksums.sha256`, identical from both input paths; versioned by `backup-layout.json` (semver, 1.0.0) independently of the seed format; reader stays backward compatible with older layout versions | CNF-26659, CNF-29691 |
 | Seed format check | mismatch either direction fails Prep; missing label fails Prep | CNF-28772 |
 | Publication | ClusterClaim appears in `ManagedCluster.status.clusterClaims` on the hub with the seed format; CSV carries the same value; both correct across an LCA operator upgrade and across the pivot | CNF-28926 |
 | Condition types | names unchanged; exported from the API package | CNF-28751 |
@@ -148,9 +149,9 @@ cluster and the reason.
 
 | Area | What to cover | Story |
 |---|---|---|
-| IBGU admission | both inputs → rejected (inherited CEL); `backupContent` only, `oadpContent` only, neither → accepted; `ibuSpec` still immutable | CNF-29239 |
+| IBGU admission | both inputs → rejected (inherited at-most-one CEL); `backupContent` only, `oadpContent` only, neither → accepted; `ibuSpec` still immutable | CNF-29239 |
 | Hub BackupContent CRD | create/delete; spec update rejected; namespaced; bundled in the CSV | CNF-29240 |
-| Copy to spoke | Spoke BackupContent created in `openshift-lifecycle-agent` with the entry's name and spec; metadata stripped (no `ownerReferences`, `uid`, hub labels); survives deletion of the Prep manifestwork; present at Upgrade pre-pivot | CNF-29241 |
+| Copy to spoke | Spoke BackupContent created in `openshift-lifecycle-agent` (`ibuv1.DefaultNamespace`) with the entry's name and spec; pull secret still copied there; on a spoke without that namespace the Prep manifestwork reports the apply failure; metadata stripped (no `ownerReferences`, `uid`, hub labels); survives deletion of the Prep manifestwork; present at Upgrade pre-pivot | CNF-29241 |
 | Work-agent RBAC | first Prep after a TALM upgrade applies BackupContent objects without a lingering `Applied=False` (ClusterRole applied first; `backupcontents` rule for `lca.openshift.io` present) | CNF-29241 |
 | Reference resolution | Prep plan with a missing hub BackupContent → blocked with names, no CGU; same for a missing `oadpContent` ConfigMap (**behaviour change** from today's warn-and-skip); Upgrade-only plan not blocked by missing hub entries | CNF-29243 |
 | Pre-flight | each branch in §2.2, including: claim present; claim absent + CSV field; neither (pre-bump); MCV unresolved; cluster unavailable; image label unreadable; safety rule; opt-out annotation | CNF-29242 |
@@ -255,19 +256,20 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
 - TALM's hard-fail on a missing `oadpContent` ConfigMap is a behaviour change for existing
   users (previously warn and continue with no backup).
 - `BackupContent` is the kind name on both hub (`lcm.openshift.io`) and spoke
-  (`lca.openshift.io`). On a cluster with both CRDs installed, a bare `oc get
-  backupcontent` is ambiguous; test tooling should use `backupcontents.lcm.openshift.io`
-  or `backupcontents.lca.openshift.io`.
+  (`lca.openshift.io`). TALM and LCA never share a cluster (no SNO is ever a hub), so a
+  bare `oc get backupcontent` is unambiguous in practice; test tooling may still use
+  `backupcontents.lcm.openshift.io` or `backupcontents.lca.openshift.io` for clarity.
+- The hub supports only spokes with LCA in its default install namespace,
+  `openshift-lifecycle-agent`, as in the telco reference configuration.
 
 ## Open items that affect the test plan
 
 | Item | Owner | Impact on QE |
 |---|---|---|
-| LCA naming: IBU field `backupContent` and spoke kind `BackupContent` (CNF-26659 still records `BackupSpec`) | LCA | test data and docs |
-| ClusterClaim name, CSV field key, value format | LCA / TALM (CNF-28926) | pre-flight tests and tooling |
+| Values of the exported ClusterClaim name and CSV field key constants, value format | LCA / TALM (CNF-28926) | pre-flight tests and tooling |
 | Whether ACM reserves a claim suffix for LCA | LCA / ACM | whether truncation tests are a real-world case or edge case |
 | Pre-flight opt-out annotation name | TALM (CNF-29242) | lab procedures |
-| Mutual-exclusion rule inherited by the regenerated IBGU CRD | TALM (CNF-29239) | if not inherited, TALM adds it; admission test unchanged |
+| At-most-one rule inherited by the regenerated IBGU CRD | TALM (CNF-29239) | if not inherited, TALM adds it; admission test unchanged |
 | Backport scope (which z-streams) | LCA / product (CNF-28772) | upgrade matrix to test |
 | `oadpContent` removal release | LCA | future; not in scope now |
 
@@ -401,7 +403,7 @@ apiVersion: lca.openshift.io/v1
 kind: BackupContent
 metadata:
   name: acm-klusterlet                 # same as the hub entry
-  namespace: openshift-lifecycle-agent # LCA's fixed namespace; the hub namespace is not carried
+  namespace: openshift-lifecycle-agent # ibuv1.DefaultNamespace, LCA's default install namespace; the hub namespace is not carried
 spec:
   restoreWave: 1
   namespaces:
@@ -472,7 +474,7 @@ Reference to a missing hub entry — IBGU blocked before any CGU, condition name
 ## Tickets
 
 - Epic: CNF-26657. Spike (hub design): CNF-28677.
-- LCA: CNF-22167 / PR#7818, CNF-26659, CNF-28671, CNF-28751, CNF-28926; backport and
+- LCA: CNF-22167 / PR#7818, CNF-26659 (API, PR #10403), CNF-29691 (engine integration), CNF-28671, CNF-28751, CNF-28926; backport and
   migration guide CNF-28772; reference CRs CNF-28676; upstream docs CNF-28679; downstream
   docs TELCODOCS-3009.
 - TALM: CNF-29239 – CNF-29245, CNF-29247, CNF-29281.

@@ -6,18 +6,37 @@ because LCA adds a BackupContent reference list to the IBU alongside `spec.oadpC
 
 **Status.** LCA has answered every hub-side question on CNF-26659 (see "Answers from LCA"
 near the end): there is no IBU v2 for now; the BackupContent reference list is an optional
-field added to IBU v1, mutually exclusive with `spec.oadpContent` by a CEL rule on
-`ImageBasedUpgradeSpec`; `oadpContent` stays honoured as a deprecated input until a removal
-release that is still TBD; BackupContent is namespaced, read only from
-`openshift-lifecycle-agent`, referenced by name only, and its content is an exported spec
-type; and LCA re-reads BackupContent in Upgrade pre-pivot. The decisions below are final on
-that basis. The per-decision sections after the record are kept as the record of the
+field added to IBU v1, and at most one of it and `spec.oadpContent` may be set, by a CEL
+rule on `ImageBasedUpgradeSpec` (neither is valid); `oadpContent` stays honoured as a
+deprecated input until a removal release that is still TBD; BackupContent is namespaced,
+resolved in LCA's install namespace, referenced by name only, and its content is an
+exported spec type; and LCA re-reads BackupContent in Upgrade pre-pivot. The decisions
+below are final on that basis. The per-decision sections after the record are kept as the record of the
 alternatives considered and why they lost; where an answer changed the analysis, the
 section says so.
 
-**Naming.** The LCA kind is `BackupContent` (`lca.openshift.io/v1`; CNF-26659 originally
-called it `BackupSpec`), the IBU field is `backupContent`, and the TALM hub kind is also
+**Namespace contract (2026-11-06).** LCA resolves `spec.backupContent` references in its
+*install* namespace (`common.OperatorNamespace()`, from `MY_POD_NAMESPACE`), exactly as it
+already resolves `seedImageRef.pullSecretRef`; there is no fixed "LCA always reads from
+`openshift-lifecycle-agent`" rule. LCA's IBU API package exports
+`ibuv1.DefaultNamespace = "openshift-lifecycle-agent"`, documented as LCA's *default*
+install namespace, the one the telco-reference configuration uses. TALM copies BackupContent
+CRs, and keeps rewriting copied pull secrets, into `ibuv1.DefaultNamespace`, importing the
+constant rather than hard-coding it. Hub users are expected to follow the reference
+configuration; a spoke whose LCA is installed elsewhere fails loudly (D6). Recorded on
+CNF-28677 and CNF-29241.
+
+**Naming.** The LCA kind is `BackupContent` (`lca.openshift.io/v1`, plural
+`backupcontents`, namespaced), its exported spec type is `BackupContentSpec`, and the IBU
+field is `spec.backupContent` (name-only references). The TALM hub kind is also
 `BackupContent` (`lcm.openshift.io/v1alpha1`) — the same kind name in two API groups (D6).
+TALM and LCA never share a cluster (no SNO is ever a hub), so the names do not clash in
+practice.
+
+**LCA ticket split.** CNF-26659 is the API only: the CRD, the IBU field, the CEL rule and
+the exported types and constants (lifecycle-agent PR #10403). Engine integration,
+including the pre-pivot re-read of BackupContent and the terminal failure on a missing
+reference, is CNF-29691.
 Samples use the namespace `ibu-4-20-to-4-22` for one upgrade path and the entry name
 `acm-klusterlet`, after the RAN reference's Velero Backup/Restore of that name.
 
@@ -31,11 +50,12 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 
 - **Outcome.** IBGU stays `lcm.openshift.io/v1alpha1` with `ibuSpec` embedding
   `lcav1.ImageBasedUpgradeSpec` unchanged. Revendoring LCA brings in `backupContent` and the
-  `oadpContent`/`backupContent` mutual-exclusion rule; TALM adds no field, version or kind.
+  `oadpContent`/`backupContent` at-most-one rule; TALM adds no field, version or kind.
 - **Why.** LCA keeps honouring `oadpContent` (Q1), so nothing breaks and the change is
   purely additive. That removes the IBU-generation coexistence requirement that drove
-  every other option. An IBGU sets `oadpContent`, `backupContent` or neither; neither stays
-  valid and means no application backup, as today.
+  every other option. An IBGU sets at most one of `oadpContent` and `backupContent`;
+  neither stays valid and means no application backup, as today (InitIBU's Idle IBU has
+  neither).
 - **Rejected.** 1B (sibling fields), 1C (new IBGU version — also unsafe under `None`
   conversion), 1D (new kind), 1E (passthrough — loses hub validation), 1F (no
   coexistence). All of them solve a coexistence problem LCA's answer removed.
@@ -68,8 +88,8 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   with the seed image's.
   - **One value covers both axes.** LCA delivers the seed format bump and `backupContent` in
     the same release, so an LCA expecting the bumped format (or later) supports
-    `backupContent`, and one that does not, does not. Customers may still migrate in two
-    waves — seed format first, BackupContent later — but there is no product split. *Holds
+    `backupContent`, and one that does not, does not. There is no product wave: moving
+    from `oadpContent` to `backupContent` is purely a customer migration choice. *Holds
     only while the two ship together everywhere, including every z-stream the bump is
     backported to* (D11).
   - **Spoke side, per cluster, in order:**
@@ -78,8 +98,8 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     3. Claim absent — whether the LCA predates the claim, the claim was truncated, or
        LCA failed to publish it — read the same value from a field LCA publishes on its
        CSV, by MCV. A truncated claim therefore costs one MCV read, not a blocked IBGU.
-       An LCA whose CSV has no such field predates the bump, so it expects the pre-bump
-       format: one fixed value, not a table.
+       An LCA that publishes neither the claim nor the CSV field predates the bump, so it
+       expects the pre-bump format: one fixed value, not a table.
     4. If the MCV does not resolve, the expected format is unknown.
   - **Image side:** TALM reads the `com.openshift.lifecycle-agent.seed_format_version`
     label of `ibuSpec.seedImageRef.image` from the registry, once per IBGU at pre-flight,
@@ -98,12 +118,13 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     the first format that supports `backupContent`.
   - LCA exports from its API package the seed format constant, the claim name, the CSV
     field key and the first seed format that supports `backupContent`. The seed format
-    constant lives in `internal/common/consts.go` today (`SeedFormatVersion = 4` on the
-    local LCA clone), so it has to move or be re-exported. A constant compiled into TALM
+    constant lives in `internal/common/consts.go` today (`SeedFormatVersion`, 4 before the
+    bump and 5 after PR#7818), so it has to move or be re-exported. A constant compiled into TALM
     reflects TALM's vendored LCA, not each spoke, so it names and interprets the
     published value; it does not replace reading it.
-- **Open, to agree in CNF-28926.** The claim name, the CSV field key and the value
-  format. And whether ACM reserves a claim suffix for LCA or the claim stays custom and
+- **Open, to agree in CNF-28926.** The values behind the exported claim-name and
+  CSV-field-key constants, and the value format; TALM imports the constants, so it
+  hard-codes none of them. And whether ACM reserves a claim suffix for LCA or the claim stays custom and
   truncatable — a cost question now, since truncation only sends the hub to the CSV.
 - **Rejected.**
   - 3A (labels — unvalidated); 3B (ACM does not surface LCA capabilities); 3D (no
@@ -145,7 +166,8 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   `oadpContent` or neither need only (2). The condition names each cluster and the
   reason, since each points at a different owner (ACM, LCA, the work-manager addon, the
   registry). An explicit opt-out annotation exists for lab use.
-- **Why.**
+- **Why.** Capability detection is an early-warning pre-flight, not a safety mechanism,
+  with one exception: the rule "use `backupContent` only with a new-format seed".
   - **Check 1 is a safety check.** LCA's seed check is a hard equality between the seed
     image's label and the LCA's compiled-in constant
     (`lifecycle-agent/controllers/prep_handlers.go:229-246`), and pre-bump LCAs have it
@@ -176,19 +198,27 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 ### D6 — BackupContent shape: **6B′ on the spoke, 6C on the hub, refs reuse `ibuSpec.backupContent`**
 
 - **Outcome.**
-  - Spoke: LCA's namespaced `BackupContent` (`lca.openshift.io/v1`) in
-    `openshift-lifecycle-agent`, using LCA's exported namespace constant (Q3).
+  - Spoke: LCA's namespaced `BackupContent` (`lca.openshift.io/v1`). LCA resolves the
+    references in its install namespace (Q3); TALM writes the copies into
+    `ibuv1.DefaultNamespace` (`openshift-lifecycle-agent`), LCA's default install
+    namespace and the one the telco-reference configuration uses, imported from LCA's IBU
+    API package. `backupcontentv1.Namespace` is being dropped from lifecycle-agent PR
+    #10403 and is not used.
+  - Non-default LCA install namespace: not supported from the hub, and it fails loudly
+    rather than silently. If `openshift-lifecycle-agent` does not exist on the spoke, the
+    Prep manifestwork fails to apply the copy; if it exists but LCA runs elsewhere, LCA's
+    Prep fails on the dangling reference (CNF-28671).
   - Hub: a new TALM-owned, namespaced kind, also named `BackupContent`
     (`lcm.openshift.io/v1alpha1`), one object per backup definition, in the IBGU's
     namespace — which stands for one upgrade path. Its `spec.template` embeds LCA's
     exported BackupContent spec type (Q4). Its spec is immutable.
-  - Naming: one kind name on both sides, distinguished by API group. A bare
-    `oc get backupcontent` is ambiguous only on a cluster that has both CRDs; tooling and
-    docs use the qualified names.
+  - Naming: one kind name on both sides, distinguished by API group. TALM and LCA never
+    share a cluster (no SNO is ever a hub), so a bare `oc get backupcontent` is not
+    ambiguous in practice; docs still use the qualified names.
   - IBGU: no new field. The author lists hub entry names in `ibuSpec.backupContent`; the
     same names are the spoke object names; `createIBU` stays a pure copy.
 - **Why.** Q3 and Q4 are exactly the two asks that made this clean. Name-only refs plus a
-  fixed read namespace mean the hub and spoke names coincide, so the IBU's field can be
+  single target namespace mean the hub and spoke names coincide, so the IBU's field can be
   the IBGU's authoring field: one surface, nothing to keep in sync, immutability already
   provided by `ibuSpec`'s `self == oldSelf`.
 - **Rejected.** 6A (cluster-scoped spoke object — LCA chose namespaced); 6B as written
@@ -202,7 +232,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 ### D7 — Where the hub reads: **7B-restricted, the IBGU's own namespace, no override**
 
 - **Outcome.** A ref resolves to the hub entry of that name in the IBGU's namespace. The
-  copy is written to LCA's namespace; the hub namespace never reaches the spoke.
+  copy is written to `ibuv1.DefaultNamespace`; the hub namespace never reaches the spoke.
 - **Why.** Names are unique by construction, and it is what lets one name mean both the
   hub entry and the spoke object.
 - **Rejected.** 7A (ref's namespace — carries the phantom namespace forward); 7C
@@ -215,13 +245,16 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     deletes before Upgrade runs.
   - Spoke name = hub entry name; no IBGU name or hub namespace in it.
   - Strip `resourceVersion`, `managedFields`, `creationTimestamp`, `uid`,
-    `ownerReferences`, `generation`; set the namespace to LCA's constant.
+    `ownerReferences`, `generation`; set the namespace to `ibuv1.DefaultNamespace`,
+    imported from LCA's IBU API package. The pull-secret copy, which hard-codes
+    `openshift-lifecycle-agent` today (`imagebasedgroupupgrade.go:428`), switches to the
+    same constant.
   - Add a `backupcontents` rule to the existing `ibu-role`, and apply the ClusterRole ahead
     of the extra manifests.
   - Content is pinned when the Prep CGU creates its MWRS (below, D6 question 2); hub
     entry immutability makes that explicit rather than surprising.
 - **Why.** LCA re-reads BackupContent in Upgrade pre-pivot and fails terminally if it is
-  missing or changed (Q6), so the copy must outlive the Prep work.
+  missing or changed (Q6; engine side in CNF-29691), so the copy must outlive the Prep work.
 - **Rejected.** 8B (delete with the manifestwork — removes Upgrade's input).
 - **Deferred.** 8C (an explicit reap): accumulation is bounded to one small object per
   entry per spoke, overwritten by name on the next path.
@@ -233,7 +266,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   today's warn-and-skip for `oadpContent` ConfigMaps, which is a silent no-backup bug.
   Plans without a `Prep` item (a follow-up `[['Upgrade']]` IBGU) skip the hub existence
   check: they copy nothing, and a missing or changed spoke copy is already a terminal LCA
-  failure at pre-pivot (Q6). Such a plan must carry the same `backupContent` list as the
+  failure at pre-pivot (Q6, CNF-29691). Such a plan must carry the same `backupContent` list as the
   IBGU that ran Prep.
 - **Rejected.** 9B (fail at Prep — wastes a rollout cycle); 9C (status quo — silent);
   requiring hub entries for Upgrade-only plans (checks an object the plan does not use).
@@ -259,9 +292,9 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Outcome.** The revendored TALM may ship before, with or after the LCA release that
   adds `backupContent`. Shipping first is safe because D4 blocks any IBGU that sets the
   field against a spoke without it; IBGUs using `oadpContent` behave as today.
-- **Backport unit (recorded in CNF-28772).** PR#7818, the seed format bump, the
-  BackupContent API and the seed format publication (CNF-28926) ship in the same release and
-  are backported together, never split. D3's single-value design depends on it: an LCA
+- **Backport unit (recorded in CNF-28772).** PR#7818, the seed format bump
+  (`SeedFormatVersion` 5), the BackupContent API and the seed format publication
+  (CNF-28926) ship in the same LCA release and are backported together, never split. D3's single-value design depends on it: an LCA
   with the bump but without the CSV field would be read as pre-bump.
 - **Seed format.** The pre-flight (D3, D4) must ship no later than the first LCA carrying
   the seed format bump that TALM users will target, or IBGUs spanning the rollout window
@@ -276,7 +309,7 @@ All under CNF-26657 and linked to the spike; "blocked by" mirrors the Blocks lin
 |---|---|---|
 | CNF-29239 | Revendor LCA for `backupContent`; regenerate the IBGU CRD; verify the inherited mutual-exclusion rule (D1) | CNF-26659, CNF-28926, CNF-28751 |
 | CNF-29240 | Hub `BackupContent` CRD: types, deepcopy, immutability rule, RBAC, samples (D6) | CNF-29239 |
-| CNF-29241 | BackupContent delivery: copy from the IBGU namespace into LCA's namespace, metadata stripping, `ibu-role` rule and ordering, `Orphan` (D5, D7, D8) | CNF-29240 |
+| CNF-29241 | BackupContent delivery: copy from the IBGU namespace into `ibuv1.DefaultNamespace` (pull-secret copy too), metadata stripping, `ibu-role` rule and ordering, `Orphan` (D5, D7, D8) | CNF-29240 |
 | CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupContent` rule, availability gate, claim read, Subscription→CSV MCV fallback, fail-closed conditions, opt-out annotation (D3, D4) | CNF-29239, CNF-28926 |
 | CNF-29243 | Reference resolution for `Prep` plans, including the `oadpContent` ConfigMap path (D9) | CNF-29240 |
 | CNF-29244 | Cluster-list resolution 2B (D2) | — |
@@ -385,7 +418,8 @@ suggests.
 PR#7818 bumps `SeedFormatVersion`, and that check is a hard equality during Prep between
 the seed image's OCI label and the source cluster's compiled-in constant. It is
 **independent of the IBU API version and of whether `oadpContent` is honoured** — it
-ships with the OADP removal itself, in the earlier wave. Because `seedImageRef` lives
+ships with the OADP removal itself, in the same release as the BackupContent API (one
+backport unit, D11). Because `seedImageRef` lives
 inside the fleet-wide, immutable `ibuSpec`, one IBGU commits to exactly one seed image
 and therefore to one seed format version, so during the LCA rollout window an IBGU
 spanning both halves of the fleet fails Prep on whichever half mismatches. (Recorded on
@@ -1102,7 +1136,7 @@ are written, not who checks them.
    into "new entry, new IBGU", consistent with `ibuSpec`. On the spoke, the work agent
    reverts edits to a copy while the Prep ManifestWork exists; once the CGU deletes it
    (`Orphan`), a spoke-side edit sticks and LCA's pre-pivot re-read picks it up — LCA's
-   concern, covered by its pre-pivot re-validation (CNF-28671).
+   concern, covered by its pre-pivot re-validation (CNF-28671, CNF-29691).
 3. **One name, two objects.** Under reuse the same string is a hub entry name and a spoke
    object name. That is deliberate rather than sloppy — one rule, stated once (D8 and 6B′),
    relied on twice — but the docs have to say it plainly: an author reading
@@ -1129,11 +1163,18 @@ Both are small, and both are worth making now while the API is still in flight:
    let the IBGU reuse LCA's own reference field (above): name-only plus a fixed namespace
    is exactly the condition under which the hub and spoke names coincide.
 
+> **Outcome (2026-11-06).** Ask 1 was granted as `BackupContentSpec`. Ask 2 was granted
+> for name-only references, but not for a fixed read namespace: LCA resolves references
+> in its install namespace, as it does `seedImageRef.pullSecretRef`, and exports
+> `ibuv1.DefaultNamespace` as its documented default. TALM targets that default, which
+> keeps the names coinciding for every spoke on the reference configuration; see the
+> namespace contract at the top.
+
 ### What the reframe collapses
 
 - **D7** becomes structural rather than conventional. The hub object is namespaced, and
   under 6C the ref is confined to the IBGU's namespace. The transform on the way out is
-  "strip metadata" (plus "set the fixed namespace" under 6B′) — the name is already the
+  "strip metadata" (plus "set the target namespace" under 6B′) — the name is already the
   one to use, so there is no implicit convention for a user to learn.
 - **D9**'s hard-fail becomes almost free: the ref must resolve to a hub object in a known
   namespace, so "unresolved" has exactly one meaning.
@@ -1162,6 +1203,11 @@ The spoke object stays **namespaced**, but the namespace is not carried in the r
 chosen by the hub: LCA reads its input from a fixed namespace it owns
 (`openshift-lifecycle-agent`, or a dedicated one — see the ownership note below). The IBU
 ref is then a bare name, and where the content lives is LCA's business.
+
+> **Outcome (2026-11-06).** Adopted with one change: the namespace is LCA's install
+> namespace rather than a fixed one, and TALM targets LCA's exported default,
+> `ibuv1.DefaultNamespace` (`openshift-lifecycle-agent`). See the namespace contract at
+> the top.
 
 6B as written conflated three separate problems. Only the first one was fatal, and this
 option removes it:
@@ -1203,7 +1249,7 @@ apiVersion: lca.openshift.io/v1
 kind: BackupContent
 metadata:
   name: acm-klusterlet
-  namespace: openshift-lifecycle-agent   # constant, owned by LCA
+  namespace: openshift-lifecycle-agent   # ibuv1.DefaultNamespace, LCA's default install namespace
 spec: <lcav1.BackupContentSpec>
 ```
 
@@ -1269,7 +1315,9 @@ The IBU field is D6 ask 2 in its most natural form: a name-only list, because th
 is no longer the caller's to supply. The constant itself should be exported from LCA's API
 package and documented as a commitment, for the same reason CNF-28751 exports the condition
 type names — a configurable namespace would mean the hub has to be told it, which puts the
-lookup key straight back.
+lookup key straight back. *As decided, LCA exports its default install namespace
+(`ibuv1.DefaultNamespace`) rather than a fixed read namespace; the hub targets the default
+and does not support other install namespaces, which fail loudly (D6).*
 
 **What it buys:**
 
@@ -1293,7 +1341,8 @@ lookup key straight back.
   nothing and needs no new object, but mixes user content with LCA's own configuration and
   inherits the operator namespace's RBAC. A dedicated LCA-owned namespace (say
   `openshift-lifecycle-agent-backup`) is cleaner at the price of one Namespace plus one
-  RBAC binding.
+  RBAC binding. *Decided: LCA's install namespace, which TALM never creates; on a spoke
+  without `openshift-lifecycle-agent` the copy fails to apply (D6).*
 - **Content dies with the namespace.** A cluster-scoped object survives namespace deletion;
   these do not. A cluster-admin cleaning up the LCA namespace silently removes pending
   backup input, and the failure surfaces only at pre-pivot. That needs to be documented on
@@ -1445,7 +1494,7 @@ apiVersion: lca.openshift.io/v1          # same group as IBU; version per CNF-26
 kind: BackupContent
 metadata:
   name: acm-klusterlet                       # chosen by TALM; see Naming below
-  namespace: openshift-lifecycle-agent   # 6B′ only; absent under 6A
+  namespace: openshift-lifecycle-agent   # 6B′ only (ibuv1.DefaultNamespace); absent under 6A
 spec:
   <lcav1.BackupContentSpec>                 # copied verbatim from the hub entry/set item
 ```
@@ -1534,7 +1583,7 @@ fake-namespace workaround:
 | **7C** Explicit source field on the IBGU spec | Unambiguous | More API surface; another immutable field to reason about |
 
 **Recommendation: 7B.** The transform on the way out is "strip the metadata", plus "set the
-derived name" where it differs (6D) and "set LCA's fixed namespace" under 6B′ — never "carry
+derived name" where it differs (6D) and "set `ibuv1.DefaultNamespace`" under 6B′ — never "carry
 the hub namespace to the spoke". Whether a ref may name a namespace other than the IBGU's is
 settled by the D6 choice, below; under the recommended form it cannot name one at all.
 
@@ -1554,8 +1603,9 @@ What is left is only the namespace rule, and the D6 answer settles it:
 
 Under **6B′** the hub-to-spoke mapping is many-to-one, not one-to-one: every hub namespace
 writes into the one namespace LCA reads, so 7B governs where the hub *reads* and LCA's
-constant governs where the spoke *lands*. The transform on the way out is therefore "strip
-the metadata, set the fixed namespace" — no rename under 6C — which is what
+exported default namespace (`ibuv1.DefaultNamespace`) governs where the spoke *lands*. The
+transform on the way out is therefore "strip the metadata, set the target namespace" — no
+rename under 6C — which is what
 `getSecretManifest` already does at `:428`, generalised, and the reason its
 namespace-rewriting approach is the one to keep.
 
@@ -1830,19 +1880,22 @@ CNF-28677. Each answer is tied to the decision it settled.
 |---|---|---|---|
 | 1 | Keep honouring `oadpContent` as a deprecated input (1A(ii))? | **Yes.** No IBU v2 for now; the removal release is TBD | D1 → 1A(ii); D4 loses the reverse direction; D11 |
 | 2 | If retained but not honoured, is a populated `oadpContent` rejected or ignored? | **Not applicable** — it stays honoured | — |
-| 3 | BackupContent scope? | **Namespaced, read only from `openshift-lifecycle-agent`** (exported constant), name-only references (6B′) | D6 spoke side; D7; field reuse |
+| 3 | BackupContent scope? | **Namespaced**, name-only references (6B′). Revised 2026-11-06: resolved in LCA's *install* namespace, like `seedImageRef.pullSecretRef`, not a fixed one; LCA exports `ibuv1.DefaultNamespace = "openshift-lifecycle-agent"` as its default, which TALM imports and copies into. `backupcontentv1.Namespace` is dropped from PR #10403 | D6 spoke side; D7; D8; field reuse |
 | 4 | Export the content as a named spec type? | **Yes** | D6 hub kind embeds it |
 | 5 | v1 IBU behaviour during a v1→v2 conversion release? | **Not applicable** — no v2 in this release | — |
-| 6 | Does LCA re-read BackupContent after Prep? | **Yes**, in Upgrade pre-pivot, where the backup is taken; a missing or changed BackupContent there fails terminally (CNF-28671) | D8 → 8A; D9 Upgrade-only carve-out |
+| 6 | Does LCA re-read BackupContent after Prep? | **Yes**, in Upgrade pre-pivot, where the backup is taken; a missing or changed BackupContent there fails terminally (engine integration CNF-29691; validation CNF-28671) | D8 → 8A; D9 Upgrade-only carve-out |
 | 7 | IBU condition type names stable across the change? | **Yes**; CNF-28751 enforces it through the exported type | D10 item 2 |
-| — | *Not asked:* | `oadpContent` and `backupContent` are mutually exclusive, by a CEL rule on `ImageBasedUpgradeSpec` so the IBGU CRD inherits it; an IBU with neither stays valid | D1 (verify inheritance in the revendor story) |
+| — | *Not asked:* | At most one of `oadpContent` and `backupContent` may be set, by a CEL rule on `ImageBasedUpgradeSpec` so the IBGU CRD inherits it; an IBU with neither stays valid (InitIBU's Idle IBU has neither) | D1 (verify inheritance in the revendor story) |
 
-**Also settled, in CNF-28772 and CNF-28926:** PR#7818, the seed format bump, the
-BackupContent API and the seed format publication form one backport unit, never split; LCA
+**Also settled, in CNF-28772 and CNF-28926:** PR#7818, the seed format bump
+(`SeedFormatVersion` 5), the BackupContent API and the seed format publication ship in the
+same LCA release and form one backport unit, never split; LCA
 publishes the expected seed format version as a ClusterClaim and a CSV field; BackupContent
 support is derived on the hub from that value; LCA exports the seed format constant, the
 claim name, the CSV field key and the first seed format that supports `backupContent`
-(D3, D4, D11).
+(D3, D4, D11). LCA's local backup layout is versioned separately from the seed format, by
+a semver `backup-layout.json` (1.0.0) whose reading side stays backward compatible; no hub
+impact.
 
 **Deferred, owner LCA:** the `oadpContent` removal release, and with it whether removal
 is an IBU v2, a field removal in v1, or needs a seed format bump. D1 and D11 reopen then.
