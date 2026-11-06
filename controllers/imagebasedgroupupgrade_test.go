@@ -652,6 +652,63 @@ func TestGetSecretManifest(t *testing.T) {
 	}
 }
 
+func TestCreateIBU(t *testing.T) {
+	tests := []struct {
+		name    string
+		ibuSpec lcav1.ImageBasedUpgradeSpec
+	}{
+		{
+			name: "backupContent is copied through",
+			ibuSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{Version: "version", Image: "image"},
+				BackupContent: []lcav1.BackupContentRef{
+					{Name: "bc1"},
+					{Name: "bc2"},
+				},
+			},
+		},
+		{
+			name: "oadpContent is copied through (existing behavior)",
+			ibuSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{Version: "version", Image: "image"},
+				OADPContent: []lcav1.ConfigMapRef{
+					{Name: "cm1", Namespace: "ns1"},
+				},
+			},
+		},
+		{
+			name: "neither oadpContent nor backupContent",
+			ibuSpec: lcav1.ImageBasedUpgradeSpec{
+				SeedImageRef: lcav1.SeedImageRef{Version: "version", Image: "image"},
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:        "name",
+					Namespace:   "namespace",
+					Annotations: map[string]string{LcaAnnotationSuffix: "value"},
+				},
+				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+					IBUSpec: test.ibuSpec,
+				},
+			}
+
+			ibu := createIBU(ibgu)
+
+			// createIBU is a pure copy of ibuSpec: every field, including the
+			// backupContent reference list introduced by the LCA revendor, must
+			// flow through unchanged.
+			assert.Equal(t, "upgrade", ibu.Name)
+			assert.Equal(t, test.ibuSpec, ibu.Spec)
+			assert.Equal(t, test.ibuSpec.BackupContent, ibu.Spec.BackupContent)
+			assert.Equal(t, test.ibuSpec.OADPContent, ibu.Spec.OADPContent)
+		})
+	}
+}
+
 func TestGetConfigMapManifests(t *testing.T) {
 	tests := []struct {
 		name         string

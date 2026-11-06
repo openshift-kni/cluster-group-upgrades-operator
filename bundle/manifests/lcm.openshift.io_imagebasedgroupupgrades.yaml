@@ -115,6 +115,29 @@ spec:
                         minimum: 0
                         type: integer
                     type: object
+                  backupContent:
+                    description: |-
+                      BackupContent defines the list of name-only references to BackupContent CRs that declare the backup/restore
+                      content for the upgrade. The referenced BackupContent CRs are read from LCA's install namespace; the references
+                      carry no namespace.
+                      BackupContent is the replacement for the deprecated OADPContent; the two are mutually exclusive on a single IBU.
+                      Entries are keyed by name: duplicate references are rejected at admission.
+                    items:
+                      description: |-
+                        BackupContentRef defines a name-only reference to a BackupContent CR. The
+                        referenced CR is resolved in LCA's install namespace, so the reference carries
+                        no namespace (unlike ConfigMapRef).
+                      properties:
+                        name:
+                          minLength: 1
+                          type: string
+                      required:
+                      - name
+                      type: object
+                    type: array
+                    x-kubernetes-list-map-keys:
+                    - name
+                    x-kubernetes-list-type: map
                   extraManifests:
                     description: |-
                       ExtraManifests defines the list of ConfigMap resources that contain the user-specific extra manifests to be
@@ -133,8 +156,10 @@ spec:
                       type: object
                     type: array
                   oadpContent:
-                    description: OADPContent defines the list of ConfigMap resources
-                      that contain the OADP Backup and Restore CRs.
+                    description: |-
+                      Deprecated: OADPContent defines the list of ConfigMap resources that contain the OADP Backup and Restore CRs.
+                      Use BackupContent instead. OADPContent remains honoured for backward compatibility; the release that removes it
+                      is TBD. OADPContent and BackupContent are mutually exclusive on a single IBU.
                     items:
                       description: ConfigMapRef defines a reference to a config map
                       properties:
@@ -158,8 +183,9 @@ spec:
                         pattern: ^([a-z0-9]+://)?[\S]+$
                         type: string
                       pullSecretRef:
-                        description: PullSecretRef defines the reference to a secret
-                          with credentials to pull container images.
+                        description: |-
+                          PullSecretRef defines the name-only reference to a secret with credentials to pull container images. The
+                          referenced secret is read from LCA's install namespace; the reference carries no namespace.
                         properties:
                           name:
                             type: string
@@ -184,6 +210,9 @@ spec:
                 x-kubernetes-validations:
                 - message: ibuSpec is immutable
                   rule: self == oldSelf
+                - message: oadpContent and backupContent are mutually exclusive
+                  rule: '!(has(self.oadpContent) && size(self.oadpContent) > 0 &&
+                    has(self.backupContent) && size(self.backupContent) > 0)'
               plan:
                 items:
                   properties:

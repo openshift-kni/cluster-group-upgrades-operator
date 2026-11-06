@@ -213,7 +213,7 @@ github.com/onsi/gomega/matchers/support/goraph/edge
 github.com/onsi/gomega/matchers/support/goraph/node
 github.com/onsi/gomega/matchers/support/goraph/util
 github.com/onsi/gomega/types
-# github.com/openshift-kni/lifecycle-agent v0.0.0-20261103174148-7c90a3dd1631
+# github.com/openshift-kni/lifecycle-agent v0.0.0-20261106173749-d2f6d8b030a2
 ## explicit; go 1.26.3
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
 # github.com/openshift/api v0.0.0-20261104213817-ae934b7cbfb4

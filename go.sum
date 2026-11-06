@@ -132,8 +132,8 @@ github.com/onsi/ginkgo/v2 v2.33.0 h1:C8gBA6Uc2ZEubiV+SXiu5tZnMTwEmXHgkJwGozKtZf8
 github.com/onsi/ginkgo/v2 v2.33.0/go.mod h1:+aXOY+vzZ5mu2iI2HpTZUPmM//oQfsNFX6gU9kNcA44=
 github.com/onsi/gomega v1.44.0 h1:eAiGl3Pw5jz5GQdDff0BcxYpAX1JxW8xD7mFUuwNfZQ=
 github.com/onsi/gomega v1.44.0/go.mod h1:e/C2HwaZ1DhvjzXXuFhcR7hY7Sh9pl7MmoWKEjzwcdA=
-github.com/openshift-kni/lifecycle-agent v0.0.0-20261103174148-7c90a3dd1631 h1:XXVQutAAfk8V98z7TjSfydtxeMOLLpYWDB0lWo6fyeQ=
-github.com/openshift-kni/lifecycle-agent v0.0.0-20261103174148-7c90a3dd1631/go.mod h1:OR2hUTCWkK7tMlhramT8CdRC3IIOdSdQGAFZ+ievGjE=
+github.com/openshift-kni/lifecycle-agent v0.0.0-20261106173749-d2f6d8b030a2 h1:k0+YksLVPzlR2yMrfDzen6Kpu5OOaIByvonHNDTeU6A=
+github.com/openshift-kni/lifecycle-agent v0.0.0-20261106173749-d2f6d8b030a2/go.mod h1:RZfUsHPTyHwzQL0HuZzQ01rrRsJ+g9WiWLmJsZF2i08=
 github.com/openshift/api v0.0.0-20261104213817-ae934b7cbfb4 h1:QPXVz2a4uF2+HpXAmPyEkDVjnF39HO4rjUjrTvR/n98=
 github.com/openshift/api v0.0.0-20261104213817-ae934b7cbfb4/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
 github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b h1:ErTc+6D1n/rpRaUYP++h0YlOzM+q7UaAdqDZrzhA0ho=
