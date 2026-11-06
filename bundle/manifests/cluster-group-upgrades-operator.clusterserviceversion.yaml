@@ -525,8 +525,6 @@ spec:
                   value: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:5.1.0
                 - name: INSECURE_GRAPH_CALL
                   value: "false"
-                - name: AZTP_IMG
-                  value: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:5.1.0
                 - name: GOCOVERDIR
                   value: /coverage
                 image: quay.io/openshift-kni/cluster-group-upgrades-operator:5.1.0

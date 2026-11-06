@@ -13,5 +13,3 @@ spec:
             value: $PRECACHE_IMG
           - name: INSECURE_GRAPH_CALL
             value: "false"
-          - name: AZTP_IMG
-            value: $AZTP_IMG                    

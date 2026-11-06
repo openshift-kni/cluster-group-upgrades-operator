@@ -77,7 +77,6 @@ BUNDLE_IMG ?= $(IMAGE_TAG_BASE)-bundle:$(VERSION)
 # Image URL to use all building/pushing image targets
 IMG ?= $(IMAGE_TAG_BASE):$(VERSION)
 PRECACHE_IMG ?= $(IMAGE_TAG_BASE)-precache:$(VERSION)
-AZTP_IMG ?= $(IMAGE_TAG_BASE)-aztp:$(VERSION)
 
 CRD_OPTIONS ?= "crd"
 
@@ -246,10 +245,10 @@ build: generate fmt vet ## Build manager binary.
 	go build -o bin/manager main.go
 
 run: manifests generate fmt vet ## Run a controller from your host.
-	PRECACHE_IMG=${PRECACHE_IMG} AZTP_IMG=$(AZTP_IMG) go run ./main.go --skip-tls-profile
+	PRECACHE_IMG=${PRECACHE_IMG} go run ./main.go --skip-tls-profile
 
 debug: manifests generate fmt vet ## Run a controller from your host that accepts remote attachment.
-	PRECACHE_IMG=${PRECACHE_IMG} AZTP_IMG=$(AZTP_IMG) dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go -- --skip-tls-profile
+	PRECACHE_IMG=${PRECACHE_IMG} dlv debug --headless --listen 127.0.0.1:2345 --api-version 2 --accept-multiclient ./main.go -- --skip-tls-profile
 
 docker-build: ## Build container image with the manager.
 	${ENGINE} build -t ${IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile .
@@ -265,12 +264,6 @@ docker-build-precache: ## Build pre-cache workload container image.
 
 docker-push-precache: ## push pre-cache workload container image.
 	${ENGINE} push ${PRECACHE_IMG}
-
-docker-build-aztp: ## Build aztp container image
-	${ENGINE} build -t ${AZTP_IMG} --arch=${GOARCH} --build-arg GOARCH=${GOARCH} -f Dockerfile.aztp .
-
-docker-push-aztp: ## Push aztp container image.
-	${ENGINE} push ${AZTP_IMG}
 ##@ Deployment
 
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
@@ -280,7 +273,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 	$(KUSTOMIZE) build config/crd | kubectl delete -f -
 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml
 	$(KUSTOMIZE) build config/default | kubectl apply -f -
 
 undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/config.
@@ -289,7 +282,7 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 .PHONY: bundle
 bundle: operator-sdk manifests kustomize ## Generate bundle manifests and metadata, then validate generated files.
 	$(OPERATOR_SDK) generate kustomize manifests --apis-dir pkg/api/ -q
-	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && AZTP_IMG=$(AZTP_IMG) PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml 
+	cd config/manager && $(KUSTOMIZE) edit set image controller=$(IMG) && PRECACHE_IMG=$(PRECACHE_IMG) envsubst < related-images/in.yaml > related-images/patch.yaml
 	$(KUSTOMIZE) build config/manifests | $(OPERATOR_SDK) generate bundle $(BUNDLE_GEN_FLAGS)
 	$(OPERATOR_SDK) bundle validate ./bundle
 	sed -i '/^[[:space:]]*createdAt:/d' bundle/manifests/cluster-group-upgrades-operator.clusterserviceversion.yaml

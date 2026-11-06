@@ -4,11 +4,6 @@
   production: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-rhel9-operator
   staging: registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-rhel9-operator
 #
-# Aztp
-- key: aztp_img
-  production: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-aztp-rhel9
-  staging: registry.stage.redhat.io/openshift5/topology-aware-lifecycle-manager-aztp-rhel9
-#
 # Precache
 - key: precache_img
   production: registry.redhat.io/openshift5/topology-aware-lifecycle-manager-precache-rhel9

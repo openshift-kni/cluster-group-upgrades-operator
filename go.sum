@@ -167,8 +167,6 @@ github.com/spf13/pflag v1.0.10 h1:4EBh2KAYBwaONj6b2Ye1GiHfwjqyROoF4RwYO+vPwFk=
 github.com/spf13/pflag v1.0.10/go.mod h1:McXfInJRrz4CZXVZOBLb0bTZqETkiAhM9Iw0y3An2Bg=
 github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d h1:qSoUNgNGOtnfDm4PWg7FY5XLWDgn0tB9+UqVnziD6CA=
 github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d/go.mod h1:6V51MeHkiYrmQVSFAhc4rfgZk2/AxtZMNSgNN8DjvRQ=
-github.com/stolostron/kubernetes-dependency-watches v0.10.2 h1:b8g3Wye6igeRrrSQwXGr4Ch4zTY4uouzHlDARw8/m7w=
-github.com/stolostron/kubernetes-dependency-watches v0.10.2/go.mod h1:pV1b/PwVNG4a5tzBcqxhUpMjjo5nY0gUb6ieu6sGH6o=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/objx v0.5.3 h1:jmXUvGomnU1o3W/V5h2VEradbpJDwGrzugQQvL0POH4=
 github.com/stretchr/objx v0.5.3/go.mod h1:rDQraq+vQZU7Fde9LOZLr8Tax6zZvy4kuNKF+QYS+U0=
@@ -291,8 +289,6 @@ k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 h1:jVkFFVfXdXP74B/zbO3hM3hpSFD0x
 k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3/go.mod h1:M2s5JB1lIYP3jzZdorPLHXIPJzt9vv2muW5a6L9DtNM=
 open-cluster-management.io/api v1.4.0 h1:pHcuT0dljNVWqiMmwo7OjJ+CW8lZODBzAFJ5u4cgiqg=
 open-cluster-management.io/api v1.4.0/go.mod h1:/qLKuMbMS1+MpirTjaw4BoS3INKG8jV3s5J7iju48tg=
-open-cluster-management.io/config-policy-controller v0.20.1 h1:7McdnsXBTUdgGeIMLPDKdoWxvxy11IqKWN9EER8CqIE=
-open-cluster-management.io/config-policy-controller v0.20.1/go.mod h1:GJ6XIrNj2N79h5DjBjEpWVHs+2Yp+1RzweJMTGlReso=
 open-cluster-management.io/governance-policy-propagator v0.20.1 h1:J1yy43xU+U5sey8djnpltXU5GLxQAhNX1JJkDuOthv0=
 open-cluster-management.io/governance-policy-propagator v0.20.1/go.mod h1:RsdTN1UJoF8Hvd4KVktETcu79JKbbkZfOhnrZ9RqjOE=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.36.0 h1:/YpDJ4vReG7ZmzSpBGxduXgywWkJU9zHubgJG03MT+Y=
