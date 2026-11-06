@@ -777,7 +777,11 @@ func (r *IBGUReconciler) getSecretManifest(
 
 func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) []mwv1.Manifest {
 	manifests := []mwv1.Manifest{}
-	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent {
+	// OADPContent is deprecated in favour of BackupContent (name-only references
+	// that LCA resolves on the spoke), but it remains honoured for backward
+	// compatibility until LCA removes it. Hub-side BackupContent handling is
+	// tracked separately (CNF-29240).
+	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent { //nolint:staticcheck // SA1019: OADPContent is honoured for backward compatibility.
 		cm := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name:      cmRef.Name,
