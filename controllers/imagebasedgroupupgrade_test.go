@@ -15,6 +15,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
+	lcabcv1 "github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -788,6 +789,121 @@ func TestGetConfigMapManifests(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, 1, len(manifests))
 			assert.JSONEq(t, test.expectedJson, string(manifests[0].Raw))
+		})
+	}
+}
+
+func TestGetBackupContentManifests(t *testing.T) {
+	backupWave := int32(2)
+	restoreWave := int32(3)
+	spec := lcabcv1.BackupContentSpec{
+		BackupWave:  &backupWave,
+		RestoreWave: &restoreWave,
+		Namespaces:  []string{"open-cluster-management-agent"},
+		NamespacedResources: []lcabcv1.ResourceSelector{
+			{Kind: "deployments.apps", Names: []string{"klusterlet"}},
+		},
+	}
+	// A fresh spoke BackupContent: apiVersion rewritten to lca.openshift.io/v1, name
+	// verbatim, namespace openshift-lifecycle-agent, hub spec verbatim, and none of the
+	// hub metadata (resourceVersion/managedFields/creationTimestamp/uid/ownerReferences/
+	// generation/labels) carried over.
+	expectedJSON := `{"apiVersion":"lca.openshift.io/v1","kind":"BackupContent",` +
+		`"metadata":{"name":"platform","namespace":"openshift-lifecycle-agent"},` +
+		`"spec":{"backupWave":2,"namespacedResources":[{"kind":"deployments.apps","names":["klusterlet"]}],` +
+		`"namespaces":["open-cluster-management-agent"],"restoreWave":3},"status":{}}`
+
+	tests := []struct {
+		name          string
+		refs          []string
+		createdHubBCs []*ibguv1alpha1.BackupContent
+		expectErr     bool
+		expectedJSON  []string
+	}{
+		{
+			name: "single reference copied to the spoke",
+			refs: []string{"platform"},
+			createdHubBCs: []*ibguv1alpha1.BackupContent{
+				{
+					// The fake client assigns a resourceVersion/uid on create; together
+					// with the label here these exercise that the spoke copy carries none
+					// of the hub metadata.
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "platform",
+						Namespace: "namespace",
+						Labels:    map[string]string{"hub-label": "value"},
+					},
+					Spec: spec,
+				},
+			},
+			expectedJSON: []string{expectedJSON},
+		},
+		{
+			name:      "missing hub BackupContent returns error",
+			refs:      []string{"platform"},
+			expectErr: true,
+		},
+		{
+			name: "multiple references copied in order",
+			refs: []string{"platform", "apps"},
+			createdHubBCs: []*ibguv1alpha1.BackupContent{
+				{
+					ObjectMeta: v1.ObjectMeta{Name: "platform", Namespace: "namespace"},
+					Spec:       spec,
+				},
+				{
+					ObjectMeta: v1.ObjectMeta{Name: "apps", Namespace: "namespace"},
+					Spec:       spec,
+				},
+			},
+			expectedJSON: []string{
+				expectedJSON,
+				`{"apiVersion":"lca.openshift.io/v1","kind":"BackupContent",` +
+					`"metadata":{"name":"apps","namespace":"openshift-lifecycle-agent"},` +
+					`"spec":{"backupWave":2,"namespacedResources":[{"kind":"deployments.apps","names":["klusterlet"]}],` +
+					`"namespaces":["open-cluster-management-agent"],"restoreWave":3},"status":{}}`,
+			},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			refs := []lcav1.BackupContentRef{}
+			for _, name := range test.refs {
+				refs = append(refs, lcav1.BackupContentRef{Name: name})
+			}
+			ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      "name",
+					Namespace: "namespace",
+				},
+				Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+					IBUSpec: lcav1.ImageBasedUpgradeSpec{
+						SeedImageRef:  lcav1.SeedImageRef{Version: "version", Image: "image"},
+						BackupContent: refs,
+					},
+				},
+			}
+			objs := []client.Object{}
+			fakeClient, err := getFakeClientFromObjects(objs...)
+			if err != nil {
+				t.Errorf("error in creating fake client")
+			}
+			for _, hubBC := range test.createdHubBCs {
+				if err := fakeClient.Create(context.TODO(), hubBC); err != nil {
+					panic(err)
+				}
+			}
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			manifests, err := reconciler.getBackupContentManifests(context.TODO(), ibgu)
+			if test.expectErr {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, len(test.expectedJSON), len(manifests))
+			for i, expected := range test.expectedJSON {
+				assert.JSONEq(t, expected, string(manifests[i].Raw))
+			}
 		})
 	}
 }

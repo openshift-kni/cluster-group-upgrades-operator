@@ -1,0 +1,14 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+
+commands:
+  - command: oc delete ibgu bc-copy bc-upgrade-only -n default --ignore-not-found
+    namespaced: true
+  - command: oc delete backupcontents.lcm.openshift.io ibu-platform -n default --ignore-not-found
+    namespaced: true
+  # Restore the managed clusters/annotations the IBGUs mutated, mirroring the sibling
+  # ibgu suites so later tests start from a clean slate.
+  - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml --ignore-not-found
+    namespaced: true
+  - command: oc apply -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml
+    namespaced: true

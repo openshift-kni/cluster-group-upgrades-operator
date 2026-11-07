@@ -1,0 +1,31 @@
+# A follow-up Upgrade-only IBGU (no Prep item) copies nothing: its generated Upgrade
+# ManifestWork ships no BackupContent. Targets a different cluster (spoke4) so it does
+# not interact with the Prep IBGU above.
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  name: bc-upgrade-only
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+    auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
+    auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
+    auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+spec:
+  clusterLabelSelectors:
+    - matchExpressions:
+        - key: "name"
+          operator: In
+          values:
+            - "spoke4"
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+    backupContent:
+      - name: ibu-platform
+  plan:
+    - actions: ["Upgrade"]
+      rolloutStrategy:
+        maxConcurrency: 1
+        timeout: 2400

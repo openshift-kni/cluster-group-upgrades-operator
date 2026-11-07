@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"encoding/json"
+	"strings"
 	"testing"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
@@ -8,6 +10,7 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	mwv1 "open-cluster-management.io/api/work/v1"
 )
 
@@ -283,6 +286,23 @@ func TestUpgradeManifestworkReplicaset(t *testing.T) {
                   "patch",
                   "delete"
                 ]
+              },
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "backupcontents"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
               }
             ]
           },
@@ -444,6 +464,23 @@ func TestAbortManifestworkReplicaset(t *testing.T) {
                   "patch",
                   "delete"
                 ]
+              },
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "backupcontents"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
               }
             ]
           },
@@ -573,6 +610,23 @@ func TestFinalizeManifestworkReplicaset(t *testing.T) {
                 ],
                 "resources": [
                   "imagebasedupgrades"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
+              },
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "backupcontents"
                 ],
                 "verbs": [
                   "get",
@@ -723,6 +777,23 @@ func TestRollbackManifestworkReplicaset(t *testing.T) {
                   "patch",
                   "delete"
                 ]
+              },
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "backupcontents"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
               }
             ]
           },
@@ -862,6 +933,23 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
                   "patch",
                   "delete"
                 ]
+              },
+              {
+                "apiGroups": [
+                  "lca.openshift.io"
+                ],
+                "resources": [
+                  "backupcontents"
+                ],
+                "verbs": [
+                  "get",
+                  "list",
+                  "watch",
+                  "create",
+                  "update",
+                  "patch",
+                  "delete"
+                ]
               }
             ]
           },
@@ -911,6 +999,53 @@ func TestPrepManifestworkReplicaset(t *testing.T) {
 		panic(err)
 	}
 	assert.JSONEq(t, expectedRaw, json)
+}
+
+// TestPrepManifestworkReplicasetOrdering verifies that when the Prep stage carries
+// extra manifests (e.g. copied BackupContent objects), the generated manifest list is
+// ordered [ClusterRole, extraManifests..., IBU] and the expectedValues completion index
+// still points at the IBU (1+len(extraManifests)).
+func TestPrepManifestworkReplicasetOrdering(t *testing.T) {
+	prepIBU := &lcav1.ImageBasedUpgrade{
+		ObjectMeta: v1.ObjectMeta{Name: "upgrade"},
+		Spec: lcav1.ImageBasedUpgradeSpec{
+			SeedImageRef: lcav1.SeedImageRef{
+				Image:   "quay.io/image/version:tag",
+				Version: "14.4.0-rc.2",
+			},
+		},
+	}
+	extraManifests := []mwv1.Manifest{
+		{RawExtension: runtime.RawExtension{Raw: []byte(`{"apiVersion":"lca.openshift.io/v1","kind":"BackupContent","metadata":{"name":"platform","namespace":"openshift-lifecycle-agent"}}`)}},
+		{RawExtension: runtime.RawExtension{Raw: []byte(`{"apiVersion":"lca.openshift.io/v1","kind":"BackupContent","metadata":{"name":"apps","namespace":"openshift-lifecycle-agent"}}`)}},
+	}
+	mwrs, err := GeneratePrepManifestWorkReplicaset("ibu-prep", "namespace", prepIBU, extraManifests)
+	assert.NoError(t, err)
+
+	manifests := mwrs.Spec.ManifestWorkTemplate.Workload.Manifests
+	assert.Equal(t, 4, len(manifests), "expected ClusterRole + 2 extra manifests + IBU")
+
+	kindOf := func(raw []byte) string {
+		var obj struct {
+			Kind     string `json:"kind"`
+			Metadata struct {
+				Name string `json:"name"`
+			} `json:"metadata"`
+		}
+		assert.NoError(t, json.Unmarshal(raw, &obj))
+		return obj.Kind + "/" + obj.Metadata.Name
+	}
+
+	assert.Equal(t, "ClusterRole/open-cluster-management:klusterlet-work:ibu-role", kindOf(manifests[0].Raw))
+	assert.Equal(t, "BackupContent/platform", kindOf(manifests[1].Raw))
+	assert.Equal(t, "BackupContent/apps", kindOf(manifests[2].Raw))
+	assert.Equal(t, "ImageBasedUpgrade/upgrade", kindOf(manifests[3].Raw))
+
+	// The IBU is the last manifest at index 3 (= 1 + len(extraManifests)); the
+	// completion feedback index in the expectedValues annotation must match.
+	ann := mwrs.Annotations[manifestWorkExpectedValuesAnnotation]
+	assert.True(t, strings.Contains(ann, `"manifestIndex":3`),
+		"expectedValues annotation %q should point manifestIndex at the IBU (3)", ann)
 }
 
 func TestGetActionsFromCGU(t *testing.T) {
