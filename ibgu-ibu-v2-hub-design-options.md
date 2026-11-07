@@ -210,8 +210,10 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     Prep fails on the dangling reference (CNF-28671).
   - Hub: a new TALM-owned, namespaced kind, also named `BackupContent`
     (`lcm.openshift.io/v1alpha1`), one object per backup definition, in the IBGU's
-    namespace — which stands for one upgrade path. Its `spec.template` embeds LCA's
-    exported BackupContent spec type (Q4). Its spec is immutable.
+    namespace — which stands for one upgrade path. Its `spec` *is* LCA's exported
+    `BackupContentSpec` (Q4), with no wrapper, so a hub entry and the spoke object it
+    becomes have the same shape and differ only in `apiVersion` and namespace. Its spec
+    is immutable.
   - Naming: one kind name on both sides, distinguished by API group. TALM and LCA never
     share a cluster (no SNO is ever a hub), so a bare `oc get backupcontent` is not
     ambiguous in practice; docs still use the qualified names.
@@ -1149,7 +1151,7 @@ Both are small, and both are worth making now while the API is still in flight:
 
 1. **Factor the content into an exported spec type.** If LCA exposes the payload as a
    named Go type (say `BackupContentSpec`) rather than only as fields of the CR struct,
-   TALM's hub type embeds *that* — `spec.template: lcav1.BackupContentSpec`. One content
+   TALM's hub type uses *that* as its spec — `spec: lcav1.BackupContentSpec`. One content
    schema, owned by LCA, versioned by LCA. Without it the hub type either duplicates the
    fields (two schemas to keep in sync, which is the compile-time-vs-copy coupling
    CNF-28751 exists to kill) or embeds a whole `BackupContent` object as an opaque template.
@@ -1191,10 +1193,13 @@ known-shape cost, not a new one.
 ### Cost, stated plainly
 
 TALM still ships a CRD: types, deepcopy, RBAC, validation, docs, samples, kuttl. The
-reframe makes it *thin* — hub metadata plus one embedded content struct — it does not
-make it free. The type's shape also depends on the D1 outcome: under 1A the embedded
-content struct serves both generations; under 1D the payload needs a generation tag.
-Keeping the content in a versioned subfield leaves both paths open.
+reframe makes it *thin* — hub metadata plus LCA's content struct as the spec — it does
+not make it free. *(An earlier draft wrapped the content in `spec.template` to leave room
+for a generation tag, which only option 1D needed. With D1 settled as 1A(ii) there is no
+generation split and no planned hub-only spec field, so the wrapper was dropped: the hub
+`spec` is LCA's `BackupContentSpec` directly. Descriptive hub metadata goes in labels and
+annotations; anything TALM computes goes in status. A genuine hub-only setting, if one
+ever appears, needs a prefixed sibling field or a new hub API version.)*
 
 ### Option 6B′ — namespaced on the spoke, read from a namespace LCA owns
 
@@ -1228,8 +1233,7 @@ kind: BackupContent
 metadata:
   name: acm-klusterlet
   namespace: ibu-4-20-to-4-22
-spec:
-  template: <lcav1.BackupContentSpec>
+spec: <lcav1.BackupContentSpec>         # LCA's spec type, unwrapped
 ```
 
 ```yaml
@@ -1381,9 +1385,8 @@ kind: BackupContent                 # TALM-owned, namespaced
 metadata:
   name: acm-klusterlet                  # user-chosen, unique within the namespace
   namespace: ibu-4-20-to-4-22          # one namespace per upgrade path
-spec:
-  template:                         # payload only — lcav1.BackupContentSpec
-    <lcav1.BackupContentSpec>
+spec:                               # LCA's BackupContentSpec, unwrapped
+  <lcav1.BackupContentSpec>
 ```
 
 The IBGU references entries by name, in LCA's own field, and the reference is confined to
