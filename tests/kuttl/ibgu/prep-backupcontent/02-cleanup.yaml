@@ -6,6 +6,10 @@ commands:
     namespaced: true
   - command: oc delete backupcontents.lcm.openshift.io ibu-platform -n default --ignore-not-found
     namespaced: true
+  # Drop the completed-Prep label added to spoke4 in step 00 so later tests start
+  # from a clean slate (the setup re-apply below does not remove extra labels).
+  - command: oc label managedcluster spoke4 lcm.openshift.io/ibgu-prep-completed- --ignore-not-found
+    ignoreFailure: true
   # Restore the managed clusters/annotations the IBGUs mutated, mirroring the sibling
   # ibgu suites so later tests start from a clean slate.
   - command: oc delete -f ../../../../deploy/acm/managed-clusters/setup-managed-spoke-clusters.yaml --ignore-not-found

@@ -1,6 +1,7 @@
 # A follow-up Upgrade-only IBGU (no Prep item) copies nothing: its generated Upgrade
 # ManifestWork ships no BackupContent. Targets a different cluster (spoke4) so it does
-# not interact with the Prep IBGU above.
+# not interact with the Prep IBGU above. spoke4 was pre-labeled completed-Prep in
+# step 00 (00-label-spoke4.yaml) so it is eligible for this Upgrade plan item.
 apiVersion: lcm.openshift.io/v1alpha1
 kind: ImageBasedGroupUpgrade
 metadata:
