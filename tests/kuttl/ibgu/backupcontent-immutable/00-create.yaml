@@ -1,0 +1,14 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: BackupContent
+metadata:
+  name: backupcontent-immutable
+  namespace: default
+spec:
+  backupWave: 1
+  restoreWave: 1
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet

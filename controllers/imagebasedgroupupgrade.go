@@ -61,6 +61,7 @@ type IBGUReconciler struct {
 const LcaAnnotationSuffix = "lca.openshift.io"
 
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades,verbs=get;list;watch;create;update;patch;delete
+//+kubebuilder:rbac:groups=lcm.openshift.io,resources=backupcontents,verbs=get;list;watch
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=lcm.openshift.io,resources=imagebasedgroupupgrades/finalizers,verbs=update
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete

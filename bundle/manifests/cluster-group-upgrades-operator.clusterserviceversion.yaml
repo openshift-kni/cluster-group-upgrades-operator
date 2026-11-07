@@ -5,6 +5,43 @@ metadata:
     alm-examples: |-
       [
         {
+          "apiVersion": "lcm.openshift.io/v1alpha1",
+          "kind": "BackupContent",
+          "metadata": {
+            "name": "ibu-platform-and-apps",
+            "namespace": "default"
+          },
+          "spec": {
+            "backupWave": 2,
+            "clusterScopedResources": [
+              {
+                "kind": "clusterroles.rbac.authorization.k8s.io",
+                "names": [
+                  "klusterlet"
+                ]
+              }
+            ],
+            "namespacedResources": [
+              {
+                "kind": "deployments.apps",
+                "names": [
+                  "klusterlet"
+                ]
+              },
+              {
+                "kind": "secrets",
+                "names": [
+                  "bootstrap-hub-kubeconfig"
+                ]
+              }
+            ],
+            "namespaces": [
+              "open-cluster-management-agent"
+            ],
+            "restoreWave": 2
+          }
+        },
+        {
           "apiVersion": "ran.openshift.io/v1alpha1",
           "kind": "ClusterGroupUpgrade",
           "metadata": {
@@ -58,6 +95,13 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: BackupContent is a hub-side, curated backup definition for an upgrade
+        path. Its spec is immutable and is LCA's BackupContentSpec directly, with
+        no wrapper field.
+      displayName: Backup Content
+      kind: BackupContent
+      name: backupcontents.lcm.openshift.io
+      version: v1alpha1
     - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
         API
       displayName: Cluster Group Upgrade
@@ -356,6 +400,14 @@ spec:
           - events
           verbs:
           - create
+        - apiGroups:
+          - lcm.openshift.io
+          resources:
+          - backupcontents
+          verbs:
+          - get
+          - list
+          - watch
         - apiGroups:
           - lcm.openshift.io
           resources:

@@ -258,3 +258,39 @@ Notice that Rollback only selects clusters that have upgrade completed label. If
 `Abort` ibgu action only runs when `lcm.openshit.io/ibgu-upgrade-completed` is not present.
 
 IBGU applies these labels according to its current status. After a successful `Abort`, `FinalizeUpgrade`, `FinalizeRollback` or `AbortOnFailure` IBGU removes these labels from the respective managed cluster.
+
+# BackupContent
+
+`BackupContent` (`lcm.openshift.io/v1alpha1`) is a hub-side, namespaced kind that holds a
+curated backup definition for an upgrade path. One object is one backup definition, and it
+outlives any single IBGU so definitions can be reused across upgrades. Its `spec` is LCA's
+exported `BackupContentSpec` (`lca.openshift.io/v1`) type directly, with no wrapper field, so
+a hub entry and its spoke copy differ only in `apiVersion` and namespace. Copying the spec to
+the spoke `BackupContent` during IBGU `Prep` is planned but not yet implemented
+(CNF-29241 / CNF-29243).
+
+`spec` is immutable (enforced by a CEL `self == oldSelf` validation): updating an existing
+`BackupContent` is rejected by admission, so a content change is a new entry and a new IBGU.
+Deleting and recreating is allowed. The object name is reused verbatim as the spoke
+`BackupContent` name, so it must be a valid LCA (RFC-1123) object name.
+
+```yaml
+apiVersion: lcm.openshift.io/v1alpha1
+kind: BackupContent
+metadata:
+  name: ibu-platform-and-apps
+  namespace: default
+spec:
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+  clusterScopedResources:
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet
+```

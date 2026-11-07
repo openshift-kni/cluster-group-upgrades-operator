@@ -5,6 +5,7 @@ resources:
 - bases/ran.openshift.io_clustergroupupgrades.yaml
 - bases/ran.openshift.io_precachingconfigs.yaml
 - bases/lcm.openshift.io_imagebasedgroupupgrades.yaml
+- bases/lcm.openshift.io_backupcontents.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

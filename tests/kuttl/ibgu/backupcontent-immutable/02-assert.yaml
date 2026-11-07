@@ -1,0 +1,8 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: BackupContent
+metadata:
+  name: backupcontent-immutable
+  namespace: default
+spec:
+  backupWave: 5
+  restoreWave: 5

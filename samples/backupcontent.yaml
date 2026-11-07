@@ -1,0 +1,26 @@
+apiVersion: lcm.openshift.io/v1alpha1
+kind: BackupContent
+metadata:
+  # The object name is reused verbatim as the spoke BackupContent (lca.openshift.io)
+  # name, so it must be a valid LCA object name.
+  name: ibu-platform-and-apps
+  namespace: default
+# spec is immutable: a change is a new entry and a new IBGU.
+spec:
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+    - kind: secrets
+      names:
+        - bootstrap-hub-kubeconfig
+    - kind: routes.route.openshift.io
+    - kind: configmaps
+  clusterScopedResources:
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet
