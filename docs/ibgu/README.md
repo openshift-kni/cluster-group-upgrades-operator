@@ -264,9 +264,9 @@ IBGU applies these labels according to its current status. After a successful `A
 `BackupContent` (`lcm.openshift.io/v1alpha1`) is a hub-side, namespaced kind that holds a
 curated backup definition for an upgrade path. One object is one backup definition, and it
 outlives any single IBGU so definitions can be reused across upgrades. Its `spec.template`
-embeds LCA's exported `BackupContentSpec` (`lca.openshift.io/v1`) verbatim; during IBGU `Prep`
-the template is copied to the spoke `BackupContent` (consumed by later stories CNF-29241 /
-CNF-29243).
+embeds LCA's exported `BackupContentSpec` (`lca.openshift.io/v1`) verbatim. Copying the
+template to the spoke `BackupContent` during IBGU `Prep` is planned but not yet implemented
+(CNF-29241 / CNF-29243).
 
 `spec` is immutable (enforced by a CEL `self == oldSelf` validation): updating an existing
 `BackupContent` is rejected by admission, so a content change is a new entry and a new IBGU.
