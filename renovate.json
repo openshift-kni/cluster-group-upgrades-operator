@@ -193,7 +193,7 @@
         {
             "description": "Re-enable gomod updates on actively maintained release branches only.",
             "matchManagers": ["gomod"],
-            "matchBaseBranches": ["release-5.0", "release-4.22"],
+            "matchBaseBranches": ["release-5.0"],
             "enabled": true
         }
     ],
