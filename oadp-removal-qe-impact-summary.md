@@ -332,37 +332,38 @@ kind: BackupContent
 metadata:
   name: acm-klusterlet                 # the hub entry name, and the spoke object's name
   namespace: ibu-4-20-to-4-22          # the upgrade path; must be the IBGU's namespace
-spec:
-  template:                            # LCA's exported BackupContent spec type
-    restoreWave: 1
-    namespaces:
-      - open-cluster-management-agent
-    namespacedResources:
-      - kind: deployments.apps
-        names: [klusterlet]
-      - kind: serviceaccounts
-        names: [klusterlet]
-      - kind: secrets
-        names:
-          - bootstrap-hub-kubeconfig
-          - open-cluster-management-image-pull-credentials
-    clusterScopedResources:
-      - kind: klusterlets.operator.open-cluster-management.io
-        names: [klusterlet]
-      - kind: customresourcedefinitions.apiextensions.k8s.io
-        names: [klusterlets.operator.open-cluster-management.io]
-      - kind: clusterroles.rbac.authorization.k8s.io
-        names:
-          - klusterlet
-          - open-cluster-management:klusterlet-work:ibu-role
-          - open-cluster-management:klusterlet-admin-aggregate-clusterrole
-      - kind: clusterrolebindings.rbac.authorization.k8s.io
-        names: [klusterlet]
-      - kind: priorityclasses.scheduling.k8s.io
-        names: [klusterlet-critical]
+spec:                                  # LCA's exported BackupContentSpec, unwrapped
+  restoreWave: 1
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names: [klusterlet]
+    - kind: serviceaccounts
+      names: [klusterlet]
+    - kind: secrets
+      names:
+        - bootstrap-hub-kubeconfig
+        - open-cluster-management-image-pull-credentials
+  clusterScopedResources:
+    - kind: klusterlets.operator.open-cluster-management.io
+      names: [klusterlet]
+    - kind: customresourcedefinitions.apiextensions.k8s.io
+      names: [klusterlets.operator.open-cluster-management.io]
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet
+        - open-cluster-management:klusterlet-work:ibu-role
+        - open-cluster-management:klusterlet-admin-aggregate-clusterrole
+    - kind: clusterrolebindings.rbac.authorization.k8s.io
+      names: [klusterlet]
+    - kind: priorityclasses.scheduling.k8s.io
+      names: [klusterlet-critical]
 ```
 
-`spec` is immutable: to change the content, create a new entry (and a new IBGU).
+The hub `spec` is exactly LCA's `BackupContentSpec`, with no wrapper, so this object and
+the spoke copy in A.4 differ only in `apiVersion` and namespace. `spec` is immutable: to
+change the content, create a new entry (and a new IBGU).
 
 ### A.3 Hub: the new IBGU using `backupContent`
 
@@ -408,7 +409,7 @@ spec:
   restoreWave: 1
   namespaces:
     - open-cluster-management-agent
-  # ... identical to A.2 spec.template ...
+  # ... identical to A.2 spec ...
 ```
 
 No `ownerReferences`, `uid`, `resourceVersion` or hub labels. It stays on the spoke after
