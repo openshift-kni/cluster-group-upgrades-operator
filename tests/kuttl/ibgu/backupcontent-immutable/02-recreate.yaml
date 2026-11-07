@@ -18,4 +18,3 @@ commands:
         namespaces:
           - open-cluster-management-agent
       EOF
-    namespaced: true
