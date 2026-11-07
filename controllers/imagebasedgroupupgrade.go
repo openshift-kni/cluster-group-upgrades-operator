@@ -111,7 +111,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	err = r.ensureManifests(ctx, ibgu)
+	blocked, err := r.ensureManifests(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
@@ -121,6 +121,14 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 	if err != nil {
 		r.Log.Error(err, "error updating ibgu status")
 		return requeueWithError(err)
+	}
+
+	if blocked {
+		// The IBGU is blocked on unresolvable references and no CGU exists yet, so
+		// nothing the controller watches (the IBGU generation or its owned CGUs)
+		// will change when the missing objects are created. Requeue so the gate is
+		// re-evaluated and the IBGU unblocks automatically once they exist.
+		nextReconcile = requeueWithMediumInterval()
 	}
 
 	return
@@ -591,7 +599,11 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		switch action {
 		case ibguv1alpha1.Prep:
 			templateName = strings.ToLower(fmt.Sprintf("%s-%s", ibgu.Name, ibguv1alpha1.Prep))
-			manifests := r.getConfigMapManifests(ctx, ibgu)
+			var manifests []mwv1.Manifest
+			manifests, err = r.getConfigMapManifests(ctx, ibgu)
+			if err != nil {
+				return false, fmt.Errorf("error getting configmap manifests: %w", err)
+			}
 			secretManifest := r.getSecretManifest(ctx, ibgu)
 			if secretManifest != nil {
 				manifests = append(manifests, *secretManifest)
@@ -705,19 +717,99 @@ func countInProgressStageFailures(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int
 	return count
 }
 
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+// planHasPrep reports whether any plan item contains a Prep action. Plans without
+// a Prep item (follow-up Upgrade-only IBGUs) copy nothing to the spoke, so the
+// pre-flight reference-resolution gate does not apply to them.
+func planHasPrep(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
+	for i := range ibgu.Spec.Plan {
+		if slices.Contains(ibgu.Spec.Plan[i].Actions, ibguv1alpha1.Prep) {
+			return true
+		}
+	}
+	return false
+}
+
+// resolvePrepReferences resolves every hub-side reference a Prep step copies to
+// the spoke: each ibuSpec.backupContent entry against a hub BackupContent in the
+// IBGU's namespace, and each ibuSpec.oadpContent entry against a ConfigMap in the
+// ref's own namespace. It returns the sorted, human-readable names of the
+// references that do not exist. Any error other than NotFound is returned so the
+// reconcile requeues rather than wrongly reporting a reference as missing.
+func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
+	var missing []string
+	for _, bcRef := range ibgu.Spec.IBUSpec.BackupContent {
+		bc := &ibguv1alpha1.BackupContent{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      bcRef.Name,
+			Namespace: ibgu.GetNamespace(),
+		}, bc); err != nil {
+			if errors.IsNotFound(err) {
+				missing = append(missing, fmt.Sprintf("BackupContent %q", bcRef.Name))
+				continue
+			}
+			return nil, fmt.Errorf("failed to get BackupContent %q: %w", bcRef.Name, err)
+		}
+	}
+	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent { //nolint:staticcheck // SA1019: OADPContent is honoured for backward compatibility.
+		cm := &corev1.ConfigMap{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      cmRef.Name,
+			Namespace: cmRef.Namespace,
+		}, cm); err != nil {
+			if errors.IsNotFound(err) {
+				missing = append(missing, fmt.Sprintf("ConfigMap %q", cmRef.Namespace+"/"+cmRef.Name))
+				continue
+			}
+			return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cmRef.Namespace, cmRef.Name, err)
+		}
+	}
+	sort.Strings(missing)
+	return missing, nil
+}
+
+// ensureManifests reconciles the plan into CGUs. It returns true when the IBGU is
+// blocked on unresolvable references (so Reconcile requeues to re-evaluate the
+// gate), and an error for any genuine fault.
+func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (bool, error) {
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
 	})
 	if err != nil {
-		return fmt.Errorf("error listing cgus for ibgu")
+		return false, fmt.Errorf("error listing cgus for ibgu")
 	}
+
+	// Pre-flight reference-resolution gate: before the first CGU is created, for a
+	// plan that contains a Prep item, every backupContent and oadpContent reference
+	// must resolve on the hub; otherwise block the IBGU and create no CGU. The gate
+	// only runs when no owned CGU exists yet, so an IBGU already in progress is
+	// unaffected, and an Upgrade-only follow-up plan (no Prep item) is exempt
+	// because it copies nothing — LCA fails such a plan terminally at pre-pivot if a
+	// spoke copy is missing. In every plan the CRD admits, a Prep item is the first
+	// item (see the plan XValidation rule), so "before the first CGU" validates the
+	// Prep references before any CGU that copies them is created.
+	if len(cguList.Items) == 0 && planHasPrep(ibgu) {
+		missing, err := r.resolvePrepReferences(ctx, ibgu)
+		if err != nil {
+			return false, fmt.Errorf("error resolving Prep references: %w", err)
+		}
+		if len(missing) > 0 {
+			msg := fmt.Sprintf("Blocked: unresolvable backup references: %s", strings.Join(missing, ", "))
+			r.Log.Info("IBGU blocked on unresolvable references, no CGU created", "missing", missing)
+			utils.SetStatusCondition(&ibgu.Status.Conditions,
+				utils.ConditionTypes.Progressing,
+				utils.ConditionReasons.UnresolvableDenpendency,
+				metav1.ConditionFalse,
+				msg)
+			return true, nil
+		}
+	}
+
 	for i, planItem := range ibgu.Spec.Plan {
 		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList)
 		if err != nil {
-			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
+			return false, fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
 		if !completed {
 			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
@@ -734,7 +826,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				utils.ConditionReasons.InProgress,
 				metav1.ConditionTrue,
 				msg)
-			return nil
+			return false, nil
 		}
 	}
 
@@ -744,7 +836,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		metav1.ConditionFalse,
 		"All plan steps are completed")
 
-	return nil
+	return false, nil
 }
 
 func (r *IBGUReconciler) getSecretManifest(
@@ -776,21 +868,25 @@ func (r *IBGUReconciler) getSecretManifest(
 	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}
 }
 
-func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) []mwv1.Manifest {
+func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
 	manifests := []mwv1.Manifest{}
 	// OADPContent is deprecated in favour of BackupContent (name-only references
 	// that LCA resolves on the spoke), but it remains honoured for backward
 	// compatibility until LCA removes it. Hub-side BackupContent handling is
 	// tracked separately (CNF-29240).
+	//
+	// In every plan the CRD admits a Prep item is the first plan item, so the
+	// pre-flight gate in ensureManifests has already validated every oadpContent
+	// reference before this Prep CGU is created. A Get/convert failure here is
+	// therefore a genuine fault (e.g. an API error) rather than the expected
+	// missing-backup case: return the error instead of silently skipping it.
 	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent { //nolint:staticcheck // SA1019: OADPContent is honoured for backward compatibility.
 		cm := &corev1.ConfigMap{}
 		if err := r.Get(ctx, types.NamespacedName{
 			Name:      cmRef.Name,
 			Namespace: cmRef.Namespace,
 		}, cm); err != nil {
-			r.Log.Info("[WARN] configmap does not exist on hub. Skip adding it to manifests",
-				"configmap name", cmRef.Name, "configmap namespace", cmRef.Namespace)
-			continue
+			return nil, fmt.Errorf("failed to get configmap %s/%s: %w", cmRef.Namespace, cmRef.Name, err)
 		}
 		cm.ResourceVersion = ""
 		cm.ManagedFields = []metav1.ManagedFieldsEntry{}
@@ -798,13 +894,11 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 		cm.UID = ""
 		cmBytes, err := utils.ObjectToByteArray(cm)
 		if err != nil {
-			r.Log.Info("[WARN] failed to convert configmap to []bytes",
-				"configmap name", cmRef.Name, "configmap namespace", cmRef.Namespace)
-			continue
+			return nil, fmt.Errorf("failed to convert configmap %s/%s to []bytes: %w", cmRef.Namespace, cmRef.Name, err)
 		}
 		manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: cmBytes}})
 	}
-	return manifests
+	return manifests, nil
 }
 
 func (r *IBGUReconciler) updateStatus(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
