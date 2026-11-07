@@ -7,11 +7,11 @@ commands:
   # accepted, grep finds nothing and the step fails.
   - script: |
       oc patch backupcontents.lcm.openshift.io backupcontent-immutable -n default \
-        --type=merge -p '{"spec":{"template":{"backupWave":5}}}' 2>&1 \
+        --type=merge -p '{"spec":{"backupWave":5}}' 2>&1 \
         | grep -q "spec is immutable"
     namespaced: true
   # And the rejected patch must have left the object unchanged.
   - script: |
       test "$(oc get backupcontents.lcm.openshift.io backupcontent-immutable \
-        -n default -o jsonpath='{.spec.template.backupWave}')" = "1"
+        -n default -o jsonpath='{.spec.backupWave}')" = "1"
     namespaced: true

@@ -5,23 +5,22 @@ metadata:
   # name, so it must be a valid LCA object name.
   name: ibu-platform-and-apps
   namespace: default
+# spec is immutable: a change is a new entry and a new IBGU.
 spec:
-  # spec is immutable: a change is a new entry and a new IBGU.
-  template:
-    backupWave: 2
-    restoreWave: 2
-    namespaces:
-      - open-cluster-management-agent
-    namespacedResources:
-      - kind: deployments.apps
-        names:
-          - klusterlet
-      - kind: secrets
-        names:
-          - bootstrap-hub-kubeconfig
-      - kind: routes.route.openshift.io
-      - kind: configmaps
-    clusterScopedResources:
-      - kind: clusterroles.rbac.authorization.k8s.io
-        names:
-          - klusterlet
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+    - kind: secrets
+      names:
+        - bootstrap-hub-kubeconfig
+    - kind: routes.route.openshift.io
+    - kind: configmaps
+  clusterScopedResources:
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet

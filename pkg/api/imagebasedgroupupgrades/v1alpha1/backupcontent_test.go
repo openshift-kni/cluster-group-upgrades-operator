@@ -15,18 +15,16 @@ import (
 func int32Ptr(i int32) *int32 { return &i }
 
 // TestBackupContentDeepCopy verifies the generated deepcopy produces an
-// independent, equal copy (including the embedded LCA BackupContentSpec).
+// independent, equal copy (the spec is LCA's BackupContentSpec directly).
 func TestBackupContentDeepCopy(t *testing.T) {
 	original := &BackupContent{
 		ObjectMeta: metav1.ObjectMeta{Name: "ibu-platform-and-apps", Namespace: "default"},
-		Spec: BackupContentSpec{
-			Template: lcabcv1.BackupContentSpec{
-				BackupWave:  int32Ptr(2),
-				RestoreWave: int32Ptr(2),
-				Namespaces:  []string{"open-cluster-management-agent"},
-				NamespacedResources: []lcabcv1.ResourceSelector{
-					{Kind: "deployments.apps", Names: []string{"klusterlet"}},
-				},
+		Spec: lcabcv1.BackupContentSpec{
+			BackupWave:  int32Ptr(2),
+			RestoreWave: int32Ptr(2),
+			Namespaces:  []string{"open-cluster-management-agent"},
+			NamespacedResources: []lcabcv1.ResourceSelector{
+				{Kind: "deployments.apps", Names: []string{"klusterlet"}},
 			},
 		},
 	}
@@ -39,13 +37,13 @@ func TestBackupContentDeepCopy(t *testing.T) {
 	assert.Equal(t, original, copied)
 
 	// Mutating the copy must not affect the original (true deep copy of the
-	// embedded spec's pointer/slice fields).
-	*copied.Spec.Template.BackupWave = 99
-	copied.Spec.Template.Namespaces[0] = "mutated"
-	copied.Spec.Template.NamespacedResources[0].Names[0] = "mutated"
-	assert.Equal(t, int32(2), *original.Spec.Template.BackupWave)
-	assert.Equal(t, "open-cluster-management-agent", original.Spec.Template.Namespaces[0])
-	assert.Equal(t, "klusterlet", original.Spec.Template.NamespacedResources[0].Names[0])
+	// spec's pointer/slice fields).
+	*copied.Spec.BackupWave = 99
+	copied.Spec.Namespaces[0] = "mutated"
+	copied.Spec.NamespacedResources[0].Names[0] = "mutated"
+	assert.Equal(t, int32(2), *original.Spec.BackupWave)
+	assert.Equal(t, "open-cluster-management-agent", original.Spec.Namespaces[0])
+	assert.Equal(t, "klusterlet", original.Spec.NamespacedResources[0].Names[0])
 }
 
 // TestBackupContentListDeepCopy verifies the list type's deepcopy.

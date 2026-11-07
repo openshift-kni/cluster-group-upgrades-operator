@@ -263,9 +263,10 @@ IBGU applies these labels according to its current status. After a successful `A
 
 `BackupContent` (`lcm.openshift.io/v1alpha1`) is a hub-side, namespaced kind that holds a
 curated backup definition for an upgrade path. One object is one backup definition, and it
-outlives any single IBGU so definitions can be reused across upgrades. Its `spec.template`
-embeds LCA's exported `BackupContentSpec` (`lca.openshift.io/v1`) verbatim. Copying the
-template to the spoke `BackupContent` during IBGU `Prep` is planned but not yet implemented
+outlives any single IBGU so definitions can be reused across upgrades. Its `spec` is LCA's
+exported `BackupContentSpec` (`lca.openshift.io/v1`) type directly, with no wrapper field, so
+a hub entry and its spoke copy differ only in `apiVersion` and namespace. Copying the spec to
+the spoke `BackupContent` during IBGU `Prep` is planned but not yet implemented
 (CNF-29241 / CNF-29243).
 
 `spec` is immutable (enforced by a CEL `self == oldSelf` validation): updating an existing
@@ -280,17 +281,16 @@ metadata:
   name: ibu-platform-and-apps
   namespace: default
 spec:
-  template:
-    backupWave: 2
-    restoreWave: 2
-    namespaces:
-      - open-cluster-management-agent
-    namespacedResources:
-      - kind: deployments.apps
-        names:
-          - klusterlet
-    clusterScopedResources:
-      - kind: clusterroles.rbac.authorization.k8s.io
-        names:
-          - klusterlet
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+  clusterScopedResources:
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet
 ```

@@ -4,12 +4,11 @@ metadata:
   name: backupcontent-immutable
   namespace: default
 spec:
-  template:
-    backupWave: 1
-    restoreWave: 1
-    namespaces:
-      - open-cluster-management-agent
-    namespacedResources:
-      - kind: deployments.apps
-        names:
-          - klusterlet
+  backupWave: 1
+  restoreWave: 1
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet

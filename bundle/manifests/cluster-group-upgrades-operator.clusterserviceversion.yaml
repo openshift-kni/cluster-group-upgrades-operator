@@ -12,35 +12,33 @@ metadata:
             "namespace": "default"
           },
           "spec": {
-            "template": {
-              "backupWave": 2,
-              "clusterScopedResources": [
-                {
-                  "kind": "clusterroles.rbac.authorization.k8s.io",
-                  "names": [
-                    "klusterlet"
-                  ]
-                }
-              ],
-              "namespacedResources": [
-                {
-                  "kind": "deployments.apps",
-                  "names": [
-                    "klusterlet"
-                  ]
-                },
-                {
-                  "kind": "secrets",
-                  "names": [
-                    "bootstrap-hub-kubeconfig"
-                  ]
-                }
-              ],
-              "namespaces": [
-                "open-cluster-management-agent"
-              ],
-              "restoreWave": 2
-            }
+            "backupWave": 2,
+            "clusterScopedResources": [
+              {
+                "kind": "clusterroles.rbac.authorization.k8s.io",
+                "names": [
+                  "klusterlet"
+                ]
+              }
+            ],
+            "namespacedResources": [
+              {
+                "kind": "deployments.apps",
+                "names": [
+                  "klusterlet"
+                ]
+              },
+              {
+                "kind": "secrets",
+                "names": [
+                  "bootstrap-hub-kubeconfig"
+                ]
+              }
+            ],
+            "namespaces": [
+              "open-cluster-management-agent"
+            ],
+            "restoreWave": 2
           }
         },
         {
@@ -98,13 +96,11 @@ spec:
   customresourcedefinitions:
     owned:
     - description: BackupContent is a hub-side, curated backup definition for an upgrade
-        path. Its spec is immutable and spec.template embeds LCA's BackupContentSpec.
+        path. Its spec is immutable and is LCA's BackupContentSpec directly, with
+        no wrapper field.
       displayName: Backup Content
       kind: BackupContent
       name: backupcontents.lcm.openshift.io
-      specDescriptors:
-      - displayName: Template
-        path: template
       version: v1alpha1
     - description: ClusterGroupUpgrade is the Schema for the ClusterGroupUpgrades
         API

@@ -4,19 +4,18 @@ metadata:
   name: ibu-platform-and-apps
   namespace: default
 spec:
-  template:
-    backupWave: 2
-    restoreWave: 2
-    namespaces:
-      - open-cluster-management-agent
-    namespacedResources:
-      - kind: deployments.apps
-        names:
-          - klusterlet
-      - kind: secrets
-        names:
-          - bootstrap-hub-kubeconfig
-    clusterScopedResources:
-      - kind: clusterroles.rbac.authorization.k8s.io
-        names:
-          - klusterlet
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+    - kind: secrets
+      names:
+        - bootstrap-hub-kubeconfig
+  clusterScopedResources:
+    - kind: clusterroles.rbac.authorization.k8s.io
+      names:
+        - klusterlet

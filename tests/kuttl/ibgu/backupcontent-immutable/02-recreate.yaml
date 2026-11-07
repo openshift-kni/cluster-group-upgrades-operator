@@ -13,10 +13,9 @@ commands:
         name: backupcontent-immutable
         namespace: default
       spec:
-        template:
-          backupWave: 5
-          restoreWave: 5
-          namespaces:
-            - open-cluster-management-agent
+        backupWave: 5
+        restoreWave: 5
+        namespaces:
+          - open-cluster-management-agent
       EOF
     namespaced: true
