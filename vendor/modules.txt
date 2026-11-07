@@ -229,7 +229,7 @@ github.com/openshift/build-machinery-go/make/targets/golang
 github.com/openshift/build-machinery-go/make/targets/openshift
 github.com/openshift/build-machinery-go/make/targets/openshift/operator
 github.com/openshift/build-machinery-go/scripts
-# github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
+# github.com/openshift/controller-runtime-common v0.0.0-20261026124434-bdfc411d93cd
 ## explicit; go 1.26.0
 github.com/openshift/controller-runtime-common/pkg/tls
 # github.com/openshift/library-go v0.0.0-20261021093739-9467096e1b0d
