@@ -8,7 +8,9 @@ commands:
     namespaced: true
   # Drop the completed-Prep label added to spoke4 in step 00 so later tests start
   # from a clean slate (the setup re-apply below does not remove extra labels).
-  - command: oc label managedcluster spoke4 lcm.openshift.io/ibgu-prep-completed- --ignore-not-found
+  # `oc label` has no --ignore-not-found flag; ignoreFailure tolerates an already
+  # missing label or absent spoke4 without failing cleanup.
+  - command: oc label managedcluster spoke4 lcm.openshift.io/ibgu-prep-completed-
     ignoreFailure: true
   # Restore the managed clusters/annotations the IBGUs mutated, mirroring the sibling
   # ibgu suites so later tests start from a clean slate.
