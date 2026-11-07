@@ -777,7 +777,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
 	})
 	if err != nil {
-		return false, fmt.Errorf("error listing cgus for ibgu")
+		return false, fmt.Errorf("error listing cgus for ibgu: %w", err)
 	}
 
 	// Pre-flight reference-resolution gate: before the first CGU is created, for a
@@ -868,6 +868,10 @@ func (r *IBGUReconciler) getSecretManifest(
 	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}
 }
 
+// getConfigMapManifests builds the manifests for the IBGU's oadpContent ConfigMaps.
+// It returns an error on any Get or convert failure rather than skipping silently,
+// since the pre-flight gate in ensureManifests has already validated every reference
+// before this Prep CGU is created (so a failure here is a genuine fault).
 func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
 	manifests := []mwv1.Manifest{}
 	// OADPContent is deprecated in favour of BackupContent (name-only references
