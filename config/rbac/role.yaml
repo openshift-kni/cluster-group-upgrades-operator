@@ -103,6 +103,14 @@ rules:
 - apiGroups:
   - lcm.openshift.io
   resources:
+  - backupcontents
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - lcm.openshift.io
+  resources:
   - imagebasedgroupupgrades
   verbs:
   - create

@@ -1,0 +1,22 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  # Deleting and recreating with different content is allowed: the immutability
+  # rule only fires on update. This proves a change is a new entry.
+  - command: oc delete backupcontents.lcm.openshift.io backupcontent-immutable -n default
+    namespaced: true
+  - script: |
+      oc apply -n default -f - <<'EOF'
+      apiVersion: lcm.openshift.io/v1alpha1
+      kind: BackupContent
+      metadata:
+        name: backupcontent-immutable
+        namespace: default
+      spec:
+        template:
+          backupWave: 5
+          restoreWave: 5
+          namespaces:
+            - open-cluster-management-agent
+      EOF
+    namespaced: true

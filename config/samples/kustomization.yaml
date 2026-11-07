@@ -1,4 +1,5 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - ran_v1alpha1_clustergroupupgrade.yaml
+- lcm_v1alpha1_backupcontent.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

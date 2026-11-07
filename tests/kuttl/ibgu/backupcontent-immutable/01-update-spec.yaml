@@ -1,0 +1,17 @@
+apiVersion: kuttl.dev/v1beta1
+kind: TestStep
+commands:
+  # Updating spec must be rejected by admission with the immutability message.
+  # The step passes only when the patch fails AND the apiserver returns the
+  # "spec is immutable" message (grep succeeds -> exit 0); if the patch is
+  # accepted, grep finds nothing and the step fails.
+  - script: |
+      oc patch backupcontents.lcm.openshift.io backupcontent-immutable -n default \
+        --type=merge -p '{"spec":{"template":{"backupWave":5}}}' 2>&1 \
+        | grep -q "spec is immutable"
+    namespaced: true
+  # And the rejected patch must have left the object unchanged.
+  - script: |
+      test "$(oc get backupcontents.lcm.openshift.io backupcontent-immutable \
+        -n default -o jsonpath='{.spec.template.backupWave}')" = "1"
+    namespaced: true

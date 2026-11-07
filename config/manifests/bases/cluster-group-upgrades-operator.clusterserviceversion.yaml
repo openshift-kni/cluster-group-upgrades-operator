@@ -44,6 +44,15 @@ spec:
   apiservicedefinitions: {}
   customresourcedefinitions:
     owned:
+    - description: BackupContent is a hub-side, curated backup definition for an upgrade
+        path. Its spec is immutable and spec.template embeds LCA's BackupContentSpec.
+      displayName: Backup Content
+      kind: BackupContent
+      name: backupcontents.lcm.openshift.io
+      specDescriptors:
+      - displayName: Template
+        path: template
+      version: v1alpha1
     - description: PreCachingConfig is the Schema for the precachingconfigs API
       displayName: Pre-caching Config
       kind: PreCachingConfig
