@@ -1713,6 +1713,31 @@ under 6B′ the whole accumulation sits in one namespace where an 8C sweep is a 
    If concurrent overlap is ever to be supported, qualification comes back and so does the
    need for an ownership guard; the two belong together.
 
+   **Follow-up: enforce non-overlap in the pre-flight (future improvement: CNF-29901, under CNF-6791).**
+   Bare names rest on "one IBGU acting on a cluster at a time", which today is assumed,
+   not checked. A pre-flight overlap check makes it enforced — the cheap half of an
+   ownership guard, without supporting concurrency. Raised again by an automated review
+   of the CNF-29241 PR, which flagged same-named entries from two namespaces colliding on
+   the spoke.
+   - **Overlap is defined by live IBGUs, not labels.** Block a new IBGU, before its first
+     CGU, if another IBGU has an *active* CGU on any of its clusters — enabled, not
+     succeeded, not timed out. A finished or timed-out IBGU does not count even if it
+     still exists, and labels left by an earlier IBGU are not overlap: they are the
+     intended cross-IBGU carrier, and the documented separate-Abort workflow
+     (`docs/ibgu/README.md:193`) and Upgrade-only follow-ups depend on them.
+   - **Race-free by construction, apart from the cache.** The IBGU controller runs with
+     `MaxConcurrentReconciles: 1` (`controllers/imagebasedgroupupgrade.go:497`) under one
+     leader, so two pre-flights never interleave. The informer cache can still lag a CGU
+     another IBGU just created; read through the uncached API reader for this check, or
+     have each IBGU record its claimed set in status before creating its first CGU.
+   - **Exact with 2B, conservative without.** With explicit lists (D2, CNF-29244) each
+     IBGU's set is plan item 0's CGU `spec.clusters`, and overlap is a set intersection.
+     Without 2B the other IBGU's selector has to be re-resolved now, which may differ
+     from what its CGUs resolved.
+   - Reported like the D4 pre-flight: one condition naming each overlapping cluster and
+     the other IBGU (`namespace/name`). No opt-out: overlap is never correct. Cost is one
+     cluster-wide List of IBGUs and CGUs; TALM's role is already a ClusterRole.
+
 **Follow-up Upgrade-only IBGUs (decided in D9).** An IBGU that resumes a path whose
 `Prep` ran under an earlier IBGU may find the referenced hub entries gone while the spoke
 copies remain. Plans without a `Prep` item are exempt from the hub existence check: they
