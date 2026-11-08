@@ -919,8 +919,9 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 // hub entry's spec verbatim. Building a fresh object (rather than mutating the fetched
 // one) inherently strips resourceVersion, managedFields, creationTimestamp, uid,
 // ownerReferences, generation and any hub labels. The name is the entry name verbatim
-// and the namespace is LCA's install namespace; TALM does not create that namespace, so
-// a spoke whose LCA is installed elsewhere fails loudly at apply time.
+// and the namespace is LCA's default install namespace (lcav1.DefaultNamespace); TALM
+// does not create that namespace, so a spoke whose LCA is installed elsewhere fails
+// loudly at apply time.
 //
 // As with getConfigMapManifests, a Get/convert failure is returned rather than skipped:
 // the pre-flight gate in ensureManifests has already validated every backupContent
