@@ -144,6 +144,18 @@ spec:
         - update
         - patch
         - delete
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - backupcontents
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
     - apiVersion: lca.openshift.io/v1
       kind: ImageBasedUpgrade
       metadata:
@@ -199,6 +211,18 @@ spec:
         - lca.openshift.io
         resources:
         - imagebasedupgrades
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - backupcontents
         verbs:
         - get
         - list
