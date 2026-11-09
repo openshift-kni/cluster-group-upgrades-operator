@@ -26,7 +26,7 @@ that receives any of them. The unit is never split.
 | OADP removal | LCA's own local backup/restore replaces OADP/Velero. Still reads the Velero-format content in `oadpContent` ConfigMaps. | CNF-22167 (PR#7818) |
 | Seed format bump | `SeedFormatVersion` goes from 4 to 5. Every existing seed image is invalidated and must be rebuilt with the new `lca-cli`. | CNF-22167 |
 | BackupContent API | New LCA CRD `BackupContent` (`lca.openshift.io/v1`, plural `backupcontents`, namespaced; spec type `BackupContentSpec`) and a new optional IBU v1 field `backupContent` listing those objects by name. References resolve in LCA's install namespace (default `openshift-lifecycle-agent`, exported as `ibuv1.DefaultNamespace`). At most one of `backupContent` and `spec.oadpContent` may be set; neither is valid. | CNF-26659 (API, PR #10403), CNF-29691 (engine), CNF-28671 |
-| Seed format publication | LCA publishes the seed format it expects as a ClusterClaim and as a field on its CSV, and exports the related constants from its API package. | CNF-28926 |
+| Seed format publication | LCA publishes the seed format it expects as a ClusterClaim and as a field on the IBU singleton's status (`status.seedFormatVersion`, working name), and exports the related constants from its API package. | CNF-28926 |
 
 ### Hub side (TALM / IBGU)
 
@@ -100,10 +100,10 @@ cluster and the reason.
 2. Per cluster:
    1. `ManagedClusterConditionAvailable` not True → blocked, "cluster unavailable".
    2. LCA ClusterClaim present → use its seed format.
-   3. Claim absent (old LCA, claim truncated, or not published) → read the LCA CSV field
-      via ManagedClusterView (Subscription → `installedCSV` → CSV). CSV without the field
+   3. Claim absent (old LCA, claim truncated, or not published) → read the IBU's
+      `status.seedFormatVersion` through a read-only ManifestWork on IBU `upgrade`. IBU without the field
       → treated as pre-bump.
-   4. MCV unresolved → blocked, "unknown".
+   4. Read-only ManifestWork returns no feedback → blocked, "unknown".
    5. Spoke's expected format ≠ image's → blocked, "seed format mismatch".
 3. Image label unreadable (registry unreachable, auth failure, label missing) → blocked.
 4. An opt-out annotation (name TBD) skips the check, for lab use; skipping must be visible
@@ -142,7 +142,7 @@ cluster and the reason.
 | Deprecated path | `oadpContent` behaviour unchanged, including existing `ValidateBackupConfigmaps` checks | CNF-28671 |
 | On-disk layout | stable across the pivot: `<wave>_<name>/`, `<NNNNN>_<kind>_<namespace>_<name>.yaml`, `checksums.sha256`, identical from both input paths; versioned by `backup-layout.json` (semver, 1.0.0) independently of the seed format; reader stays backward compatible with older layout versions | CNF-26659, CNF-29691 |
 | Seed format check | mismatch either direction fails Prep; missing label fails Prep | CNF-28772 |
-| Publication | ClusterClaim appears in `ManagedCluster.status.clusterClaims` on the hub with the seed format; CSV carries the same value; both correct across an LCA operator upgrade and across the pivot | CNF-28926 |
+| Publication | ClusterClaim appears in `ManagedCluster.status.clusterClaims` on the hub with the seed format; the IBU's `status.seedFormatVersion` carries the same value, rewritten on every LCA start (so the post-pivot LCA overwrites the value `InitIBU` restores); both correct across an LCA operator upgrade and across the pivot | CNF-28926 |
 | Condition types | names unchanged; exported from the API package | CNF-28751 |
 
 ### 3.2 TALM / IBGU (hub)
@@ -154,7 +154,7 @@ cluster and the reason.
 | Copy to spoke | Spoke BackupContent created in `openshift-lifecycle-agent` (`ibuv1.DefaultNamespace`) with the entry's name and spec; pull secret still copied there; on a spoke without that namespace the Prep manifestwork reports the apply failure; metadata stripped (no `ownerReferences`, `uid`, hub labels); survives deletion of the Prep manifestwork; present at Upgrade pre-pivot | CNF-29241 |
 | Work-agent RBAC | first Prep after a TALM upgrade applies BackupContent objects without a lingering `Applied=False` (ClusterRole applied first; `backupcontents` rule for `lca.openshift.io` present) | CNF-29241 |
 | Reference resolution | Prep plan with a missing hub BackupContent → blocked with names, no CGU; same for a missing `oadpContent` ConfigMap (**behaviour change** from today's warn-and-skip); Upgrade-only plan not blocked by missing hub entries | CNF-29243 |
-| Pre-flight | each branch in §2.2, including: claim present; claim absent + CSV field; neither (pre-bump); MCV unresolved; cluster unavailable; image label unreadable; safety rule; opt-out annotation | CNF-29242 |
+| Pre-flight | each branch in §2.2, including: claim present; claim absent + IBU status field; neither (pre-bump); read-only ManifestWork with no feedback; cluster unavailable; image label unreadable; safety rule; opt-out annotation | CNF-29242 |
 | Status | per-cluster failure messages in IBGU status for LCA stage failures, without waiting for timeout | CNF-29245 |
 | Plans | Prep → Upgrade → FinalizeUpgrade; Prep+Upgrade in one item; Rollback → FinalizeRollback; Abort; AbortOnFailure; follow-up Upgrade-only IBGU; separate Abort IBGU | existing + CNF-29241 |
 | Cluster list (if 2B lands) | frozen set; ManagedCluster deleted mid-rollout is dropped and reported, not blocking | CNF-29244 |
@@ -170,8 +170,8 @@ cluster and the reason.
 - LCA namespace deleted on the spoke after Prep → copies lost → pre-pivot failure (doc
   caveat: content dies with the namespace).
 - More than 20 custom ClusterClaims on a spoke (claim truncated) → hub falls back to the
-  CSV and proceeds.
-- ACM work-manager addon down on a spoke without a claim → blocked "unknown".
+  IBU status via a read-only ManifestWork and proceeds.
+- Spoke klusterlet without `ReadOnly` ManifestWork support, no claim → blocked "unknown" (sets the minimum spoke ACM for the fallback).
 - Spoke unreachable mid-pre-flight → blocked "unavailable" (stale claim not trusted).
 
 ---
@@ -202,7 +202,7 @@ cluster and the reason.
 |---|---|---|
 | LCA unit and envtest | LCA dev | CEL rules (envtest), validation branches, dry-run abort, backup-source message — listed in CNF-28671's acceptance criteria |
 | TALM unit | TALM dev | manifest generation and ordering, metadata stripping, pre-flight branches, reference resolution, status mapping, the 3,500-cluster status-size test (CNF-29281) |
-| TALM kuttl (upstream CI) | TALM dev | Prep+Upgrade with `backupContent`; missing reference blocked; pre-flight block (CNF-29247). kuttl here has no real spoke, so claims, CSV fields and registry labels must be stubbed |
+| TALM kuttl (upstream CI) | TALM dev | Prep+Upgrade with `backupContent`; missing reference blocked; pre-flight block (CNF-29247). kuttl here has no real spoke, so claims, the IBU status field and registry labels must be stubbed |
 | QE E2E | QE | real hub + spokes for: the compatibility matrix rows in §2.1, migration ordering, LCA rollback, disconnected registry, claim truncation, downtime measurement. Test plans in Polarion and automation merged are epic exit criteria |
 
 Hard-to-simulate inputs QE will need tooling for: a pre-bump LCA spoke alongside new ones;
@@ -231,7 +231,7 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
 | Item | Expected behaviour | What to measure |
 |---|---|---|
 | Pre-flight, claims present | one List of ManagedClusters for the fleet | time to first CGU |
-| Pre-flight, claims absent | two ManagedClusterViews per such cluster (Subscription, then CSV), reaped after | MCV churn and pre-flight duration with 0%, partial and 100% claim coverage |
+| Pre-flight, claims absent | one read-only ManifestWork per such cluster, reaped after | ManifestWork churn, feedback latency and pre-flight duration with 0%, partial and 100% claim coverage |
 | Seed label read | once per IBGU, not per cluster | single registry call |
 | BackupContent copies | small objects in the Prep manifestwork, one per referenced entry per spoke | manifestwork size with realistic entry counts |
 | CGU object size | normal rollout: well under the limit even with 2B's explicit list (~383 KiB at 3,500 clusters with 25-character names) | status size at end of rollout |
@@ -266,7 +266,7 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
 
 | Item | Owner | Impact on QE |
 |---|---|---|
-| Values of the exported ClusterClaim name and CSV field key constants, value format | LCA / TALM (CNF-28926) | pre-flight tests and tooling |
+| ClusterClaim name, IBU status field name, value format; minimum klusterlet version for `ReadOnly` ManifestWork | LCA / TALM / ACM (CNF-28926) | pre-flight tests and tooling; minimum supported spoke ACM |
 | Whether ACM reserves a claim suffix for LCA | LCA / ACM | whether truncation tests are a real-world case or edge case |
 | Pre-flight opt-out annotation name | TALM (CNF-29242) | lab procedures |
 | At-most-one rule inherited by the regenerated IBGU CRD | TALM (CNF-29239) | if not inherited, TALM adds it; admission test unchanged |

@@ -82,7 +82,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Scope.** D4 does not depend on it (the base set is a superset of every item's set),
   so it ships separately.
 
-### D3 — Spoke capability detection: **one value, the expected seed format version — from the LCA ClusterClaim, else from a field on the LCA CSV by MCV; the seed image's format from its OCI label**
+### D3 — Spoke capability detection: **one value, the expected seed format version — from the LCA ClusterClaim, else from the IBU's status through a read-only ManifestWork; the seed image's format from its OCI label**
 
 - **Outcome.** The pre-flight compares the seed format version each spoke's LCA expects
   with the seed image's.
@@ -92,60 +92,83 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     from `oadpContent` to `backupContent` is purely a customer migration choice. *Holds
     only while the two ship together everywhere, including every z-stream the bump is
     backported to* (D11).
+  - **Where LCA publishes it:** as a ClusterClaim value, and as a typed field on the IBU
+    singleton's status (working name `status.seedFormatVersion` on
+    `imagebasedupgrades.lca.openshift.io/upgrade`). The IBU is cluster-scoped, always
+    named `upgrade`, and created by LCA's `InitIBU` at startup if missing
+    (`lifecycle-agent/utils/utils.go:320`, called from `main/main.go:249`); its status is
+    a subresource only LCA writes (`+kubebuilder:subresource:status`), so TALM's
+    manifestworks, which update the IBU's spec, never touch it. LCA writes the field on
+    *every* start, after `InitIBU`: post-pivot, `InitIBU` restores the saved IBU together
+    with its saved status, so without a fresh write a newer LCA would carry the old one's
+    value.
   - **Spoke side, per cluster, in order:**
     1. `ManagedClusterConditionAvailable` must be `True`, else "cluster unavailable".
     2. LCA's ClusterClaim (CNF-28926) carrying the expected seed format version.
     3. Claim absent — whether the LCA predates the claim, the claim was truncated, or
-       LCA failed to publish it — read the same value from a field LCA publishes on its
-       CSV, by MCV. A truncated claim therefore costs one MCV read, not a blocked IBGU.
-       An LCA that publishes neither the claim nor the CSV field predates the bump, so it
-       expects the pre-bump format: one fixed value, not a table.
-    4. If the MCV does not resolve, the expected format is unknown.
+       LCA failed to publish it — read the IBU's `status.seedFormatVersion` through a
+       **read-only ManifestWork**: OCM's `ReadOnly` update strategy only checks the
+       resource exists, returns status feedback when feedback rules are set, and never
+       removes the resource (`vendor/open-cluster-management.io/api/work/v1/types.go:278-281`).
+       A truncated claim therefore costs one ManifestWork, not a blocked IBGU. An IBU
+       without the field means a pre-bump LCA, which expects the pre-bump format: one
+       fixed value, not a table.
+    4. If the read-only work does not return feedback (not applied, IBU missing), the
+       expected format is unknown.
   - **Image side:** TALM reads the `com.openshift.lifecycle-agent.seed_format_version`
     label of `ibuSpec.seedImageRef.image` from the registry, once per IBGU at pre-flight,
     using the pull secret the IBGU already references (`seedImageRef.pullSecretRef`, read
     from the IBGU namespace as today, `imagebasedgroupupgrade.go:408`). A registry that
     cannot be reached, or an image without the label, is "unknown".
 - **Why.** The owner of the contract publishes it, and the hub only reads it. The claim
-  is one List for the whole fleet; the CSV field answers the same question where the
-  claim is missing. No LCA-version-to-capability table exists anywhere on the hub. The
-  OCI label is ground truth for the image and needs no IBGU API change.
+  is one List for the whole fleet; the IBU status answers the same question where the
+  claim is missing, from a stable, fixed-name LCA API that does not depend on OLM. The
+  read-only ManifestWork goes through the OCM work agent that every IBGU action already
+  uses, so the fallback adds no new spoke dependency. No LCA-version-to-capability table
+  exists anywhere on the hub. The OCI label is ground truth for the image and needs no
+  IBGU API change.
 - **Settled with LCA (CNF-28926, CNF-28772).**
-  - LCA publishes the expected seed format version as both the ClusterClaim value and a
-    CSV field, from the release carrying the bump onwards, in every z-stream it is
+  - LCA publishes the expected seed format version as both the ClusterClaim value and an
+    IBU status field, from the release carrying the bump onwards, in every z-stream it is
     backported to; publication is part of the backport unit.
   - BackupContent support is not published separately; the hub derives it as seed format ≥
     the first format that supports `backupContent`.
-  - LCA exports from its API package the seed format constant, the claim name, the CSV
-    field key and the first seed format that supports `backupContent`. The seed format
+  - LCA exports from its API package the seed format constant, the claim name, the IBU
+    status field (as a typed field TALM's feedback JSONPath names) and the first seed
+    format that supports `backupContent`. The seed format
     constant lives in `internal/common/consts.go` today (`SeedFormatVersion`, 4 before the
     bump and 5 after PR#7818), so it has to move or be re-exported. A constant compiled into TALM
     reflects TALM's vendored LCA, not each spoke, so it names and interprets the
     published value; it does not replace reading it.
-- **Open, to agree in CNF-28926.** The values behind the exported claim-name and
-  CSV-field-key constants, and the value format; TALM imports the constants, so it
-  hard-codes none of them. And whether ACM reserves a claim suffix for LCA or the claim stays custom and
-  truncatable — a cost question now, since truncation only sends the hub to the CSV.
+- **Open, to agree in CNF-28926.** The claim name, the IBU status field name and the
+  value format; TALM imports the constants, so it hard-codes none of them. Which
+  klusterlet version first supports the `ReadOnly` update strategy, which sets the
+  minimum spoke ACM for the fallback. And whether ACM reserves a claim suffix for LCA or
+  the claim stays custom and truncatable — a cost question now, since truncation only
+  sends the hub to the read-only ManifestWork.
 - **Rejected.**
   - 3A (labels — unvalidated); 3B (ACM does not surface LCA capabilities); 3D (no
     detection — the `backupContent` failure is silent no-backup); 3E (probe ManifestWork —
     heavyweight).
   - A hub-side LCA version table, in any form: it encodes LCA's release and backport
     decisions in TALM.
-  - Blocking on a missing claim when the CSV answers: truncation is an OCM cap, not a
-    spoke fault, and the CSV read is exact.
-  - An MCV on the IBU CRD schema: answers `backupContent` but not the seed format.
+  - Blocking on a missing claim when the IBU status answers: truncation is an OCM cap,
+    not a spoke fault, and the IBU status read is exact.
+  - A field on the LCA CSV: the CSV is OLMv0 API, being replaced and then removed, and its
+    name — and the Subscription that leads to it — is versioned or site-chosen, so
+    reading it took two lookups and a configured Subscription name.
+  - ManagedClusterView, for any of these reads: an ACM-internal API TALM is moving away
+    from (its backup and AZTP uses are gone, precaching is deprecated, and operator
+    install approval goes with OLMv0), and it needs ACM's work-manager addon, which no
+    IBGU action uses.
+  - A CRD annotation: also fixed-name and OLM-independent, but set at bundle build, a
+    weaker contract than a typed status field, and the read returns the whole schema.
+  - The IBU CRD schema: answers `backupContent` but not the seed format.
   - Declaring the seed format on the IBGU: a new immutable field, and a wrong value that
     happens to match the spokes passes pre-flight.
 - **Costs accepted.**
-  - The CSV read is two MCV hops. A CSV's name carries its version
-    (`lifecycle-agent.v<x.y.z>`), and an MCV fetches one named object, so TALM views the
-    LCA Subscription for `status.installedCSV`, then that CSV — the same pattern the
-    precache path uses for Subscriptions (`controllers/utils/multicloud_util.go:43`). The
-    Subscription name is set by ZTP or the customer, so TALM needs it configured, with
-    the ZTP default as the default. A fixed-name LCA-owned object would need one hop; the
-    CSV was chosen because it is where an operator's capabilities conventionally live.
-  - The MCV path needs ACM's work-manager addon, which no IBGU action uses today.
+  - One short-lived read-only ManifestWork per claim-less cluster, reaped once the check
+    passes, and a wait for its feedback before the plan starts.
   - New registry egress from the hub, plus a registry client dependency to vendor. In
     disconnected installs the target is the mirror registry the spokes already pull from;
     the hub must trust its CA. The label is read once; LCA's own equality check at Prep
@@ -158,14 +181,14 @@ Code facts cited below are verified against this repo at `main`; see the appendi
      is older than the first format that supports `backupContent`, reject the IBGU. An
      old-format seed can never work with `backupContent`, and this needs no spoke read.
   2. **Per cluster, over the resolved base set:** block if the spoke's expected seed
-     format differs from the image's, or cannot be determined (cluster unavailable, MCV
-     unresolved, image label unreadable). Checked for every IBGU.
+     format differs from the image's, or cannot be determined (cluster unavailable,
+     read-only ManifestWork returned no feedback, image label unreadable). Checked for
+     every IBGU.
 
   Together these cover `backupContent`: a spoke that passes (2) expects the image's format,
   which (1) has already required to be one that supports `backupContent`. IBGUs that set
   `oadpContent` or neither need only (2). The condition names each cluster and the
-  reason, since each points at a different owner (ACM, LCA, the work-manager addon, the
-  registry). An explicit opt-out annotation exists for lab use.
+  reason, since each points at a different owner (ACM, LCA, the registry). An explicit opt-out annotation exists for lab use.
 - **Why.** Capability detection is an early-warning pre-flight, not a safety mechanism,
   with one exception: the rule "use `backupContent` only with a new-format seed".
   - **Check 1 is a safety check.** LCA's seed check is a hard equality between the seed
@@ -297,7 +320,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Backport unit (recorded in CNF-28772).** PR#7818, the seed format bump
   (`SeedFormatVersion` 5), the BackupContent API and the seed format publication
   (CNF-28926) ship in the same LCA release and are backported together, never split. D3's single-value design depends on it: an LCA
-  with the bump but without the CSV field would be read as pre-bump.
+  with the bump but without the IBU status field would be read as pre-bump.
 - **Seed format.** The pre-flight (D3, D4) must ship no later than the first LCA carrying
   the seed format bump that TALM users will target, or IBGUs spanning the rollout window
   lose the up-front block.
@@ -312,7 +335,7 @@ All under CNF-26657 and linked to the spike; "blocked by" mirrors the Blocks lin
 | CNF-29239 | Revendor LCA for `backupContent`; regenerate the IBGU CRD; verify the inherited mutual-exclusion rule (D1) | CNF-26659, CNF-28926, CNF-28751 |
 | CNF-29240 | Hub `BackupContent` CRD: types, deepcopy, immutability rule, RBAC, samples (D6) | CNF-29239 |
 | CNF-29241 | BackupContent delivery: copy from the IBGU namespace into `ibuv1.DefaultNamespace` (pull-secret copy too), metadata stripping, `ibu-role` rule and ordering, `Orphan` (D5, D7, D8) | CNF-29240 |
-| CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupContent` rule, availability gate, claim read, Subscription→CSV MCV fallback, fail-closed conditions, opt-out annotation (D3, D4) | CNF-29239, CNF-28926 |
+| CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupContent` rule, availability gate, claim read, read-only ManifestWork fallback on the IBU status, fail-closed conditions, opt-out annotation (D3, D4) | CNF-29239, CNF-28926 |
 | CNF-29243 | Reference resolution for `Prep` plans, including the `oadpContent` ConfigMap path (D9) | CNF-29240 |
 | CNF-29244 | Cluster-list resolution 2B (D2) | — |
 | CNF-29245 | Adopt CNF-28751 condition types; report-only terminal failure (D10) | CNF-28751 |
@@ -726,7 +749,7 @@ reproducible at all. Labels stay authoritative.
 
 ## D3. How does the hub learn what a spoke's LCA supports?
 
-> **Decided:** one capability value, the expected seed format version, read from the LCA claim (3F) or else from a field on the LCA CSV by MCV, behind an availability gate; the seed image's format from its OCI label. `backupContent` support ships with the seed format bump, so it follows from that value. The analysis below was written for the IBU-generation question and carries over.
+> **Decided:** one capability value, the expected seed format version, read from the LCA claim (3F) or else from the IBU's `status.seedFormatVersion` through a read-only ManifestWork (3G), behind an availability gate; the seed image's format from its OCI label. `backupContent` support ships with the seed format bump, so it follows from that value. The analysis below was written for the IBU-generation question and carries over.
 
 Needed by every D1 option except 1F. This is new machinery whichever way it goes: TALM
 reads **no** spoke version or capability information today — no `openshiftVersion`, no
@@ -746,6 +769,7 @@ thing at compile time for condition type names.
 | **3A** ManagedCluster label set by ZTP/ACM | Cheap; no new API calls; already how TALM filters clusters | Trusts out-of-band tooling; stale or missing on hand-registered clusters; nothing validates it against reality |
 | **3B** ManagedClusterInfo / addon status | Authoritative-ish; already populated by ACM | Depends on what ACM actually surfaces about LCA; may not carry operator version |
 | **3C** ManagedClusterView on the LCA CSV (or the IBU CRD's served versions) | Ground truth, read from the spoke itself; TALM already has View helpers in `utils/multicloud_util.go` | New per-cluster API objects and a reconcile wait before the plan can start; cost scales with fleet size; the hub still has to map a version to a capability |
+| **3G** Read-only ManifestWork on the IBU's status *(added after review; decided fallback)* | Fixed-name, OLM-independent LCA object (the IBU singleton); typed status field written by the running LCA; goes through the OCM work agent every IBGU already uses, so no new spoke dependency; no Subscription or CSV name to know | One short-lived ManifestWork and a feedback wait per claim-less cluster; needs a klusterlet that supports the `ReadOnly` update strategy; needs a new LCA status field |
 | **3D** No detection — trust the user's label selector | Zero cost | The failure it permits is a silent no-backup upgrade. Unacceptable on its own |
 | **3E** Dry-run probe ManifestWork | Tests the real apply path | Heavyweight; another round trip; still needs somewhere to report the result |
 | **3F** LCA publishes its capabilities as a ClusterClaim | The idiomatic ACM mechanism for a spoke to assert a fact to the hub. Surfaces as `ManagedCluster.status.clusterClaims`, so the hub reads the whole fleet in **one List** — no per-cluster objects, no reconcile wait. Type is already vendored (`vendor/open-cluster-management.io/api/cluster/v1/types.go:168,188`) and TALM already holds `managedclusters` get/list/watch, so the hub side costs nothing new. Removes the version→capability table entirely and serves every future contract change | Requires an LCA change, so not unilateral. **Cannot be retrofitted into already-shipped LCA versions**, so "claim absent" stays ambiguous between a pre-feature LCA, a truncated claim (see the cap note below) and an LCA-side failure. A broken sync path shows as *staleness* rather than absence, and is caught by the availability gate below, not by the claim. Becomes a public contract LCA must then maintain |
@@ -783,7 +807,7 @@ Design notes:
   configured on the spoke registration agent (`--reserved-cluster-claim-suffixes`), so
   this is not LCA's call alone — **confirm what ACM reserves by default** before relying
   on 3F. If LCA's claim cannot be made reserved, truncation sends affected clusters down
-  the 3C path (decided form below), which costs an MCV read but stays correct.
+  the 3G fallback (below), which costs one read-only ManifestWork but stays correct.
 
 ### A missing claim is not a sign that ACM is broken — check that directly, first
 
@@ -794,18 +818,20 @@ says little about the others:
 |---|---|---|
 | ClusterClaim (3F) | OCM registration agent (klusterlet) | `ManagedCluster.status.clusterClaims` |
 | ManifestWork via MWRS — the IBGU's only delivery path today | OCM work agent (klusterlet) | ManifestWork status feedback |
-| ManagedClusterView / Action (3C) | ACM work-manager addon — not core OCM; the types are vendored from `stolostron/cluster-lifecycle-api` (`clustergroupupgrade_controller.go:49`) | MCV status |
+| ManagedClusterView / Action | ACM work-manager addon — not core OCM; the types are vendored from `stolostron/cluster-lifecycle-api` (`clustergroupupgrade_controller.go:49`). ACM-internal, and TALM is moving away from it; **not used** by this design | MCV status |
 
-Read against that, the causes of an absent claim are:
+The decided fallback (3G) reads the IBU's status through a read-only ManifestWork, so it
+rides on the same work agent as the IBGU's own delivery. Read against that, the causes of
+an absent claim are:
 
 1. **LCA predates the claim** — the expected case, and the reason the fallback exists.
-   ACM is healthy; MCV and ManifestWork both work.
+   ACM is healthy; ManifestWork works.
 2. **Truncated by the custom-claim cap** — the registration agent is working as designed;
-   MCV is unaffected.
-3. **LCA down, or its claim controller failing** — nothing in ACM is broken, and MCV can
-   still read the LCA CSV because it does not go through LCA.
-4. **Spoke unreachable or its agents broken** — the only case where MCV and ManifestWork
-   are also dead. It should present as *stale* claims rather than absent ones, since the
+   ManifestWork is unaffected.
+3. **LCA down, or its claim controller failing** — nothing in ACM is broken. The IBU still
+   exists and its status holds the value the last LCA start wrote.
+4. **Spoke unreachable or its agents broken** — the only case where ManifestWork is also
+   dead. It should present as *stale* claims rather than absent ones, since the
    hub is not expected to clear `status.clusterClaims` when the lease expires (to confirm
    against OCM's hub registration controller; only the API is vendored here). The
    hub-visible signal is `ManagedClusterConditionAvailable` going Unknown or False.
@@ -819,27 +845,27 @@ this order, per cluster:
    cluster stops updating it (`managedClusterResources.go:544-546`). The IBGU controller
    has no such check today.
 2. **Claim.** Present and recognised → use it (D4 decides what follows).
-3. **Fallback (3C, decided form).** Claim absent → read the expected seed format from
-   the field LCA publishes on its CSV, by MCV (Subscription → `installedCSV` → CSV). This
-   covers an LCA older than the claim, a truncated claim and an LCA-side fault alike, and
-   costs one MCV read rather than a blocked IBGU. A CSV without the field means a pre-bump
-   LCA. *(Earlier drafts read the CSV version and mapped it through a hub-side table, or
-   read the IBU CRD schema; both are rejected — see the record.)*
-4. **Fallback unavailable.** MCV does not resolve → "unknown", fail closed (D4), reporting
-   the fallback path rather than the LCA as the cause.
+3. **Fallback (3G).** Claim absent → ship a read-only ManifestWork for IBU `upgrade` with
+   a feedback rule on `.status.seedFormatVersion`. This covers an LCA older than the
+   claim, a truncated claim and an LCA-side fault alike, and costs one ManifestWork rather
+   than a blocked IBGU. An IBU without the field means a pre-bump LCA. *(Earlier drafts
+   read the LCA CSV by ManagedClusterView — first its version through a hub-side table,
+   then a CSV field via Subscription → `installedCSV` → CSV — or read the IBU CRD schema;
+   all rejected, see the record.)*
+4. **Fallback unavailable.** The read-only work returns no feedback → "unknown", fail
+   closed (D4), reporting the fallback path rather than the LCA as the cause.
 
 Two consequences worth recording:
 
-- **3C adds a dependency the IBGU does not have today.** Every IBGU action goes through
-  MWRS→ManifestWork, which needs only the OCM work agent. The fallback additionally needs
-  the work-manager addon. Distinguishing step 4 from a genuine LCA problem means reading
-  that addon's `ManagedClusterAddOn` status — a read TALM does not do today, and likely
-  new RBAC.
-- **The fallback defuses truncation.** Without 3C, a truncated claim and a pre-feature
+- **3G adds no spoke dependency.** Every IBGU action already goes through
+  ManifestWork, which needs only the OCM work agent; the fallback uses the same agent.
+  (The ManagedClusterView route it replaces would have added ACM's work-manager addon.)
+  It does need a klusterlet that supports the `ReadOnly` update strategy.
+- **The fallback defuses truncation.** Without it, a truncated claim and a pre-feature
   LCA look identical, and the cap problem above becomes a blocked upgrade whose cause is
-  invisible from the hub. With the CSV field, a truncated claim costs one MCV read. That
-  is the reason to keep 3C even after the claim has shipped; the cap exemption becomes a
-  cost question, not a correctness one.
+  invisible from the hub. With the IBU status read, a truncated claim costs one
+  read-only ManifestWork. That is the reason to keep the fallback even after the claim
+  has shipped; the cap exemption becomes a cost question, not a correctness one.
 
 ### Future: selecting by claim rather than verifying with it
 
@@ -987,14 +1013,13 @@ handed to each CGU rather than a superset of it.
 - Surface it as an IBGU condition naming the offending clusters and the generation
   detected for each, so the operator can fix the selector or the fleet rather than guess.
   Where the generation is unknown, name *why*, using the reasons from the D3 check order:
-  cluster unavailable, claim missing on an LCA that should publish it, or fallback (MCV)
-  unavailable. Each points at a different owner — ACM, LCA, the work-manager addon — and
-  a bare "unknown" points at none.
+  cluster unavailable, or the read-only ManifestWork returned no feedback. Each points at
+  a different owner — ACM or LCA — and a bare "unknown" points at none.
 - Provide an explicit opt-out annotation for lab use.
-- Cost depends on D3. Under 3F it is a single List of ManagedClusters. Under the 3C
-  fallback it is N ManagedClusterViews up front — a real but bounded one-time cost,
-  cheap against even a single avoided batch stall, and the views can be reaped once the
-  check passes.
+- Cost depends on D3. Under 3F it is a single List of ManagedClusters. Under the 3G
+  fallback it is one read-only ManifestWork per claim-less cluster up front — a real but
+  bounded one-time cost, cheap against even a single avoided batch stall, and the works
+  are reaped once the check passes.
 
 ---
 
@@ -1658,9 +1683,12 @@ already be covered. The explicit rule is correct either way.)
 - **Hub-side RBAC is separate and small:** get/list/watch on TALM's own hub kind
   (`BackupContent` or `BackupSet`) via kubebuilder markers. Nothing is needed for LCA's
   `BackupContent` on the hub — TALM only serialises it into the manifest.
-- **Not covered here:** an 8C reap done by `ManagedClusterAction` runs through ACM's
-  work-manager addon under its own identity, not the work agent, and its permissions
-  would need checking separately.
+- **Not covered here: the 8C reap.** It should not use `ManagedClusterAction`, which is
+  ACM-internal, runs through the work-manager addon, and is being phased out of TALM along
+  with ManagedClusterView. A ManifestWork-based reap stays on the OCM work agent: apply the
+  object again in a work with the default (non-`Orphan`) delete option, then delete that
+  work. Whether the work agent deletes an object it adopted, rather than created, needs
+  verifying before relying on it.
 
 **Deletion.** Manifests currently carry `DeleteOption: Orphan` (`manifestworkreplicaset.go:161`
 and `:233`), so copied content survives the manifestwork.
@@ -1677,7 +1705,7 @@ taken and no error until LCA fails at pre-pivot.
 |---|---|---|
 | **8A** Keep `Orphan` (status quo) | Content survives Prep→Upgrade as required; also survives the copying IBGU, which a follow-up Upgrade-only IBGU depends on — `[['Upgrade']]` is admitted by the plan CEL (`config/crd/bases/lcm.openshift.io_imagebasedgroupupgrades.yaml:216`) and its selector narrows on prep-completed (`manifestworkreplicaset.go:296-297`), so it never runs Prep and never re-copies | Stale BackupContent objects accumulate; under Orphan, a later set with the same name can overwrite or be mistaken for a leftover — in the cluster under 6A, in the LCA-owned namespace under 6B′ |
 | **8B** Delete with the manifestwork (as previously recommended) | No accumulation | **Wrong**: the Prep MWRS is the only carrier, so deleting with it removes Upgrade's input. And the CGU deletes per-cluster ManifestWorks routinely, not only when the IBGU goes: before creating the next template's work (`controllers/manifestwork.go:44-55`), at each new batch (`clustergroupupgrade_controller.go:571-572`), and in its finalizer. Under a `['Prep','Upgrade']` plan item the Prep work — and with it the BackupContent — would be deleted just before the Upgrade work is created |
-| **8C** `Orphan` at the manifestwork, explicit reap at a defined later point | No accumulation, no lifetime accidentally coupled to MWRS GC | Needs a real reap mechanism: `FinalizeUpgrade`/`FinalizeRollback` manifestworks can only apply, so the reap is either a TALM reconcile over leftover spoke objects or a `ManagedClusterAction`; new moving part for a small object |
+| **8C** `Orphan` at the manifestwork, explicit reap at a defined later point | No accumulation, no lifetime accidentally coupled to MWRS GC | Needs a real reap mechanism: `FinalizeUpgrade`/`FinalizeRollback` manifestworks can only apply, so the reap needs its own ManifestWork (re-apply with the default delete option, then delete the work; `ManagedClusterAction` is ruled out as ACM-internal); new moving part for a small object |
 
 **Recommendation: 8A, with 8C as an optional follow-up.** Rule out 8B. `Orphan` is not a
 convenience here; it is what makes Prep→Upgrade and cross-IBGU resume work at all. The
@@ -1918,9 +1946,9 @@ CNF-28677. Each answer is tied to the decision it settled.
 **Also settled, in CNF-28772 and CNF-28926:** PR#7818, the seed format bump
 (`SeedFormatVersion` 5), the BackupContent API and the seed format publication ship in the
 same LCA release and form one backport unit, never split; LCA
-publishes the expected seed format version as a ClusterClaim and a CSV field; BackupContent
+publishes the expected seed format version as a ClusterClaim and an IBU status field; BackupContent
 support is derived on the hub from that value; LCA exports the seed format constant, the
-claim name, the CSV field key and the first seed format that supports `backupContent`
+claim name, the IBU status field and the first seed format that supports `backupContent`
 (D3, D4, D11). LCA's local backup layout is versioned separately from the seed format, by
 a semver `backup-layout.json` (1.0.0) whose reading side stays backward compatible; no hub
 impact.
