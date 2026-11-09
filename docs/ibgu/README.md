@@ -265,9 +265,15 @@ IBGU applies these labels according to its current status. After a successful `A
 curated backup definition for an upgrade path. One object is one backup definition, and it
 outlives any single IBGU so definitions can be reused across upgrades. Its `spec` is LCA's
 exported `BackupContentSpec` (`lca.openshift.io/v1`) type directly, with no wrapper field, so
-a hub entry and its spoke copy differ only in `apiVersion` and namespace. Copying the spec to
-the spoke `BackupContent` during IBGU `Prep` is planned but not yet implemented
-(CNF-29241 / CNF-29243).
+a hub entry and its spoke copy differ only in `apiVersion` and namespace. During IBGU `Prep`,
+TALM resolves each `ibuSpec.backupContent` reference to the hub `BackupContent` of that name in
+the IBGU's namespace and copies it into the Prep `ManifestWork` as a spoke `BackupContent`
+(`lca.openshift.io/v1`) in the `openshift-lifecycle-agent` namespace, with the hub spec verbatim
+and all hub metadata (resourceVersion, managedFields, creationTimestamp, uid, ownerReferences,
+generation, labels) stripped. The Prep `ManifestWork` uses the `Orphan` delete option, so the
+copies survive on the spoke after the Prep `ManifestWork` is deleted, which is when LCA re-reads
+them at pre-pivot. TALM does not create the `openshift-lifecycle-agent` namespace; a spoke whose
+LCA is installed elsewhere fails loudly at apply time.
 
 `spec` is immutable (enforced by a CEL `self == oldSelf` validation): updating an existing
 `BackupContent` is rejected by admission, so a content change is a new entry and a new IBGU.

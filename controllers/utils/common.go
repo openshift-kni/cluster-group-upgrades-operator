@@ -8,6 +8,7 @@ import (
 	"unicode/utf8"
 
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	lcabcv1 "github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbac "k8s.io/api/rbac/v1"
@@ -117,6 +118,7 @@ func ObjectToJSON(obj runtime.Object) (string, error) {
 	utilruntime.Must(corev1.AddToScheme(scheme))
 	utilruntime.Must(rbac.AddToScheme(scheme))
 	utilruntime.Must(lcav1.AddToScheme(scheme))
+	utilruntime.Must(lcabcv1.AddToScheme(scheme))
 	outUnstructured := &unstructured.Unstructured{}
 	utilruntime.Must(scheme.Convert(obj, outUnstructured, nil))
 	json, err := outUnstructured.MarshalJSON()

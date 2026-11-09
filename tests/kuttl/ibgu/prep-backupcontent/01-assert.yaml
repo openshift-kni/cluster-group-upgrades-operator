@@ -1,0 +1,27 @@
+# The Upgrade-only ManifestWork carries only the ibu-role ClusterRole and the IBU:
+# the completion index (manifestIndex: 1) puts the IBU at position 1, so no manifest
+# precedes it other than the ClusterRole — no BackupContent is shipped. (An Upgrade
+# step adds nothing to extraManifests even when the IBGU still references a
+# backupContent, since only Prep copies the curated backup definitions.)
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    openshift-cluster-group-upgrades/expectedValues: '[{"manifestIndex":1,"name":"isUpgradeCompleted","value":"True"}]'
+  name: default.bc-upgrade-only-upgrade-kuttl
+  namespace: spoke4
+spec:
+  deleteOption:
+    propagationPolicy: Orphan
+  workload:
+    manifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        name: open-cluster-management:klusterlet-work:ibu-role
+    - apiVersion: lca.openshift.io/v1
+      kind: ImageBasedUpgrade
+      metadata:
+        name: upgrade
+      spec:
+        stage: Upgrade

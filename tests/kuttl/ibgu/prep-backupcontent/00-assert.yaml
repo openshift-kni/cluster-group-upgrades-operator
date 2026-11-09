@@ -1,0 +1,74 @@
+# The generated Prep ManifestWork must carry, in order:
+#   1. the ibu-role ClusterRole, now including the backupcontents rule,
+#   2. the copied spoke BackupContent (lca.openshift.io/v1, entry name, namespace
+#      openshift-lifecycle-agent, hub spec verbatim, no hub metadata/labels),
+#   3. the IBU last.
+# The completion index in the expectedValues annotation (manifestIndex: 2) still
+# points at the IBU, and the Orphan delete option keeps the copies on the spoke after
+# the Prep ManifestWork is deleted.
+apiVersion: work.open-cluster-management.io/v1
+kind: ManifestWork
+metadata:
+  annotations:
+    openshift-cluster-group-upgrades/expectedValues: '[{"manifestIndex":2,"name":"isPrepCompleted","value":"True"}]'
+  name: default.bc-copy-prep-kuttl
+  namespace: spoke1
+spec:
+  deleteOption:
+    propagationPolicy: Orphan
+  workload:
+    manifests:
+    - apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRole
+      metadata:
+        labels:
+          open-cluster-management.io/aggregate-to-work: "true"
+        name: open-cluster-management:klusterlet-work:ibu-role
+      rules:
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - imagebasedupgrades
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+      - apiGroups:
+        - lca.openshift.io
+        resources:
+        - backupcontents
+        verbs:
+        - get
+        - list
+        - watch
+        - create
+        - update
+        - patch
+        - delete
+    - apiVersion: lca.openshift.io/v1
+      kind: BackupContent
+      metadata:
+        name: ibu-platform
+        namespace: openshift-lifecycle-agent
+      spec:
+        backupWave: 2
+        restoreWave: 2
+        namespaces:
+        - open-cluster-management-agent
+        namespacedResources:
+        - kind: deployments.apps
+          names:
+          - klusterlet
+    - apiVersion: lca.openshift.io/v1
+      kind: ImageBasedUpgrade
+      metadata:
+        name: upgrade
+      spec:
+        seedImageRef:
+          image: quay.io/seed/image:4.15.0-rc.5
+          version: 4.15.0-rc.5
+        stage: Prep

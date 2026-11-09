@@ -44,6 +44,7 @@ import (
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
+	lcabcv1 "github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	mwv1 "open-cluster-management.io/api/work/v1"
@@ -604,6 +605,12 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			if err != nil {
 				return false, fmt.Errorf("error getting configmap manifests: %w", err)
 			}
+			var bcManifests []mwv1.Manifest
+			bcManifests, err = r.getBackupContentManifests(ctx, ibgu)
+			if err != nil {
+				return false, fmt.Errorf("error getting backupcontent manifests: %w", err)
+			}
+			manifests = append(manifests, bcManifests...)
 			secretManifest := r.getSecretManifest(ctx, ibgu)
 			if secretManifest != nil {
 				manifests = append(manifests, *secretManifest)
@@ -901,6 +908,50 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 			return nil, fmt.Errorf("failed to convert configmap %s/%s to []bytes: %w", cmRef.Namespace, cmRef.Name, err)
 		}
 		manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: cmBytes}})
+	}
+	return manifests, nil
+}
+
+// getBackupContentManifests builds the spoke BackupContent manifests for the IBGU's
+// backupContent references. For each ibuSpec.backupContent entry it resolves the hub
+// BackupContent (lcm.openshift.io) of that name in the IBGU's namespace and emits a
+// fresh spoke BackupContent (lca.openshift.io) carrying only Name + Namespace and the
+// hub entry's spec verbatim. Building a fresh object (rather than mutating the fetched
+// one) inherently strips resourceVersion, managedFields, creationTimestamp, uid,
+// ownerReferences, generation and any hub labels. The name is the entry name verbatim
+// and the namespace is LCA's default install namespace (lcav1.DefaultNamespace); TALM
+// does not create that namespace, so a spoke whose LCA is installed elsewhere fails
+// loudly at apply time.
+//
+// As with getConfigMapManifests, a Get/convert failure is returned rather than skipped:
+// the pre-flight gate in ensureManifests has already validated every backupContent
+// reference before this Prep CGU is created, so a failure here is a genuine fault.
+func (r *IBGUReconciler) getBackupContentManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
+	manifests := []mwv1.Manifest{}
+	for _, bcRef := range ibgu.Spec.IBUSpec.BackupContent {
+		hubBC := &ibguv1alpha1.BackupContent{}
+		if err := r.Get(ctx, types.NamespacedName{
+			Name:      bcRef.Name,
+			Namespace: ibgu.GetNamespace(),
+		}, hubBC); err != nil {
+			return nil, fmt.Errorf("failed to get BackupContent %q: %w", bcRef.Name, err)
+		}
+		spokeBC := &lcabcv1.BackupContent{
+			TypeMeta: metav1.TypeMeta{
+				APIVersion: lcabcv1.GroupVersion.String(),
+				Kind:       "BackupContent",
+			},
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      bcRef.Name,
+				Namespace: lcav1.DefaultNamespace,
+			},
+			Spec: hubBC.Spec,
+		}
+		bcBytes, err := utils.ObjectToByteArray(spokeBC)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert BackupContent %q to []bytes: %w", bcRef.Name, err)
+		}
+		manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: bcBytes}})
 	}
 	return manifests, nil
 }

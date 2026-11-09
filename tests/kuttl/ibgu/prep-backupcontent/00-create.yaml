@@ -1,0 +1,48 @@
+# A hub BackupContent plus a Prep IBGU that references it. The controller resolves
+# the reference and copies the spec into the generated Prep ManifestWork as a spoke
+# BackupContent (lca.openshift.io/v1) in openshift-lifecycle-agent. There is no real
+# spoke/LCA in kuttl, so the assertion below inspects the generated ManifestWork CR
+# only, not any live spoke-side effect.
+apiVersion: lcm.openshift.io/v1alpha1
+kind: BackupContent
+metadata:
+  name: ibu-platform
+  namespace: default
+spec:
+  backupWave: 2
+  restoreWave: 2
+  namespaces:
+    - open-cluster-management-agent
+  namespacedResources:
+    - kind: deployments.apps
+      names:
+        - klusterlet
+---
+apiVersion: lcm.openshift.io/v1alpha1
+kind: ImageBasedGroupUpgrade
+metadata:
+  name: bc-copy
+  namespace: default
+  annotations:
+    cluster-group-upgrades-operator/name-suffix: kuttl
+    auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
+    auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
+    auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+spec:
+  clusterLabelSelectors:
+    - matchExpressions:
+        - key: "name"
+          operator: In
+          values:
+            - "spoke1"
+  ibuSpec:
+    seedImageRef:
+      image: quay.io/seed/image:4.15.0-rc.5
+      version: 4.15.0-rc.5
+    backupContent:
+      - name: ibu-platform
+  plan:
+    - actions: ["Prep"]
+      rolloutStrategy:
+        maxConcurrency: 1
+        timeout: 2400

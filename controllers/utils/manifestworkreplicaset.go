@@ -138,9 +138,13 @@ func GeneratePrepManifestWorkReplicaset(name, namespace string, ibu *lcav1.Image
 	return generateManifestWorkReplicaset(name, namespace, expectedValueAnn, jsonPaths, ibu, manifests)
 }
 
-// GeneratePermissionsManifestWorkReplicaset returns a ManifestWorkReplicaset for permissions required for work agent to access IBU
-func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
-	clusterRole := &rbac.ClusterRole{
+// ibuRoleClusterRole returns the open-cluster-management:klusterlet-work:ibu-role
+// ClusterRole granting the spoke work-agent the permissions it needs to apply the
+// objects TALM copies into a Prep ManifestWork: the ImageBasedUpgrade itself and
+// the per-reference BackupContent copies. It is defined once and shared by every
+// generator so the two permission sets cannot drift.
+func ibuRoleClusterRole() *rbac.ClusterRole {
+	return &rbac.ClusterRole{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "open-cluster-management:klusterlet-work:ibu-role",
 			Labels: map[string]string{
@@ -153,8 +157,18 @@ func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alp
 				Resources: []string{"imagebasedupgrades"},
 				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
 			},
+			{
+				APIGroups: []string{"lca.openshift.io"},
+				Resources: []string{"backupcontents"},
+				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
+			},
 		},
 	}
+}
+
+// GeneratePermissionsManifestWorkReplicaset returns a ManifestWorkReplicaset for permissions required for work agent to access IBU
+func GeneratePermissionsManifestWorkReplicaset(name, namespace string) (*mwv1alpha1.ManifestWorkReplicaSet, error) {
+	clusterRole := ibuRoleClusterRole()
 	crBytes, err := ObjectToByteArray(clusterRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
@@ -189,21 +203,7 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 	if err != nil {
 		return nil, err
 	}
-	clusterRole := &rbac.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "open-cluster-management:klusterlet-work:ibu-role",
-			Labels: map[string]string{
-				"open-cluster-management.io/aggregate-to-work": "true",
-			},
-		},
-		Rules: []rbac.PolicyRule{
-			{
-				APIGroups: []string{"lca.openshift.io"},
-				Resources: []string{"imagebasedupgrades"},
-				Verbs:     []string{"get", "list", "watch", "create", "update", "patch", "delete"},
-			},
-		},
-	}
+	clusterRole := ibuRoleClusterRole()
 	crBytes, err := ObjectToByteArray(clusterRole)
 	if err != nil {
 		return nil, fmt.Errorf("failed to convert ClusterRole to []bytes: %w", err)
@@ -224,10 +224,15 @@ func generateManifestWorkReplicaset(name, namespace, expectedValueAnn string,
 		},
 	}
 
-	// nolint: gocritic
-	manifests := append(extraManifests,
-		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: crBytes}},
-		mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: ibuRaw}})
+	// The ClusterRole must precede the extra manifests so the spoke work-agent has
+	// the backupcontents/imagebasedupgrades permissions before it applies the copied
+	// content, and the IBU stays last. GeneratePrepManifestWorkReplicaset annotates
+	// the completion index as 1+len(extraManifests) (the IBU's 0-based position),
+	// which this ordering preserves.
+	manifests := make([]mwv1.Manifest, 0, len(extraManifests)+2)
+	manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: crBytes}})
+	manifests = append(manifests, extraManifests...)
+	manifests = append(manifests, mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: ibuRaw}})
 
 	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{
 		ObjectMeta: metav1.ObjectMeta{
