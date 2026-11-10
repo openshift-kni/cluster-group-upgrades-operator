@@ -2228,7 +2228,10 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		assert.NoError(t, fakeClient.Create(context.TODO(),
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		// A compatible seed reader is injected so the seed-format gate passes and
+		// this test continues to exercise the reference gate.
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.True(t, blocked)
@@ -2256,7 +2259,10 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		assert.NoError(t, fakeClient.Create(context.TODO(),
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		// A compatible seed reader is injected so the seed-format gate passes and
+		// this test continues to exercise the reference gate.
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.False(t, blocked)
@@ -2308,7 +2314,10 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 			managedClusterWithLabels("cluster1", map[string]string{
 				"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
 
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		// backupContent is set on this Upgrade-only plan, so inject a compatible seed
+		// reader to isolate the reference-gate behaviour under test.
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.False(t, blocked)

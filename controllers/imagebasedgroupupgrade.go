@@ -57,6 +57,11 @@ type IBGUReconciler struct {
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	// SeedImageReader reads the seed format version label from a seed image for the
+	// seed-format compatibility pre-flight. It is an interface so tests can inject a
+	// fake and avoid real registry egress; when nil the default registry-backed
+	// reader is used.
+	SeedImageReader utils.SeedImageReader
 }
 
 const LcaAnnotationSuffix = "lca.openshift.io"
@@ -787,29 +792,45 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		return false, fmt.Errorf("error listing cgus for ibgu: %w", err)
 	}
 
-	// Pre-flight reference-resolution gate: before the first CGU is created, for a
-	// plan that contains a Prep item, every backupContent and oadpContent reference
-	// must resolve on the hub; otherwise block the IBGU and create no CGU. The gate
-	// only runs when no owned CGU exists yet, so an IBGU already in progress is
-	// unaffected, and an Upgrade-only follow-up plan (no Prep item) is exempt
-	// because it copies nothing — LCA fails such a plan terminally at pre-pivot if a
-	// spoke copy is missing. In every plan the CRD admits, a Prep item is the first
-	// item (see the plan XValidation rule), so "before the first CGU" validates the
-	// Prep references before any CGU that copies them is created.
-	if len(cguList.Items) == 0 && planHasPrep(ibgu) {
-		missing, err := r.resolvePrepReferences(ctx, ibgu)
-		if err != nil {
-			return false, fmt.Errorf("error resolving Prep references: %w", err)
-		}
-		if len(missing) > 0 {
-			msg := fmt.Sprintf("Blocked: unresolvable backup references: %s", strings.Join(missing, ", "))
-			r.Log.Info("IBGU blocked on unresolvable references, no CGU created", "missing", missing)
-			utils.SetStatusCondition(&ibgu.Status.Conditions,
-				utils.ConditionTypes.Progressing,
-				utils.ConditionReasons.UnresolvableDenpendency,
-				metav1.ConditionFalse,
-				msg)
+	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
+	// in progress (an owned CGU exists) is unaffected. They block the IBGU and
+	// create no CGU on failure; Reconcile then requeues to re-evaluate them.
+	if len(cguList.Items) == 0 {
+		// Seed-format compatibility pre-flight (CNF-29242, design D4 check 1): before
+		// the first CGU is created, reject an IBGU that pairs spec.ibuSpec.backupContent
+		// with a seed image older than the first format that supports backupContent. It
+		// runs before the reference gate so an incompatible seed is rejected regardless
+		// of whether its references resolve, and — like the reference gate — only when no
+		// owned CGU exists yet, so an IBGU already in progress is unaffected.
+		if blocked, err := r.ensureSeedFormatCompatible(ctx, ibgu); err != nil {
+			return false, fmt.Errorf("error checking seed format compatibility: %w", err)
+		} else if blocked {
 			return true, nil
+		}
+
+		// Pre-flight reference-resolution gate: for a plan that contains a Prep item,
+		// every backupContent and oadpContent reference must resolve on the hub;
+		// otherwise block the IBGU and create no CGU. An Upgrade-only follow-up plan
+		// (no Prep item) is exempt because it copies nothing — LCA fails such a plan
+		// terminally at pre-pivot if a spoke copy is missing. In every plan the CRD
+		// admits, a Prep item is the first item (see the plan XValidation rule), so
+		// "before the first CGU" validates the Prep references before any CGU that
+		// copies them is created.
+		if planHasPrep(ibgu) {
+			missing, err := r.resolvePrepReferences(ctx, ibgu)
+			if err != nil {
+				return false, fmt.Errorf("error resolving Prep references: %w", err)
+			}
+			if len(missing) > 0 {
+				msg := fmt.Sprintf("Blocked: unresolvable backup references: %s", strings.Join(missing, ", "))
+				r.Log.Info("IBGU blocked on unresolvable references, no CGU created", "missing", missing)
+				utils.SetStatusCondition(&ibgu.Status.Conditions,
+					utils.ConditionTypes.Progressing,
+					utils.ConditionReasons.UnresolvableDenpendency,
+					metav1.ConditionFalse,
+					msg)
+				return true, nil
+			}
 		}
 	}
 
