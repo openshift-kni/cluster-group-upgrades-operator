@@ -23,11 +23,22 @@ import (
 	"strconv"
 	"strings"
 
+	"time"
+
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 )
+
+// seedImageReadTimeout bounds the registry read performed by the default
+// SeedImageReader. remote.DefaultTransport limits the dial and TLS handshake
+// but not ResponseHeaderTimeout, and controller-runtime sets no deadline on the
+// Reconcile context, so without this bound a registry that accepts the
+// connection and then stalls would hold the reconcile worker indefinitely. A
+// timeout instead surfaces as the expected SeedImageUnreadable block and the
+// IBGU requeues.
+const seedImageReadTimeout = 30 * time.Second
 
 // SeedImageReader reads the seed format version an image publishes through its
 // OCI config label (SeedFormatOCILabel). It is an interface so the IBGU
@@ -61,7 +72,12 @@ func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef
 	if err != nil {
 		return 0, err
 	}
-	img, err := remote.Image(ref, remote.WithContext(ctx), remote.WithAuthFromKeychain(keychain))
+	// Bound the registry read so a stalled registry cannot hold the reconcile
+	// worker. readCtx must stay active until img.ConfigFile() returns, because
+	// the config blob fetch also uses this context.
+	readCtx, cancel := context.WithTimeout(ctx, seedImageReadTimeout)
+	defer cancel()
+	img, err := remote.Image(ref, remote.WithContext(readCtx), remote.WithAuthFromKeychain(keychain))
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch seed image %q: %w", imageRef, err)
 	}
