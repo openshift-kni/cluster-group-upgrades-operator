@@ -3,7 +3,7 @@
 # To re-generate a bundle for another specific version without changing the standard setup, you can:
 # - use the VERSION as arg of the bundle target (e.g make bundle VERSION=0.0.2)
 # - use environment variables to overwrite this value (e.g export VERSION=0.0.2)
-VERSION ?= 5.0.0
+VERSION ?= 4.23.0
 
 # BASHATE_VERSION defines the bashate version to download from GitHub releases.
 BASHATE_VERSION ?= 2.1.1
@@ -84,13 +84,13 @@ CRD_OPTIONS ?= "crd"
 
 # Konflux catalog configuration
 PACKAGE_NAME_KONFLUX = topology-aware-lifecycle-manager
-CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/5.0/catalog-template.in.yaml
-CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/5.0/catalog-template.out.yaml
+CATALOG_TEMPLATE_KONFLUX_INPUT = .konflux/catalog/4.23/catalog-template.in.yaml
+CATALOG_TEMPLATE_KONFLUX_OUTPUT = .konflux/catalog/4.23/catalog-template.out.yaml
 CATALOG_OUTPUT_FORMAT = json
-CATALOG_KONFLUX = .konflux/catalog/5.0/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
+CATALOG_KONFLUX = .konflux/catalog/4.23/$(PACKAGE_NAME_KONFLUX)/catalog.$(CATALOG_OUTPUT_FORMAT)
 
 # Konflux bundle image configuration
-BUNDLE_NAME_SUFFIX = bundle-5-0
+BUNDLE_NAME_SUFFIX = bundle-4-23
 PRODUCTION_BUNDLE_NAME = operator-bundle
 
 # By default we build the same architecture we are running
@@ -629,7 +629,7 @@ konflux-generate-catalog: sync-git-submodules yq opm ## generate a quay.io catal
 		CATALOG_KONFLUX=$(PROJECT_DIR)/$(CATALOG_KONFLUX) \
 		CATALOG_OUTPUT_FORMAT=$(CATALOG_OUTPUT_FORMAT) \
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
-		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/5.0/bundle.builds.in.yaml \
+		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/4.23/bundle.builds.in.yaml \
 		OPM=$(OPM) \
 		YQ=$(YQ)
 	$(MAKE) konflux-fix-catalog-name
@@ -645,7 +645,7 @@ konflux-generate-catalog-production: sync-git-submodules yq opm ## generate a re
 		PACKAGE_NAME_KONFLUX=$(PACKAGE_NAME_KONFLUX) \
 		BUNDLE_NAME_SUFFIX=$(BUNDLE_NAME_SUFFIX) \
 		PRODUCTION_BUNDLE_NAME=$(PRODUCTION_BUNDLE_NAME) \
-		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/5.0/bundle.builds.in.yaml \
+		BUNDLE_BUILDS_FILE=$(PROJECT_DIR)/.konflux/catalog/4.23/bundle.builds.in.yaml \
 		OPM=$(OPM) \
 		YQ=$(YQ)
 	$(MAKE) konflux-fix-catalog-name
