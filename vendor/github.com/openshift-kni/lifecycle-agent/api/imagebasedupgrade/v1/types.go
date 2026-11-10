@@ -225,6 +225,14 @@ type ImageBasedUpgradeStatus struct {
 	// History stores timing info of different IBU stages and their important phases
 	// +optional
 	History []*History `json:"history,omitempty"`
+	// SeedFormatVersion is the seed image format version this LCA expects
+	// (common.SeedFormatVersion). LCA rewrites it on every start, including after
+	// a post-pivot restore of a saved IBU, so a hub consumer can read a spoke's
+	// capability directly. The value is always >= 1, so an absent/zero field means
+	// the LCA predates this contract (old seed format, no backupContent support).
+	// +operator-sdk:csv:customresourcedefinitions:type=status,displayName="Seed Format Version"
+	// +optional
+	SeedFormatVersion int `json:"seedFormatVersion,omitempty"`
 }
 
 type History struct {
