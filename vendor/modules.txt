@@ -217,7 +217,7 @@ github.com/onsi/gomega/types
 ## explicit; go 1.26.3
 github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
-# github.com/openshift/api v0.0.0-20261104213817-ae934b7cbfb4
+# github.com/openshift/api v0.0.0-20261109202217-f6e8a0876ff9
 ## explicit; go 1.26.0
 github.com/openshift/api/config/v1
 # github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b

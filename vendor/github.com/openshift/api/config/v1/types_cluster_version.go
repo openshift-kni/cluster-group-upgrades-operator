@@ -26,6 +26,7 @@ import (
 // +kubebuilder:printcolumn:name=Since,JSONPath=.status.conditions[?(@.type=="Progressing")].lastTransitionTime,type=date
 // +kubebuilder:printcolumn:name=Status,JSONPath=.status.conditions[?(@.type=="Progressing")].message,type=string
 // +kubebuilder:metadata:annotations=include.release.openshift.io/self-managed-high-availability=true
+// +kubebuilder:metadata:annotations=release.openshift.io/bootstrap-required=true
 type ClusterVersion struct {
 	metav1.TypeMeta `json:",inline"`
 
@@ -838,7 +839,6 @@ type Release struct {
 	// architecture.
 	// Valid values are 'Multi' and empty.
 	//
-	// +openshift:enable:FeatureGate=ImageStreamImportMode
 	// +optional
 	Architecture ClusterVersionArchitecture `json:"architecture,omitempty"`
 
