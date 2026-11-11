@@ -330,4 +330,45 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		assert.NotNil(t, cond)
 		assert.NotEqual(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
 	})
+
+	// A backupContent IBGU that already reported completion without ever creating a
+	// CGU (plan item 0 resolved to zero eligible clusters) must not be re-gated on a
+	// later reconcile: an unreadable seed must not overwrite Completed with a block.
+	t.Run("completed IBGU with no CGU is not re-gated", func(t *testing.T) {
+		ibgu := backupContentIBGU()
+		utils.SetStatusCondition(&ibgu.Status.Conditions,
+			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
+			metav1.ConditionFalse, "All plan steps are completed")
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+		// A cluster that now matches the selector appears after completion; it must
+		// not pull plan item 0 back into a rollout.
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("late", map[string]string{"common": "true"})))
+
+		reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
+		reconciler := IBGUReconciler{
+			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: reader,
+		}
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+		// The seed gate is skipped: no registry read.
+		assert.False(t, reader.called)
+
+		// Completion is preserved; the unreadable seed did not overwrite it.
+		cond := progressingCondition(ibgu)
+		assert.NotNil(t, cond)
+		assert.Equal(t, string(utils.ConditionReasons.Completed), cond.Reason)
+		assert.NotEqual(t, string(utils.ConditionReasons.SeedImageUnreadable), cond.Reason)
+
+		// No CGU is created for the completed, empty rollout.
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		err = reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
+		assert.True(t, apierrors.IsNotFound(err))
+	})
 }

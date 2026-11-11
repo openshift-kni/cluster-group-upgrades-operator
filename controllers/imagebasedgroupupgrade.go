@@ -795,7 +795,16 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) is unaffected. They block the IBGU and
 	// create no CGU on failure; Reconcile then requeues to re-evaluate them.
-	if len(cguList.Items) == 0 {
+	//
+	// They are also skipped once the IBGU already reports completion: plan item 0 can
+	// resolve to zero eligible clusters and finish the rollout empty without ever
+	// creating a CGU, so len(cguList.Items) == 0 stays true. Re-running the gates then
+	// (on an operator restart or a spec update) could let a seed-read failure overwrite
+	// Completed with a block reason, defeating the completion guard in
+	// resolveClustersForPlanItem and restarting a finished, empty rollout. This is a
+	// stopgap for the current completion semantics; CNF-30061 reworks empty-set
+	// completion and terminal blocks and will replace this guard.
+	if len(cguList.Items) == 0 && !ibguReportsCompletion(ibgu) {
 		// Seed-format compatibility pre-flight (CNF-29242, design D4 check 1): before
 		// the first CGU is created, reject an IBGU that pairs spec.ibuSpec.backupContent
 		// with a seed image older than the first format that supports backupContent. It
