@@ -82,6 +82,15 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Scope.** D4 does not depend on it (the base set is a superset of every item's set),
   so it ships separately.
 
+- **Empty set is terminal (decided 2026-11-11; CNF-30061).** If plan item 0 resolves to no
+  clusters — the selector matches no ManagedCluster, or none is eligible for plan item 0's
+  action — the IBGU blocks terminally before any CGU, with its own reason, instead of
+  completing. On `main` an empty IBGU completed only by inheritance: the CGU engine
+  treats an empty remediation plan as "all compliant" and succeeds
+  (`clustergroupupgrade_controller.go:519-534`), which is meaningful for policies and
+  meaningless for an IBGU. Under 2B the empty completion also lost its only durable
+  record, the succeeded CGU. See D4, "Blocks never resume on their own".
+
 ### D3 — Spoke capability detection: **one value, the expected seed format version — from the LCA ClusterClaim, else from the IBU's status through a read-only ManifestWork; the seed image's format from its OCI label**
 
 - **Outcome.** The pre-flight compares the seed format version each spoke's LCA expects
@@ -206,6 +215,25 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Rejected.** 4B (fail open — turns a detection gap into silent no-backup, or into a
   wasted maintenance window); 4C (per-cluster skip — breaks one-fleet-per-IBGU and
   batching).
+- **Blocks never resume on their own (decided 2026-11-11; CNF-30061).** The hazard is an
+  unattended, delayed start: an operator creates an IBGU to run now, usually inside a
+  maintenance window, and a block that clears on its own hours later starts a
+  service-impacting rollout at a time nobody chose. Freezing the cluster set does not help
+  — a frozen set that starts at 3 a.m. is just as impactful — so the rule is about which
+  blocks may clear:
+  - **Blocks that need the user to change something are terminal:** an empty cluster set
+    (see D2), an unresolvable reference (D9), `backupContent` with a pre-bump seed, and a
+    seed-format mismatch. No requeue; retrying means deleting and recreating the IBGU, so
+    the start is an explicit act at a time the user chose.
+  - **Transient infrastructure failures retry for a fixed grace period only** — a
+    registry briefly unreachable, a pull-secret read error. After it, the IBGU becomes
+    terminal with the last reason. The duration is a fixed default of 5 minutes,
+    overridable per IBGU by annotation (proposed `lcm.openshift.io/ibgu-preflight-retry-seconds`).
+  - **The terminal marker is not a Progressing reason.** The gates and the plan loop all
+    write Progressing, which is how a completion record got overwritten in the first
+    pre-flight PR. A dedicated condition or status field records it, `ensureManifests`
+    checks it before any gate and returns without requeueing, and nothing later — a TALM
+    restart, an appended plan item — resolves the selector again.
 
 ### D5 — Delivery: **5A, TALM copies BackupContent content from the hub**
 
