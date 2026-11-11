@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -40,6 +41,21 @@ import (
 // timeout instead surfaces as the expected SeedImageUnreadable block and the
 // IBGU requeues.
 const seedImageReadTimeout = 30 * time.Second
+
+// maxSeedConfigSize caps the declared image-config blob size the default reader
+// will fetch. An image config, even with the seed labels, is a few KiB; 4 MiB is
+// ample headroom. go-containerregistry verifies the config digest only after the
+// whole blob is downloaded, so a corrupt or hostile manifest advertising a huge
+// config would otherwise be fetched in full before the digest check could reject
+// it. Checking the manifest-declared size up front turns that into the expected
+// SeedImageUnreadable block.
+const maxSeedConfigSize = 4 << 20 // 4 MiB
+
+// dockerHubAuthKeyAlias is the bare Docker Hub host that appears in
+// .dockerconfigjson auth keys. go-containerregistry canonicalises it to
+// name.DefaultRegistry ("index.docker.io") on the reference side, so the keychain
+// must normalise the same alias to match.
+const dockerHubAuthKeyAlias = "docker.io"
 
 // SeedImageReader reads the seed format version an image publishes through its
 // OCI config label (lcav1.SeedFormatOCILabel). It is an interface so the IBGU
@@ -78,15 +94,64 @@ func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef
 	// the config blob fetch also uses this context.
 	readCtx, cancel := context.WithTimeout(ctx, seedImageReadTimeout)
 	defer cancel()
-	img, err := remote.Image(ref, remote.WithContext(readCtx), remote.WithAuthFromKeychain(keychain))
+	// Refuse any non-HTTPS request so the pull-secret credentials are never sent
+	// in cleartext; a registry that would need plain HTTP surfaces as the expected
+	// SeedImageUnreadable block.
+	transport := httpsOnlyRoundTripper{base: remote.DefaultTransport}
+	img, err := remote.Image(ref,
+		remote.WithContext(readCtx),
+		remote.WithAuthFromKeychain(keychain),
+		remote.WithTransport(transport),
+	)
 	if err != nil {
 		return 0, fmt.Errorf("failed to fetch seed image %q: %w", imageRef, err)
+	}
+	// Reject an oversized (or negative) declared config size before fetching the
+	// blob: ConfigFile() downloads the whole config before go-containerregistry
+	// verifies its digest, so the manifest-declared size is the only cap available
+	// up front.
+	manifest, err := img.Manifest()
+	if err != nil {
+		return 0, fmt.Errorf("failed to read seed image %q manifest: %w", imageRef, err)
+	}
+	if err := checkSeedConfigSize(imageRef, manifest.Config.Size); err != nil {
+		return 0, err
 	}
 	cfg, err := img.ConfigFile()
 	if err != nil {
 		return 0, fmt.Errorf("failed to read seed image %q config: %w", imageRef, err)
 	}
 	return seedFormatFromConfig(imageRef, cfg)
+}
+
+// checkSeedConfigSize rejects a manifest-declared image-config size that is
+// negative or above maxSeedConfigSize. It is split out so both rejections can be
+// unit tested without a live registry.
+func checkSeedConfigSize(imageRef string, size int64) error {
+	if size < 0 {
+		return fmt.Errorf("seed image %q declares a negative config size (%d)", imageRef, size)
+	}
+	if size > maxSeedConfigSize {
+		return fmt.Errorf("seed image %q declares a config size (%d bytes) above the %d-byte limit",
+			imageRef, size, maxSeedConfigSize)
+	}
+	return nil
+}
+
+// httpsOnlyRoundTripper wraps a base transport and refuses any request whose URL
+// scheme is not HTTPS, so pull-secret credentials cannot be sent over plain HTTP.
+// Supporting genuinely insecure registries is out of scope for the seed-format
+// pre-flight (CNF-29242); labs can use the opt-out annotation meanwhile.
+type httpsOnlyRoundTripper struct {
+	base http.RoundTripper
+}
+
+func (t httpsOnlyRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.URL.Scheme != "https" {
+		return nil, fmt.Errorf("refusing non-HTTPS request to %q: the seed image registry must be served over HTTPS",
+			req.URL.Redacted())
+	}
+	return t.base.RoundTrip(req)
 }
 
 // seedFormatFromConfig extracts and parses the lcav1.SeedFormatOCILabel value
@@ -157,6 +222,13 @@ func registryHostFromAuthKey(key string) string {
 	}
 	if i := strings.Index(key, "/"); i >= 0 {
 		key = key[:i]
+	}
+	// name.NewRegistry canonicalises the Docker Hub alias "docker.io" to
+	// "index.docker.io", so a Resource's RegistryStr() reports the canonical host.
+	// Normalise the bare alias here too, otherwise a pull secret keyed on the
+	// common "docker.io" form would never match a Docker Hub seed reference.
+	if key == dockerHubAuthKeyAlias {
+		return name.DefaultRegistry
 	}
 	return key
 }

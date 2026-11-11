@@ -50,6 +50,17 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return false, nil
 	}
 
+	// The seed-format rule only applies to a plan that stages or applies the seed.
+	// A recovery-only plan (Abort, AbortOnFailure, Rollback, FinalizeUpgrade,
+	// FinalizeRollback) must never be blocked on the registry being readable: a
+	// registry outage can be the very reason recovery is running, and the opt-out
+	// annotation is not an acceptable answer for recovery. Upgrade stays in scope
+	// because the backupContent backup is taken at Upgrade pre-pivot, so an
+	// Upgrade-only follow-up can still stop a pruned-field upgrade before the pivot.
+	if !planHasPrepOrUpgrade(ibgu) {
+		return false, nil
+	}
+
 	// Opt-out escape hatch for lab use: skip the check and surface the skip as an
 	// event. The skip is deliberately not written as a Progressing condition: the
 	// plan→CGU loop owns the Progressing condition and would immediately overwrite
@@ -108,6 +119,21 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 	}
 
 	return false, nil
+}
+
+// planHasPrepOrUpgrade reports whether the IBGU plan contains a Prep or Upgrade
+// action — the only actions that stage (Prep) or apply (Upgrade) the seed and so
+// depend on the seed format. Recovery-only plans contain none of these and must
+// not be gated on a readable registry.
+func planHasPrepOrUpgrade(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
+	for _, item := range ibgu.Spec.Plan {
+		for _, action := range item.Actions {
+			if action == ibguv1alpha1.Prep || action == ibguv1alpha1.Upgrade {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // readSeedImageFormat resolves the IBGU's seed image reference and reads its

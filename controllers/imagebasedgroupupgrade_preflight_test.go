@@ -124,6 +124,25 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			expectReadCall: false,
 		},
 		{
+			name: "recovery-only plan is not gated on a readable registry",
+			mutate: func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
+				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Rollback}}}
+			},
+			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
+			expectBlocked:  false,
+			expectReadCall: false,
+		},
+		{
+			name: "upgrade-only plan is still checked",
+			mutate: func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
+				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Upgrade}}}
+			},
+			reader:         &fakeSeedImageReader{format: preBumpFormat},
+			expectBlocked:  true,
+			expectReason:   utils.ConditionReasons.BackupContentUnsupportedSeed,
+			expectReadCall: true,
+		},
+		{
 			name: "pull secret is read and passed to the reader",
 			mutate: func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
 				ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "pull"}
