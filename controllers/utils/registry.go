@@ -29,6 +29,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 )
 
 // seedImageReadTimeout bounds the registry read performed by the default
@@ -41,12 +42,12 @@ import (
 const seedImageReadTimeout = 30 * time.Second
 
 // SeedImageReader reads the seed format version an image publishes through its
-// OCI config label (SeedFormatOCILabel). It is an interface so the IBGU
+// OCI config label (lcav1.SeedFormatOCILabel). It is an interface so the IBGU
 // controller can inject a fake in tests and avoid real registry egress.
 type SeedImageReader interface {
 	// ReadSeedFormatVersion resolves imageRef against its registry using the
 	// supplied .dockerconfigjson bytes (nil/empty means anonymous access) and
-	// returns the integer value of the SeedFormatOCILabel on the image config.
+	// returns the integer value of the lcav1.SeedFormatOCILabel on the image config.
 	// It returns an error when the reference is invalid, the image cannot be
 	// fetched, the label is absent, or its value is not an integer.
 	ReadSeedFormatVersion(ctx context.Context, imageRef string, dockerConfigJSON []byte) (int, error)
@@ -88,20 +89,20 @@ func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef
 	return seedFormatFromConfig(imageRef, cfg)
 }
 
-// seedFormatFromConfig extracts and parses the SeedFormatOCILabel value from an
-// image config. It is split out so the label-parsing branches can be unit tested
-// without a live registry.
+// seedFormatFromConfig extracts and parses the lcav1.SeedFormatOCILabel value
+// from an image config. It is split out so the label-parsing branches can be
+// unit tested without a live registry.
 func seedFormatFromConfig(imageRef string, cfg *v1.ConfigFile) (int, error) {
 	if cfg == nil {
 		return 0, fmt.Errorf("seed image %q has no config", imageRef)
 	}
-	raw, ok := cfg.Config.Labels[SeedFormatOCILabel]
+	raw, ok := cfg.Config.Labels[lcav1.SeedFormatOCILabel]
 	if !ok {
-		return 0, fmt.Errorf("seed image %q has no %s label", imageRef, SeedFormatOCILabel)
+		return 0, fmt.Errorf("seed image %q has no %s label", imageRef, lcav1.SeedFormatOCILabel)
 	}
 	format, err := strconv.Atoi(strings.TrimSpace(raw))
 	if err != nil {
-		return 0, fmt.Errorf("seed image %q has non-integer %s label %q: %w", imageRef, SeedFormatOCILabel, raw, err)
+		return 0, fmt.Errorf("seed image %q has non-integer %s label %q: %w", imageRef, lcav1.SeedFormatOCILabel, raw, err)
 	}
 	return format, nil
 }

@@ -23,6 +23,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/authn"
 	"github.com/google/go-containerregistry/pkg/name"
 	v1 "github.com/google/go-containerregistry/pkg/v1"
+	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -97,12 +98,12 @@ func TestSeedFormatFromConfig(t *testing.T) {
 	}{
 		{
 			name: "valid integer label",
-			cfg:  configWithLabel(map[string]string{SeedFormatOCILabel: "5"}),
+			cfg:  configWithLabel(map[string]string{lcav1.SeedFormatOCILabel: "5"}),
 			want: 5,
 		},
 		{
 			name: "whitespace is trimmed",
-			cfg:  configWithLabel(map[string]string{SeedFormatOCILabel: " 4 "}),
+			cfg:  configWithLabel(map[string]string{lcav1.SeedFormatOCILabel: " 4 "}),
 			want: 4,
 		},
 		{
@@ -112,7 +113,7 @@ func TestSeedFormatFromConfig(t *testing.T) {
 		},
 		{
 			name:      "non-integer label is an error",
-			cfg:       configWithLabel(map[string]string{SeedFormatOCILabel: "four"}),
+			cfg:       configWithLabel(map[string]string{lcav1.SeedFormatOCILabel: "four"}),
 			wantError: true,
 		},
 		{

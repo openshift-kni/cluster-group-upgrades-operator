@@ -269,7 +269,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-kni/lifecycle-agent v0.0.0-20261110184725-a3d43959b63a
+# github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2
 ## explicit; go 1.26.3
 github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
@@ -467,7 +467,7 @@ golang.org/x/oauth2/internal
 ## explicit; go 1.26.0
 golang.org/x/sync/errgroup
 golang.org/x/sync/singleflight
-# golang.org/x/sys v0.49.0
+# golang.org/x/sys v0.50.0
 ## explicit; go 1.26.0
 golang.org/x/sys/plan9
 golang.org/x/sys/unix

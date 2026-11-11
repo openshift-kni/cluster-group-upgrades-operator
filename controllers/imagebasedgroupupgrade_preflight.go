@@ -77,7 +77,7 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 	}
 	if unreadableReason != "" {
 		msg := fmt.Sprintf("Blocked: cannot read the seed image %s label: %s",
-			utils.SeedFormatOCILabel, unreadableReason)
+			lcav1.SeedFormatOCILabel, unreadableReason)
 		r.Log.Info("IBGU blocked: seed image format label unreadable, no CGU created", "reason", unreadableReason)
 		utils.SetStatusCondition(&ibgu.Status.Conditions,
 			utils.ConditionTypes.Progressing,

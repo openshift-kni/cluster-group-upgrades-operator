@@ -25,7 +25,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/google/go-containerregistry v0.22.1
 	github.com/onsi/ginkgo/v2 v2.33.0
-	github.com/openshift-kni/lifecycle-agent v0.0.0-20261110184725-a3d43959b63a
+	github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2
 	github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
 	gopkg.in/yaml.v3 v3.0.1
@@ -108,7 +108,7 @@ require (
 	golang.org/x/net v0.60.0 // indirect
 	golang.org/x/oauth2 v0.37.0 // indirect
 	golang.org/x/sync v0.24.0 // indirect
-	golang.org/x/sys v0.49.0 // indirect
+	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/term v0.47.0 // indirect
 	golang.org/x/text v0.43.0 // indirect
 	golang.org/x/time v0.16.0 // indirect

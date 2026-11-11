@@ -37,6 +37,14 @@ const (
 	// incompatible seed regardless of what is published here.
 	SeedFormatVersion = 4
 
+	// SeedFormatOCILabel is the OCI image label key that carries the seed format
+	// version on a seed image. lca-cli stamps SeedFormatVersion onto every seed
+	// image it builds under this key, and Prep reads it back to enforce
+	// compatibility. It is exported so a hub consumer can read a seed image's
+	// format directly, for example to compare it against
+	// BackupContentFirstSeedFormatVersion without any spoke read (CNF-29242).
+	SeedFormatOCILabel = "com.openshift.lifecycle-agent.seed_format_version"
+
 	// SeedFormatClusterClaimName is the name of the ClusterClaim LCA creates on a
 	// managed cluster to publish SeedFormatVersion. OCM syncs the claim into
 	// ManagedCluster.status.clusterClaims on the hub, giving the hub a fleet-wide

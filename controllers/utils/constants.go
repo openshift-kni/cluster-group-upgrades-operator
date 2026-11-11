@@ -195,12 +195,4 @@ const (
 	// hub-side seed-format compatibility pre-flight check. It is a lab/escape-hatch
 	// opt-out; its use is surfaced on the IBGU (see ensureSeedFormatCompatible).
 	IBGUSkipSeedCompatibilityAnnotation = "lcm.openshift.io/ibgu-skip-seed-compatibility-check"
-
-	// SeedFormatOCILabel is the OCI image label LCA stamps on a seed image to carry
-	// its seed format version. LCA keeps this label key in its internal/common
-	// package, which is not importable, so it is mirrored here as a string literal.
-	// The integer value it carries is compared against the format constants LCA
-	// does export from api/imagebasedupgrade/v1 (SeedFormatVersion,
-	// BackupContentFirstSeedFormatVersion).
-	SeedFormatOCILabel = "com.openshift.lifecycle-agent.seed_format_version"
 )
