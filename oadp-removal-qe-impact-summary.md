@@ -35,7 +35,9 @@ that receives any of them. The unit is never split.
 | Revendor LCA; IBGU gains `ibuSpec.backupContent` through the embedded spec, and inherits the at-most-one rule. No new IBGU version or kind. | CNF-29239 |
 | New hub CRD `BackupContent` (`lcm.openshift.io/v1alpha1`, namespaced): one curated backup definition per object, embedding LCA's BackupContent spec type. Same kind name as LCA's spoke CRD, different API group. Spec is immutable. | CNF-29240 |
 | TALM copies the referenced hub BackupContent entries to the spoke as LCA BackupContent objects, in the Prep manifestwork, into `ibuv1.DefaultNamespace` (`openshift-lifecycle-agent`, LCA's default install namespace), same name. Spokes with LCA installed elsewhere are not supported and fail loudly. | CNF-29241 |
-| Pre-flight before the first CGU: seed format compatibility per spoke, plus a hub-only safety rule for `backupContent`. Fails closed. | CNF-29242 |
+| Pre-flight, image side, before the first CGU: read the seed image's format label and reject `backupContent` with a pre-bump seed (hub-only safety rule). Today runs only for IBGUs that set `backupContent`. | CNF-29242 (PR #14404) |
+| Pre-flight, spoke side: per-cluster seed format from the LCA claim, else the IBU status through a read-only ManifestWork; compared with the image's format for every IBGU. | CNF-30039 |
+| Pre-flight blocks never resume on their own: blocks needing a user change are terminal, an empty cluster set is terminal, transient failures retry for 5 minutes (annotation override). | CNF-30061 |
 | Unresolvable references (hub BackupContent or `oadpContent` ConfigMap) block the IBGU instead of being silently skipped. | CNF-29243 |
 | IBGU resolves the cluster list once (independent of OADP removal). | CNF-29244 |
 | Condition types from LCA's API; LCA stage failures surfaced in IBGU status promptly (report only: the CGU state machine is unchanged, so a failed cluster still waits out its batch's timeout share). | CNF-29245 |
@@ -89,7 +91,7 @@ The highlighted row is the one silent-data-loss case in the feature. It is close
 by TALM's safety rule, and for direct IBUs only by documentation ("use `backupContent` only
 with a new-format seed").
 
-### 2.2 IBGU pre-flight decision order (CNF-29242)
+### 2.2 IBGU pre-flight decision order (CNF-29242, CNF-30039, CNF-30061)
 
 Runs once, before the first CGU. Every outcome must surface as an IBGU condition naming the
 cluster and the reason.
@@ -106,8 +108,28 @@ cluster and the reason.
    4. Read-only ManifestWork returns no feedback → blocked, "unknown".
    5. Spoke's expected format ≠ image's → blocked, "seed format mismatch".
 3. Image label unreadable (registry unreachable, auth failure, label missing) → blocked.
-4. An opt-out annotation (name TBD) skips the check, for lab use; skipping must be visible
-   in status.
+   CNF-29242 reads the label only for IBGUs that set `backupContent`; from CNF-30039 it is
+   read for every IBGU, for the per-spoke comparison.
+4. Opt-out for lab use: `lcm.openshift.io/ibgu-skip-seed-compatibility-check` (PR #14404)
+   skips the seed-format check. It is recorded as a `SeedCompatibilityCheckSkipped` event,
+   not as a condition.
+5. Plan item 0 resolves to no clusters (no ManagedCluster matches the selector, or none is
+   eligible for plan item 0's action) → blocked, with a reason naming which (CNF-30061).
+   *Today, until CNF-30061 lands, such an IBGU completes with no CGU.*
+
+**How blocks behave (CNF-30061).** No block clears on its own, because an unattended,
+delayed start is service-impacting:
+- **Terminal:** empty cluster set, unresolvable reference, `backupContent` with a pre-bump
+  seed, seed-format mismatch. No requeue; the IBGU stays blocked even after the cause is
+  fixed, and retrying means deleting and recreating it.
+- **Transient, bounded retry:** registry unreachable, pull-secret read error. Retried for
+  5 minutes by default, then terminal with the last reason. The annotation
+  `lcm.openshift.io/ibgu-preflight-retry-seconds` (proposed name) overrides the duration.
+- **Durable:** a blocked IBGU stays blocked across a TALM restart and when a plan item is
+  appended.
+- *Until CNF-30061 lands, the gates in CNF-29242 and CNF-29243 requeue indefinitely, so a
+  blocked IBGU can start on its own once the cause clears. Test both behaviours against
+  the build in use.*
 
 ### 2.3 Lifetime of copied BackupContent objects
 
@@ -149,15 +171,16 @@ cluster and the reason.
 
 | Area | What to cover | Story |
 |---|---|---|
-| IBGU admission | both inputs → rejected (inherited at-most-one CEL); `backupContent` only, `oadpContent` only, neither → accepted; `ibuSpec` still immutable | CNF-29239 |
+| IBGU admission | both inputs → rejected (inherited at-most-one CEL, verified in the regenerated CRD); duplicate `backupContent` names → rejected; `backupContent` only, `oadpContent` only, neither → accepted; `ibuSpec` still immutable | CNF-29239 |
 | Hub BackupContent CRD | create/delete; spec update rejected; namespaced; bundled in the CSV | CNF-29240 |
 | Copy to spoke | Spoke BackupContent created in `openshift-lifecycle-agent` (`ibuv1.DefaultNamespace`) with the entry's name and spec; pull secret still copied there; on a spoke without that namespace the Prep manifestwork reports the apply failure; metadata stripped (no `ownerReferences`, `uid`, hub labels); survives deletion of the Prep manifestwork; present at Upgrade pre-pivot | CNF-29241 |
 | Work-agent RBAC | first Prep after a TALM upgrade applies BackupContent objects without a lingering `Applied=False` (ClusterRole applied first; `backupcontents` rule for `lca.openshift.io` present) | CNF-29241 |
 | Reference resolution | Prep plan with a missing hub BackupContent → blocked with names, no CGU; same for a missing `oadpContent` ConfigMap (**behaviour change** from today's warn-and-skip); Upgrade-only plan not blocked by missing hub entries | CNF-29243 |
-| Pre-flight | each branch in §2.2, including: claim present; claim absent + IBU status field; neither (pre-bump); read-only ManifestWork with no feedback; cluster unavailable; image label unreadable; safety rule; opt-out annotation | CNF-29242 |
+| Pre-flight | each branch in §2.2, including: claim present; claim absent + IBU status field; neither (pre-bump); read-only ManifestWork with no feedback; cluster unavailable; image label unreadable; safety rule; opt-out annotation (skip recorded as an event) | CNF-29242, CNF-30039 |
+| Block behaviour | each terminal reason stays blocked after the cause is fixed, across a TALM restart and a plan append; recreating proceeds; a transient registry failure that clears within 5 minutes proceeds and one that outlasts it turns terminal; the retry annotation changes the window | CNF-30061 |
 | Status | per-cluster failure messages in IBGU status for LCA stage failures, without waiting for timeout | CNF-29245 |
 | Plans | Prep → Upgrade → FinalizeUpgrade; Prep+Upgrade in one item; Rollback → FinalizeRollback; Abort; AbortOnFailure; follow-up Upgrade-only IBGU; separate Abort IBGU | existing + CNF-29241 |
-| Cluster list (if 2B lands) | frozen set; ManagedCluster deleted mid-rollout is dropped and reported, not blocking | CNF-29244 |
+| Cluster list | frozen set; ManagedCluster deleted mid-rollout is dropped and reported, not blocking; a ManagedCluster labelled after the IBGU started is not picked up; plan item 0 with no eligible clusters (completes today, terminal block after CNF-30061) | CNF-29244, CNF-30061 |
 
 ### 3.3 Negative and failure injection
 
@@ -166,7 +189,13 @@ cluster and the reason.
   no-backup**; this test documents the accepted limitation and the doc guidance.
 - BackupContent deleted on the spoke between Prep and Upgrade → terminal Upgrade failure.
 - BackupContent deleted on the hub after Prep → no effect on the running IBGU.
-- Registry unreachable / wrong pull secret / seed image without the label → IBGU blocked.
+- Registry unreachable / wrong pull secret / seed image without the label → IBGU blocked;
+  a registry outage longer than the retry window leaves it terminally blocked (CNF-30061).
+- Selector that matches no ManagedCluster (typo) → terminal block, not a green IBGU
+  (CNF-30061).
+- Two IBGUs acting on the same cluster at once → unsupported. It is not yet rejected
+  (CNF-29901, a future improvement), so don't test it as a supported flow; the
+  `ibgu-<action>-*` labels and same-named spoke BackupContent objects collide.
 - LCA namespace deleted on the spoke after Prep → copies lost → pre-pivot failure (doc
   caveat: content dies with the namespace).
 - More than 20 custom ClusterClaims on a spoke (claim truncated) → hub falls back to the
@@ -187,7 +216,7 @@ cluster and the reason.
 | LCA operator rollback to the previous z-stream | new-format seeds become unusable; seed must be reverted too |
 | LCA upgrade while an IBU is not Idle | the Idle precondition becomes a hard requirement in the guidance (CNF-28772); verify the behaviour if it is violated |
 | Step 2 migration: existing `oadpContent` IBGU kept, new IBGU using `backupContent` created | coexistence on one hub; no policy goes NonCompliant |
-| TALM upgrade (revendor) with IBGUs in flight | existing IBGUs and CGUs unaffected; new checks apply only to new IBGUs |
+| TALM upgrade (revendor) with IBGUs in flight | existing IBGUs and CGUs unaffected; new checks apply only to new IBGUs; blocked IBGUs stay blocked and completed ones stay completed across the restart |
 | ZTP / RDS reference CRs (CNF-28676) applied end to end, including `PlatformBackupRestoreWithIBGU` | reference config is what customers copy |
 | Disconnected hub with a mirror registry | the hub must now reach the registry and trust its CA to read the seed label |
 | Hub behind a cluster-wide proxy | registry egress path for the label read |
@@ -261,6 +290,11 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
   `backupcontents.lcm.openshift.io` or `backupcontents.lca.openshift.io` for clarity.
 - The hub supports only spokes with LCA in its default install namespace,
   `openshift-lifecycle-agent`, as in the telco reference configuration.
+- A blocked IBGU never resumes on its own (CNF-30061): after fixing the cause, delete and
+  recreate it. An IBGU whose selector matches nothing reports a block, not success — a
+  behaviour change from `main`, where it completed.
+- Only one IBGU may act on a cluster at a time. This is assumed, not enforced, until
+  CNF-29901.
 
 ## Open items that affect the test plan
 
@@ -268,8 +302,7 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
 |---|---|---|
 | ClusterClaim name, IBU status field name, value format; minimum klusterlet version for `ReadOnly` ManifestWork | LCA / TALM / ACM (CNF-28926) | pre-flight tests and tooling; minimum supported spoke ACM |
 | Whether ACM reserves a claim suffix for LCA | LCA / ACM | whether truncation tests are a real-world case or edge case |
-| Pre-flight opt-out annotation name | TALM (CNF-29242) | lab procedures |
-| At-most-one rule inherited by the regenerated IBGU CRD | TALM (CNF-29239) | if not inherited, TALM adds it; admission test unchanged |
+| Retry-window annotation name (`lcm.openshift.io/ibgu-preflight-retry-seconds` proposed) | TALM (CNF-30061) | lab procedures |
 | Backport scope (which z-streams) | LCA / product (CNF-28772) | upgrade matrix to test |
 | `oadpContent` removal release | LCA | future; not in scope now |
 
@@ -478,4 +511,4 @@ Reference to a missing hub entry — IBGU blocked before any CGU, condition name
 - LCA: CNF-22167 / PR#7818, CNF-26659 (API, PR #10403), CNF-29691 (engine integration), CNF-28671, CNF-28751, CNF-28926; backport and
   migration guide CNF-28772; reference CRs CNF-28676; upstream docs CNF-28679; downstream
   docs TELCODOCS-3009.
-- TALM: CNF-29239 – CNF-29245, CNF-29247, CNF-29281.
+- TALM: CNF-29239 – CNF-29245, CNF-29247, CNF-30039, CNF-30061; future improvements under CNF-6791: CNF-29281, CNF-29901, CNF-29246.
