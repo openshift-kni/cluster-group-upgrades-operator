@@ -52,6 +52,9 @@ var ConditionReasons = struct {
 	TimedOut                      ConditionReason
 	UnresolvableDenpendency       ConditionReason
 	WaitingForPlacement           ConditionReason
+	SeedImageUnreadable           ConditionReason
+	BackupContentUnsupportedSeed  ConditionReason
+	SeedCompatibilityCheckSkipped ConditionReason
 }{
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
@@ -74,6 +77,9 @@ var ConditionReasons = struct {
 	TimedOut:                      "TimedOut",
 	UnresolvableDenpendency:       "UnresolvableDenpendency",
 	WaitingForPlacement:           "WaitingForPlacement",
+	SeedImageUnreadable:           "SeedImageUnreadable",
+	BackupContentUnsupportedSeed:  "BackupContentUnsupportedSeed",
+	SeedCompatibilityCheckSkipped: "SeedCompatibilityCheckSkipped",
 }
 
 // InProgressMessages defines the in progress messages for the conditions by rollout type

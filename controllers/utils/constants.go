@@ -188,3 +188,11 @@ const (
 	IBGUActionCompletedLabelTemplate = "lcm.openshift.io/ibgu-%s-completed"
 	IBGUActionFailedLabelTemplate    = "lcm.openshift.io/ibgu-%s-failed"
 )
+
+// Seed image compatibility pre-flight (CNF-29242)
+const (
+	// IBGUSkipSeedCompatibilityAnnotation, when present on an IBGU, skips the
+	// hub-side seed-format compatibility pre-flight check. It is a lab/escape-hatch
+	// opt-out; its use is surfaced on the IBGU (see ensureSeedFormatCompatible).
+	IBGUSkipSeedCompatibilityAnnotation = "lcm.openshift.io/ibgu-skip-seed-compatibility-check"
+)

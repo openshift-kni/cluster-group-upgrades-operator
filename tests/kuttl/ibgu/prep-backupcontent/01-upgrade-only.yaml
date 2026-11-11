@@ -12,6 +12,9 @@ metadata:
     auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
     auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
     auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+    # See 00-create.yaml: opt out of the backupContent seed-format pre-flight
+    # (CNF-29242) because kuttl has no real registry for the placeholder seed.
+    lcm.openshift.io/ibgu-skip-seed-compatibility-check: ""
 spec:
   clusterLabelSelectors:
     - matchExpressions:
