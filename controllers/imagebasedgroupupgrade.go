@@ -902,8 +902,15 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 			// chosen maintenance window); block it terminally instead. This applies only
 			// before the first CGU — appended items (CGUs already exist) are never gated
 			// on the window.
-			if r.preflightWindowExpired(ibgu) {
-				grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
+			//
+			// A zero window (lcm.openshift.io/ibgu-preflight-retry-seconds: "0") is the
+			// documented exception: it disables transient retries (the first transient
+			// failure is terminal — see handleTransientPreflight) but must not block a
+			// rollout whose gates all pass. The start-too-late block is therefore
+			// enforced only for a positive window that has actually elapsed; with a zero
+			// window a passing pre-flight proceeds to create the first CGU.
+			grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
+			if grace > 0 && r.preflightWindowExpired(ibgu) {
 				r.setTerminal(ibgu, utils.ConditionReasons.PreflightWindowExpired,
 					fmt.Sprintf("pre-flight checks passed but the %s grace window since creation has "+
 						"expired before the first CGU could be created; the IBGU started too late", grace))
@@ -979,7 +986,11 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 }
 
 // preflightWindowExpired reports whether the transient pre-flight grace window,
-// measured from metadata.creationTimestamp, has elapsed for this IBGU.
+// measured from metadata.creationTimestamp, has elapsed for this IBGU. A zero
+// window reports expired immediately (now is always at or after creationTimestamp);
+// the passing-pre-flight path in ensureManifests deliberately guards this call with
+// a positive-window check so a zero window does not block a rollout whose gates pass
+// (zero only makes the first transient failure terminal).
 func (r *IBGUReconciler) preflightWindowExpired(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
 	grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
 	return metav1.Now().Sub(ibgu.GetCreationTimestamp().Time) >= grace

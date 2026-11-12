@@ -2578,6 +2578,40 @@ func TestPreflightWindowExpiredOnPassPath(t *testing.T) {
 		types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
 }
 
+// TestPreflightPassWithZeroWindowProceeds verifies CodeRabbit finding #2 (line 985):
+// a zero grace window (lcm.openshift.io/ibgu-preflight-retry-seconds: "0") disables
+// transient retries but must not block a rollout whose pre-flight gates all pass.
+// Even though the window since creation has notionally "expired" (a zero window is
+// always elapsed), a passing pre-flight proceeds and creates the first CGU rather
+// than being blocked terminally with PreflightWindowExpired.
+func TestPreflightPassWithZeroWindowProceeds(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "0"})
+	// An old creation time so a positive window would have expired; the zero window
+	// must not be treated as expired on the passing path.
+	ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	// A cluster eligible for Prep so all gates pass.
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10)}
+
+	blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.False(t, blocked)
+
+	// The IBGU was not blocked terminally: no Succeeded condition was recorded.
+	assert.Nil(t, succeededCondition(ibgu))
+	// The first CGU was created (the rollout proceeded).
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
+	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+}
+
 // TestAppendResumesCompletion verifies the Developer of Record's append design: a
 // completed IBGU whose completion was recorded against an earlier generation resumes
 // when a plan item is appended (the generation bumps). The Succeeded condition is
