@@ -9,7 +9,6 @@ import (
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -177,7 +176,7 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 	for _, childPolicy := range childPoliciesList {
 		policyNameArr, err := utils.GetParentPolicyNameAndNamespace(childPolicy.Name)
 		if err != nil {
-			r.Log.Info("[doManagedPoliciesExist] Ignoring child policy " + childPolicy.Name + "with invalid name")
+			r.Log.Info("[doManagedPoliciesExist] Ignoring child policy " + childPolicy.Name + " with invalid name")
 			continue
 		}
 
@@ -271,12 +270,10 @@ func (r *ClusterGroupUpgradeReconciler) doManagedPoliciesExist(
 		}
 	}
 
-	if len(managedPoliciesForUpgrade) > 0 {
-		clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade = managedPoliciesForUpgrade
-	}
-	if len(managedPoliciesCompliantBeforeUpgrade) > 0 {
-		clusterGroupUpgrade.Status.ManagedPoliciesCompliantBeforeUpgrade = managedPoliciesCompliantBeforeUpgrade
-	}
+	// Always overwrite both lists: this runs on every reconcile until the upgrade starts, and a policy can move
+	// between them (or every policy can become compliant) in the meantime.
+	clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade = managedPoliciesForUpgrade
+	clusterGroupUpgrade.Status.ManagedPoliciesCompliantBeforeUpgrade = managedPoliciesCompliantBeforeUpgrade
 
 	// If there are missing managed policies, return.
 	if len(managedPoliciesInfo.missingPolicies) != 0 || len(managedPoliciesInfo.invalidPolicies) != 0 {
@@ -895,9 +892,8 @@ func (r *ClusterGroupUpgradeReconciler) rootPolicyHandlerOnUpdate(ctx context.Co
 		}
 
 		for _, cgu := range cgus.Items {
-			// The CGU is complete already, skipping
-			suceededCondition := meta.FindStatusCondition(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded))
-			if suceededCondition != nil && suceededCondition.Status == metav1.ConditionTrue {
+			// The CGU has finished (succeeded or not), skipping: a finished CGU does not act on compliance changes.
+			if utils.IsStatusConditionPresent(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)) {
 				continue
 			}
 

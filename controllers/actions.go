@@ -3,6 +3,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	utils "github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
@@ -145,9 +146,27 @@ func (r *ClusterGroupUpgradeReconciler) manageClusterLabelsAndAnnotations(ctx co
 func (r *ClusterGroupUpgradeReconciler) deleteResources(
 	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) error {
 	var targetNamespaces []string
+	addNamespace := func(ns string) {
+		if ns == "" {
+			return
+		}
+		if _, ok := utils.FindStringInSlice(targetNamespaces, ns); !ok {
+			targetNamespaces = append(targetNamespaces, ns)
+		}
+	}
 	for _, policy := range clusterGroupUpgrade.Status.ManagedPoliciesForUpgrade {
-		if _, ok := utils.FindStringInSlice(targetNamespaces, policy.Namespace); !ok {
-			targetNamespaces = append(targetNamespaces, policy.Namespace)
+		addNamespace(policy.Namespace)
+	}
+	// ManagedPoliciesForUpgrade is refreshed on every pre-start reconcile and can
+	// become empty (all policies compliant while the CGU waits to be enabled or
+	// for blocking CRs), but the Placements/PlacementBindings created for the
+	// earlier entries still exist. SafeResourceNames keys are
+	// "<namespace>/<desiredName>", accumulate across reconciles, and are only
+	// cleared here, so recover those namespaces from them. Empty namespaces come
+	// from ManagedClusterViews and ManifestWorks and are skipped above.
+	for desiredName := range clusterGroupUpgrade.Status.SafeResourceNames {
+		if ns, _, found := strings.Cut(desiredName, "/"); found {
+			addNamespace(ns)
 		}
 	}
 
