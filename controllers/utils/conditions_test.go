@@ -81,3 +81,15 @@ func TestSetStatusCondition(t *testing.T) {
 		}
 	}
 }
+
+func TestIsStatusConditionPresent(t *testing.T) {
+	conditions := []metav1.Condition{
+		{Type: string(ConditionTypes.Progressing), Status: metav1.ConditionFalse},
+		{Type: string(ConditionTypes.Succeeded), Status: metav1.ConditionFalse},
+	}
+	// Presence is independent of the condition's status.
+	assert.True(t, IsStatusConditionPresent(conditions, string(ConditionTypes.Succeeded)))
+	assert.True(t, IsStatusConditionPresent(conditions, string(ConditionTypes.Progressing)))
+	assert.False(t, IsStatusConditionPresent(conditions, string(ConditionTypes.Validated)))
+	assert.False(t, IsStatusConditionPresent(nil, string(ConditionTypes.Succeeded)))
+}

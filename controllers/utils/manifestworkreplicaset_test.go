@@ -1197,3 +1197,32 @@ func TestClusterMatchesPlanItem(t *testing.T) {
 		})
 	}
 }
+
+func TestGetFirstNActionMessagesFromCGU(t *testing.T) {
+	cgu := &v1alpha1.ClusterGroupUpgrade{
+		Spec: v1alpha1.ClusterGroupUpgradeSpec{
+			ManifestWorkTemplates: []string{"name-prep", "name-unknown", "name-upgrade", "name-finalizeupgrade"},
+		},
+	}
+	all := []ibguv1alpha1.ActionMessage{
+		{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}, {Action: ibguv1alpha1.FinalizeUpgrade},
+	}
+	tests := []struct {
+		name  string
+		count int
+		want  []ibguv1alpha1.ActionMessage
+	}{
+		{"zero", 0, []ibguv1alpha1.ActionMessage{}},
+		{"first only", 1, []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}}},
+		// The limit counts templates, so an unrecognized template uses up a slot.
+		{"unknown template counts toward the limit", 2, []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}}},
+		{"three", 3, []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}, {Action: ibguv1alpha1.Upgrade}}},
+		{"more than available", 10, all},
+		{"negative means all", -1, all},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, GetFirstNActionMessagesFromCGU(cgu, tc.count))
+		})
+	}
+}
