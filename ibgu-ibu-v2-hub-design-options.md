@@ -84,8 +84,9 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 
 - **Empty set is terminal (decided 2026-11-11; CNF-30061).** If plan item 0 resolves to no
   clusters — the selector matches no ManagedCluster, or none is eligible for plan item 0's
-  action — the IBGU blocks terminally before any CGU, with its own reason, instead of
-  completing. On `main` an empty IBGU completed only by inheritance: the CGU engine
+  action — the IBGU blocks before any CGU, with its own reason, instead of completing. It
+  retries within the grace window (a label may land in the same GitOps sync) and then
+  turns terminal; it never starts later. On `main` an empty IBGU completed only by inheritance: the CGU engine
   treats an empty remediation plan as "all compliant" and succeeds
   (`clustergroupupgrade_controller.go:519-534`), which is meaningful for policies and
   meaningless for an IBGU. Under 2B the empty completion also lost its only durable
@@ -180,8 +181,12 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     passes, and a wait for its feedback before the plan starts.
   - New registry egress from the hub, plus a registry client dependency to vendor. In
     disconnected installs the target is the mirror registry the spokes already pull from;
-    the hub must trust its CA. The label is read once; LCA's own equality check at Prep
-    remains the backstop if a tag moves afterwards.
+    the hub must trust its CA. The label is read once. If the seed tag moves before a later batch's Prep, LCA's own
+    equality check at Prep is a backstop only when every spoke in the rollout expects the
+    bumped format, which the spoke-side check (CNF-30039) guarantees. Until then a pre-bump
+    spoke can be in the rollout, and a tag moved to an older-format image passes LCA's check
+    there and prunes `backupContent` silently. Pinning the checked digest into the generated
+    IBUs is a future improvement (CNF-30062).
 
 ### D4 — Mismatch or unknown: **4A, fail closed; `backupContent` requires a bumped-format seed image**
 
@@ -221,19 +226,81 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   service-impacting rollout at a time nobody chose. Freezing the cluster set does not help
   — a frozen set that starts at 3 a.m. is just as impactful — so the rule is about which
   blocks may clear:
-  - **Blocks that need the user to change something are terminal:** an empty cluster set
-    (see D2), an unresolvable reference (D9), `backupContent` with a pre-bump seed, and a
-    seed-format mismatch. No requeue; retrying means deleting and recreating the IBGU, so
-    the start is an explicit act at a time the user chose.
-  - **Transient infrastructure failures retry for a fixed grace period only** — a
-    registry briefly unreachable, a pull-secret read error. After it, the IBGU becomes
-    terminal with the last reason. The duration is a fixed default of 5 minutes,
-    overridable per IBGU by annotation (proposed `lcm.openshift.io/ibgu-preflight-retry-seconds`).
-  - **The terminal marker is not a Progressing reason.** The gates and the plan loop all
-    write Progressing, which is how a completion record got overwritten in the first
-    pre-flight PR. A dedicated condition or status field records it, `ensureManifests`
-    checks it before any gate and returns without requeueing, and nothing later — a TALM
-    restart, an appended plan item — resolves the selector again.
+  - **Nothing may start more than a fixed grace period after the IBGU was created.** The
+    window is measured from `metadata.creationTimestamp`: creation is when the operator
+    acted, the timestamp cannot be reset, and no API field is needed. The window is
+    honoured **even when every gate passes**: if the first CGU would be created after it
+    (for example, TALM was down and came back outside the maintenance window), the IBGU
+    blocks terminally with its own reason (for example `PreflightWindowExpired`), saying
+    it started too late and must be recreated. It bounds only the first start; appended
+    plan items are not subject to it. The window defaults to
+    5 minutes, overridable per IBGU by annotation (proposed
+    `lcm.openshift.io/ibgu-preflight-retry-seconds`; an invalid value raises a Warning
+    event and falls back to the default; editing it has no effect once the IBGU is
+    terminal). `0` means no retries — the first transient failure is terminal — but the
+    start deadline is never disabled: with `0` the passing path uses the default window as
+    its deadline. While retrying, the controller requeues at the earlier of its usual
+    interval and the time left before the deadline minus a small buffer (a few seconds,
+    with a floor of about one second), so the last re-check runs inside the window rather
+    than just after it.
+  - **Anything that can be sync or propagation lag retries within the window, then turns
+    terminal with the last reason:** a reference not found (the gate reads through the
+    cached client, and a GitOps sync can apply a BackupContent and the IBGU together), an
+    empty cluster set (a label may land in the same sync), a seed image that cannot be
+    read, and — with CNF-30039 — a spoke that is unavailable or whose read-only
+    ManifestWork has not reported yet.
+  - **A definitive verdict on content actually read is terminal at once:** `backupContent`
+    with a pre-bump seed, and — with CNF-30039 — a seed-format mismatch where both values
+    were read. Retrying cannot change it.
+  - **Terminal means no requeue.** Retrying means deleting and recreating the IBGU, so the
+    start is an explicit act at a time the user chose.
+  - **Gate order: empty set, then references, then the seed.** Hub-only, deterministic
+    checks decide before the network check, so a selector typo or a missing BackupContent
+    neither triggers a registry read nor waits out the window to report the wrong reason.
+  - **The terminal marker is the IBGU's `Succeeded` condition** — not a Progressing
+    reason: the gates and the plan loop all write Progressing, which is how a completion
+    record got overwritten in the first pre-flight PR. It has two kinds, because the plan
+    is append-only and appending to a finished plan is a supported workflow (an IBGU whose
+    plan was `[['Prep']]` gets `['Upgrade']` appended later):
+    - **Pre-flight block — permanent.** `Succeeded=False`, reason = the block reason. The
+      IBGU never started, so an appended item would be a fresh start on a selector
+      resolved now. It is never cleared — not by a TALM restart, not by an append;
+      recovery is delete-and-recreate.
+    - **Plan completion — final for the plan as written.** `Succeeded=True`, reason
+      `Completed`, when the plan ran to the end, every plan-item CGU succeeded and no
+      cluster recorded a failed action; `Succeeded=False`, reason `CompletedWithFailures`,
+      when the plan ran to the end but any plan-item CGU ended `Succeeded=False`
+      (`TimedOut`, `Failed`) or any cluster recorded a failed action (including ones later
+      aborted). Written with `observedGeneration` = the IBGU's `metadata.generation` at
+      completion.
+  - **Short-circuit.** `ensureManifests` returns without requeueing when a block is
+    present, or when a completion is present for the current generation.
+  - **Resume on append.** A completion whose `observedGeneration` is older than
+    `metadata.generation` means items were appended: the plan is the only mutable spec
+    field (`ibuSpec` and `clusterLabelSelectors` are immutable, the plan is append-only),
+    so a generation bump *is* an append. The controller removes `Succeeded`, sets
+    Progressing back to `InProgress`, and runs the appended items. The earlier items are
+    already finished (their CGUs exist), the pre-flight gates do not run (they run only
+    before the first CGU), and the selector is not re-resolved: appended items act on the
+    frozen set (plan item 0's CGU `spec.clusters`, narrowed per item). When they finish,
+    `Succeeded` is written again for the new generation. An append is an explicit operator
+    act at a chosen time on a known set, not an unattended start, so it does not conflict
+    with the rule above.
+  - **Order matters.** The resume check runs before the migration below; otherwise
+    "Progressing=Completed, no `Succeeded`" left by the resume would be migrated straight
+    back into a completion.
+  - **An empty plan item 0 is never a completion,** whether it is found by the gate or
+    when the first CGU is about to be created: it is the empty-set block (grace window,
+    then terminal).
+  - Progressing still goes False with the same reason at every terminal point, so
+    existing consumers keep working. `utils.SetStatusCondition` does not set
+    `ObservedGeneration` today; the `Succeeded` writes need it.
+  - **IBGUs finished before the TALM upgrade stay finished, and stay appendable.** They
+    have no `Succeeded`, only Progressing's `Completed`. On the first reconcile after the
+    upgrade they get a completion (`Completed` or `CompletedWithFailures`) stamped with
+    the current generation, so a later append resumes them as on `main` today. One that
+    completed with no CGU (the resolve-once code on `main` can produce it) becomes the
+    `NoEligibleClusters` block instead, which is permanent.
 
 ### D5 — Delivery: **5A, TALM copies BackupContent content from the hub**
 

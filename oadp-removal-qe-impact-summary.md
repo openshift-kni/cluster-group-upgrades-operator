@@ -117,16 +117,36 @@ cluster and the reason.
    eligible for plan item 0's action) → blocked, with a reason naming which (CNF-30061).
    *Today, until CNF-30061 lands, such an IBGU completes with no CGU.*
 
-**How blocks behave (CNF-30061).** No block clears on its own, because an unattended,
-delayed start is service-impacting:
-- **Terminal:** empty cluster set, unresolvable reference, `backupContent` with a pre-bump
-  seed, seed-format mismatch. No requeue; the IBGU stays blocked even after the cause is
-  fixed, and retrying means deleting and recreating it.
-- **Transient, bounded retry:** registry unreachable, pull-secret read error. Retried for
-  5 minutes by default, then terminal with the last reason. The annotation
-  `lcm.openshift.io/ibgu-preflight-retry-seconds` (proposed name) overrides the duration.
-- **Durable:** a blocked IBGU stays blocked across a TALM restart and when a plan item is
-  appended.
+**How blocks behave (CNF-30061).** No block clears on its own later than a fixed grace
+period after the IBGU was created, because an unattended, delayed start is
+service-impacting:
+- **Grace window:** 5 minutes from the IBGU's creation timestamp by default; the
+  annotation `lcm.openshift.io/ibgu-preflight-retry-seconds` (proposed name) overrides it.
+  The window is honoured even when every gate passes: an IBGU whose first CGU would be
+  created after it (TALM was down and came back outside the maintenance window) blocks
+  terminally (`PreflightWindowExpired`, proposed) instead of starting. It bounds only the
+  first start, not appended plan items.
+- **Retried within the window, then terminal:** reference not found, empty cluster set,
+  seed image unreadable (registry unreachable, pull-secret read error, HTTP-only registry,
+  oversized config), and with CNF-30039 an unavailable spoke or a read-only ManifestWork
+  without feedback. This covers GitOps applying a BackupContent or a cluster label in the
+  same sync as the IBGU.
+- **Terminal at once:** `backupContent` with a pre-bump seed, and with CNF-30039 a
+  definitive seed-format mismatch.
+- **Terminal means:** no requeue; the IBGU stays blocked after the cause is fixed, across a
+  TALM restart and a plan append; retrying means deleting and recreating it.
+- **Outcome condition:** a finished IBGU carries `Succeeded` — True/`Completed` when every
+  plan-item CGU succeeded and every cluster made it, False/`CompletedWithFailures` when the
+  plan finished but a CGU ended False or a cluster failed, False with the block reason when
+  a pre-flight block turned terminal. Progressing goes False with the same reason.
+- **Appending still works:** appending a plan item to a *completed* IBGU (for example
+  `['Upgrade']` after `[['Prep']]`) resumes it on the same frozen cluster set, with no
+  pre-flight and no new clusters; `Succeeded` is removed while it runs and written again
+  at the end. Appending to a *blocked* IBGU does nothing; it stays blocked.
+- **Order:** empty set, then references, then the seed.
+- **Existing IBGUs** finished before the TALM upgrade, including ones that completed with
+  no CGU, get a `Succeeded` condition on the first reconcile and stay finished; they
+  don't start.
 - *Until CNF-30061 lands, the gates in CNF-29242 and CNF-29243 requeue indefinitely, so a
   blocked IBGU can start on its own once the cause clears. Test both behaviours against
   the build in use.*
@@ -177,7 +197,7 @@ delayed start is service-impacting:
 | Work-agent RBAC | first Prep after a TALM upgrade applies BackupContent objects without a lingering `Applied=False` (ClusterRole applied first; `backupcontents` rule for `lca.openshift.io` present) | CNF-29241 |
 | Reference resolution | Prep plan with a missing hub BackupContent → blocked with names, no CGU; same for a missing `oadpContent` ConfigMap (**behaviour change** from today's warn-and-skip); Upgrade-only plan not blocked by missing hub entries | CNF-29243 |
 | Pre-flight | each branch in §2.2, including: claim present; claim absent + IBU status field; neither (pre-bump); read-only ManifestWork with no feedback; cluster unavailable; image label unreadable; safety rule; opt-out annotation (skip recorded as an event) | CNF-29242, CNF-30039 |
-| Block behaviour | each terminal reason stays blocked after the cause is fixed, across a TALM restart and a plan append; recreating proceeds; a transient registry failure that clears within 5 minutes proceeds and one that outlasts it turns terminal; the retry annotation changes the window | CNF-30061 |
+| Block behaviour | each terminal reason stays blocked after the cause is fixed, across a TALM restart and a plan append; recreating proceeds; a missing BackupContent or cluster label created within 5 minutes of the IBGU proceeds (GitOps same-sync case) and one created later does not; a transient registry failure that clears within the window proceeds and one that outlasts it turns terminal; the annotation changes the window; Progressing goes False with the reason; `Succeeded` is True/`Completed`, False/`CompletedWithFailures` or False/block reason as appropriate; an IBGU that finished before the TALM upgrade gets `Succeeded` and does not start afterwards; appending to a completed IBGU (`[['Prep']]` then `['Upgrade']`, `CompletedWithFailures` then `['AbortOnFailure']`) resumes it on the frozen set and re-writes `Succeeded`, including for an IBGU migrated by the upgrade; appending to a blocked IBGU does not revive it; a plan-item CGU that ended `Succeeded=False` with no per-cluster failure still yields `CompletedWithFailures`; gates that pass on a first reconcile after the window (TALM down) block with `PreflightWindowExpired` and create no CGU | CNF-30061 |
 | Status | per-cluster failure messages in IBGU status for LCA stage failures, without waiting for timeout | CNF-29245 |
 | Plans | Prep → Upgrade → FinalizeUpgrade; Prep+Upgrade in one item; Rollback → FinalizeRollback; Abort; AbortOnFailure; follow-up Upgrade-only IBGU; separate Abort IBGU | existing + CNF-29241 |
 | Cluster list | frozen set; ManagedCluster deleted mid-rollout is dropped and reported, not blocking; a ManagedCluster labelled after the IBGU started is not picked up; plan item 0 with no eligible clusters (completes today, terminal block after CNF-30061) | CNF-29244, CNF-30061 |
