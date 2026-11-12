@@ -221,11 +221,13 @@ Before the first cgu is created, IBGU runs a set of **pre-flight gates**. An IBG
 
 | `Succeeded` | reason | meaning |
 | ----------- | ------ | ------- |
-| `True`  | `Completed`             | the plan ran to the end and no cluster recorded a failed action |
+| `True`  | `Completed`             | a plan that ends in a **finalizing action** (`FinalizeUpgrade` or `FinalizeRollback`) ran to the end and no cluster recorded a failed action |
 | `False` | `CompletedWithFailures` | the plan ran to the end, but at least one cluster recorded a failed action in `status.clusters[].failedActions` |
 | `False` | the block reason        | a pre-flight block became terminal (see below) |
 
 Once `Succeeded` is present, `ensureManifests` returns immediately without re-running any gate or the plan loop, so neither a late-matching `ManagedCluster` nor an appended plan item can revive the IBGU. **Recovery is delete-and-recreate.** `Progressing` is also set to `False` with the same reason at every terminal point, so existing consumers of `Progressing` (ACM UI, ZTP, scripts) see the IBGU stopped. The gates and the plan loop otherwise keep using `Progressing` for current state.
+
+**A completed non-finalizing plan stays resumable.** A clean run whose last plan item is *not* a finalizing action — for example a `Prep` that has completed, or a `Prep`→`Upgrade` with no `FinalizeUpgrade` yet — records `Progressing=Completed` but **does not** set `Succeeded`. This keeps the documented incremental workflow (["Step by step"](#step-by-step)) working: the operator can append the next action (e.g. `Upgrade` after `Prep`, or `FinalizeUpgrade` after `Upgrade`) and the plan loop resumes it on the next reconcile. Only a finalizing tail, a failed cluster action, or a terminal pre-flight block records `Succeeded` and makes the IBGU terminal. A late-matching `ManagedCluster` still cannot revive a completed non-finalizing plan, because the cluster set is frozen at plan item 0 and no gate re-runs once a cgu exists.
 
 **Transient vs terminal.** Each gate's failure is classified by whether its verdict is definitive on content actually read, or could be GitOps-sync / propagation lag (the manager's cached client can return `NotFound` for a `BackupContent`/`ConfigMap` or a `ManagedCluster` label that a single sync applied alongside the IBGU):
 

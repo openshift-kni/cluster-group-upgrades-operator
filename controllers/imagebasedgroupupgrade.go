@@ -804,14 +804,23 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		return false, fmt.Errorf("error listing cgus for ibgu: %w", err)
 	}
 
-	// Migrate an IBGU that finished under older code (Progressing reason Completed,
-	// no Succeeded condition) onto the Succeeded condition. Without this, simplifying
-	// the gate guard would let an IBGU that completed empty (Progressing=Completed,
-	// no CGU — a state the resolve-once code on main produces) run again after a TALM
-	// upgrade: the gates would pass on newly matching clusters and start a rollout.
-	// Stamping Succeeded once lets the presence short-circuit above keep it finished.
-	if ibguReportsCompletion(ibgu) {
-		r.migrateCompletedToSucceeded(ibgu, cguList)
+	// An IBGU that finished under older code (Progressing reason Completed, no
+	// Succeeded condition) with no plan-item-0 CGU completed empty — no cluster was
+	// ever eligible. Migrate it to a terminal block so the simplified gate guard
+	// cannot revive it when a cluster later matches (design D2); otherwise the gates
+	// would pass on newly matching clusters and start a rollout after a TALM upgrade.
+	//
+	// A completed IBGU that *has* CGUs instead falls through to the plan loop below.
+	// The loop re-derives the terminal (Succeeded) or resumable (Progressing=Completed)
+	// state through setPlanCompleted: a plan that ends in a finalizing action stays
+	// terminal, while a non-finalizing tail (e.g. a completed Prep) remains open so an
+	// appended Upgrade still starts. Falling through also means an owned CGU that is
+	// still active is waited on by the plan loop rather than stamped terminal.
+	if ibguReportsCompletion(ibgu) && !hasPlanItem0CGU(ibgu, cguList) {
+		r.Log.Info("Migrating an empty-completed IBGU (no CGU) to a terminal block", "ibgu", ibgu.GetName())
+		r.setTerminal(ibgu, utils.ConditionReasons.NoEligibleClusters,
+			"this IBGU completed with no CGU (no cluster was eligible for plan item 0); "+
+				"it no longer reports success")
 		return false, nil
 	}
 
@@ -957,11 +966,34 @@ func ibguHasFailedActions(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
 	return false
 }
 
-// setPlanCompleted records the terminal Succeeded condition at the end of a plan
-// that ran to completion: Succeeded=True reason Completed for a clean run, or
-// Succeeded=False reason CompletedWithFailures when at least one cluster recorded a
-// failed action. Progressing is set to the same reason so existing consumers of
-// Progressing (ACM UI, ZTP, scripts) see the IBGU stopped.
+// planHasTerminalTail reports whether the plan ends in a finalizing action
+// (FinalizeUpgrade or FinalizeRollback). Only such a plan is truly complete: any
+// other tail (Prep, Upgrade, Rollback, Abort/AbortOnFailure) may legitimately be
+// followed by an appended plan item, so the IBGU must stay resumable rather than be
+// stamped with the terminal Succeeded condition (see setPlanCompleted).
+func planHasTerminalTail(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
+	if len(ibgu.Spec.Plan) == 0 {
+		return false
+	}
+	last := ibgu.Spec.Plan[len(ibgu.Spec.Plan)-1]
+	return slices.Contains(last.Actions, ibguv1alpha1.FinalizeUpgrade) ||
+		slices.Contains(last.Actions, ibguv1alpha1.FinalizeRollback)
+}
+
+// setPlanCompleted records the end of a plan that ran to completion.
+//
+//   - At least one cluster recorded a failed action: Succeeded=False reason
+//     CompletedWithFailures — a failed rollout is terminal regardless of the tail.
+//   - A clean run whose last plan item is a finalizing action (FinalizeUpgrade or
+//     FinalizeRollback): Succeeded=True reason Completed — terminal, so the presence
+//     short-circuit in ensureManifests keeps it finished.
+//   - A clean run with a non-finalizing tail (e.g. a completed Prep): Progressing is
+//     set to Completed but Succeeded is left unset, so the IBGU stays resumable and
+//     an appended plan item (the documented incremental workflow, e.g. adding Upgrade
+//     after Prep) still starts on the next reconcile.
+//
+// Progressing is set to the same reason in every case so existing consumers of
+// Progressing (ACM UI, ZTP, scripts) see the IBGU stopped between steps.
 func (r *IBGUReconciler) setPlanCompleted(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
 	if ibguHasFailedActions(ibgu) {
 		msg := "All plan steps completed; at least one cluster reported a failed action"
@@ -972,6 +1004,13 @@ func (r *IBGUReconciler) setPlanCompleted(ibgu *ibguv1alpha1.ImageBasedGroupUpgr
 		return
 	}
 	msg := "All plan steps are completed"
+	if !planHasTerminalTail(ibgu) {
+		// Non-finalizing tail: record completion on Progressing only so an appended
+		// plan item can resume. Succeeded is reserved for a truly terminal plan.
+		utils.SetStatusCondition(&ibgu.Status.Conditions, utils.ConditionTypes.Progressing,
+			utils.ConditionReasons.Completed, metav1.ConditionFalse, msg)
+		return
+	}
 	utils.SetStatusCondition(&ibgu.Status.Conditions, utils.ConditionTypes.Succeeded,
 		utils.ConditionReasons.Completed, metav1.ConditionTrue, msg)
 	utils.SetStatusCondition(&ibgu.Status.Conditions, utils.ConditionTypes.Progressing,
@@ -994,28 +1033,6 @@ func (r *IBGUReconciler) setTerminal(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, 
 	if r.Recorder != nil {
 		r.Recorder.Event(ibgu, corev1.EventTypeWarning, string(reason), msg)
 	}
-}
-
-// migrateCompletedToSucceeded is the one-time migration for an IBGU that finished
-// under older code (Progressing reason Completed) but carries no Succeeded
-// condition yet. It stamps Succeeded from the recorded state so the presence
-// short-circuit keeps it finished: an IBGU that has CGUs becomes Succeeded=True
-// (Completed) — or Succeeded=False (CompletedWithFailures) if a cluster recorded a
-// failed action — while one that completed with no plan-item-0 CGU (the empty
-// completion the resolve-once code on main produces) is migrated to a terminal
-// block (Succeeded=False, NoEligibleClusters) rather than revived.
-func (r *IBGUReconciler) migrateCompletedToSucceeded(
-	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList,
-) {
-	if !hasPlanItem0CGU(ibgu, cguList) {
-		r.Log.Info("Migrating an empty-completed IBGU (no CGU) to a terminal block", "ibgu", ibgu.GetName())
-		r.setTerminal(ibgu, utils.ConditionReasons.NoEligibleClusters,
-			"this IBGU completed with no CGU (no cluster was eligible for plan item 0); "+
-				"it no longer reports success")
-		return
-	}
-	r.Log.Info("Migrating a completed IBGU to the Succeeded condition", "ibgu", ibgu.GetName())
-	r.setPlanCompleted(ibgu)
 }
 
 func (r *IBGUReconciler) getSecretManifest(

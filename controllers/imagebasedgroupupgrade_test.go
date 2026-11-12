@@ -1380,7 +1380,10 @@ func TestEnsureManifests(t *testing.T) {
 			},
 		},
 		{
-			name: "all completed",
+			// A non-finalizing plan tail (Prep only) that has run to completion is
+			// recorded on Progressing=Completed but left without the terminal Succeeded
+			// condition, so an appended Upgrade can still resume it.
+			name: "all completed, non-finalizing tail stays resumable",
 			plan: []ibguv1alpha1.PlanItem{
 				{
 					Actions: []string{ibguv1alpha1.Prep},
@@ -1399,6 +1402,48 @@ func TestEnsureManifests(t *testing.T) {
 					Spec: v1alpha1.ClusterGroupUpgradeSpec{
 						ManifestWorkTemplates: []string{
 							"name-prep",
+						},
+					},
+					Status: v1alpha1.ClusterGroupUpgradeStatus{
+						Conditions: []v1.Condition{
+							{
+								Type: string(utils.ConditionTypes.Succeeded),
+							},
+						},
+					},
+				},
+			},
+			expectedConditions: []metav1.Condition{
+				{
+					Type:    string(utils.ConditionTypes.Progressing),
+					Reason:  string(utils.ConditionReasons.Completed),
+					Message: "All plan steps are completed",
+					Status:  metav1.ConditionFalse,
+				},
+			},
+		},
+		{
+			// A finalizing plan tail (FinalizeUpgrade) that has run to completion is
+			// terminal: both Progressing=Completed and Succeeded=True are recorded.
+			name: "all completed, finalizing tail is terminal",
+			plan: []ibguv1alpha1.PlanItem{
+				{
+					Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade},
+				},
+			},
+			expectedMWRS: []string{},
+			CGUs: []v1alpha1.ClusterGroupUpgrade{
+				{
+					ObjectMeta: v1.ObjectMeta{
+						Name:      "name-prep-upgrade-finalizeupgrade-0",
+						Namespace: "namespace",
+						Labels: map[string]string{
+							utils.CGUOwnerIBGULabel: "name",
+						},
+					},
+					Spec: v1alpha1.ClusterGroupUpgradeSpec{
+						ManifestWorkTemplates: []string{
+							"name-prep", "name-upgrade", "name-finalizeupgrade",
 						},
 					},
 					Status: v1alpha1.ClusterGroupUpgradeStatus{
@@ -2253,19 +2298,36 @@ func TestCompletedEmptyIBGUMigratesToTerminal(t *testing.T) {
 }
 
 // TestCompletedIBGUMigratesToSucceeded verifies that an IBGU that completed under
-// older code with CGUs migrates to Succeeded=True (Completed), or Succeeded=False
-// (CompletedWithFailures) when a cluster recorded a failed action.
+// older code with CGUs migrates to Succeeded=True (Completed) when its plan ends in
+// a finalizing action, or Succeeded=False (CompletedWithFailures) when a cluster
+// recorded a failed action. A completed non-finalizing tail instead stays resumable
+// (see TestCompletedNonFinalizingTailStaysResumable).
 func TestCompletedIBGUMigratesToSucceeded(t *testing.T) {
-	t.Run("clean completion migrates to Succeeded=True", func(t *testing.T) {
-		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	t.Run("clean completion of a finalizing plan migrates to Succeeded=True", func(t *testing.T) {
+		ibgu := newIBGUForResolution(
+			[]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.FinalizeUpgrade}}})
 		utils.SetStatusCondition(&ibgu.Status.Conditions,
 			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
 			metav1.ConditionFalse, "All plan steps are completed")
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
-		prepCGU := completedPrepCGU([]string{"cluster1"})
-		assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+		// A completed plan-item-0 CGU for the finalizing plan item.
+		finalizeCGU := v1alpha1.ClusterGroupUpgrade{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      "name-finalizeupgrade-0",
+				Namespace: "namespace",
+				Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
+			},
+			Spec: v1alpha1.ClusterGroupUpgradeSpec{
+				Clusters:              []string{"cluster1"},
+				ManifestWorkTemplates: []string{"name-finalizeupgrade"},
+			},
+			Status: v1alpha1.ClusterGroupUpgradeStatus{
+				Conditions: []v1.Condition{{Type: string(utils.ConditionTypes.Succeeded)}},
+			},
+		}
+		assert.NoError(t, fakeClient.Create(context.TODO(), &finalizeCGU))
 
 		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
@@ -2304,9 +2366,46 @@ func TestCompletedIBGUMigratesToSucceeded(t *testing.T) {
 	})
 }
 
+// TestCompletedNonFinalizingTailStaysResumable verifies the incremental-append
+// workflow: a completed non-finalizing plan (Progressing=Completed, no Succeeded,
+// with CGUs) is not stamped terminal, and an appended Upgrade item resumes it by
+// creating the next CGU.
+func TestCompletedNonFinalizingTailStaysResumable(t *testing.T) {
+	// A completed Prep step; the operator has appended an Upgrade item.
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+	utils.SetStatusCondition(&ibgu.Status.Conditions,
+		utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
+		metav1.ConditionFalse, "All plan steps are completed")
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	prepCGU := completedPrepCGU([]string{"cluster1"})
+	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+	// The cluster has completed prep, so it is eligible for the appended Upgrade.
+	assert.NoError(t, fakeClient.Create(context.TODO(), managedClusterWithLabels("cluster1",
+		map[string]string{"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.False(t, blocked)
+
+	// The IBGU is not stamped terminal: the appended item can still run.
+	assert.Nil(t, succeededCondition(ibgu))
+	// The Upgrade CGU for the appended item is created.
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
+	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+}
+
 // TestCompletedWithFailuresAtEndOfPlan verifies that a plan running to the end with
 // a cluster that recorded a failed action reports Succeeded=False, reason
-// CompletedWithFailures (a clean run reports Succeeded=True, Completed).
+// CompletedWithFailures (a clean run with a finalizing tail reports Succeeded=True,
+// Completed).
 func TestCompletedWithFailuresAtEndOfPlan(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 	// A completed plan-item-0 CGU exists (plan runs to the end), and one cluster
