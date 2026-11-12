@@ -213,6 +213,31 @@ Rather than handing each generated cgu the `spec.clusterLabelSelectors` and lett
 - For every later plan item, IBGU reads the frozen set back from plan item 0's cgu and narrows it per plan item by evaluating the `ibgu-<action>-(completed|failed)` labels on each `ManagedCluster` (the same predicate table that used to be expressed as extra selector requirements), passing the resulting names to the cgu as `spec.clusters`.
 - On every plan item the frozen set is intersected with the `ManagedClusters` that still exist. A cluster that has been deleted mid-rollout is **dropped** (so it does not block later plan items): it is reported in `status.clusters[].dropped` with a `droppedReason`, and a Warning event is emitted. `ManagedCluster` labels remain the authoritative carrier across IBGUs, so a separate `Abort` IBGU still narrows correctly.
 
+### Terminal pre-flight blocks and the transient grace window
+
+Before the first cgu is created, IBGU runs a set of **pre-flight gates**. An IBGU that fails a gate ends in a **durable terminal state** and never starts on its own later — a block that cleared hours after the operator acted would start a rollout at a time nobody chose, possibly outside the maintenance window (design `ibgu-ibu-v2-hub-design-options.md`, D2 "Empty set is terminal" and D4 "Blocks never resume on their own").
+
+**Terminal state is recorded on the `Succeeded` condition**, read *by presence* — the same way IBGU already treats a cgu as finished. `Succeeded` is written only at terminal points, with three variants:
+
+| `Succeeded` | reason | meaning |
+| ----------- | ------ | ------- |
+| `True`  | `Completed`             | the plan ran to the end and no cluster recorded a failed action |
+| `False` | `CompletedWithFailures` | the plan ran to the end, but at least one cluster recorded a failed action in `status.clusters[].failedActions` |
+| `False` | the block reason        | a pre-flight block became terminal (see below) |
+
+Once `Succeeded` is present, `ensureManifests` returns immediately without re-running any gate or the plan loop, so neither a late-matching `ManagedCluster` nor an appended plan item can revive the IBGU. **Recovery is delete-and-recreate.** `Progressing` is also set to `False` with the same reason at every terminal point, so existing consumers of `Progressing` (ACM UI, ZTP, scripts) see the IBGU stopped. The gates and the plan loop otherwise keep using `Progressing` for current state.
+
+**Transient vs terminal.** Each gate's failure is classified by whether its verdict is definitive on content actually read, or could be GitOps-sync / propagation lag (the manager's cached client can return `NotFound` for a `BackupContent`/`ConfigMap` or a `ManagedCluster` label that a single sync applied alongside the IBGU):
+
+- **Transient** (retried within a grace window, then terminal with the last reason): no `ManagedCluster` matches the selector (`NoClustersMatchSelector`); the base set is non-empty but none is eligible for plan item 0's action (`NoEligibleClusters`); an unresolvable `backupContent`/`oadpContent` reference (`UnresolvableDenpendency`); and a seed image that cannot be read — registry unreachable, pull secret missing/unreadable, transport error (`SeedImageUnreadable`).
+- **Immediately terminal** (a definitive verdict on content actually read): `spec.ibuSpec.backupContent` paired with a seed image older than the first format that supports it (`BackupContentUnsupportedSeed`).
+
+The gates run in order **empty cluster set → references → seed format**, so a hub-only, deterministic failure (a selector typo, a missing `BackupContent`) is reported with its own reason before any registry read.
+
+**Grace window.** A transient failure is retried until a bounded grace window elapses, then becomes terminal with the last reason. The window is measured from the IBGU's `metadata.creationTimestamp` — the moment the operator acted — so it cannot be reset or lost, and an IBGU first reconciled more than the window after creation (for example after a TALM outage) goes straight to terminal. The default window is **300 seconds (5 minutes)**, overridable per IBGU with the annotation `lcm.openshift.io/ibgu-preflight-retry-seconds` (a non-negative integer number of seconds; `0` makes the first transient failure terminal). An invalid value falls back to the default and raises a Warning event. Editing the annotation has **no effect once the IBGU is already terminal**.
+
+> **Release note.** An empty IBGU (no `ManagedCluster` matches the selector, or none is eligible for plan item 0) no longer reports success; after a bounded grace window it is blocked terminally (`Succeeded=False`) and creates no cgu. An unresolvable reference or an incompatible seed no longer auto-heals; recovery is delete-and-recreate. A plan that finishes with a failed cluster action now reports `Succeeded=False`, reason `CompletedWithFailures`.
+
 ## Sync status
 ibgu lists all cgus that are created by this ibgu and sorts them by the planIndex so that order of actions in the status will be correct. It then reads the status of cgus and add failed and completed actions to clusters field of ibgu. For failed actions ibgu also gathers the reason and message for that condition.
 

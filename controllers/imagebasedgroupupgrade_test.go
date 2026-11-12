@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -1416,6 +1417,12 @@ func TestEnsureManifests(t *testing.T) {
 					Message: "All plan steps are completed",
 					Status:  metav1.ConditionFalse,
 				},
+				{
+					Type:    string(utils.ConditionTypes.Succeeded),
+					Reason:  string(utils.ConditionReasons.Completed),
+					Message: "All plan steps are completed",
+					Status:  metav1.ConditionTrue,
+				},
 			},
 		},
 		{
@@ -2025,35 +2032,371 @@ func TestReconcileLastBatchCompletesWithSucceeded(t *testing.T) {
 	assert.Equal(t, []string{"cluster1", "cluster2"}, cgu.Spec.Clusters)
 }
 
-// TestEnsureManifestsItem0ZeroIsFinalAfterCompletion verifies that once the IBGU
-// has reported completion while plan item 0 created no CGU (it resolved to zero
-// eligible clusters), a ManagedCluster that later matches the selector does not
-// restart the finished, empty rollout: plan item 0's zero result is final.
-func TestEnsureManifestsItem0ZeroIsFinalAfterCompletion(t *testing.T) {
-	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
-		{Actions: []string{ibguv1alpha1.Upgrade}},
+// TestEmptySelectorTransientThenTerminal verifies the empty-set gate (design D2)
+// when no ManagedCluster matches the selector: within the grace window it retries
+// (transient, requeue, no terminal state), and once the window has elapsed it
+// becomes terminal (Succeeded=False, reason NoClustersMatchSelector) and creates no
+// CGU.
+func TestEmptySelectorTransientThenTerminal(t *testing.T) {
+	newEmptyIBGU := func() *ibguv1alpha1.ImageBasedGroupUpgrade {
+		// A Prep plan whose selector matches no ManagedCluster (none are created).
+		return newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	}
+
+	t.Run("within grace: retries", func(t *testing.T) {
+		ibgu := newEmptyIBGU()
+		ibgu.CreationTimestamp = metav1.Now()
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked)
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.Equal(t, string(utils.ConditionReasons.NoClustersMatchSelector), progressingCondition(ibgu).Reason)
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
 	})
-	// IBGU already reported completion; no plan item 0 CGU exists.
+
+	t.Run("past grace: terminal", func(t *testing.T) {
+		ibgu := newEmptyIBGU()
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: record.NewFakeRecorder(10)}
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.NoClustersMatchSelector), succeeded.Reason)
+		// Progressing is mirrored with the same reason so existing consumers see it stopped.
+		assert.Equal(t, string(utils.ConditionReasons.NoClustersMatchSelector), progressingCondition(ibgu).Reason)
+	})
+}
+
+// TestNoEligibleAtItem0TransientThenTerminal verifies the empty-set gate when the
+// base set is non-empty but no cluster is eligible for plan item 0's action
+// (reason NoEligibleClusters).
+func TestNoEligibleAtItem0TransientThenTerminal(t *testing.T) {
+	// Plan item 0 is Upgrade, which requires the prep-completed label; the matching
+	// cluster does not carry it, so the base set is non-empty but none is eligible.
+	newIBGU := func() *ibguv1alpha1.ImageBasedGroupUpgrade {
+		return newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Upgrade}}})
+	}
+	setup := func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) IBGUReconciler {
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+		return IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: record.NewFakeRecorder(10)}
+	}
+
+	t.Run("within grace: retries", func(t *testing.T) {
+		ibgu := newIBGU()
+		ibgu.CreationTimestamp = metav1.Now()
+		reconciler := setup(ibgu)
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked)
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.Equal(t, string(utils.ConditionReasons.NoEligibleClusters), progressingCondition(ibgu).Reason)
+	})
+
+	t.Run("past grace: terminal", func(t *testing.T) {
+		ibgu := newIBGU()
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+		reconciler := setup(ibgu)
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, string(utils.ConditionReasons.NoEligibleClusters), succeeded.Reason)
+	})
+}
+
+// TestReferenceGateTransientThenTerminal verifies that an unresolvable reference is
+// transient within the grace window (handling GitOps sync lag) and terminal after it.
+func TestReferenceGateTransientThenTerminal(t *testing.T) {
+	newIBGU := func() *ibguv1alpha1.ImageBasedGroupUpgrade {
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+		ibgu.Spec.IBUSpec.BackupContent = []lcav1.BackupContentRef{{Name: "bc-missing"}}
+		return ibgu
+	}
+	setup := func() IBGUReconciler {
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+		// A compatible seed reader keeps the seed gate out of the way.
+		return IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder:        record.NewFakeRecorder(10),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
+	}
+
+	t.Run("within grace: retries", func(t *testing.T) {
+		ibgu := newIBGU()
+		ibgu.CreationTimestamp = metav1.Now()
+		reconciler := setup()
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked)
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), progressingCondition(ibgu).Reason)
+	})
+
+	t.Run("past grace: terminal", func(t *testing.T) {
+		ibgu := newIBGU()
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+		reconciler := setup()
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), succeeded.Reason)
+	})
+}
+
+// TestSucceededPresenceIsNotRevived verifies that an IBGU carrying the Succeeded
+// condition — whether it finished cleanly (True) or was blocked terminally
+// (False) — is not revived by a late-matching ManagedCluster or an appended plan
+// item: ensureManifests short-circuits before any gate or the plan loop.
+func TestSucceededPresenceIsNotRevived(t *testing.T) {
+	variants := []struct {
+		name   string
+		status metav1.ConditionStatus
+		reason utils.ConditionReason
+	}{
+		{"finished cleanly", metav1.ConditionTrue, utils.ConditionReasons.Completed},
+		{"blocked terminally", metav1.ConditionFalse, utils.ConditionReasons.NoEligibleClusters},
+	}
+	for _, v := range variants {
+		t.Run(v.name, func(t *testing.T) {
+			// An appended Upgrade plan item and a late cluster that would match both the
+			// selector and the Upgrade predicate.
+			ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+				{Actions: []string{ibguv1alpha1.Prep}},
+				{Actions: []string{ibguv1alpha1.Upgrade}},
+			})
+			utils.SetStatusCondition(&ibgu.Status.Conditions,
+				utils.ConditionTypes.Succeeded, v.reason, v.status, "terminal")
+
+			fakeClient, err := getFakeClientFromObjects()
+			assert.NoError(t, err)
+			assert.NoError(t, fakeClient.Create(context.TODO(),
+				managedClusterWithLabels("late", map[string]string{
+					"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
+
+			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+			assert.NoError(t, err)
+			assert.False(t, blocked)
+
+			// No CGU is created for either plan item.
+			for _, name := range []string{"name-prep-0", "name-upgrade-1"} {
+				cgu := &v1alpha1.ClusterGroupUpgrade{}
+				assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+					types.NamespacedName{Name: name, Namespace: "namespace"}, cgu)))
+			}
+		})
+	}
+}
+
+// TestCompletedEmptyIBGUMigratesToTerminal verifies the one-time migration of an
+// IBGU that completed under older code with no CGU (Progressing=Completed, no
+// Succeeded condition): it is migrated to a terminal block (Succeeded=False,
+// NoEligibleClusters) rather than revived when a cluster later matches.
+func TestCompletedEmptyIBGUMigratesToTerminal(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 	utils.SetStatusCondition(&ibgu.Status.Conditions,
 		utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
 		metav1.ConditionFalse, "All plan steps are completed")
 
 	fakeClient, err := getFakeClientFromObjects()
 	assert.NoError(t, err)
-	// A cluster that now matches the selector and the Upgrade predicate appears
-	// after completion; it must not pull plan item 0 back into a rollout.
+	// A cluster that now matches the selector appears after completion.
 	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("late", map[string]string{
-			"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
+		managedClusterWithLabels("late", map[string]string{"common": "true"})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10)}
+
+	blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.False(t, blocked)
+
+	succeeded := succeededCondition(ibgu)
+	assert.NotNil(t, succeeded)
+	assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+	assert.Equal(t, string(utils.ConditionReasons.NoEligibleClusters), succeeded.Reason)
+
+	// A second reconcile short-circuits on the Succeeded presence and creates no CGU.
+	blocked, err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.False(t, blocked)
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
+}
+
+// TestCompletedIBGUMigratesToSucceeded verifies that an IBGU that completed under
+// older code with CGUs migrates to Succeeded=True (Completed), or Succeeded=False
+// (CompletedWithFailures) when a cluster recorded a failed action.
+func TestCompletedIBGUMigratesToSucceeded(t *testing.T) {
+	t.Run("clean completion migrates to Succeeded=True", func(t *testing.T) {
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+		utils.SetStatusCondition(&ibgu.Status.Conditions,
+			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
+			metav1.ConditionFalse, "All plan steps are completed")
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		prepCGU := completedPrepCGU([]string{"cluster1"})
+		assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionTrue, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
+	})
+
+	t.Run("completion with a failed action migrates to CompletedWithFailures", func(t *testing.T) {
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+		utils.SetStatusCondition(&ibgu.Status.Conditions,
+			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
+			metav1.ConditionFalse, "All plan steps are completed")
+		ibgu.Status.Clusters = []ibguv1alpha1.ClusterState{
+			{Name: "cluster1", FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}}},
+		}
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		prepCGU := completedPrepCGU([]string{"cluster1"})
+		assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
+
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.CompletedWithFailures), succeeded.Reason)
+	})
+}
+
+// TestCompletedWithFailuresAtEndOfPlan verifies that a plan running to the end with
+// a cluster that recorded a failed action reports Succeeded=False, reason
+// CompletedWithFailures (a clean run reports Succeeded=True, Completed).
+func TestCompletedWithFailuresAtEndOfPlan(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	// A completed plan-item-0 CGU exists (plan runs to the end), and one cluster
+	// recorded a failed action in the IBGU status.
+	ibgu.Status.Clusters = []ibguv1alpha1.ClusterState{
+		{Name: "cluster1",
+			FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep, Message: "failed prep"}}},
+	}
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	prepCGU := completedPrepCGU([]string{"cluster1"})
+	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
 
 	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	_, err = reconciler.ensureManifests(context.TODO(), ibgu)
+	blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 	assert.NoError(t, err)
+	assert.False(t, blocked)
 
-	cgu := &v1alpha1.ClusterGroupUpgrade{}
-	err = reconciler.Get(context.TODO(),
-		types.NamespacedName{Name: "name-upgrade-0", Namespace: "namespace"}, cgu)
-	assert.True(t, apierrors.IsNotFound(err))
+	succeeded := succeededCondition(ibgu)
+	assert.NotNil(t, succeeded)
+	assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+	assert.Equal(t, string(utils.ConditionReasons.CompletedWithFailures), succeeded.Reason)
+	assert.Equal(t, string(utils.ConditionReasons.CompletedWithFailures), progressingCondition(ibgu).Reason)
+}
+
+// TestGateOrderEmptyBeforeReferenceBeforeSeed verifies that the hub-only
+// deterministic checks run before the network read: a plan with both an empty
+// selector and a missing reference reports the empty-set reason and performs no
+// registry read.
+func TestGateOrderEmptyBeforeReferenceBeforeSeed(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	ibgu.Spec.IBUSpec.BackupContent = []lcav1.BackupContentRef{{Name: "bc-missing"}}
+	ibgu.CreationTimestamp = metav1.Now()
+
+	// No ManagedCluster is created, so the empty-set gate (run first) fails.
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	reader := &fakeSeedImageReader{format: preBumpFormat}
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		SeedImageReader: reader}
+
+	blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.True(t, blocked)
+
+	cond := progressingCondition(ibgu)
+	assert.NotNil(t, cond)
+	assert.Equal(t, string(utils.ConditionReasons.NoClustersMatchSelector), cond.Reason)
+	assert.NotEqual(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
+	// The registry was never read: the empty-set gate short-circuited before the seed gate.
+	assert.False(t, reader.called)
+}
+
+// TestEnsureManifestsEmptyIBGUDoesNotComplete verifies that an item-0-empty IBGU
+// never reports success: within grace it retries (no Succeeded), and past grace it
+// is Succeeded=False — never Progressing=Completed or Succeeded=True.
+func TestEnsureManifestsEmptyIBGUDoesNotComplete(t *testing.T) {
+	newEmptyIBGU := func() *ibguv1alpha1.ImageBasedGroupUpgrade {
+		return newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	}
+
+	t.Run("within grace does not complete", func(t *testing.T) {
+		ibgu := newEmptyIBGU()
+		ibgu.CreationTimestamp = metav1.Now()
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+
+		_, err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.NotEqual(t, string(utils.ConditionReasons.Completed), progressingCondition(ibgu).Reason)
+	})
+
+	t.Run("past grace is terminal, never Succeeded=True", func(t *testing.T) {
+		ibgu := newEmptyIBGU()
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: record.NewFakeRecorder(10)}
+
+		_, err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.NotEqual(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
+	})
 }
 
 // findClusterState returns the ClusterState for the named cluster, or nil.
@@ -2214,14 +2557,27 @@ func progressingCondition(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *metav1.Con
 	return nil
 }
 
+// succeededCondition returns the terminal Succeeded condition, or nil. Its presence
+// (True or False) marks the IBGU as finished.
+func succeededCondition(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *metav1.Condition {
+	for i := range ibgu.Status.Conditions {
+		if ibgu.Status.Conditions[i].Type == string(utils.ConditionTypes.Succeeded) {
+			return &ibgu.Status.Conditions[i]
+		}
+	}
+	return nil
+}
+
 // TestEnsureManifestsPrepReferenceGate verifies the pre-flight reference-resolution
-// gate: a Prep plan with an unresolvable reference is blocked before any CGU is
-// created, while resolvable references, Upgrade-only plans, and already-in-progress
-// IBGUs are not blocked.
+// gate: a Prep plan with an unresolvable reference is, within the grace window,
+// retried (transient) before any CGU is created, while resolvable references,
+// Upgrade-only plans, and already-in-progress IBGUs are not blocked. The
+// transient-then-terminal arc is covered by TestReferenceGateTransientThenTerminal.
 func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
-	t.Run("prep plan with missing reference is blocked and creates no CGU", func(t *testing.T) {
+	t.Run("prep plan with missing reference is retried within grace and creates no CGU", func(t *testing.T) {
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 		ibgu.Spec.IBUSpec.BackupContent = []lcav1.BackupContentRef{{Name: "bc-missing"}}
+		ibgu.CreationTimestamp = metav1.Now() // within the grace window
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -2234,7 +2590,9 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
+		// Transient within grace: requeue, no terminal state.
 		assert.True(t, blocked)
+		assert.Nil(t, succeededCondition(ibgu))
 
 		cond := progressingCondition(ibgu)
 		assert.NotNil(t, cond)
@@ -2277,9 +2635,10 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		assert.NoError(t, err)
 	})
 
-	t.Run("prep plan with missing oadpContent configmap is blocked and creates no CGU", func(t *testing.T) {
+	t.Run("prep plan with missing oadpContent configmap is retried within grace and creates no CGU", func(t *testing.T) {
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 		ibgu.Spec.IBUSpec.OADPContent = []lcav1.ConfigMapRef{{Name: "cm-missing", Namespace: "ns1"}}
+		ibgu.CreationTimestamp = metav1.Now() // within the grace window
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -2290,6 +2649,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.True(t, blocked)
+		assert.Nil(t, succeededCondition(ibgu))
 
 		cond := progressingCondition(ibgu)
 		assert.NotNil(t, cond)

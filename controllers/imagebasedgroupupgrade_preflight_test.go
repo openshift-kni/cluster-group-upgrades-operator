@@ -19,7 +19,9 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +73,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 		mutate         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade)
 		reader         *fakeSeedImageReader
 		pullSecret     *corev1.Secret
-		expectBlocked  bool
+		expectClass    preflightClass
 		expectReason   utils.ConditionReason
 		expectReadCall bool
 		expectEvent    bool
@@ -80,26 +82,26 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			name:           "no backupContent passes through without reading the image",
 			mutate:         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) { ibgu.Spec.IBUSpec.BackupContent = nil },
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectBlocked:  false,
+			expectClass:    preflightPass,
 			expectReadCall: false,
 		},
 		{
-			name:           "backupContent with a pre-bump seed is rejected",
+			name:           "backupContent with a pre-bump seed is terminal",
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectBlocked:  true,
+			expectClass:    preflightTerminal,
 			expectReason:   utils.ConditionReasons.BackupContentUnsupportedSeed,
 			expectReadCall: true,
 		},
 		{
 			name:           "backupContent with a supported seed proceeds",
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectBlocked:  false,
+			expectClass:    preflightPass,
 			expectReadCall: true,
 		},
 		{
-			name:           "unreadable image label blocks fail-closed",
+			name:           "unreadable image label is transient (fail-closed)",
 			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
-			expectBlocked:  true,
+			expectClass:    preflightTransient,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: true,
 		},
@@ -109,17 +111,17 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.SetAnnotations(map[string]string{utils.IBGUSkipSeedCompatibilityAnnotation: ""})
 			},
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectBlocked:  false,
+			expectClass:    preflightPass,
 			expectReadCall: false,
 			expectEvent:    true,
 		},
 		{
-			name: "missing pull secret blocks as unreadable",
+			name: "missing pull secret is transient (unreadable)",
 			mutate: func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
 				ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "missing"}
 			},
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectBlocked:  true,
+			expectClass:    preflightTransient,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: false,
 		},
@@ -129,7 +131,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Rollback}}}
 			},
 			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
-			expectBlocked:  false,
+			expectClass:    preflightPass,
 			expectReadCall: false,
 		},
 		{
@@ -138,7 +140,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Upgrade}}}
 			},
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectBlocked:  true,
+			expectClass:    preflightTerminal,
 			expectReason:   utils.ConditionReasons.BackupContentUnsupportedSeed,
 			expectReadCall: true,
 		},
@@ -153,7 +155,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{}}`)},
 			},
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectBlocked:  false,
+			expectClass:    preflightPass,
 			expectReadCall: true,
 		},
 	}
@@ -181,23 +183,17 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				SeedImageReader: test.reader,
 			}
 
-			blocked, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+			outcome, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectBlocked, blocked)
+			assert.Equal(t, test.expectClass, outcome.class)
 			assert.Equal(t, test.expectReadCall, test.reader.called)
-
-			cond := progressingCondition(ibgu)
 			if test.expectReason != "" {
-				assert.NotNil(t, cond)
-				assert.Equal(t, metav1.ConditionFalse, cond.Status)
-				assert.Equal(t, string(test.expectReason), cond.Reason)
-			} else {
-				// A pass-through or skip must not set a blocking seed condition.
-				if cond != nil {
-					assert.NotEqual(t, string(utils.ConditionReasons.SeedImageUnreadable), cond.Reason)
-					assert.NotEqual(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
-				}
+				assert.Equal(t, test.expectReason, outcome.reason)
 			}
+			// The gate only classifies; it never writes a condition itself (that is
+			// ensureManifests's job once it has the outcome).
+			assert.Nil(t, progressingCondition(ibgu))
+			assert.Nil(t, succeededCondition(ibgu))
 
 			if test.expectEvent {
 				select {
@@ -213,7 +209,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 
 // TestEnsureSeedFormatCompatibleInfraFault verifies that a genuine (non-NotFound)
 // error reading the pull secret is returned as an error — so Reconcile requeues
-// with backoff — rather than being recorded as a fail-closed "unreadable" block.
+// with backoff — rather than being classified as a fail-closed "unreadable" block.
 func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 	ibgu := backupContentIBGU()
 	ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "pull"}
@@ -235,38 +231,91 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 		SeedImageReader: reader,
 	}
 
-	blocked, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+	outcome, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
 	assert.Error(t, err)
-	assert.False(t, blocked)
+	assert.Equal(t, preflightPass, outcome.class)
 	assert.False(t, reader.called)
-	// No fail-closed condition is recorded for a transient fault.
+	// No condition is recorded for a transient fault.
 	assert.Nil(t, progressingCondition(ibgu))
+	assert.Nil(t, succeededCondition(ibgu))
 }
 
+// TestPreflightRetrySecondsParsing covers the annotation parser: a valid value is
+// used, an absent one yields the default, and an invalid/negative one falls back to
+// the default and raises a Warning event.
+func TestPreflightRetrySecondsParsing(t *testing.T) {
+	tests := []struct {
+		name        string
+		annotation  *string
+		expect      int
+		expectEvent bool
+	}{
+		{name: "absent uses the default", annotation: nil, expect: utils.DefaultPreflightRetrySeconds},
+		{name: "valid value is used", annotation: ptr("120"), expect: 120},
+		{name: "zero is used (terminal on first failure)", annotation: ptr("0"), expect: 0},
+		{name: "non-integer falls back to default with event", annotation: ptr("soon"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
+		{name: "negative falls back to default with event", annotation: ptr("-5"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+			if test.annotation != nil {
+				ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: *test.annotation})
+			}
+			recorder := record.NewFakeRecorder(10)
+			reconciler := IBGUReconciler{Scheme: testscheme, Log: logr.Discard(), Recorder: recorder}
+
+			assert.Equal(t, test.expect, reconciler.preflightRetrySeconds(ibgu))
+
+			if test.expectEvent {
+				select {
+				case e := <-recorder.Events:
+					assert.Contains(t, e, "Warning")
+					assert.Contains(t, e, "InvalidPreflightRetrySeconds")
+				default:
+					t.Fatal("expected a Warning event for the invalid annotation, got none")
+				}
+			} else {
+				assert.Len(t, recorder.Events, 0)
+			}
+		})
+	}
+}
+
+// ptr returns a pointer to v, for optional test fields.
+func ptr[T any](v T) *T { return &v }
+
 // TestEnsureManifestsSeedFormatGate verifies the seed-format gate as wired into
-// ensureManifests: it blocks before any CGU is created, runs ahead of the
-// reference gate, and only runs before the first CGU.
+// ensureManifests: with its references resolved it rejects a pre-bump seed
+// terminally before any CGU is created, it runs after the reference gate, and it
+// only runs before the first CGU.
 func TestEnsureManifestsSeedFormatGate(t *testing.T) {
-	t.Run("backupContent with pre-bump seed is blocked before any CGU", func(t *testing.T) {
+	t.Run("backupContent with pre-bump seed is terminal before any CGU", func(t *testing.T) {
 		ibgu := backupContentIBGU()
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
+		// bc1 exists so the reference gate passes and the seed gate (run last) decides.
+		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
 		assert.NoError(t, fakeClient.Create(context.TODO(),
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 		reconciler := IBGUReconciler{
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: &fakeSeedImageReader{format: preBumpFormat},
 		}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.True(t, blocked)
+		// Terminal: no requeue.
+		assert.False(t, blocked)
 
-		cond := progressingCondition(ibgu)
-		assert.NotNil(t, cond)
-		assert.Equal(t, metav1.ConditionFalse, cond.Status)
-		assert.Equal(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
+		// The terminal state is recorded on Succeeded (and mirrored onto Progressing).
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), succeeded.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), progressingCondition(ibgu).Reason)
 
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		err = reconciler.Get(context.TODO(),
@@ -274,31 +323,39 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		assert.True(t, apierrors.IsNotFound(err))
 	})
 
-	t.Run("seed gate runs before the reference gate", func(t *testing.T) {
-		// Both the seed (pre-bump) and the reference (missing BackupContent) would
-		// block; the seed reason must win because the seed gate runs first.
+	t.Run("reference gate runs before the seed gate", func(t *testing.T) {
+		// Both the reference (missing BackupContent) and the seed (pre-bump) would
+		// fail; the reference reason must win because the hub-only reference gate runs
+		// before the registry read, which must therefore not happen.
 		ibgu := backupContentIBGU()
+		ibgu.CreationTimestamp = metav1.Now() // within the grace window
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		assert.NoError(t, fakeClient.Create(context.TODO(),
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
+		reader := &fakeSeedImageReader{format: preBumpFormat}
 		reconciler := IBGUReconciler{
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
-			SeedImageReader: &fakeSeedImageReader{format: preBumpFormat},
+			SeedImageReader: reader,
 		}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
+		// Reference is transient; within grace it requeues.
 		assert.True(t, blocked)
+		// The seed gate never ran: no registry read.
+		assert.False(t, reader.called)
 
 		cond := progressingCondition(ibgu)
 		assert.NotNil(t, cond)
-		assert.Equal(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
-		assert.NotEqual(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
+		assert.NotEqual(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
+		// Transient within grace does not set Succeeded.
+		assert.Nil(t, succeededCondition(ibgu))
 	})
 
-	t.Run("compatible seed falls through to the reference gate", func(t *testing.T) {
+	t.Run("compatible seed with resolved references creates a CGU", func(t *testing.T) {
 		ibgu := backupContentIBGU()
 
 		fakeClient, err := getFakeClientFromObjects()
@@ -317,7 +374,6 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		assert.False(t, blocked)
 		assert.True(t, reader.called)
 
-		// With a compatible seed and a resolvable reference, the Prep CGU is created.
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		err = reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
@@ -325,15 +381,22 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 	})
 
 	t.Run("in-progress IBGU is not re-checked", func(t *testing.T) {
-		ibgu := backupContentIBGU()
+		// A two-item plan whose plan item 0 CGU has completed but whose Upgrade item is
+		// still to roll out, so the IBGU is genuinely in progress (not finished).
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+			{Actions: []string{ibguv1alpha1.Prep}},
+			{Actions: []string{ibguv1alpha1.Upgrade}},
+		})
+		ibgu.Spec.IBUSpec.BackupContent = []lcav1.BackupContentRef{{Name: "bc1"}}
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
-		// A CGU already exists for plan item 0, so neither pre-flight gate runs.
+		// A CGU already exists for plan item 0, so no pre-flight gate runs.
 		prepCGU := completedPrepCGU([]string{"cluster1"})
 		assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
 		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+			managedClusterWithLabels("cluster1", map[string]string{
+				"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
 
 		reader := &fakeSeedImageReader{format: preBumpFormat}
 		reconciler := IBGUReconciler{
@@ -345,19 +408,18 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		assert.False(t, blocked)
 		assert.False(t, reader.called)
 
-		cond := progressingCondition(ibgu)
-		assert.NotNil(t, cond)
-		assert.NotEqual(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
+		// The Upgrade item is still rolling out, so no terminal state is recorded.
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
 	})
 
-	// A backupContent IBGU that already reported completion without ever creating a
-	// CGU (plan item 0 resolved to zero eligible clusters) must not be re-gated on a
-	// later reconcile: an unreadable seed must not overwrite Completed with a block.
-	t.Run("completed IBGU with no CGU is not re-gated", func(t *testing.T) {
+	// A finished IBGU (Succeeded present) must not be re-gated on a later reconcile:
+	// an unreadable seed must not overwrite its terminal state.
+	t.Run("finished IBGU with Succeeded present is not re-gated", func(t *testing.T) {
 		ibgu := backupContentIBGU()
 		utils.SetStatusCondition(&ibgu.Status.Conditions,
-			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
-			metav1.ConditionFalse, "All plan steps are completed")
+			utils.ConditionTypes.Succeeded, utils.ConditionReasons.Completed,
+			metav1.ConditionTrue, "All plan steps are completed")
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -375,19 +437,115 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.False(t, blocked)
-		// The seed gate is skipped: no registry read.
+		// The short-circuit fires before any gate: no registry read.
 		assert.False(t, reader.called)
 
-		// Completion is preserved; the unreadable seed did not overwrite it.
-		cond := progressingCondition(ibgu)
-		assert.NotNil(t, cond)
-		assert.Equal(t, string(utils.ConditionReasons.Completed), cond.Reason)
-		assert.NotEqual(t, string(utils.ConditionReasons.SeedImageUnreadable), cond.Reason)
+		// The terminal Succeeded state is preserved; the unreadable seed did not change it.
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
 
-		// No CGU is created for the completed, empty rollout.
+		// No CGU is created.
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		err = reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
 		assert.True(t, apierrors.IsNotFound(err))
+	})
+}
+
+// TestPreflightGraceWindow exercises the transient grace window end-to-end through
+// ensureManifests, using the seed-unreadable transient as the vehicle: within the
+// window the IBGU retries (requeue, no Succeeded); once the window has elapsed it
+// becomes terminal (Succeeded=False); the annotation changes the window; an invalid
+// annotation falls back to the default and raises a Warning event; and 0 is terminal
+// on the first failure.
+func TestPreflightGraceWindow(t *testing.T) {
+	// newUnreadableSeedIBGU builds a backupContent Prep IBGU with a resolvable
+	// reference and a matching cluster, so the empty-set and reference gates pass and
+	// the seed gate (unreadable) is the gate under test.
+	newUnreadableSeedIBGU := func(t *testing.T) (*ibguv1alpha1.ImageBasedGroupUpgrade, *fakeSeedImageReader, *record.FakeRecorder, IBGUReconciler) {
+		t.Helper()
+		ibgu := backupContentIBGU()
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+		reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
+		recorder := record.NewFakeRecorder(10)
+		reconciler := IBGUReconciler{
+			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: recorder, SeedImageReader: reader,
+		}
+		return ibgu, reader, recorder, reconciler
+	}
+
+	t.Run("within grace: retries without a terminal block", func(t *testing.T) {
+		ibgu, reader, _, reconciler := newUnreadableSeedIBGU(t)
+		ibgu.CreationTimestamp = metav1.Now()
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked) // requeue
+		assert.True(t, reader.called)
+		assert.Nil(t, succeededCondition(ibgu))
+		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), progressingCondition(ibgu).Reason)
+	})
+
+	t.Run("past grace: becomes terminal with the last reason", func(t *testing.T) {
+		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked) // no requeue
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
+	})
+
+	t.Run("annotation lengthens the window", func(t *testing.T) {
+		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
+		// Created 6 minutes ago: past the default 5m window, but within a 10m override.
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-6 * time.Minute))
+		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "600"})
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked) // still within the extended window
+		assert.Nil(t, succeededCondition(ibgu))
+	})
+
+	t.Run("invalid annotation falls back to default and warns", func(t *testing.T) {
+		ibgu, _, recorder, reconciler := newUnreadableSeedIBGU(t)
+		ibgu.CreationTimestamp = metav1.Now()
+		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "nope"})
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, blocked) // within the default window
+		assert.Nil(t, succeededCondition(ibgu))
+
+		var sawWarning bool
+		for len(recorder.Events) > 0 {
+			if e := <-recorder.Events; strings.Contains(e, "InvalidPreflightRetrySeconds") {
+				sawWarning = true
+			}
+		}
+		assert.True(t, sawWarning, "expected a Warning event for the invalid annotation")
+	})
+
+	t.Run("zero is terminal on the first failure", func(t *testing.T) {
+		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
+		ibgu.CreationTimestamp = metav1.Now()
+		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "0"})
+
+		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, blocked) // terminal immediately
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
 	})
 }
