@@ -413,22 +413,32 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 	return nil
 }
 
-// hasPlanItem0CGU reports whether plan item 0's CGU already exists in cguList.
-func hasPlanItem0CGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) bool {
-	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
+// missingPlanItemCGUs reports the plan items that have no owned CGU but precede the
+// highest plan index that does. When any owned CGU exists, every plan item up to the
+// highest one that has a CGU must also have a CGU — the controller creates them in
+// order and never deletes an owned CGU, so a gap means that item's CGU was deleted out
+// of band. Plan items beyond the highest existing CGU have simply not been created yet
+// and are not reported. Each missing item is named "N (actions)" for the block message.
+func missingPlanItemCGUs(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) []string {
+	present := make(map[string]bool, len(cguList.Items))
 	for i := range cguList.Items {
-		if cguList.Items[i].GetName() == cguName {
-			return true
+		present[cguList.Items[i].GetName()] = true
+	}
+	has := make([]bool, len(ibgu.Spec.Plan))
+	highest := -1
+	for i := range ibgu.Spec.Plan {
+		if present[getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[i], i)] {
+			has[i] = true
+			highest = i
 		}
 	}
-	return false
-}
-
-// ibguReportsCompletion reports whether the IBGU's Progressing condition records
-// that all plan steps have completed.
-func ibguReportsCompletion(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
-	cond := meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Progressing))
-	return cond != nil && cond.Reason == string(utils.ConditionReasons.Completed)
+	var missing []string
+	for i := 0; i < highest; i++ {
+		if !has[i] {
+			missing = append(missing, fmt.Sprintf("%d (%s)", i, strings.Join(ibgu.Spec.Plan[i].Actions, ", ")))
+		}
+	}
+	return missing
 }
 
 // effectiveActionLabels returns the ManagedCluster labels augmented with the IBGU
@@ -897,26 +907,6 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		r.Log.Info("Plan items appended after completion, resuming IBGU", "ibgu", ibgu.GetName(),
 			"completionGeneration", succeeded.ObservedGeneration, "currentGeneration", ibgu.Generation)
 		r.resumeForAppend(ibgu)
-	} else if ibguReportsCompletion(ibgu) {
-		// An IBGU that finished under older code carries Progressing reason Completed but
-		// no Succeeded condition. Migrate it so it obeys the presence rules above. Run
-		// this only when there is no Succeeded condition (the resume path above handles
-		// an already-migrated IBGU) so a resumed IBGU is not migrated straight back to a
-		// completion.
-		//
-		//   - No plan-item-0 CGU: it completed empty (no cluster was ever eligible).
-		//     Migrate to a permanent empty-set block so a later-matching cluster cannot
-		//     revive it after a TALM upgrade (design D2).
-		//   - Has CGUs: fall through to the plan loop, which waits on any still-active
-		//     owned CGU and re-records the completion through setPlanCompleted stamped
-		//     with the current generation (so it stays appendable).
-		if !hasPlanItem0CGU(ibgu, cguList) {
-			r.Log.Info("Migrating an empty-completed IBGU (no CGU) to a terminal block", "ibgu", ibgu.GetName())
-			r.setTerminal(ibgu, utils.ConditionReasons.NoEligibleClusters,
-				"this IBGU completed with no CGU (no cluster was eligible for plan item 0); "+
-					"it no longer reports success")
-			return nil
-		}
 	}
 
 	// item0Clusters is plan item 0's eligible cluster set, resolved once by the
@@ -933,16 +923,14 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// once: every pre-flight failure is terminal (CNF-30176), with no retry.
 	//
 	// The cached list above can lag behind an owned CGU this controller just created.
-	// Before running the terminal gates, confirm no owned CGU exists through the uncached
-	// reader: if the cache is merely lagging, the first CGU has already been created and
-	// the pre-flight window is over, so adopt the uncached snapshot — that both skips the
-	// gates and lets the plan loop below wait on the existing CGU. Running the gates
-	// against a stale empty list could otherwise record a terminal empty-set block (if
-	// the cluster set emptied in the same window) or a PreflightWindowExpired block (an
-	// error retried near the deadline, before the informer caught the CGU) on an IBGU
-	// whose first CGU already exists — wedging it permanently while its CGU runs
-	// unsupervised (CNF-30176).
-	if len(cguList.Items) == 0 {
+	// Before any terminal check, re-read owned CGUs through the uncached reader when the
+	// cached list would trip one — it is empty, or it shows a gap in the plan's CGU
+	// sequence (see the gap gate below). A lag-free, gap-free list needs no confirmation,
+	// so an in-progress IBGU reconciles without the extra API read. Confirming uncached
+	// means an empty list really is empty (the first CGU has not raced the informer) and
+	// a sequence gap really is an out-of-band deletion, not cache lag, so neither records
+	// a false permanent block on an IBGU whose CGUs already exist (CNF-30176).
+	if len(cguList.Items) == 0 || len(missingPlanItemCGUs(ibgu, cguList)) > 0 {
 		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
 		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
 			Namespace:     ibgu.Namespace,
@@ -951,6 +939,23 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
 		}
 		cguList = uncachedCGUList
+	}
+
+	// Gap gate (confirmed uncached above): an owned CGU exists but the CGU for an earlier
+	// plan item is missing. The controller creates plan-item CGUs in order and never
+	// deletes an owned one, so this is an out-of-band deletion. Block terminally and
+	// create nothing — never report completion: plan item 0's CGU carries the frozen
+	// cluster set, which is unrecoverable once gone, and a missing later item's CGU would
+	// otherwise be silently recreated and re-run against current labels rather than the
+	// frozen set. Recovery is delete-and-recreate.
+	if len(cguList.Items) > 0 {
+		if missing := missingPlanItemCGUs(ibgu, cguList); len(missing) > 0 {
+			r.setTerminal(ibgu, utils.ConditionReasons.PlanCGUMissing,
+				fmt.Sprintf("owned CGUs exist but the CGU(s) for earlier plan item(s) %s are missing "+
+					"(deleted out of band); the IBGU cannot safely resume because plan item 0's frozen "+
+					"cluster set may be unrecoverable", strings.Join(missing, "; ")))
+			return nil
+		}
 	}
 
 	if len(cguList.Items) == 0 {

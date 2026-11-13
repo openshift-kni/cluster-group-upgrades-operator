@@ -2327,146 +2327,6 @@ func TestSucceededPresenceIsNotRevived(t *testing.T) {
 	}
 }
 
-// TestCompletedEmptyIBGUMigratesToTerminal verifies the one-time migration of an
-// IBGU that completed under older code with no CGU (Progressing=Completed, no
-// Succeeded condition): it is migrated to a terminal block (Succeeded=False,
-// NoEligibleClusters) rather than revived when a cluster later matches.
-func TestCompletedEmptyIBGUMigratesToTerminal(t *testing.T) {
-	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
-	utils.SetStatusCondition(&ibgu.Status.Conditions,
-		utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
-		metav1.ConditionFalse, "All plan steps are completed")
-
-	fakeClient, err := getFakeClientFromObjects()
-	assert.NoError(t, err)
-	// A cluster that now matches the selector appears after completion.
-	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("late", map[string]string{"common": "true"})))
-
-	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
-		Recorder: record.NewFakeRecorder(10)}
-
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
-	assert.NoError(t, err)
-
-	succeeded := succeededCondition(ibgu)
-	assert.NotNil(t, succeeded)
-	assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
-	assert.Equal(t, string(utils.ConditionReasons.NoEligibleClusters), succeeded.Reason)
-
-	// A second reconcile short-circuits on the Succeeded presence and creates no CGU.
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
-	assert.NoError(t, err)
-	cgu := &v1alpha1.ClusterGroupUpgrade{}
-	assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
-		types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
-}
-
-// TestCompletedIBGUMigratesToSucceeded verifies that an IBGU that completed under
-// older code with CGUs migrates to Succeeded=True (Completed) when its plan ends in
-// a finalizing action, or Succeeded=False (CompletedWithFailures) when a cluster
-// recorded a failed action. A completed non-finalizing tail instead stays resumable
-// (see TestCompletedNonFinalizingTailStaysResumable).
-func TestCompletedIBGUMigratesToSucceeded(t *testing.T) {
-	t.Run("clean completion of a finalizing plan migrates to Succeeded=True", func(t *testing.T) {
-		ibgu := newIBGUForResolution(
-			[]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.FinalizeUpgrade}}})
-		utils.SetStatusCondition(&ibgu.Status.Conditions,
-			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
-			metav1.ConditionFalse, "All plan steps are completed")
-
-		fakeClient, err := getFakeClientFromObjects()
-		assert.NoError(t, err)
-		// A completed plan-item-0 CGU for the finalizing plan item.
-		finalizeCGU := v1alpha1.ClusterGroupUpgrade{
-			ObjectMeta: v1.ObjectMeta{
-				Name:      "name-finalizeupgrade-0",
-				Namespace: "namespace",
-				Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
-			},
-			Spec: v1alpha1.ClusterGroupUpgradeSpec{
-				Clusters:              []string{"cluster1"},
-				ManifestWorkTemplates: []string{"name-finalizeupgrade"},
-			},
-			Status: v1alpha1.ClusterGroupUpgradeStatus{
-				Conditions: []v1.Condition{{Type: string(utils.ConditionTypes.Succeeded)}},
-			},
-		}
-		assert.NoError(t, fakeClient.Create(context.TODO(), &finalizeCGU))
-
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-
-		succeeded := succeededCondition(ibgu)
-		assert.NotNil(t, succeeded)
-		assert.Equal(t, metav1.ConditionTrue, succeeded.Status)
-		assert.Equal(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
-	})
-
-	t.Run("completion with a failed action migrates to CompletedWithFailures", func(t *testing.T) {
-		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
-		utils.SetStatusCondition(&ibgu.Status.Conditions,
-			utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
-			metav1.ConditionFalse, "All plan steps are completed")
-		fakeClient, err := getFakeClientFromObjects()
-		assert.NoError(t, err)
-		// The Prep CGU completed but cluster1 timed out on prep; ensureManifests' status
-		// sync derives the failed action from the CGU, so the migrated completion is
-		// CompletedWithFailures.
-		prepCGU := completedPrepCGU([]string{"cluster1"})
-		prepCGU.Status.Clusters = []v1alpha1.ClusterState{{
-			Name: "cluster1", State: "timedout",
-			CurrentManifestWork: &v1alpha1.ManifestWorkStatus{Name: "ibu-prep"},
-		}}
-		assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-
-		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-
-		succeeded := succeededCondition(ibgu)
-		assert.NotNil(t, succeeded)
-		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
-		assert.Equal(t, string(utils.ConditionReasons.CompletedWithFailures), succeeded.Reason)
-	})
-}
-
-// TestCompletedNonFinalizingTailStaysResumable verifies the incremental-append
-// workflow: a completed non-finalizing plan (Progressing=Completed, no Succeeded,
-// with CGUs) is not stamped terminal, and an appended Upgrade item resumes it by
-// creating the next CGU.
-func TestCompletedNonFinalizingTailStaysResumable(t *testing.T) {
-	// A completed Prep step; the operator has appended an Upgrade item.
-	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
-		{Actions: []string{ibguv1alpha1.Prep}},
-		{Actions: []string{ibguv1alpha1.Upgrade}},
-	})
-	utils.SetStatusCondition(&ibgu.Status.Conditions,
-		utils.ConditionTypes.Progressing, utils.ConditionReasons.Completed,
-		metav1.ConditionFalse, "All plan steps are completed")
-
-	fakeClient, err := getFakeClientFromObjects()
-	assert.NoError(t, err)
-	prepCGU := completedPrepCGU([]string{"cluster1"})
-	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-	// The cluster has completed prep, so it is eligible for the appended Upgrade.
-	assert.NoError(t, fakeClient.Create(context.TODO(), managedClusterWithLabels("cluster1",
-		map[string]string{"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
-
-	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
-	assert.NoError(t, err)
-
-	// The IBGU is not stamped terminal: the appended item can still run.
-	assert.Nil(t, succeededCondition(ibgu))
-	// The Upgrade CGU for the appended item is created.
-	cgu := &v1alpha1.ClusterGroupUpgrade{}
-	assert.NoError(t, reconciler.Get(context.TODO(),
-		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
-	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
-}
-
 // TestCompletedWithFailuresAtEndOfPlan verifies that a plan running to the end with
 // a cluster that recorded a failed action reports Succeeded=False, reason
 // CompletedWithFailures (a clean run with a finalizing tail reports Succeeded=True,
@@ -2733,6 +2593,127 @@ func TestUncachedCGUListDefeatsStaleTerminalBlock(t *testing.T) {
 	// The gates never ran: no registry read.
 	assert.False(t, reader.called)
 	// The plan loop waited on the existing (uncached) CGU.
+	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
+}
+
+// ownedCGU returns an owned CGU for the IBGU "name" with a terminal Succeeded
+// condition, for the plan-item-CGU-sequence gap tests.
+func ownedCGU(name string, clusters []string) *v1alpha1.ClusterGroupUpgrade {
+	return &v1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      name,
+			Namespace: "namespace",
+			Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
+		},
+		Spec: v1alpha1.ClusterGroupUpgradeSpec{Clusters: clusters},
+		Status: v1alpha1.ClusterGroupUpgradeStatus{
+			Conditions: []v1.Condition{{Type: string(utils.ConditionTypes.Succeeded)}},
+		},
+	}
+}
+
+// TestPlanItem0CGUMissingBlocksTerminally verifies the Developer of Record's gap gate:
+// when a later plan item's CGU exists but plan item 0's CGU is absent (deleted out of
+// band — the carrier of the unrecoverable frozen cluster set), ensureManifests blocks
+// terminally with PlanCGUMissing and creates no CGU, rather than treating item 0 as a
+// completed empty step and stamping a completion for clusters that never ran it.
+func TestPlanItem0CGUMissingBlocksTerminally(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	// Plan item 1's CGU exists; plan item 0's (name-prep-0) was deleted out of band.
+	assert.NoError(t, fakeClient.Create(context.TODO(), ownedCGU("name-upgrade-1", []string{"cluster1"})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10)}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	succeeded := succeededCondition(ibgu)
+	assert.NotNil(t, succeeded)
+	assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+	assert.Equal(t, string(utils.ConditionReasons.PlanCGUMissing), succeeded.Reason)
+	// No CGU was created for the missing plan item 0.
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
+}
+
+// TestPlanItemMiddleCGUMissingBlocksTerminally verifies the gap gate for a missing CGU
+// in the middle of the sequence: plan items 0 and 2 have CGUs but item 1's was deleted
+// out of band. ensureManifests blocks terminally with PlanCGUMissing rather than
+// silently recreating item 1's CGU and re-running its action against current labels.
+func TestPlanItemMiddleCGUMissingBlocksTerminally(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+		{Actions: []string{ibguv1alpha1.FinalizeUpgrade}},
+	})
+
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	assert.NoError(t, fakeClient.Create(context.TODO(), ownedCGU("name-prep-0", []string{"cluster1"})))
+	// name-upgrade-1 is missing (deleted out of band); a later item's CGU survives.
+	assert.NoError(t, fakeClient.Create(context.TODO(), ownedCGU("name-finalizeupgrade-2", []string{"cluster1"})))
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10)}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	succeeded := succeededCondition(ibgu)
+	assert.NotNil(t, succeeded)
+	assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+	assert.Equal(t, string(utils.ConditionReasons.PlanCGUMissing), succeeded.Reason)
+	// No CGU was created for the missing plan item 1.
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu)))
+}
+
+// TestCacheLaggedCGUSequenceDoesNotBlock verifies the gap gate is confirmed through the
+// uncached reader: a cached list that only shows plan item 1's CGU (item 0's has not yet
+// landed in the informer cache) looks like a gap, but the uncached reader has the full
+// sequence, so no PlanCGUMissing block is recorded and the plan loop proceeds.
+func TestCacheLaggedCGUSequenceDoesNotBlock(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
+		{Actions: []string{ibguv1alpha1.Prep}},
+		{Actions: []string{ibguv1alpha1.Upgrade}},
+	})
+
+	// Cached client: only plan item 1's CGU has landed — item 0's lags the informer.
+	cachedClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	assert.NoError(t, cachedClient.Create(context.TODO(), ownedCGU("name-upgrade-1", []string{"cluster1"})))
+
+	// Uncached reader: the full sequence exists (no real gap). Plan item 0's CGU is
+	// completed so the plan loop advances past it; plan item 1's CGU is still in progress
+	// (no Succeeded condition), so the loop waits on it rather than completing.
+	uncachedReader, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	prepCGU := completedPrepCGU([]string{"cluster1"})
+	assert.NoError(t, uncachedReader.Create(context.TODO(), &prepCGU))
+	inProgressUpgrade := ownedCGU("name-upgrade-1", []string{"cluster1"})
+	inProgressUpgrade.Status.Conditions = nil
+	assert.NoError(t, uncachedReader.Create(context.TODO(), inProgressUpgrade))
+	for _, c := range []client.WithWatch{cachedClient, uncachedReader} {
+		assert.NoError(t, c.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	}
+
+	reconciler := IBGUReconciler{
+		Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10),
+	}
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	// No terminal block: the uncached reader showed the full CGU sequence.
+	assert.Nil(t, succeededCondition(ibgu))
 	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
 }
 

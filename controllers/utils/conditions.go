@@ -59,6 +59,7 @@ var ConditionReasons = struct {
 	NoClustersMatchSelector       ConditionReason
 	NoEligibleClusters            ConditionReason
 	PreflightWindowExpired        ConditionReason
+	PlanCGUMissing                ConditionReason
 }{
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
@@ -88,6 +89,7 @@ var ConditionReasons = struct {
 	NoClustersMatchSelector:       "NoClustersMatchSelector",
 	NoEligibleClusters:            "NoEligibleClusters",
 	PreflightWindowExpired:        "PreflightWindowExpired",
+	PlanCGUMissing:                "PlanCGUMissing",
 }
 
 // InProgressMessages defines the in progress messages for the conditions by rollout type
