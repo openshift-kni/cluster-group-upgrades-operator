@@ -153,6 +153,7 @@ const (
 	ConfigPlcHasBothObjTmpl  = "policy has both spec.policy-templates.objectDefinition.spec.object-templates and spec.policy-templates.objectDefinition.spec.object-templates-raw"
 	ConfigPlcMissAnyObjTmpl  = "policy is missing both spec.policy-templates.objectDefinition.spec.object-templates and spec.policy-templates.objectDefinition.spec.object-templates-raw"
 	ConfigPlcMissObjTmplDef  = "policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition"
+	ConfigPlcObjTmplNotList  = "policy's spec.policy-templates.objectDefinition.spec.object-templates is not a list"
 	ConfigPlcRawObjTmplErr   = "policy defines spec.policy-templates.objectDefinition.spec.object-templates-raw but is empty"
 	Placeholder              = "placeholder"
 	PlcHasHubTmplErr         = "policy has hub template error, check the configuration policy's annotation 'policy.open-cluster-management.io/hub-templates-error' for detail"
