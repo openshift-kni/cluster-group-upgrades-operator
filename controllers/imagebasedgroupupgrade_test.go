@@ -4,11 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -160,7 +162,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep-upgrade-0	",
+						Name:      "name-prep-upgrade-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -526,6 +528,43 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
 		})
 	}
+}
+
+// An IBGU with more than ten plan items must report each cluster's completed
+// actions in plan order: plan item 10 comes after plan item 2.
+func TestSyncStatusWithCGUsOrdersByNumericPlanIndex(t *testing.T) {
+	actions := []string{
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeRollback,
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeRollback,
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade,
+	}
+	fakeClient, err := getFakeClientFromObjects()
+	require.NoError(t, err)
+	var want []ibguv1alpha1.ActionMessage
+	for i, action := range actions {
+		cgu := &v1alpha1.ClusterGroupUpgrade{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      fmt.Sprintf("name-%s-%d", strings.ToLower(action), i),
+				Namespace: "namespace",
+				Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
+			},
+			Spec: v1alpha1.ClusterGroupUpgradeSpec{
+				ManifestWorkTemplates: []string{"name-" + strings.ToLower(action)},
+			},
+			Status: v1alpha1.ClusterGroupUpgradeStatus{
+				Clusters: []v1alpha1.ClusterState{{Name: "spoke1", State: utils.ClusterRemediationComplete}},
+			},
+		}
+		require.NoError(t, fakeClient.Create(context.Background(), cgu))
+		want = append(want, ibguv1alpha1.ActionMessage{Action: action})
+	}
+	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"}}
+
+	reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	require.NoError(t, reconciler.syncStatusWithCGUs(context.Background(), ibgu))
+
+	require.Len(t, ibgu.Status.Clusters, 1)
+	assert.Equal(t, want, ibgu.Status.Clusters[0].CompletedActions)
 }
 
 func TestCountInProgressStageFailures(t *testing.T) {

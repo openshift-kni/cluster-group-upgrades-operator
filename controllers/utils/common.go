@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -142,14 +143,27 @@ func Contains(s []string, str string) bool {
 	return false
 }
 
-// SortCGUListByPlanIndex orders the CGUs by the last action in the name of cgu
-// with following order prep-upgrade-rollback-finalize-abort
+// SortCGUListByPlanIndex orders the CGUs by the plan item index at the end of
+// their name (<ibgu>-<actions>-<index>). The index is compared as a number, so
+// plan item 10 sorts after plan item 2. Names without a numeric suffix sort
+// after the numbered ones, by name.
 func SortCGUListByPlanIndex(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
-	sort.Slice(cguList.Items, func(i, j int) bool {
-		iSplitted := strings.Split(cguList.Items[i].GetName(), "-")
-		jSplitted := strings.Split(cguList.Items[j].GetName(), "-")
-		iLast := iSplitted[len(iSplitted)-1]
-		jLast := jSplitted[len(jSplitted)-1]
-		return iLast < jLast
+	sort.SliceStable(cguList.Items, func(i, j int) bool {
+		iName, jName := cguList.Items[i].GetName(), cguList.Items[j].GetName()
+		iIndex, iErr := planIndexFromCGUName(iName)
+		jIndex, jErr := planIndexFromCGUName(jName)
+		switch {
+		case iErr == nil && jErr == nil:
+			return iIndex < jIndex
+		case iErr == nil || jErr == nil:
+			return iErr == nil
+		default:
+			return iName < jName
+		}
 	})
+}
+
+// planIndexFromCGUName parses the plan item index that ends an IBGU-generated CGU name.
+func planIndexFromCGUName(name string) (int, error) {
+	return strconv.Atoi(name[strings.LastIndex(name, "-")+1:])
 }

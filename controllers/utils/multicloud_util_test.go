@@ -1251,3 +1251,23 @@ func TestFinalMultiCloudObjectCleanup(t *testing.T) {
 		})
 	}
 }
+
+func TestGetMCVUpdateInterval(t *testing.T) {
+	tests := []struct {
+		name     string
+		clusters int
+		want     int
+	}{
+		{"no clusters uses the minimum", 0, ViewUpdateSecTotalMin},
+		{"below the minimum is raised", 1, ViewUpdateSecTotalMin},
+		{"exactly the minimum", ViewUpdateSecTotalMin / ViewUpdateSecPerCluster, ViewUpdateSecTotalMin},
+		{"scales per cluster", 10, 10 * ViewUpdateSecPerCluster},
+		{"exactly the maximum", ViewUpdateSecTotalMax / ViewUpdateSecPerCluster, ViewUpdateSecTotalMax},
+		{"above the maximum is capped", 3500, ViewUpdateSecTotalMax},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.Equal(t, tc.want, GetMCVUpdateInterval(tc.clusters))
+		})
+	}
+}

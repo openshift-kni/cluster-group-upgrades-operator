@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -112,6 +113,24 @@ func TestBatchTimeout(t *testing.T) {
 				tc.inputs.currentBatchStartTime,
 				tc.inputs.cguStartTime)
 			assert.Equal(t, tc.expected, actual, "The expected and actual timeout should be the same.")
+		})
+	}
+}
+
+func TestGetClustersListFromRemediationPlan(t *testing.T) {
+	tests := []struct {
+		name string
+		plan [][]string
+		want []string
+	}{
+		{"batches flattened in order", [][]string{{"c1", "c2"}, {"c3"}, {"c4", "c5"}}, []string{"c1", "c2", "c3", "c4", "c5"}},
+		{"empty batch skipped", [][]string{{"c1"}, {}, {"c2"}}, []string{"c1", "c2"}},
+		{"no plan", nil, nil},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			cgu := &ranv1alpha1.ClusterGroupUpgrade{Status: ranv1alpha1.ClusterGroupUpgradeStatus{RemediationPlan: tc.plan}}
+			assert.Equal(t, tc.want, GetClustersListFromRemediationPlan(cgu))
 		})
 	}
 }
