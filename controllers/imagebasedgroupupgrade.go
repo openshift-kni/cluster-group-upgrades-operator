@@ -230,10 +230,6 @@ func appendFailedActionOnce(state *ibguv1alpha1.ClusterState, failed ibguv1alpha
 }
 
 func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	// Capture which clusters were already reported as dropped so markDroppedClusters
-	// can emit a Warning event only the first time each one is observed as dropped.
-	prevDropped := droppedClusterNames(ibgu)
-
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
@@ -242,6 +238,25 @@ func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alp
 	if err != nil {
 		return fmt.Errorf("failed to get CGUs for the IBGU: %w", err)
 	}
+	return r.syncStatusFromCGUList(ctx, ibgu, cguList)
+}
+
+// syncStatusFromCGUList rebuilds Status.Clusters from the supplied CGU snapshot
+// rather than listing the CGUs itself. ensureManifests calls it with the same CGU
+// list it uses to advance the plan, so plan-item eligibility and the completion
+// record are decided from one snapshot: without this, a one-cluster plan item that
+// completes between Reconcile's status sync and ensureManifests' own CGU list would
+// let the plan loop see that item finished (its snapshot) while the next item is
+// evaluated against stale status — the next item resolves empty, is skipped, and
+// generation-final completion records a false success it can never undo.
+func (r *IBGUReconciler) syncStatusFromCGUList(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+) error {
+	// Capture which clusters were already reported as dropped so markDroppedClusters
+	// can emit a Warning event only the first time each one is observed as dropped.
+	prevDropped := droppedClusterNames(ibgu)
+
 	if len(cguList.Items) == 0 {
 		return nil
 	}
@@ -917,6 +932,16 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				return false, nil
 			}
 		}
+	}
+
+	// Re-sync status from this same CGU snapshot before evaluating plan-item
+	// eligibility, so eligibility and the completion recorded at the end of the loop
+	// come from one snapshot. Reconcile already synced from an earlier list; re-syncing
+	// here closes the window where a one-cluster plan item completes between the two
+	// reads, which would otherwise make the next plan item resolve empty against stale
+	// status, be skipped, and record a generation-final false success.
+	if err := r.syncStatusFromCGUList(ctx, ibgu, cguList); err != nil {
+		return false, fmt.Errorf("error syncing status from cgu list: %w", err)
 	}
 
 	for i := range ibgu.Spec.Plan {
