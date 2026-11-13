@@ -1,15 +1,29 @@
 package utils
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/types"
 	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
+	policiesv1 "open-cluster-management.io/governance-policy-propagator/api/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 )
+
+func init() {
+	testscheme.AddKnownTypes(clusterv1beta1.SchemeGroupVersion, &clusterv1beta1.Placement{}, &clusterv1beta1.PlacementList{})
+	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PlacementBinding{}, &policiesv1.PlacementBindingList{})
+}
 
 func TestGetParentPolicyNameAndNamespace(t *testing.T) {
 	res, err := GetParentPolicyNameAndNamespace("default.upgrade")
@@ -470,4 +484,286 @@ func TestGetSetPlacementClusterNamesRoundTrip(t *testing.T) {
 	names, err = GetPlacementClusterNames(placement)
 	assert.NoError(t, err)
 	assert.Nil(t, names)
+}
+
+// policyWithTemplate builds a parent policy whose single policy template is a
+// ConfigurationPolicy with the given objectDefinition.spec.
+func policyWithTemplate(configPolicySpec map[string]interface{}) *unstructured.Unstructured {
+	objectDefinition := map[string]interface{}{"metadata": map[string]interface{}{"name": "cp"}}
+	if configPolicySpec != nil {
+		objectDefinition["spec"] = configPolicySpec
+	}
+	return &unstructured.Unstructured{Object: map[string]interface{}{
+		"metadata": map[string]interface{}{"name": "parent"},
+		"spec": map[string]interface{}{"policy-templates": []interface{}{
+			map[string]interface{}{"objectDefinition": objectDefinition},
+		}},
+	}}
+}
+
+func objectTemplate(status bool) map[string]interface{} {
+	def := map[string]interface{}{"kind": "Subscription"}
+	if status {
+		def["status"] = map[string]interface{}{"state": "AtLatestKnown"}
+	}
+	return map[string]interface{}{"complianceType": "musthave", "objectDefinition": def}
+}
+
+func TestInspectPolicyObjects(t *testing.T) {
+	tests := []struct {
+		name       string
+		policy     *unstructured.Unstructured
+		wantStatus bool
+		wantErrMsg string
+	}{
+		{
+			name:   "object-templates without status",
+			policy: policyWithTemplate(map[string]interface{}{ObjectTemplates: []interface{}{objectTemplate(false)}}),
+		},
+		{
+			name:       "object-templates with status",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplates: []interface{}{objectTemplate(false), objectTemplate(true)}}),
+			wantStatus: true,
+		},
+		{
+			name:       "object-templates that is not a list",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplates: map[string]interface{}{"complianceType": "musthave"}}),
+			wantErrMsg: ConfigPlcObjTmplNotList,
+		},
+		{
+			name:   "object-templates entry that is not a map",
+			policy: policyWithTemplate(map[string]interface{}{ObjectTemplates: []interface{}{"just-a-string"}}),
+			// Unlike object-templates-raw, a structured object-templates entry must define an objectDefinition.
+			wantErrMsg: ConfigPlcMissObjTmplDef,
+		},
+		{
+			name:       "object-templates entry without objectDefinition",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplates: []interface{}{map[string]interface{}{"complianceType": "musthave"}}}),
+			wantErrMsg: ConfigPlcMissObjTmplDef,
+		},
+		{
+			name: "object-templates-raw with status",
+			policy: policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: `{{- range $s := (lookup "v1" "Secret" "ns" "").items }}
+- complianceType: musthave
+  objectDefinition:
+    kind: Subscription
+    status:
+      state: AtLatestKnown
+{{- end }}`}),
+			wantStatus: true,
+		},
+		{
+			name:   "object-templates-raw entries without objectDefinition are skipped",
+			policy: policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: "- complianceType: musthave\n- just-a-string\n"}),
+		},
+		{
+			name:       "object-templates-raw that is empty",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: ""}),
+			wantErrMsg: ConfigPlcRawObjTmplErr,
+		},
+		{
+			name:       "object-templates-raw made only of templates",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: `{{- if true }}{{- end }}`}),
+			wantErrMsg: ConfigPlcRawObjTmplErr,
+		},
+		{
+			name:       "object-templates-raw that is a map, not a list",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: "complianceType: musthave"}),
+			wantErrMsg: ConfigPlcFailRawMarshal,
+		},
+		{
+			name:       "object-templates-raw that is not valid YAML",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: "- a: [unclosed"}),
+			wantErrMsg: ConfigPlcFailRawMarshal,
+		},
+		{
+			name:       "object-templates-raw that is not a string",
+			policy:     policyWithTemplate(map[string]interface{}{ObjectTemplatesRaw: int64(1)}),
+			wantErrMsg: ConfigPlcFailRawMarshal,
+		},
+		{
+			name: "both object-templates and object-templates-raw",
+			policy: policyWithTemplate(map[string]interface{}{
+				ObjectTemplates: []interface{}{objectTemplate(false)}, ObjectTemplatesRaw: "- a: b",
+			}),
+			wantErrMsg: ConfigPlcHasBothObjTmpl,
+		},
+		{
+			name:       "neither object-templates nor object-templates-raw",
+			policy:     policyWithTemplate(map[string]interface{}{"severity": "low"}),
+			wantErrMsg: ConfigPlcMissAnyObjTmpl,
+		},
+		{
+			name:       "configuration policy without spec",
+			policy:     policyWithTemplate(nil),
+			wantErrMsg: PlcMissTmplDefSpec,
+		},
+		{
+			name: "configuration policy without metadata",
+			policy: &unstructured.Unstructured{Object: map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "parent"},
+				"spec": map[string]interface{}{"policy-templates": []interface{}{
+					map[string]interface{}{"objectDefinition": map[string]interface{}{"spec": map[string]interface{}{}}},
+				}},
+			}},
+			wantErrMsg: PlcMissTmplDefMeta,
+		},
+		{
+			name: "policy template without objectDefinition",
+			policy: &unstructured.Unstructured{Object: map[string]interface{}{
+				"metadata": map[string]interface{}{"name": "parent"},
+				"spec":     map[string]interface{}{"policy-templates": []interface{}{map[string]interface{}{}}},
+			}},
+			wantErrMsg: PlcMissTmplDef,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			containsStatus, err := InspectPolicyObjects(tc.policy)
+			if tc.wantErrMsg == "" {
+				require.NoError(t, err)
+				assert.Equal(t, tc.wantStatus, containsStatus)
+				return
+			}
+			var policyErr *PolicyErr
+			require.True(t, errors.As(err, &policyErr), "want *PolicyErr, got %v", err)
+			assert.Equal(t, "parent", policyErr.ObjName)
+			assert.Equal(t, tc.wantErrMsg, policyErr.ErrMsg)
+			assert.Equal(t, "parent: "+tc.wantErrMsg, err.Error())
+		})
+	}
+}
+
+func TestStringToYaml(t *testing.T) {
+	got, err := StringToYaml("- a: 1\n- b")
+	require.NoError(t, err)
+	assert.Equal(t, []interface{}{map[string]interface{}{"a": 1}, "b"}, got)
+
+	_, err = StringToYaml("a: [unclosed")
+	assert.ErrorContains(t, err, "could not unmarshal data")
+}
+
+func TestGetResourceName(t *testing.T) {
+	cgu := &ranv1alpha1.ClusterGroupUpgrade{ObjectMeta: v1.ObjectMeta{Name: "My-CGU"}}
+	assert.Equal(t, "my-cgu-common-policy", GetResourceName(cgu, "Common-Policy"))
+}
+
+func newPolicy(name, namespace string, labels map[string]string) *policiesv1.Policy {
+	return &policiesv1.Policy{ObjectMeta: v1.ObjectMeta{Name: name, Namespace: namespace, Labels: labels}}
+}
+
+func TestGetChildPolicies(t *testing.T) {
+	childLabels := map[string]string{ChildPolicyLabel: "ztp-common.common-config"}
+	objs := []client.Object{
+		newPolicy("ztp-common.common-config", "spoke1", childLabels),
+		newPolicy("ztp-common.common-sub", "spoke2", map[string]string{ChildPolicyLabel: "ztp-common.common-sub"}),
+		// Child of a CGU-copied policy: skipped.
+		newPolicy("ztp-install.cgu-common-config", "spoke1", map[string]string{
+			ChildPolicyLabel: "ztp-install.cgu-common-config",
+			"openshift-cluster-group-upgrades/clusterGroupUpgrade": "cgu",
+		}),
+		// No labels, or no root-policy label: skipped.
+		newPolicy("unlabeled", "spoke1", nil),
+		newPolicy("other", "spoke1", map[string]string{"app": "x"}),
+		// A cluster that was not asked for.
+		newPolicy("ztp-common.common-config", "spoke3", childLabels),
+	}
+	c, err := getFakeClientFromObjects(objs...)
+	require.NoError(t, err)
+
+	got, err := GetChildPolicies(context.Background(), c, []string{"spoke1", "spoke2", "spoke-without-policies"})
+	require.NoError(t, err)
+	var names []string
+	for _, p := range got {
+		names = append(names, p.Namespace+"/"+p.Name)
+	}
+	assert.ElementsMatch(t, []string{"spoke1/ztp-common.common-config", "spoke2/ztp-common.common-sub"}, names)
+
+	none, err := GetChildPolicies(context.Background(), c, nil)
+	require.NoError(t, err)
+	assert.Empty(t, none)
+}
+
+func TestDeletePolicyObjects(t *testing.T) {
+	ownedLabels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": "cgu"}
+	otherLabels := map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": "other"}
+	meta := func(name, ns string, labels map[string]string) v1.ObjectMeta {
+		return v1.ObjectMeta{Name: name, Namespace: ns, Labels: labels}
+	}
+	objs := []client.Object{
+		newPolicy("owned", "ns", ownedLabels),
+		newPolicy("other", "ns", otherLabels),
+		newPolicy("owned-elsewhere", "ns2", ownedLabels),
+		&clusterv1beta1.Placement{ObjectMeta: meta("owned", "ns", ownedLabels)},
+		&clusterv1beta1.Placement{ObjectMeta: meta("other", "ns", otherLabels)},
+		&policiesv1.PlacementBinding{ObjectMeta: meta("owned", "ns", ownedLabels)},
+		&policiesv1.PlacementBinding{ObjectMeta: meta("other", "ns", otherLabels)},
+	}
+	c, err := getFakeClientFromObjects(objs...)
+	require.NoError(t, err)
+	ctx := context.Background()
+
+	require.NoError(t, DeletePolicies(ctx, c, "ns", ownedLabels))
+	require.NoError(t, DeletePlacements(ctx, c, "ns", ownedLabels))
+	require.NoError(t, DeletePlacementBindings(ctx, c, "ns", ownedLabels))
+	// Deleting again when nothing matches is not an error.
+	require.NoError(t, DeletePolicies(ctx, c, "ns", ownedLabels))
+	require.NoError(t, DeletePlacements(ctx, c, "ns", ownedLabels))
+	require.NoError(t, DeletePlacementBindings(ctx, c, "ns", ownedLabels))
+
+	exists := func(obj client.Object, ns, name string) bool {
+		err := c.Get(ctx, types.NamespacedName{Namespace: ns, Name: name}, obj)
+		if apierrors.IsNotFound(err) {
+			return false
+		}
+		require.NoError(t, err)
+		return true
+	}
+	assert.False(t, exists(&policiesv1.Policy{}, "ns", "owned"))
+	assert.True(t, exists(&policiesv1.Policy{}, "ns", "other"))
+	assert.True(t, exists(&policiesv1.Policy{}, "ns2", "owned-elsewhere"))
+	assert.False(t, exists(&clusterv1beta1.Placement{}, "ns", "owned"))
+	assert.True(t, exists(&clusterv1beta1.Placement{}, "ns", "other"))
+	assert.False(t, exists(&policiesv1.PlacementBinding{}, "ns", "owned"))
+	assert.True(t, exists(&policiesv1.PlacementBinding{}, "ns", "other"))
+}
+
+func TestClientHelperErrors(t *testing.T) {
+	ctx := context.Background()
+	errBoom := apierrors.NewInternalError(errors.New("etcd unavailable"))
+	base, err := getFakeClientFromObjects(newPolicy("owned", "ns", map[string]string{"a": "b"}))
+	require.NoError(t, err)
+	failing := interceptor.NewClient(base, interceptor.Funcs{
+		List: func(context.Context, client.WithWatch, client.ObjectList, ...client.ListOption) error { return errBoom },
+		Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error {
+			return errBoom
+		},
+		DeleteAllOf: func(context.Context, client.WithWatch, client.Object, ...client.DeleteAllOfOption) error {
+			return errBoom
+		},
+	})
+	failingDelete := interceptor.NewClient(base, interceptor.Funcs{
+		Delete: func(context.Context, client.WithWatch, client.Object, ...client.DeleteOption) error {
+			return errBoom
+		},
+	})
+	cgu := newMWTestCGU()
+	cgu.Status.RemediationPlan = [][]string{{"spoke1"}}
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{"GetChildPolicies list", func() error { _, err := GetChildPolicies(ctx, failing, []string{"spoke1"}); return err }},
+		{"DeletePolicies list", func() error { return DeletePolicies(ctx, failing, "ns", nil) }},
+		{"DeletePolicies delete", func() error { return DeletePolicies(ctx, failingDelete, "ns", nil) }},
+		{"DeletePlacements", func() error { return DeletePlacements(ctx, failing, "ns", nil) }},
+		{"DeletePlacementBindings", func() error { return DeletePlacementBindings(ctx, failing, "ns", nil) }},
+		{"CleanupManifestWorkForBatch", func() error { return CleanupManifestWorkForBatch(ctx, failing, cgu, 0) }},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			assert.ErrorContains(t, tc.call(), "etcd unavailable")
+		})
+	}
 }
