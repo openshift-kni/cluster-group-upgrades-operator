@@ -1,21 +1,21 @@
 ---
 # Manager
 - key: manager
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-5-0@sha256:4fade869269b287e4ec8f5959d53e795d1a22a13b3ade5a81b0d4d570d51e274
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator:4.23.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-4-23@sha256:4fade869269b287e4ec8f5959d53e795d1a22a13b3ade5a81b0d4d570d51e274
 #
 # Aztp
 - key: aztp_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-5-0@sha256:6aaaf60b22ddf8e3c997de00a3c5e968878c506566b90f6f0186d35f8a657d5e
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-aztp:4.23.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-aztp-4-23@sha256:6aaaf60b22ddf8e3c997de00a3c5e968878c506566b90f6f0186d35f8a657d5e
 #
 # Precache
 - key: precache_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-5-0@sha256:e38266326ff6ab6fb080232be0e2b451c35bfed2fd369c244794b4d4e06e0c20
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-precache:4.23.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-precache-4-23@sha256:e38266326ff6ab6fb080232be0e2b451c35bfed2fd369c244794b4d4e06e0c20
 #
 # Recovery
 - key: recovery_img
-  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:5.0.0
-  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-5-0@sha256:78a459f2dcafbc3580d7357897a20396be172c010af51ae34fa673ce700ee4ae
+  source: quay.io/openshift-kni/cluster-group-upgrades-operator-recovery:4.23.0
+  target: quay.io/redhat-user-workloads/telco-5g-tenant/topology-aware-lifecycle-manager-recovery-4-23@sha256:78a459f2dcafbc3580d7357897a20396be172c010af51ae34fa673ce700ee4ae
 #

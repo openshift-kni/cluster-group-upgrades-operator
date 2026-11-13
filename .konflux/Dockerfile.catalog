@@ -1,5 +1,5 @@
 # The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
-ARG OPM_IMAGE=registry.redhat.io/openshift5/ose-operator-registry-rhel9:v5.0
+ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.23
 
 # CNF-18555: When there is a Konflux build available for this then we need to update from the brew image
 ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.26-rhel9@sha256:78bd08b0aa5520dec6f388f5d17c5da6e44ee9b8f826aebc8f3264738e9532e2
@@ -15,7 +15,7 @@ COPY .konflux/catalog/ /app/.konflux/catalog/
 COPY vendor/ /app/vendor/
 
 WORKDIR /app
-RUN SKIP_SUBMODULE_SYNC=yes make konflux-fix-catalog-name CATALOG_KONFLUX=.konflux/catalog/5.0/topology-aware-lifecycle-manager/catalog.json
+RUN SKIP_SUBMODULE_SYNC=yes make konflux-fix-catalog-name CATALOG_KONFLUX=.konflux/catalog/topology-aware-lifecycle-manager/catalog.json
 
 # run the catalog
 FROM ${OPM_IMAGE}
@@ -26,9 +26,9 @@ CMD ["serve", "/configs", "--cache-dir=/tmp/cache"]
 # ensure this correponds to olm.package name
 ENV PACKAGE_NAME=topology-aware-lifecycle-manager
 
-# This assumes that the catalog is already built and exists in the .konflux/catalog/5.0/$PACKAGE_NAME directory
+# This assumes that the catalog is already built and exists in the .konflux/catalog/$PACKAGE_NAME directory
 # This should be done automatically by the fbc pipeline using the `run-opm-command` task
-COPY --from=builder /app/.konflux/catalog/5.0/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
+COPY --from=builder /app/.konflux/catalog/$PACKAGE_NAME/ /configs/$PACKAGE_NAME
 # RUN ["/bin/opm", "validate", "/configs/topology-aware-lifecycle-manager"]
 RUN ["/bin/opm", "serve", "/configs", "--cache-dir=/tmp/cache", "--cache-only"]
 
