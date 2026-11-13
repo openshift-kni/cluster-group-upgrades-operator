@@ -55,6 +55,10 @@ var ConditionReasons = struct {
 	SeedImageUnreadable           ConditionReason
 	BackupContentUnsupportedSeed  ConditionReason
 	SeedCompatibilityCheckSkipped ConditionReason
+	CompletedWithFailures         ConditionReason
+	NoClustersMatchSelector       ConditionReason
+	NoEligibleClusters            ConditionReason
+	PreflightWindowExpired        ConditionReason
 }{
 	Completed:                     "Completed",
 	ClusterSelectionCompleted:     "ClusterSelectionCompleted",
@@ -80,6 +84,10 @@ var ConditionReasons = struct {
 	SeedImageUnreadable:           "SeedImageUnreadable",
 	BackupContentUnsupportedSeed:  "BackupContentUnsupportedSeed",
 	SeedCompatibilityCheckSkipped: "SeedCompatibilityCheckSkipped",
+	CompletedWithFailures:         "CompletedWithFailures",
+	NoClustersMatchSelector:       "NoClustersMatchSelector",
+	NoEligibleClusters:            "NoEligibleClusters",
+	PreflightWindowExpired:        "PreflightWindowExpired",
 }
 
 // InProgressMessages defines the in progress messages for the conditions by rollout type

@@ -196,3 +196,20 @@ const (
 	// opt-out; its use is surfaced on the IBGU (see ensureSeedFormatCompatible).
 	IBGUSkipSeedCompatibilityAnnotation = "lcm.openshift.io/ibgu-skip-seed-compatibility-check"
 )
+
+// IBGU pre-flight terminal blocks and transient grace window (CNF-30061)
+const (
+	// IBGUPreflightRetrySecondsAnnotation overrides, per IBGU, how long a transient
+	// pre-flight failure (e.g. an unresolvable reference under GitOps sync lag, an
+	// empty cluster set, or an unreadable seed image) is retried before the IBGU is
+	// blocked terminally. The value is a non-negative integer number of seconds; 0
+	// makes the first transient failure terminal. An invalid value falls back to
+	// DefaultPreflightRetrySeconds and raises a Warning event. The grace window is
+	// measured from metadata.creationTimestamp, so editing this annotation has no
+	// effect once the IBGU is already terminal.
+	IBGUPreflightRetrySecondsAnnotation = "lcm.openshift.io/ibgu-preflight-retry-seconds"
+
+	// DefaultPreflightRetrySeconds is the default transient pre-flight grace window
+	// (5 minutes) used when IBGUPreflightRetrySecondsAnnotation is absent or invalid.
+	DefaultPreflightRetrySeconds = 300
+)
