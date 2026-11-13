@@ -1,4 +1,4 @@
-# IBGU and the IBU BackupContent change — Hub-Side Design Record
+https://redhat.atlassian.net/browse/CNF-30176?focusedCommentId=19585200# IBGU and the IBU BackupContent change — Hub-Side Design Record
 
 Working document for the TALM (hub) side of CNF-26657 "Remove OADP requirement".
 Scope: everything that changes in `openshift-kni/cluster-group-upgrades-operator`
@@ -70,29 +70,48 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Deferred, owner LCA.** The `oadpContent` removal release reopens D1. Revisit when LCA
   schedules it.
 
-### D2 — Cluster-list resolution: **2B, IBGU resolves once — as its own story, not on the OADP critical path**
+### D2 — Cluster-list resolution: **2B for the base set, per-item narrowing back in the CGU — its own story, not on the OADP critical path**
 
-- **Outcome.** IBGU resolves the base selector once, freezes the set at plan item 0,
-  evaluates per-item eligibility from ManagedCluster labels, intersects with existing
-  ManagedClusters on every item, and passes `spec.clusters` to each CGU.
-- **Why.** Removes per-item drift and the label-write race, and makes the set the D4
-  pre-flight validates the set that runs.
+- **Outcome.** IBGU resolves the base selector once and freezes it at plan item 0. Each
+  plan item's CGU receives that frozen set as selector requirements on ACM's `name` label
+  (`name In (<values>)`), CNF-30180, plus that item's own action requirements — the
+  `getLabelSelectorForPlanItem` predicates on the frozen base, not on the user's
+  selectors. Where an item needs a disjunction (`AbortOnFailure`: `ibgu-prep-failed` OR
+  `ibgu-upgrade-failed`) it gets two selector entries, and CGU unions entries, so the
+  invariant is **every entry carries the `name In` requirement**: union stays inside the
+  frozen set. IBGU does not narrow per item — `resolveClustersForPlanItem`,
+  `effectiveActionLabels` and `ClusterMatchesPlanItem` are deleted — and an item that
+  narrows to zero gets a CGU that selects nothing and completes, as on 5.0. A CGU
+  hard-fails when `spec.clusters` names a missing ManagedCluster; with the selector a
+  removed spoke simply stops matching, so no vanished-cluster filter or dropped-cluster
+  reporting is needed. ACM reconciles the `name` label back to the cluster name, and the
+  CGU matches selectors from its cache, so a long value list costs nothing extra.
+- **Why.** One resolver instead of two, and no status-to-labels merge (with its reset and
+  cross-IBGU special cases) or same-reconcile read-after-write. The label write precedes
+  the CGU creation, and the CGU resolves in its own reconcile after the existing
+  `statusUpdateWaitInMilliSeconds` sleep at the top of every CGU reconcile
+  (`clustergroupupgrade_controller.go:71,143`). A miss is possible rather than impossible
+  — an informer re-list can outlast the sleep — but it acts on fewer frozen clusters,
+  never on clusters outside the set, and IBGU reports it in `Status.Clusters`. Accepted
+  for a management-side component.
 - **Rejected.** 2A (keeps the race); 2C (does not remove drift, and needs a CGU change);
-  deriving eligibility from `ibgu.Status.Clusters` (breaks cross-IBGU plans).
+  deriving eligibility from `ibgu.Status.Clusters` (breaks cross-IBGU plans); an uncached
+  ManagedCluster list at `SelectedClusters` (a quorum read on every validating CGU, for a
+  window the existing sleep already covers); a ManagedCluster watch in the CGU controller
+  (does not close it — an empty-selection CGU has already completed by then).
 - **Scope.** D4 does not depend on it (the base set is a superset of every item's set),
   so it ships separately.
 
 - **Empty set is terminal (decided 2026-11-11; CNF-30061).** If plan item 0 resolves to no
   clusters — the selector matches no ManagedCluster, or none is eligible for plan item 0's
-  action — the IBGU blocks before any CGU, with its own reason, instead of completing. It
-  retries within the grace window (a label may land in the same GitOps sync) and then
-  turns terminal; it never starts later. On `main` an empty IBGU completed only by inheritance: the CGU engine
+  action — the IBGU blocks terminally before any CGU, with its own reason, instead of
+  completing; it never starts later. On `main` an empty IBGU completed only by inheritance: the CGU engine
   treats an empty remediation plan as "all compliant" and succeeds
   (`clustergroupupgrade_controller.go:519-534`), which is meaningful for policies and
   meaningless for an IBGU. Under 2B the empty completion also lost its only durable
   record, the succeeded CGU. See D4, "Blocks never resume on their own".
 
-### D3 — Spoke capability detection: **one value, the expected seed format version — from the LCA ClusterClaim, else from the IBU's status through a read-only ManifestWork; the seed image's format from its OCI label**
+### D3 — Spoke capability detection: **one value, the expected seed format version, from the LCA ClusterClaim; the seed image's format from its OCI label**
 
 - **Outcome.** The pre-flight compares the seed format version each spoke's LCA expects
   with the seed image's.
@@ -102,41 +121,29 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     from `oadpContent` to `backupContent` is purely a customer migration choice. *Holds
     only while the two ship together everywhere, including every z-stream the bump is
     backported to* (D11).
-  - **Where LCA publishes it:** as a ClusterClaim value, and as a typed field on the IBU
-    singleton's status (working name `status.seedFormatVersion` on
-    `imagebasedupgrades.lca.openshift.io/upgrade`). The IBU is cluster-scoped, always
-    named `upgrade`, and created by LCA's `InitIBU` at startup if missing
-    (`lifecycle-agent/utils/utils.go:320`, called from `main/main.go:249`); its status is
-    a subresource only LCA writes (`+kubebuilder:subresource:status`), so TALM's
-    manifestworks, which update the IBU's spec, never touch it. LCA writes the field on
-    *every* start, after `InitIBU`: post-pivot, `InitIBU` restores the saved IBU together
-    with its saved status, so without a fresh write a newer LCA would carry the old one's
-    value.
+  - **Where LCA publishes it** (CNF-28926, lifecycle-agent PR #10525): as the ClusterClaim
+    `seedformatversion.lca.openshift.io`, under ACM's reserved `openshift.io` suffix, and
+    as `status.seedFormatVersion` on the IBU singleton, rewritten on every LCA start
+    (post-pivot `InitIBU` restores a saved status). TALM reads only the claim. The IBU
+    field stays useful for people diagnosing a spoke.
   - **Spoke side, per cluster, in order:**
     1. `ManagedClusterConditionAvailable` must be `True`, else "cluster unavailable".
     2. LCA's ClusterClaim (CNF-28926) carrying the expected seed format version.
-    3. Claim absent — whether the LCA predates the claim, the claim was truncated, or
-       LCA failed to publish it — read the IBU's `status.seedFormatVersion` through a
-       **read-only ManifestWork**: OCM's `ReadOnly` update strategy only checks the
-       resource exists, returns status feedback when feedback rules are set, and never
-       removes the resource (`vendor/open-cluster-management.io/api/work/v1/types.go:278-281`).
-       A truncated claim therefore costs one ManifestWork, not a blocked IBGU. An IBU
-       without the field means a pre-bump LCA, which expects the pre-bump format: one
-       fixed value, not a table.
-    4. If the read-only work does not return feedback (not applied, IBU missing), the
-       expected format is unknown.
+    3. Claim absent on an available cluster: the spoke's LCA predates the bump and
+       expects the pre-bump format — one fixed value, not a table. This is definitive
+       because TALM supports hubs on ACM 2.14 or later, where a claim under a reserved
+       suffix is never truncated (decided 2026-11-13). There is no fallback read, so
+       the whole spoke side is one List of ManagedClusters, decided in one reconcile.
   - **Image side:** TALM reads the `com.openshift.lifecycle-agent.seed_format_version`
     label of `ibuSpec.seedImageRef.image` from the registry, once per IBGU at pre-flight,
     using the pull secret the IBGU already references (`seedImageRef.pullSecretRef`, read
     from the IBGU namespace as today, `imagebasedgroupupgrade.go:408`). A registry that
     cannot be reached, or an image without the label, is "unknown".
 - **Why.** The owner of the contract publishes it, and the hub only reads it. The claim
-  is one List for the whole fleet; the IBU status answers the same question where the
-  claim is missing, from a stable, fixed-name LCA API that does not depend on OLM. The
-  read-only ManifestWork goes through the OCM work agent that every IBGU action already
-  uses, so the fallback adds no new spoke dependency. No LCA-version-to-capability table
-  exists anywhere on the hub. The OCI label is ground truth for the image and needs no
-  IBGU API change.
+  is one List for the whole fleet, with no per-cluster objects and nothing to wait for —
+  which also fits the pre-flight's "no retries" rule (D4). No LCA-version-to-capability
+  table exists anywhere on the hub. The OCI label is ground truth for the image and needs
+  no IBGU API change.
 - **Settled with LCA (CNF-28926, CNF-28772).**
   - LCA publishes the expected seed format version as both the ClusterClaim value and an
     IBU status field, from the release carrying the bump onwards, in every z-stream it is
@@ -144,26 +151,26 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   - BackupContent support is not published separately; the hub derives it as seed format ≥
     the first format that supports `backupContent`.
   - LCA exports from its API package the seed format constant, the claim name, the IBU
-    status field (as a typed field TALM's feedback JSONPath names) and the first seed
-    format that supports `backupContent`. The seed format
+    status field name and the first seed format that supports `backupContent`. The seed format
     constant lives in `internal/common/consts.go` today (`SeedFormatVersion`, 4 before the
     bump and 5 after PR#7818), so it has to move or be re-exported. A constant compiled into TALM
     reflects TALM's vendored LCA, not each spoke, so it names and interprets the
     published value; it does not replace reading it.
-- **Open, to agree in CNF-28926.** The claim name, the IBU status field name and the
-  value format; TALM imports the constants, so it hard-codes none of them. Which
-  klusterlet version first supports the `ReadOnly` update strategy, which sets the
-  minimum spoke ACM for the fallback. And whether ACM reserves a claim suffix for LCA or
-  the claim stays custom and truncatable — a cost question now, since truncation only
-  sends the hub to the read-only ManifestWork.
+- **Resolved in CNF-28926.** Claim `seedformatversion.lca.openshift.io` under ACM's
+  reserved `openshift.io` suffix, exempt from the custom-claim cap on ACM 2.14+; status
+  field `seedFormatVersion`; constants `SeedFormatClusterClaimName`,
+  `SeedFormatVersionStatusField`, `BackupContentFirstSeedFormatVersion` (5). TALM imports
+  the constants and hard-codes none of them. Minimum supported hub: ACM 2.14.
 - **Rejected.**
   - 3A (labels — unvalidated); 3B (ACM does not surface LCA capabilities); 3D (no
     detection — the `backupContent` failure is silent no-backup); 3E (probe ManifestWork —
     heavyweight).
   - A hub-side LCA version table, in any form: it encodes LCA's release and backport
     decisions in TALM.
-  - Blocking on a missing claim when the IBU status answers: truncation is an OCM cap,
-    not a spoke fault, and the IBU status read is exact.
+  - A fallback read of the IBU's `status.seedFormatVersion` through a read-only
+    ManifestWork (option 3G, chosen on 2026-11-09, dropped on 2026-11-13): it existed only
+    for truncated claims, which ACM 2.14's reserved suffix rules out, and its asynchronous
+    feedback needed the very retry machinery D4 removed.
   - A field on the LCA CSV: the CSV is OLMv0 API, being replaced and then removed, and its
     name — and the Subscription that leads to it — is versioned or site-chosen, so
     reading it took two lookups and a configured Subscription name.
@@ -177,8 +184,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   - Declaring the seed format on the IBGU: a new immutable field, and a wrong value that
     happens to match the spokes passes pre-flight.
 - **Costs accepted.**
-  - One short-lived read-only ManifestWork per claim-less cluster, reaped once the check
-    passes, and a wait for its feedback before the plan starts.
+  - Hub ACM 2.14 or later. Ample for how far this feature is expected to be backported.
   - New registry egress from the hub, plus a registry client dependency to vendor. In
     disconnected installs the target is the mirror registry the spokes already pull from;
     the hub must trust its CA. The label is read once. If the seed tag moves before a later batch's Prep, LCA's own
@@ -196,8 +202,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
      old-format seed can never work with `backupContent`, and this needs no spoke read.
   2. **Per cluster, over the resolved base set:** block if the spoke's expected seed
      format differs from the image's, or cannot be determined (cluster unavailable,
-     read-only ManifestWork returned no feedback, image label unreadable). Checked for
-     every IBGU.
+     image label unreadable). Checked for every IBGU.
 
   Together these cover `backupContent`: a spoke that passes (2) expects the image's format,
   which (1) has already required to be one that supports `backupContent`. IBGUs that set
@@ -220,43 +225,35 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Rejected.** 4B (fail open — turns a detection gap into silent no-backup, or into a
   wasted maintenance window); 4C (per-cluster skip — breaks one-fleet-per-IBGU and
   batching).
-- **Blocks never resume on their own (decided 2026-11-11; CNF-30061).** The hazard is an
-  unattended, delayed start: an operator creates an IBGU to run now, usually inside a
-  maintenance window, and a block that clears on its own hours later starts a
-  service-impacting rollout at a time nobody chose. Freezing the cluster set does not help
-  — a frozen set that starts at 3 a.m. is just as impactful — so the rule is about which
-  blocks may clear:
-  - **Nothing may start more than a fixed grace period after the IBGU was created.** The
-    window is measured from `metadata.creationTimestamp`: creation is when the operator
-    acted, the timestamp cannot be reset, and no API field is needed. The window is
-    honoured **even when every gate passes**: if the first CGU would be created after it
-    (for example, TALM was down and came back outside the maintenance window), the IBGU
-    blocks terminally with its own reason (for example `PreflightWindowExpired`), saying
-    it started too late and must be recreated. It bounds only the first start; appended
-    plan items are not subject to it. The window defaults to
-    5 minutes, overridable per IBGU by annotation (proposed
-    `lcm.openshift.io/ibgu-preflight-retry-seconds`; an invalid value raises a Warning
-    event and falls back to the default; editing it has no effect once the IBGU is
-    terminal). `0` means no retries — the first transient failure is terminal — but the
-    start deadline is never disabled: with `0` the passing path uses the default window as
-    its deadline. While retrying, the controller requeues at the earlier of its usual
-    interval and the time left before the deadline minus a small buffer (a few seconds,
-    with a floor of about one second), so the last re-check runs inside the window rather
-    than just after it.
-  - **Anything that can be sync or propagation lag retries within the window, then turns
-    terminal with the last reason:** a reference not found (the gate reads through the
-    cached client, and a GitOps sync can apply a BackupContent and the IBGU together), an
-    empty cluster set (a label may land in the same sync), a seed image that cannot be
-    read, and — with CNF-30039 — a spoke that is unavailable or whose read-only
-    ManifestWork has not reported yet.
-  - **A definitive verdict on content actually read is terminal at once:** `backupContent`
-    with a pre-bump seed, and — with CNF-30039 — a seed-format mismatch where both values
-    were read. Retrying cannot change it.
-  - **Terminal means no requeue.** Retrying means deleting and recreating the IBGU, so the
-    start is an explicit act at a time the user chose.
+- **Blocks never resume on their own (decided 2026-11-11, CNF-30061; simplified
+  2026-11-13, CNF-30176).** The hazard is an unattended, delayed start: an operator
+  creates an IBGU to run now, usually inside a maintenance window, and a block that clears
+  on its own hours later starts a service-impacting rollout at a time nobody chose.
+  Freezing the cluster set does not help — a frozen set that starts at 3 a.m. is just as
+  impactful. The rule:
+  - **Every pre-flight failure is terminal at once, and the pre-flight never requeues.**
+    A failure is treated like any other spec error: the IBGU stops, and the operator fixes
+    the cause and recreates it at a time they choose. That covers an empty cluster set, an
+    unresolvable reference, an unreadable seed image, `backupContent` with a pre-bump
+    seed, and — with CNF-30039 — an unavailable spoke or a seed-format mismatch.
+    *(CNF-30061 first shipped a transient class that retried within a grace window,
+    configurable by annotation, with zero-value rules and a deadline-aware requeue.
+    CNF-30176 removes it: the retries existed mainly to absorb cache lag and GitOps
+    ordering, which the next two points handle more simply, and a transient registry blip
+    costs only a recreate.)*
+  - **The pre-flight reads through the uncached API reader** (`mgr.GetAPIReader()`) for
+    BackupContent, ConfigMaps and ManagedClusters, so informer lag cannot produce a false
+    block. A GitOps sync that applies a BackupContent and the IBGU together should order
+    them with sync waves, BackupContent first; otherwise a recreate fixes it.
+  - **Start deadline.** If the first CGU would be created more than a fixed 5 minutes
+    after `metadata.creationTimestamp`, the IBGU blocks with `PreflightWindowExpired`,
+    even when every gate passes. Without retries this matters only when TALM's first
+    reconcile is itself late — for example, TALM was down and came back outside the
+    maintenance window. It is a constant, with no annotation, because it guards one edge
+    case. It bounds only the first start; appended plan items are not subject to it.
   - **Gate order: empty set, then references, then the seed.** Hub-only, deterministic
     checks decide before the network check, so a selector typo or a missing BackupContent
-    neither triggers a registry read nor waits out the window to report the wrong reason.
+    reports its own reason without a registry read.
   - **The terminal marker is the IBGU's `Succeeded` condition** — not a Progressing
     reason: the gates and the plan loop all write Progressing, which is how a completion
     record got overwritten in the first pre-flight PR. It has two kinds, because the plan
@@ -286,21 +283,23 @@ Code facts cited below are verified against this repo at `main`; see the appendi
     `Succeeded` is written again for the new generation. An append is an explicit operator
     act at a chosen time on a known set, not an unattended start, so it does not conflict
     with the rule above.
-  - **Order matters.** The resume check runs before the migration below; otherwise
-    "Progressing=Completed, no `Succeeded`" left by the resume would be migrated straight
-    back into a completion.
   - **An empty plan item 0 is never a completion,** whether it is found by the gate or
-    when the first CGU is about to be created: it is the empty-set block (grace window,
-    then terminal).
+    when the first CGU is about to be created: it is the empty-set block.
   - Progressing still goes False with the same reason at every terminal point, so
     existing consumers keep working. `utils.SetStatusCondition` does not set
     `ObservedGeneration` today; the `Succeeded` writes need it.
-  - **IBGUs finished before the TALM upgrade stay finished, and stay appendable.** They
-    have no `Succeeded`, only Progressing's `Completed`. On the first reconcile after the
-    upgrade they get a completion (`Completed` or `CompletedWithFailures`) stamped with
-    the current generation, so a later append resumes them as on `main` today. One that
-    completed with no CGU (the resolve-once code on `main` can produce it) becomes the
-    `NoEligibleClusters` block instead, which is permanent.
+  - **Deleting an IBGU-owned CGU is unsupported and gets no handling.** It is tampering
+    with TALM's own objects, undefined on `main` too. *(A check for gaps in the CGU
+    sequence was tried and removed: a later plan item that legitimately narrows to no
+    clusters creates no CGU, so the check blocked normal plans such as
+    `[['Prep'], ['AbortOnFailure'], ['Upgrade']]` when nothing failed.)* To stop an
+    IBGU, delete the IBGU.
+  - **IBGUs created before the TALM upgrade are not supported, active or not, and need
+    no migration** (decided 2026-11-13). The start deadline already keeps the dangerous
+    ones from starting: one that never started has no CGU, so the pre-flight runs and
+    either blocks or hits `PreflightWindowExpired`, its creation being long past. One that
+    finished with CGUs gets `Succeeded` from the plan loop on its next reconcile; an active
+    one carries on. Release note: finish or delete IBGUs before upgrading TALM.
 
 ### D5 — Delivery: **5A, TALM copies BackupContent content from the hub**
 
@@ -415,7 +414,7 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 - **Backport unit (recorded in CNF-28772).** PR#7818, the seed format bump
   (`SeedFormatVersion` 5), the BackupContent API and the seed format publication
   (CNF-28926) ship in the same LCA release and are backported together, never split. D3's single-value design depends on it: an LCA
-  with the bump but without the IBU status field would be read as pre-bump.
+  with the bump but without the claim would be read as pre-bump.
 - **Seed format.** The pre-flight (D3, D4) must ship no later than the first LCA carrying
   the seed format bump that TALM users will target, or IBGUs spanning the rollout window
   lose the up-front block.
@@ -430,7 +429,7 @@ All under CNF-26657 and linked to the spike; "blocked by" mirrors the Blocks lin
 | CNF-29239 | Revendor LCA for `backupContent`; regenerate the IBGU CRD; verify the inherited mutual-exclusion rule (D1) | CNF-26659, CNF-28926, CNF-28751 |
 | CNF-29240 | Hub `BackupContent` CRD: types, deepcopy, immutability rule, RBAC, samples (D6) | CNF-29239 |
 | CNF-29241 | BackupContent delivery: copy from the IBGU namespace into `ibuv1.DefaultNamespace` (pull-secret copy too), metadata stripping, `ibu-role` rule and ordering, `Orphan` (D5, D7, D8) | CNF-29240 |
-| CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupContent` rule, availability gate, claim read, read-only ManifestWork fallback on the IBU status, fail-closed conditions, opt-out annotation (D3, D4) | CNF-29239, CNF-28926 |
+| CNF-29242 | Pre-flight: seed image label from the registry, the hub-only `backupContent` rule, availability gate, claim read, fail-closed conditions, opt-out annotation (D3, D4); the spoke side moved to CNF-30039 | CNF-29239, CNF-28926 |
 | CNF-29243 | Reference resolution for `Prep` plans, including the `oadpContent` ConfigMap path (D9) | CNF-29240 |
 | CNF-29244 | Cluster-list resolution 2B (D2) | — |
 | CNF-29245 | Adopt CNF-28751 condition types; report-only terminal failure (D10) | CNF-28751 |
@@ -715,6 +714,21 @@ So: push 1A(ii), fall back to **1D** on the assumption of long coexistence.
 ## D2. Who owns cluster-list resolution?
 
 > **Decided: 2B**, as its own story off the OADP critical path.
+>
+> **Revised 2026-11-16 (CNF-30180): per-item narrowing moved back to the CGU.** The 2B
+> analysis below resolves the *base* set once in IBGU, which stands. What changed is who
+> narrows per item: instead of IBGU evaluating `ClusterMatchesPlanItem` over ManagedCluster
+> labels and passing an explicit `spec.clusters` list, every selector entry handed to the
+> CGU carries the frozen set as `name In (...)` plus that item's action requirement, and the
+> CGU narrows by label as it did before 2B — see D2's Outcome above for the invariant that
+> keeps the union inside the frozen set. That drops the status-to-labels merge
+> (`effectiveActionLabels`) and the same-reconcile read-after-write it existed to paper
+> over. The trade is a small chance that a CGU resolves before IBGU's label write reaches
+> its cache and acts on fewer frozen clusters; IBGU surfaces that in `Status.Clusters` and
+> the set is still frozen. Consequences below that assume IBGU resolves each item's list
+> ("passes explicit `spec.clusters`", "the set D4 validates is exactly the set that runs")
+> describe 2B as analysed, not as shipped. The empty-set block is unaffected: the pre-flight
+> still resolves it.
 
 **Context.** Today IBGU resolves nothing. `ensureCGUForPlanItem` passes
 `clusterLabelSelectors` straight through to each generated CGU
@@ -844,7 +858,7 @@ reproducible at all. Labels stay authoritative.
 
 ## D3. How does the hub learn what a spoke's LCA supports?
 
-> **Decided:** one capability value, the expected seed format version, read from the LCA claim (3F) or else from the IBU's `status.seedFormatVersion` through a read-only ManifestWork (3G), behind an availability gate; the seed image's format from its OCI label. `backupContent` support ships with the seed format bump, so it follows from that value. The analysis below was written for the IBU-generation question and carries over.
+> **Decided:** one capability value, the expected seed format version, read from the LCA claim (3F), behind an availability gate — a missing claim means a pre-bump LCA on ACM 2.14+; the seed image's format from its OCI label. `backupContent` support ships with the seed format bump, so it follows from that value. The analysis below was written for the IBU-generation question and carries over.
 
 Needed by every D1 option except 1F. This is new machinery whichever way it goes: TALM
 reads **no** spoke version or capability information today — no `openshiftVersion`, no
@@ -864,7 +878,7 @@ thing at compile time for condition type names.
 | **3A** ManagedCluster label set by ZTP/ACM | Cheap; no new API calls; already how TALM filters clusters | Trusts out-of-band tooling; stale or missing on hand-registered clusters; nothing validates it against reality |
 | **3B** ManagedClusterInfo / addon status | Authoritative-ish; already populated by ACM | Depends on what ACM actually surfaces about LCA; may not carry operator version |
 | **3C** ManagedClusterView on the LCA CSV (or the IBU CRD's served versions) | Ground truth, read from the spoke itself; TALM already has View helpers in `utils/multicloud_util.go` | New per-cluster API objects and a reconcile wait before the plan can start; cost scales with fleet size; the hub still has to map a version to a capability |
-| **3G** Read-only ManifestWork on the IBU's status *(added after review; decided fallback)* | Fixed-name, OLM-independent LCA object (the IBU singleton); typed status field written by the running LCA; goes through the OCM work agent every IBGU already uses, so no new spoke dependency; no Subscription or CSV name to know | One short-lived ManifestWork and a feedback wait per claim-less cluster; needs a klusterlet that supports the `ReadOnly` update strategy; needs a new LCA status field |
+| **3G** Read-only ManifestWork on the IBU's status *(added after review; chosen as the fallback, then dropped 2026-11-13 — see the record)* | Fixed-name, OLM-independent LCA object (the IBU singleton); typed status field written by the running LCA; goes through the OCM work agent every IBGU already uses, so no new spoke dependency; no Subscription or CSV name to know | One short-lived ManifestWork and a feedback wait per claim-less cluster; needs a klusterlet that supports the `ReadOnly` update strategy; needs a new LCA status field |
 | **3D** No detection — trust the user's label selector | Zero cost | The failure it permits is a silent no-backup upgrade. Unacceptable on its own |
 | **3E** Dry-run probe ManifestWork | Tests the real apply path | Heavyweight; another round trip; still needs somewhere to report the result |
 | **3F** LCA publishes its capabilities as a ClusterClaim | The idiomatic ACM mechanism for a spoke to assert a fact to the hub. Surfaces as `ManagedCluster.status.clusterClaims`, so the hub reads the whole fleet in **one List** — no per-cluster objects, no reconcile wait. Type is already vendored (`vendor/open-cluster-management.io/api/cluster/v1/types.go:168,188`) and TALM already holds `managedclusters` get/list/watch, so the hub side costs nothing new. Removes the version→capability table entirely and serves every future contract change | Requires an LCA change, so not unilateral. **Cannot be retrofitted into already-shipped LCA versions**, so "claim absent" stays ambiguous between a pre-feature LCA, a truncated claim (see the cap note below) and an LCA-side failure. A broken sync path shows as *staleness* rather than absence, and is caught by the availability gate below, not by the claim. Becomes a public contract LCA must then maintain |
@@ -901,8 +915,9 @@ Design notes:
   cap entirely (`:95-101`). LCA's claim should use one. The reserved suffix list is
   configured on the spoke registration agent (`--reserved-cluster-claim-suffixes`), so
   this is not LCA's call alone — **confirm what ACM reserves by default** before relying
-  on 3F. If LCA's claim cannot be made reserved, truncation sends affected clusters down
-  the 3G fallback (below), which costs one read-only ManifestWork but stays correct.
+  on 3F. *(Resolved: the claim uses ACM's reserved `openshift.io` suffix, exempt from the
+  cap on ACM 2.14+, which is TALM's minimum supported hub. The 3G fallback that covered
+  truncation is dropped.)*
 
 ### A missing claim is not a sign that ACM is broken — check that directly, first
 
@@ -915,12 +930,12 @@ says little about the others:
 | ManifestWork via MWRS — the IBGU's only delivery path today | OCM work agent (klusterlet) | ManifestWork status feedback |
 | ManagedClusterView / Action | ACM work-manager addon — not core OCM; the types are vendored from `stolostron/cluster-lifecycle-api` (`clustergroupupgrade_controller.go:49`). ACM-internal, and TALM is moving away from it; **not used** by this design | MCV status |
 
-The decided fallback (3G) reads the IBU's status through a read-only ManifestWork, so it
-rides on the same work agent as the IBGU's own delivery. Read against that, the causes of
-an absent claim are:
+*(This analysis predates two decisions: the claim uses ACM's reserved suffix, so it is
+never truncated on ACM 2.14+, and there is no fallback read. On an available cluster an
+absent claim therefore means a pre-bump LCA, nothing else. The causes below are kept for
+the record.)* The causes of an absent claim were:
 
-1. **LCA predates the claim** — the expected case, and the reason the fallback exists.
-   ACM is healthy; ManifestWork works.
+1. **LCA predates the claim** — the expected case. ACM is healthy.
 2. **Truncated by the custom-claim cap** — the registration agent is working as designed;
    ManifestWork is unaffected.
 3. **LCA down, or its claim controller failing** — nothing in ACM is broken. The IBU still
@@ -940,27 +955,14 @@ this order, per cluster:
    cluster stops updating it (`managedClusterResources.go:544-546`). The IBGU controller
    has no such check today.
 2. **Claim.** Present and recognised → use it (D4 decides what follows).
-3. **Fallback (3G).** Claim absent → ship a read-only ManifestWork for IBU `upgrade` with
-   a feedback rule on `.status.seedFormatVersion`. This covers an LCA older than the
-   claim, a truncated claim and an LCA-side fault alike, and costs one ManifestWork rather
-   than a blocked IBGU. An IBU without the field means a pre-bump LCA. *(Earlier drafts
-   read the LCA CSV by ManagedClusterView — first its version through a hub-side table,
-   then a CSV field via Subscription → `installedCSV` → CSV — or read the IBU CRD schema;
-   all rejected, see the record.)*
-4. **Fallback unavailable.** The read-only work returns no feedback → "unknown", fail
-   closed (D4), reporting the fallback path rather than the LCA as the cause.
+3. **Claim absent → pre-bump LCA (decided form).** On ACM 2.14+ the claim cannot be
+   truncated, so an available cluster without it runs an LCA older than the bump.
+   *(Earlier drafts read the LCA CSV by ManagedClusterView, read the IBU CRD schema, or
+   fell back to the IBU's status through a read-only ManifestWork; all rejected, see the
+   record.)*
 
-Two consequences worth recording:
-
-- **3G adds no spoke dependency.** Every IBGU action already goes through
-  ManifestWork, which needs only the OCM work agent; the fallback uses the same agent.
-  (The ManagedClusterView route it replaces would have added ACM's work-manager addon.)
-  It does need a klusterlet that supports the `ReadOnly` update strategy.
-- **The fallback defuses truncation.** Without it, a truncated claim and a pre-feature
-  LCA look identical, and the cap problem above becomes a blocked upgrade whose cause is
-  invisible from the hub. With the IBU status read, a truncated claim costs one
-  read-only ManifestWork. That is the reason to keep the fallback even after the claim
-  has shipped; the cap exemption becomes a cost question, not a correctness one.
+The fallback was dropped for two reasons: the reserved suffix removes the truncation it
+existed for, and its asynchronous feedback needed the retry machinery D4 removed.
 
 ### Future: selecting by claim rather than verifying with it
 
@@ -1108,13 +1110,10 @@ handed to each CGU rather than a superset of it.
 - Surface it as an IBGU condition naming the offending clusters and the generation
   detected for each, so the operator can fix the selector or the fleet rather than guess.
   Where the generation is unknown, name *why*, using the reasons from the D3 check order:
-  cluster unavailable, or the read-only ManifestWork returned no feedback. Each points at
-  a different owner — ACM or LCA — and a bare "unknown" points at none.
+  cluster unavailable, or format mismatch. Each points at a different owner — ACM or the
+  fleet's LCA versions — and a bare "unknown" points at none.
 - Provide an explicit opt-out annotation for lab use.
-- Cost depends on D3. Under 3F it is a single List of ManagedClusters. Under the 3G
-  fallback it is one read-only ManifestWork per claim-less cluster up front — a real but
-  bounded one-time cost, cheap against even a single avoided batch stall, and the works
-  are reaped once the check passes.
+- Cost: a single List of ManagedClusters (3F), with no per-cluster objects.
 
 ---
 
@@ -1953,12 +1952,14 @@ before the first CGU is created, so IBGUs already in progress are unaffected.
       cleans up ManagedClusterViews, and reports "done" so the batch is not blocked.
    3. Batch-completion semantics change: `isBatchComplete` must count `Failed` as
       terminal-done.
-   4. Per-cluster final state is currently only written on the timeout path.
-      `addClustersStatusOnTimeout` (`:775`) is what populates `Status.Clusters[]`, and
-      the only constants are `ClusterRemediationComplete` / `ClusterRemediationTimedout`
-      (`constants.go:28-29`). Early failure needs a `ClusterRemediationFailed` and a
-      path that runs outside the timeout handler — reusing `timedout` would be a lie in
-      user-visible status.
+   4. Per-cluster final state is written on two paths, and neither can express a
+      failure other than a timeout. `takeActionsAfterCompletion` (`actions.go:52-58`)
+      appends `ClusterRemediationComplete` for every cluster that finishes its actions,
+      called from `updateClusterProgress` in the same reconcile that sets the terminal
+      condition; `addClustersStatusOnTimeout` (`clustergroupupgrade_controller.go:761,778`)
+      appends `timedout`. Those are the only two constants (`constants.go:28-29`). Early
+      failure needs a `ClusterRemediationFailed` and a path that runs outside the timeout
+      handler — reusing `timedout` would be a lie in user-visible status.
    5. **A product decision, not just plumbing:** if a batch finishes with some clusters
       `Failed`, is the CGU `Succeeded`, `TimedOut`, or something new, and does the plan
       continue to the next batch? Today neither outcome fits.
@@ -2081,7 +2082,7 @@ is an IBU v2, a field removal in v1, or needs a seed format bump. D1 and D11 reo
 | Each batch gets a fair share of the remaining budget (`remainingTime / remainingBatches`); last batch takes the rest | `controllers/utils/batches.go:10`, called at `clustergroupupgrade_controller.go:664` |
 | CGU-wide timeout remains as a backstop | `controllers/clustergroupupgrade_controller.go:585` |
 | On batch timeout, default `BatchTimeoutAction: Continue` advances to the next batch; `Abort` or a canary batch ends the CGU | `controllers/clustergroupupgrade_controller.go:673-726`, `pkg/api/.../types.go:96-103,191` |
-| `addClustersStatusOnTimeout` records final state only for the batch that timed out | `controllers/clustergroupupgrade_controller.go:775,794` |
+| Per-cluster `complete` is written by `takeActionsAfterCompletion` as each cluster finishes, in the same reconcile as the terminal condition; `timedout` only on the timeout path, for the batch that timed out | `controllers/actions.go:52-58`, `controllers/clustergroupupgrade_controller.go:761,778` |
 | Progress is a monotonic index with no terminal-failure channel; single dispatch point for both rollout types | `controllers/clustergroupupgrade_controller.go:961,900` |
 | Per-cluster progress states are NotStarted / InProgress / Completed only | `pkg/api/clustergroupupgrades/v1alpha1/types.go:221,230-232` |
 | Only two cluster final-state constants exist | `controllers/utils/constants.go:28-29` |
