@@ -88,27 +88,27 @@ spec:
     description: When "true", omit the build history (history timestamps, layer metadata, etc.) from the resulting image.
   - name: catalog-template-file
     type: string
-    default: .konflux/catalog/4.23/catalog-template.in.yaml
+    default: .konflux/catalog/catalog-template.in.yaml
     description: Path to the basic catalog template rendered by opm.
   - name: bundle-builds-file
     type: string
-    default: .konflux/catalog/4.23/bundle.builds.in.yaml
+    default: .konflux/catalog/bundle.builds.in.yaml
     description: Path to the bundle builds file used to replace the catalog template placeholder.
   - name: catalog-output-path
     type: string
-    default: .konflux/catalog/4.23/topology-aware-lifecycle-manager/catalog.json
+    default: .konflux/catalog/topology-aware-lifecycle-manager/catalog.json
     description: Path where opm writes the rendered catalog.json.
   - name: catalog-idms-path
     type: string
-    default: .konflux/catalog/4.23/catalog-idms.yaml
+    default: .konflux/catalog/catalog-idms.yaml
     description: IDMS used to rewrite quay.io bundle pullspecs to registry.redhat.io after rendering.
   - name: catalog-update-script
     type: string
-    default: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/4.23/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/4.23/bundle.builds.in.yaml
+    default: ./telco5g-konflux/scripts/catalog/konflux-update-catalog-template.sh --set-catalog-template-input-file .konflux/catalog/catalog-template.in.yaml --set-bundle-builds-file .konflux/catalog/bundle.builds.in.yaml
     description: Script run before opm rendering. Set to "true" to skip the catalog template update.
   - name: catalog-path
     type: string
-    default: .konflux/catalog/4.23
+    default: .konflux/catalog
     description: Catalog directory relative to the build context containing the package subdirectory. Used by fbc-inject-lifecycle to bypass Dockerfile parsing for multi-stage builds.
   results:
   - description: ''
