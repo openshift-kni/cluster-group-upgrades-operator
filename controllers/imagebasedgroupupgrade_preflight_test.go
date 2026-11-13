@@ -259,10 +259,8 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: &fakeSeedImageReader{format: preBumpFormat},
 		}
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		// Terminal: no requeue.
-		assert.False(t, blocked)
 
 		// The terminal state is recorded on Succeeded (and mirrored onto Progressing).
 		succeeded := succeededCondition(ibgu)
@@ -294,10 +292,8 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: reader,
 		}
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		// The missing reference is terminal: no requeue.
-		assert.False(t, blocked)
 		// The seed gate never ran: no registry read.
 		assert.False(t, reader.called)
 
@@ -323,9 +319,8 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.False(t, blocked)
 		assert.True(t, reader.called)
 
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
@@ -357,9 +352,8 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.False(t, blocked)
 		assert.False(t, reader.called)
 
 		// The Upgrade item is still rolling out, so no terminal state is recorded.
@@ -388,9 +382,8 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.False(t, blocked)
 		// The short-circuit fires before any gate: no registry read.
 		assert.False(t, reader.called)
 
@@ -437,9 +430,8 @@ func TestSeedUnreadableIsTerminalImmediately(t *testing.T) {
 			ibgu, reader, _, reconciler := newUnreadableSeedReconciler(t)
 			ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-createdAgo))
 
-			requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+			err := reconciler.ensureManifests(context.TODO(), ibgu)
 			assert.NoError(t, err)
-			assert.False(t, requeue) // terminal: no requeue
 			assert.True(t, reader.called)
 
 			succeeded := succeededCondition(ibgu)
@@ -467,10 +459,9 @@ func TestRetryAnnotationHasNoEffect(t *testing.T) {
 			ibgu.CreationTimestamp = metav1.Now()
 			ibgu.SetAnnotations(map[string]string{"lcm.openshift.io/ibgu-preflight-retry-seconds": value})
 
-			requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+			err := reconciler.ensureManifests(context.TODO(), ibgu)
 			assert.NoError(t, err)
 			// Terminal on the first failure regardless of the annotation value.
-			assert.False(t, requeue)
 			succeeded := succeededCondition(ibgu)
 			assert.NotNil(t, succeeded)
 			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
@@ -534,14 +525,17 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 		reconciler := IBGUReconciler{
 			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
 		}
-		outcome, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		eligible, outcome, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		// The gate passed via the uncached read: no false NoClustersMatchSelector block.
 		assert.Equal(t, preflightPass, outcome.class)
+		// The gate returns the eligible set resolved via the uncached reader, which the
+		// first CGU is then created from.
+		assert.Equal(t, []string{"cluster1"}, eligible)
 
 		// Control: with only the cached client (no cluster) the gate blocks terminally.
 		cachedOnly := IBGUReconciler{Client: cachedClient, Scheme: testscheme, Log: logr.Discard()}
-		cachedOutcome, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		_, cachedOutcome, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.Equal(t, preflightTerminal, cachedOutcome.class)
 		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedOutcome.reason)
@@ -570,9 +564,8 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
 		}
 
-		requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.False(t, requeue)
 		// No false terminal block.
 		assert.Nil(t, succeededCondition(ibgu))
 		// The Prep CGU is created on the frozen set resolved via the uncached reader.

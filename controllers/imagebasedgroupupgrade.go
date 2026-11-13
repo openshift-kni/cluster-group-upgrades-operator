@@ -135,7 +135,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	requeue, err := r.ensureManifests(ctx, ibgu)
+	err = r.ensureManifests(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
@@ -147,18 +147,12 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	if requeue {
-		// The only requeue the pre-flight asks for: the empty-set gate passed, then plan
-		// item 0 resolved to no eligible cluster when its CGU was about to be created
-		// (the last cluster was deleted in the race between the gate and here), and a
-		// re-check found a cluster eligible again. No CGU exists yet and the generation
-		// is unchanged, so nothing the controller watches would trigger another
-		// reconcile; requeue shortly to create the CGU. Every pre-flight failure is
-		// terminal (sets Succeeded, returns false — no requeue); the plan loop otherwise
-		// waits on owned-CGU watches.
-		nextReconcile = requeueWithShortInterval()
-	}
-
+	// The pre-flight never asks for a requeue: plan item 0's eligible cluster set is
+	// resolved once (by the empty-set gate) and the first CGU is created from that same
+	// set, so the gate and the CGU can never disagree and there is no empty-set race to
+	// re-check. Every pre-flight failure is terminal (sets Succeeded, no requeue); the
+	// plan loop otherwise waits on owned-CGU watches. A genuine API fault returns an
+	// error above and requeues with backoff, still bounded by the start deadline.
 	return
 }
 
@@ -475,42 +469,23 @@ func effectiveActionLabels(clusterLabels map[string]string, state *ibguv1alpha1.
 	return merged
 }
 
-// resolveClustersForPlanItem determines the frozen base set for the plan item
-// (resolved live from the selector at plan item 0, read back from plan item 0's
-// CGU afterwards), intersects it with the ManagedClusters that still exist, and
-// narrows it to those eligible for the plan item. It returns the sorted list of
-// clusters the plan item's CGU should target; vanished clusters are reported
-// separately each reconcile by markDroppedClusters.
+// resolveClustersForPlanItem determines the cluster set for an appended plan item
+// (index > 0). The base set was frozen at plan item 0 and is read back from plan
+// item 0's CGU on the cached client; this intersects it with the ManagedClusters
+// that still exist and narrows it to those eligible for the plan item. It returns
+// the sorted list of clusters the plan item's CGU should target; vanished clusters
+// are reported separately each reconcile by markDroppedClusters.
+//
+// Plan item 0 does not go through here: its eligible set is resolved once by the
+// empty-set pre-flight gate (through the uncached reader) and passed straight to
+// ensureCGUForPlanItem, so the gate and the first CGU can never disagree (CNF-30176).
 func (r *IBGUReconciler) resolveClustersForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
+	planItem *ibguv1alpha1.PlanItem,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) ([]string, error) {
-	// Plan item 0 runs before the first CGU exists (ensureCGUForPlanItem returns early
-	// once the CGU is present), so its live re-resolution must use the same uncached
-	// reader as the empty-set gate — otherwise a cache-lagged plan loop could record a
-	// false planItemEmptyAtZero block right after the gate passed. Appended items (a
-	// CGU already exists) read the frozen set from plan item 0's CGU on the cached
-	// client.
-	var reader client.Reader = r.Client
-	var frozen []string
-	if planItemIndex == 0 {
-		// A finished IBGU (one carrying the terminal Succeeded condition, including a
-		// migrated empty-completed one) is short-circuited in ensureManifests before
-		// this runs, so a late-matching ManagedCluster cannot restart a completed,
-		// empty rollout. At plan item 0 the base set is therefore resolved live from
-		// the selector; the empty-set pre-flight gate has already guaranteed at least
-		// one eligible cluster before the plan loop is reached.
-		reader = r.preflightReader()
-		var err error
-		frozen, err = r.resolveBaseClusters(ctx, reader, ibgu)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		frozen = getFrozenClusterSet(ibgu, cguList)
-	}
+	frozen := getFrozenClusterSet(ibgu, cguList)
 
 	// Index this IBGU's freshly synced per-cluster status so eligibility can be
 	// decided from the completed/failed actions it records as well as the
@@ -523,7 +498,7 @@ func (r *IBGUReconciler) resolveClustersForPlanItem(
 	selected := []string{}
 	for _, name := range frozen {
 		cluster := &clusterv1.ManagedCluster{}
-		if getErr := reader.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
+		if getErr := r.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
 			if errors.IsNotFound(getErr) {
 				// Dropped from the rollout; excluded so the CGU is not created with a
 				// missing cluster (which validateCR would hard-fail on).
@@ -635,21 +610,20 @@ const (
 	// condition, or a later plan item legitimately narrowed to no eligible cluster).
 	// The plan loop proceeds to the next item.
 	planItemCompleted
-	// planItemEmptyAtZero means plan item 0 resolved to no eligible cluster at
-	// first-CGU creation. This is the empty-set condition, not a completion: the
-	// empty-set pre-flight gate passed (at least one cluster was eligible), but the
-	// last one was deleted before its CGU could be created (a TOCTOU race). The plan
-	// loop must re-check the empty-set gate and, unless a cluster is eligible again,
-	// block terminally instead of reporting success, so a one-item plan never records
-	// Succeeded=True with no CGU.
-	planItemEmptyAtZero
 )
 
+// ensureCGUForPlanItem reconciles a single plan item into its CGU. For plan item 0
+// it targets item0Clusters — the eligible set the empty-set pre-flight gate resolved
+// once (guaranteed non-empty) — rather than re-resolving the selector, so the gate
+// and the first CGU can never disagree (CNF-30176). item0Clusters is consulted only
+// when plan item 0's CGU does not yet exist; appended items (index > 0) resolve their
+// set from the frozen record in plan item 0's CGU.
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+	item0Clusters []string,
 ) (planItemResult, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem, planItemIndex)
 
@@ -718,29 +692,27 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
 	}
 
-	// Resolve the frozen cluster set for this plan item: the base set is frozen at
-	// plan item 0, every later item is narrowed from that record and intersected
-	// with the ManagedClusters that still exist.
-	selected, err := r.resolveClustersForPlanItem(ctx, ibgu, planItem, planItemIndex, cguList)
-	if err != nil {
-		return planItemWaiting, fmt.Errorf("error resolving clusters for plan item: %w", err)
+	// Resolve the cluster set for this plan item. Plan item 0 reuses the eligible set
+	// the empty-set gate already resolved (item0Clusters), so the gate and the first
+	// CGU target exactly the same clusters. Appended items narrow the set frozen at
+	// plan item 0, intersected with the ManagedClusters that still exist.
+	var selected []string
+	if planItemIndex == 0 {
+		selected = item0Clusters
+	} else {
+		var err error
+		selected, err = r.resolveClustersForPlanItem(ctx, ibgu, planItem, cguList)
+		if err != nil {
+			return planItemWaiting, fmt.Errorf("error resolving clusters for plan item: %w", err)
+		}
 	}
 	if len(selected) == 0 {
-		if planItemIndex == 0 {
-			// Plan item 0 resolved to no eligible cluster at first-CGU creation. The
-			// empty-set pre-flight gate already passed (at least one cluster was
-			// eligible), so the last one was deleted in the race between the gate and
-			// here. Reporting completion would record Succeeded=True with no CGU for a
-			// rollout that never ran; signal the empty-set condition so the plan loop
-			// re-checks the gate and blocks terminally instead.
-			r.Log.Info("Plan item 0 resolved to no eligible cluster at CGU creation",
-				"planItem actions", planItem.Actions)
-			return planItemEmptyAtZero, nil
-		}
-		// A later plan item legitimately narrowing to zero (e.g. an AbortOnFailure
-		// step when nothing failed, or every frozen cluster has been deleted). There
-		// is nothing to remediate, so skip creating a CGU — an empty spec.clusters
-		// would be rejected by the CGU controller — and treat the item as completed.
+		// Plan item 0 cannot reach here: the empty-set gate guaranteed item0Clusters is
+		// non-empty. A later plan item legitimately narrowing to zero (e.g. an
+		// AbortOnFailure step when nothing failed, or every frozen cluster has been
+		// deleted) has nothing to remediate, so skip creating a CGU — an empty
+		// spec.clusters would be rejected by the CGU controller — and treat the item as
+		// completed.
 		r.Log.Info("No eligible clusters for plan item, skipping CGU creation",
 			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
 		return planItemCompleted, nil
@@ -775,7 +747,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
 		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, selected, annotations, disableAutoImport)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
-	err = ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
+	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
 		return planItemWaiting, fmt.Errorf("error setting owner reference for cgu: %w", err)
 	}
@@ -862,20 +834,18 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader clien
 	return missing, nil
 }
 
-// ensureManifests reconciles the plan into CGUs. Its boolean return is true only for
-// the plan-item-0 empty-set race: the empty-set gate passed, the last eligible
-// cluster was deleted before its CGU could be created, and a re-check then found a
-// cluster eligible again — Reconcile requeues shortly to create the CGU. Every
-// pre-flight failure is terminal at once (records the Succeeded condition, returns
-// false — no requeue); it returns an error for any genuine fault.
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (bool, error) {
+// ensureManifests reconciles the plan into CGUs. Every pre-flight failure is terminal
+// at once (records the Succeeded condition, creates no CGU); it never requeues. It
+// returns an error only for a genuine fault, which Reconcile requeues with backoff
+// (still bounded by the start deadline).
+func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
 	})
 	if err != nil {
-		return false, fmt.Errorf("error listing cgus for ibgu: %w", err)
+		return fmt.Errorf("error listing cgus for ibgu: %w", err)
 	}
 
 	// The Succeeded condition records one of two terminal states, distinguished by
@@ -893,10 +863,10 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	//     field), so the IBGU resumes through the plan loop below.
 	if succeeded := meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)); succeeded != nil {
 		if !isPlanCompletion(succeeded.Reason) {
-			return false, nil
+			return nil
 		}
 		if succeeded.ObservedGeneration >= ibgu.Generation {
-			return false, nil
+			return nil
 		}
 		// Plan items were appended after completion: drop Succeeded and resume. Earlier
 		// plan items are already finished (their CGUs exist), the pre-flight gates do
@@ -924,23 +894,32 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 			r.setTerminal(ibgu, utils.ConditionReasons.NoEligibleClusters,
 				"this IBGU completed with no CGU (no cluster was eligible for plan item 0); "+
 					"it no longer reports success")
-			return false, nil
+			return nil
 		}
 	}
+
+	// item0Clusters is plan item 0's eligible cluster set, resolved once by the
+	// empty-set gate (through the uncached reader) and reused verbatim when plan item
+	// 0's CGU is created, so the gate and the first CGU can never disagree about which
+	// clusters are eligible. It is populated only on the first-CGU path below; for an
+	// IBGU already in progress (an owned CGU exists) plan item 0's CGU already exists,
+	// so this set is never consulted.
+	var item0Clusters []string
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
 	// is unaffected. On failure they create no CGU and block the IBGU terminally at
 	// once: every pre-flight failure is terminal (CNF-30176), with no retry.
 	if len(cguList.Items) == 0 {
-		outcome, err := r.runPreflightGates(ctx, ibgu)
+		var outcome preflightOutcome
+		item0Clusters, outcome, err = r.runPreflightGates(ctx, ibgu)
 		if err != nil {
-			return false, err
+			return err
 		}
 		switch outcome.class {
 		case preflightTerminal:
 			r.setTerminal(ibgu, outcome.reason, outcome.message)
-			return false, nil
+			return nil
 		case preflightPass:
 			// Honour the start deadline on the passing path too: even when every gate
 			// passes, the first CGU must be created within preflightStartDeadline of
@@ -953,7 +932,7 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				r.setTerminal(ibgu, utils.ConditionReasons.PreflightWindowExpired,
 					fmt.Sprintf("pre-flight checks passed but the %s start deadline since creation has "+
 						"expired before the first CGU could be created; the IBGU started too late", preflightStartDeadline))
-				return false, nil
+				return nil
 			}
 		}
 	}
@@ -965,32 +944,16 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// reads, which would otherwise make the next plan item resolve empty against stale
 	// status, be skipped, and record a generation-final false success.
 	if err := r.syncStatusFromCGUList(ctx, ibgu, cguList); err != nil {
-		return false, fmt.Errorf("error syncing status from cgu list: %w", err)
+		return fmt.Errorf("error syncing status from cgu list: %w", err)
 	}
 
 	for i := range ibgu.Spec.Plan {
 		planItem := ibgu.Spec.Plan[i]
-		result, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList)
+		result, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, item0Clusters)
 		if err != nil {
-			return false, fmt.Errorf("error ensuring cgu for plan item: %w", err)
+			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
 		switch result {
-		case planItemEmptyAtZero:
-			// Plan item 0 resolved to no eligible cluster at CGU creation (the empty-set
-			// gate passed, then the last cluster was deleted). Re-evaluate the empty-set
-			// gate: if a cluster is eligible again, requeue to create the CGU on the next
-			// reconcile; otherwise block terminally at once.
-			outcome, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
-			if err != nil {
-				return false, fmt.Errorf("error re-evaluating empty-set gate: %w", err)
-			}
-			if outcome.class == preflightPass {
-				// A cluster re-appeared between the resolution above and here; requeue to
-				// create the CGU on the next reconcile.
-				return true, nil
-			}
-			r.setTerminal(ibgu, outcome.reason, outcome.message)
-			return false, nil
 		case planItemWaiting:
 			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
 				"planItem actions", planItem.Actions)
@@ -1006,14 +969,14 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				utils.ConditionReasons.InProgress,
 				metav1.ConditionTrue,
 				msg)
-			return false, nil
+			return nil
 		case planItemCompleted:
 			// Proceed to the next plan item.
 		}
 	}
 
 	r.setPlanCompleted(ibgu, cguList)
-	return false, nil
+	return nil
 }
 
 // isPlanCompletion reports whether a Succeeded condition reason records a plan
@@ -1041,11 +1004,16 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // first non-pass outcome. Running the hub-only, deterministic checks before the
 // network read means a selector typo or a missing BackupContent is reported with
 // its own reason and does not trigger a registry read or block with the wrong
-// reason (review item 4).
-func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (preflightOutcome, error) {
-	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible cluster.
-	if outcome, err := r.ensureNonEmptyClusterSet(ctx, ibgu); err != nil || outcome.class != preflightPass {
-		return outcome, err
+// reason (review item 4). On the passing path it also returns plan item 0's
+// eligible cluster set, resolved once by the empty-set gate, so the first CGU is
+// created from that same set.
+func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, preflightOutcome, error) {
+	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
+	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
+	// cluster set.
+	item0Clusters, outcome, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
+	if err != nil || outcome.class != preflightPass {
+		return nil, outcome, err
 	}
 
 	// 2. Reference-resolution gate: for a plan that contains a Prep item, every
@@ -1055,50 +1023,68 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 	// CRD admits a Prep item is the first item (see the plan XValidation rule), so this
 	// validates the Prep references before any CGU that copies them is created.
 	if outcome, err := r.ensurePrepReferencesResolve(ctx, ibgu); err != nil || outcome.class != preflightPass {
-		return outcome, err
+		return nil, outcome, err
 	}
 
 	// 3. Seed-format compatibility gate (CNF-29242): the network read, run last.
-	outcome, err := r.ensureSeedFormatCompatible(ctx, ibgu)
+	outcome, err = r.ensureSeedFormatCompatible(ctx, ibgu)
 	if err != nil {
-		return preflightOutcome{}, fmt.Errorf("error checking seed format compatibility: %w", err)
+		return nil, preflightOutcome{}, fmt.Errorf("error checking seed format compatibility: %w", err)
 	}
-	return outcome, nil
+	return item0Clusters, outcome, nil
 }
 
-// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): plan item
-// 0 must resolve to at least one eligible cluster. It distinguishes two terminal
-// reasons: no ManagedCluster matches the selector (NoClustersMatchSelector), or the
-// base set is non-empty but none is eligible for plan item 0's action
-// (NoEligibleClusters). It reads through the uncached pre-flight reader so a
-// ManagedCluster or label applied alongside the IBGU is not missed under informer-
-// cache lag and wrongly reported as empty.
-func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (preflightOutcome, error) {
+// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
+// plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
+// returns that set so the first CGU is created from the very set the gate evaluated —
+// the gate and the CGU can never disagree, so there is no empty-set race to re-check
+// (CNF-30176). When the set is empty it distinguishes two terminal reasons: no
+// ManagedCluster matches the selector (NoClustersMatchSelector), or the base set is
+// non-empty but none is eligible for plan item 0's action (NoEligibleClusters).
+// Reading through the uncached reader means a ManagedCluster or label applied
+// alongside the IBGU is not missed under informer-cache lag and wrongly reported as
+// empty. The returned set is meaningful only on a passing outcome.
+func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, preflightOutcome, error) {
 	reader := r.preflightReader()
 	base, err := r.resolveBaseClusters(ctx, reader, ibgu)
 	if err != nil {
-		return preflightOutcome{}, fmt.Errorf("error resolving base clusters: %w", err)
+		return nil, preflightOutcome{}, fmt.Errorf("error resolving base clusters: %w", err)
 	}
 	if len(base) == 0 {
-		return terminalOutcome(utils.ConditionReasons.NoClustersMatchSelector,
+		return nil, terminalOutcome(utils.ConditionReasons.NoClustersMatchSelector,
 			"no ManagedCluster matches the IBGU clusterLabelSelectors"), nil
 	}
 
+	// Index this IBGU's freshly synced per-cluster status so eligibility is decided
+	// from the completed/failed actions it records as well as the ManagedCluster labels
+	// (see effectiveActionLabels) — the same inputs the plan loop uses, so the set
+	// returned here is exactly the set plan item 0's CGU is created from. On the first
+	// reconcile no action has completed yet, so this reduces to the raw labels.
+	statusByName := make(map[string]*ibguv1alpha1.ClusterState, len(ibgu.Status.Clusters))
+	for i := range ibgu.Status.Clusters {
+		statusByName[ibgu.Status.Clusters[i].Name] = &ibgu.Status.Clusters[i]
+	}
+
 	planItem := &ibgu.Spec.Plan[0]
+	eligible := []string{}
 	for _, name := range base {
 		cluster := &clusterv1.ManagedCluster{}
 		if getErr := reader.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
 			if errors.IsNotFound(getErr) {
 				continue
 			}
-			return preflightOutcome{}, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
+			return nil, preflightOutcome{}, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
 		}
-		if utils.ClusterMatchesPlanItem(cluster.GetLabels(), planItem) {
-			return passOutcome(), nil
+		if utils.ClusterMatchesPlanItem(effectiveActionLabels(cluster.GetLabels(), statusByName[name]), planItem) {
+			eligible = append(eligible, name)
 		}
 	}
-	return terminalOutcome(utils.ConditionReasons.NoEligibleClusters,
-		fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)), nil
+	if len(eligible) == 0 {
+		return nil, terminalOutcome(utils.ConditionReasons.NoEligibleClusters,
+			fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)), nil
+	}
+	sort.Strings(eligible)
+	return eligible, passOutcome(), nil
 }
 
 // ensurePrepReferencesResolve is the reference-resolution pre-flight gate. A
