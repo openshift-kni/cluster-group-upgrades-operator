@@ -660,7 +660,11 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 				return planItemWaiting, fmt.Errorf("error getting backupcontent manifests: %w", err)
 			}
 			manifests = append(manifests, bcManifests...)
-			secretManifest := r.getSecretManifest(ctx, ibgu)
+			var secretManifest *mwv1.Manifest
+			secretManifest, err = r.getSecretManifest(ctx, ibgu)
+			if err != nil {
+				return planItemWaiting, fmt.Errorf("error getting secret manifest: %w", err)
+			}
 			if secretManifest != nil {
 				manifests = append(manifests, *secretManifest)
 			}
@@ -796,12 +800,16 @@ func planHasPrep(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
 
 // resolvePrepReferences resolves every hub-side reference a Prep step copies to
 // the spoke: each ibuSpec.backupContent entry against a hub BackupContent in the
-// IBGU's namespace, and each ibuSpec.oadpContent entry against a ConfigMap in the
-// ref's own namespace. It returns the sorted, human-readable names of the
-// references that do not exist. Any error other than NotFound is returned so the
-// reconcile requeues rather than wrongly reporting a reference as missing. The
-// reader is the uncached pre-flight reader so a reference applied alongside the IBGU
-// is not read as NotFound under informer-cache lag.
+// IBGU's namespace, each ibuSpec.oadpContent entry against a ConfigMap in the ref's
+// own namespace, and — when seedImageRef.pullSecretRef is set — the pull secret in
+// the IBGU's namespace. It returns the sorted, human-readable names of the references
+// that do not exist. A pullSecretRef that is set but names a missing secret is a
+// misconfiguration reported here (terminally) so it is caught for every Prep plan,
+// not only backupContent ones the seed gate happens to read; a plan with no
+// pullSecretRef copies no secret and is exempt. Any error other than NotFound is
+// returned so the reconcile requeues rather than wrongly reporting a reference as
+// missing. The reader is the uncached pre-flight reader so a reference applied
+// alongside the IBGU is not read as NotFound under informer-cache lag.
 func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
 	var missing []string
 	for _, bcRef := range ibgu.Spec.IBUSpec.BackupContent {
@@ -828,6 +836,19 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader clien
 				continue
 			}
 			return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cmRef.Namespace, cmRef.Name, err)
+		}
+	}
+	if pullSecretRef := ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef; pullSecretRef != nil {
+		secret := &corev1.Secret{}
+		if err := reader.Get(ctx, types.NamespacedName{
+			Name:      pullSecretRef.Name,
+			Namespace: ibgu.GetNamespace(),
+		}, secret); err != nil {
+			if errors.IsNotFound(err) {
+				missing = append(missing, fmt.Sprintf("Secret %q", pullSecretRef.Name))
+			} else {
+				return nil, fmt.Errorf("failed to get pull secret %q: %w", pullSecretRef.Name, err)
+			}
 		}
 	}
 	sort.Strings(missing)
@@ -910,6 +931,28 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
 	// is unaffected. On failure they create no CGU and block the IBGU terminally at
 	// once: every pre-flight failure is terminal (CNF-30176), with no retry.
+	//
+	// The cached list above can lag behind an owned CGU this controller just created.
+	// Before running the terminal gates, confirm no owned CGU exists through the uncached
+	// reader: if the cache is merely lagging, the first CGU has already been created and
+	// the pre-flight window is over, so adopt the uncached snapshot — that both skips the
+	// gates and lets the plan loop below wait on the existing CGU. Running the gates
+	// against a stale empty list could otherwise record a terminal empty-set block (if
+	// the cluster set emptied in the same window) or a PreflightWindowExpired block (an
+	// error retried near the deadline, before the informer caught the CGU) on an IBGU
+	// whose first CGU already exists — wedging it permanently while its CGU runs
+	// unsupervised (CNF-30176).
+	if len(cguList.Items) == 0 {
+		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
+		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
+			Namespace:     ibgu.Namespace,
+			LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
+		}); listErr != nil {
+			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
+		}
+		cguList = uncachedCGUList
+	}
+
 	if len(cguList.Items) == 0 {
 		var outcome preflightOutcome
 		item0Clusters, outcome, err = r.runPreflightGates(ctx, ibgu)
@@ -1190,38 +1233,42 @@ func (r *IBGUReconciler) setTerminal(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, 
 	}
 }
 
+// getSecretManifest builds the spoke pull-secret manifest for the IBGU's
+// seedImageRef.pullSecretRef. A plan with no pullSecretRef has nothing to copy and
+// returns (nil, nil). Otherwise the secret is read through the uncached pre-flight
+// reader during the first (Prep) CGU creation, in the same reconcile the reference
+// gate resolved it, so cache lag cannot turn a just-resolved secret into a NotFound
+// here. Because the reference gate has already established the secret exists
+// (CNF-30176), any read failure — including NotFound — and any serialization failure
+// is a genuine fault and is returned as an error rather than silently dropped: a
+// dropped secret would create the Prep ManifestWorkReplicaSet (written once, never
+// updated) without the credentials a private seed image needs, on every batch of the
+// IBGU. This mirrors getConfigMapManifests.
 func (r *IBGUReconciler) getSecretManifest(
 	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-) *mwv1.Manifest {
+) (*mwv1.Manifest, error) {
 	if ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef == nil {
 		r.Log.Info("No PullSecretRef in IBGU. Skip adding secret to IBGU manifests")
-		return nil
+		return nil, nil
 	}
+	secretName := ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name
 	secret := &corev1.Secret{}
-	// Read through the uncached pre-flight reader: this runs during the first (Prep)
-	// CGU creation, in the same reconcile the uncached seed-format gate read the pull
-	// secret, so a secret applied alongside the IBGU must be read from the same source
-	// — otherwise cache lag would silently drop it here and the Prep CGU would be
-	// created without it (CNF-30176).
 	if err := r.preflightReader().Get(ctx, types.NamespacedName{
-		Name:      ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name,
+		Name:      secretName,
 		Namespace: ibgu.GetNamespace(),
 	}, secret); err != nil {
-		r.Log.Info("[WARN] pullsecret does not exist on hub. Skip adding it to manifests, secret name ",
-			ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name, " namespace ", ibgu.GetNamespace())
-		return nil
+		return nil, fmt.Errorf("failed to get pull secret %q: %w", secretName, err)
 	}
 	secret.ResourceVersion = ""
 	secret.ManagedFields = []metav1.ManagedFieldsEntry{}
 	secret.CreationTimestamp = metav1.Time{}
 	secret.UID = ""
-	secret.Namespace = "openshift-lifecycle-agent"
+	secret.Namespace = lcav1.DefaultNamespace
 	secretBytes, err := utils.ObjectToByteArray(secret)
 	if err != nil {
-		r.Log.Info("[WARN] failed to convert secret to []bytes")
-		return nil
+		return nil, fmt.Errorf("failed to convert pull secret %q to []bytes: %w", secretName, err)
 	}
-	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}
+	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}, nil
 }
 
 // getConfigMapManifests builds the manifests for the IBGU's oadpContent ConfigMaps.

@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
@@ -651,10 +652,66 @@ func TestGetSecretManifest(t *testing.T) {
 				panic(err)
 			}
 			reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			manifest := reconciler.getSecretManifest(context.TODO(), ibgu)
+			manifest, err := reconciler.getSecretManifest(context.TODO(), ibgu)
+			assert.NoError(t, err)
 			assert.JSONEq(t, test.expectedJson, string(manifest.Raw))
 		})
 	}
+}
+
+// TestGetSecretManifestErrors verifies that getSecretManifest no longer silently
+// drops the pull secret: with no pullSecretRef it returns (nil, nil), but a read
+// failure (the reference gate has already established the secret exists) is returned
+// as an error rather than producing a Prep CGU without the credentials a private seed
+// image needs.
+func TestGetSecretManifestErrors(t *testing.T) {
+	newIBGU := func(pullSecretRef *lcav1.PullSecretRef) *ibguv1alpha1.ImageBasedGroupUpgrade {
+		return &ibguv1alpha1.ImageBasedGroupUpgrade{
+			ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"},
+			Spec: ibguv1alpha1.ImageBasedGroupUpgradeSpec{
+				IBUSpec: lcav1.ImageBasedUpgradeSpec{
+					SeedImageRef: lcav1.SeedImageRef{
+						Version: "version", Image: "image", PullSecretRef: pullSecretRef,
+					},
+				},
+			},
+		}
+	}
+
+	t.Run("no pullSecretRef returns no manifest and no error", func(t *testing.T) {
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		manifest, err := reconciler.getSecretManifest(context.TODO(), newIBGU(nil))
+		assert.NoError(t, err)
+		assert.Nil(t, manifest)
+	})
+
+	t.Run("a NotFound read is returned as an error (the gate established it exists)", func(t *testing.T) {
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		manifest, err := reconciler.getSecretManifest(context.TODO(), newIBGU(&lcav1.PullSecretRef{Name: "missing"}))
+		assert.Error(t, err)
+		assert.Nil(t, manifest)
+	})
+
+	t.Run("a transient read failure is returned as an error", func(t *testing.T) {
+		base, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		faultyClient := interceptor.NewClient(base, interceptor.Funcs{
+			Get: func(_ context.Context, _ client.WithWatch, _ client.ObjectKey, obj client.Object, _ ...client.GetOption) error {
+				if _, ok := obj.(*corev1.Secret); ok {
+					return apierrors.NewInternalError(fmt.Errorf("etcd unavailable"))
+				}
+				return nil
+			},
+		})
+		reconciler := IBGUReconciler{Client: faultyClient, Scheme: testscheme, Log: logr.Discard()}
+		manifest, err := reconciler.getSecretManifest(context.TODO(), newIBGU(&lcav1.PullSecretRef{Name: "pull"}))
+		assert.Error(t, err)
+		assert.Nil(t, manifest)
+	})
 }
 
 func TestCreateIBU(t *testing.T) {
@@ -2619,6 +2676,66 @@ func TestWithinStartDeadlineProceeds(t *testing.T) {
 	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
 }
 
+// TestUncachedCGUListDefeatsStaleTerminalBlock proves the cache-lag guard on the
+// terminal pre-flight gates: when the cached owned-CGU list is empty but the uncached
+// reader shows plan item 0's CGU already exists, ensureManifests must not run the gates
+// or the start deadline. Without the guard, an IBGU created long ago (past the 5-minute
+// start deadline) whose CGU has not yet landed in the informer cache would be blocked
+// with PreflightWindowExpired even though its first CGU already exists — wedging it
+// permanently. With the guard, the uncached snapshot is adopted, no block is recorded,
+// and the plan loop simply waits on the existing CGU.
+func TestUncachedCGUListDefeatsStaleTerminalBlock(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	// Older than the fixed start deadline: if the gates ran and passed, the deadline
+	// branch would record PreflightWindowExpired.
+	ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-(preflightStartDeadline + time.Minute)))
+
+	// Cached client: the CGU has not yet landed (cache lag). A matching cluster is
+	// present so, if the gates wrongly ran, the empty-set gate would pass and the
+	// deadline would then fire.
+	cachedClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+
+	// Uncached reader: plan item 0's CGU already exists (not yet completed), plus the
+	// same matching cluster.
+	uncachedReader, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	inProgressPrepCGU := &v1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "name-prep-0",
+			Namespace: "namespace",
+			Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
+		},
+		Spec: v1alpha1.ClusterGroupUpgradeSpec{
+			Clusters:              []string{"cluster1"},
+			ManifestWorkTemplates: []string{"name-prep"},
+		},
+	}
+	assert.NoError(t, uncachedReader.Create(context.TODO(), inProgressPrepCGU))
+	for _, c := range []client.WithWatch{cachedClient, uncachedReader} {
+		assert.NoError(t, c.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	}
+
+	// A seed reader that would fail if consulted, to prove the gates never ran.
+	reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
+	reconciler := IBGUReconciler{
+		Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: record.NewFakeRecorder(10), SeedImageReader: reader,
+	}
+
+	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	assert.NoError(t, err)
+
+	// No terminal block was recorded (neither PreflightWindowExpired nor an empty-set
+	// block): the uncached reader showed the CGU already exists.
+	assert.Nil(t, succeededCondition(ibgu))
+	// The gates never ran: no registry read.
+	assert.False(t, reader.called)
+	// The plan loop waited on the existing (uncached) CGU.
+	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
+}
+
 // TestAppendResumesCompletion verifies the Developer of Record's append design: a
 // completed IBGU whose completion was recorded against an earlier generation resumes
 // when a plan item is appended (the generation bumps). The Succeeded condition is
@@ -3125,5 +3242,90 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		cond := progressingCondition(ibgu)
 		assert.NotNil(t, cond)
 		assert.NotEqual(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
+	})
+
+	t.Run("prep plan with a pullSecretRef naming a missing secret is terminal and creates no CGU", func(t *testing.T) {
+		// An oadpContent-only IBGU (no backupContent, so the seed gate does not read the
+		// pull secret) with a pullSecretRef naming a secret that does not exist on the hub.
+		// The reference gate must catch the missing secret and block terminally, rather than
+		// letting the Prep CGU be created without it.
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+		ibgu.Spec.IBUSpec.OADPContent = []lcav1.ConfigMapRef{{Name: "cm1", Namespace: "ns1"}}
+		ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "pull-missing"}
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+		assert.NoError(t, fakeClient.Create(context.TODO(), &corev1.ConfigMap{
+			ObjectMeta: v1.ObjectMeta{Name: "cm1", Namespace: "ns1"}}))
+
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: record.NewFakeRecorder(10)}
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), succeeded.Reason)
+		assert.Contains(t, succeeded.Message, `Secret "pull-missing"`)
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		err = reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
+		assert.True(t, apierrors.IsNotFound(err))
+	})
+
+	t.Run("prep plan with no pullSecretRef is not gated on a pull secret", func(t *testing.T) {
+		// A plan that copies no pull secret must not be blocked by the pull-secret check.
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+		reconciler := IBGUReconciler{Client: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+
+		cond := progressingCondition(ibgu)
+		assert.NotNil(t, cond)
+		assert.NotEqual(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.NoError(t, reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
+	})
+
+	t.Run("a transient pull-secret read failure returns an error and creates no CGU", func(t *testing.T) {
+		// A non-NotFound read failure on the pull secret must requeue (return an error),
+		// not silently drop the secret and create an incomplete Prep CGU.
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+		ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "pull"}
+
+		base, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, base.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+		faultyClient := interceptor.NewClient(base, interceptor.Funcs{
+			Get: func(ctx context.Context, c client.WithWatch, key client.ObjectKey, obj client.Object, opts ...client.GetOption) error {
+				if _, ok := obj.(*corev1.Secret); ok {
+					return apierrors.NewInternalError(fmt.Errorf("etcd unavailable"))
+				}
+				return c.Get(ctx, key, obj, opts...)
+			},
+		})
+
+		reconciler := IBGUReconciler{Client: faultyClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder: record.NewFakeRecorder(10)}
+		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.Error(t, err)
+
+		// No terminal block was recorded for a transient fault, and no CGU was created.
+		assert.Nil(t, succeededCondition(ibgu))
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
 	})
 }
