@@ -72,7 +72,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 		mutate         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade)
 		reader         *fakeSeedImageReader
 		pullSecret     *corev1.Secret
-		expectClass    preflightClass
+		expectBlock    bool
 		expectReason   utils.ConditionReason
 		expectReadCall bool
 		expectEvent    bool
@@ -81,26 +81,26 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			name:           "no backupContent passes through without reading the image",
 			mutate:         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) { ibgu.Spec.IBUSpec.BackupContent = nil },
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectClass:    preflightPass,
+			expectBlock:    false,
 			expectReadCall: false,
 		},
 		{
 			name:           "backupContent with a pre-bump seed is terminal",
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectClass:    preflightTerminal,
+			expectBlock:    true,
 			expectReason:   utils.ConditionReasons.BackupContentUnsupportedSeed,
 			expectReadCall: true,
 		},
 		{
 			name:           "backupContent with a supported seed proceeds",
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectClass:    preflightPass,
+			expectBlock:    false,
 			expectReadCall: true,
 		},
 		{
 			name:           "unreadable image label is terminal (fail-closed)",
 			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
-			expectClass:    preflightTerminal,
+			expectBlock:    true,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: true,
 		},
@@ -110,7 +110,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.SetAnnotations(map[string]string{utils.IBGUSkipSeedCompatibilityAnnotation: ""})
 			},
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectClass:    preflightPass,
+			expectBlock:    false,
 			expectReadCall: false,
 			expectEvent:    true,
 		},
@@ -120,7 +120,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "missing"}
 			},
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectClass:    preflightTerminal,
+			expectBlock:    true,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: false,
 		},
@@ -130,7 +130,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Rollback}}}
 			},
 			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
-			expectClass:    preflightPass,
+			expectBlock:    false,
 			expectReadCall: false,
 		},
 		{
@@ -139,7 +139,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				ibgu.Spec.Plan = []ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Upgrade}}}
 			},
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
-			expectClass:    preflightTerminal,
+			expectBlock:    true,
 			expectReason:   utils.ConditionReasons.BackupContentUnsupportedSeed,
 			expectReadCall: true,
 		},
@@ -154,7 +154,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				Data:       map[string][]byte{corev1.DockerConfigJsonKey: []byte(`{"auths":{}}`)},
 			},
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectClass:    preflightPass,
+			expectBlock:    false,
 			expectReadCall: true,
 		},
 	}
@@ -175,22 +175,26 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 
 			recorder := record.NewFakeRecorder(10)
 			reconciler := IBGUReconciler{
-				Client:          fakeClient,
+				Client: fakeClient, APIReader: fakeClient,
 				Scheme:          testscheme,
 				Log:             logr.Discard(),
 				Recorder:        recorder,
 				SeedImageReader: test.reader,
 			}
 
-			outcome, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+			block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
 			assert.NoError(t, err)
-			assert.Equal(t, test.expectClass, outcome.class)
-			assert.Equal(t, test.expectReadCall, test.reader.called)
-			if test.expectReason != "" {
-				assert.Equal(t, test.expectReason, outcome.reason)
+			if test.expectBlock {
+				assert.NotNil(t, block)
+				if test.expectReason != "" {
+					assert.Equal(t, test.expectReason, block.reason)
+				}
+			} else {
+				assert.Nil(t, block)
 			}
+			assert.Equal(t, test.expectReadCall, test.reader.called)
 			// The gate only classifies; it never writes a condition itself (that is
-			// ensureManifests's job once it has the outcome).
+			// ensureManifests's job once it has the block).
 			assert.Nil(t, progressingCondition(ibgu))
 			assert.Nil(t, succeededCondition(ibgu))
 
@@ -226,13 +230,13 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 
 	reader := &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}
 	reconciler := IBGUReconciler{
-		Client: faultyClient, Scheme: testscheme, Log: logr.Discard(),
+		Client: faultyClient, APIReader: faultyClient, Scheme: testscheme, Log: logr.Discard(),
 		SeedImageReader: reader,
 	}
 
-	outcome, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+	block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
 	assert.Error(t, err)
-	assert.Equal(t, preflightPass, outcome.class)
+	assert.Nil(t, block)
 	assert.False(t, reader.called)
 	// No condition is recorded for a transient fault.
 	assert.Nil(t, progressingCondition(ibgu))
@@ -255,7 +259,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: &fakeSeedImageReader{format: preBumpFormat},
 		}
@@ -288,7 +292,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 
 		reader := &fakeSeedImageReader{format: preBumpFormat}
 		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: reader,
 		}
@@ -316,7 +320,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 
 		reader := &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}
 		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
 		err = reconciler.ensureManifests(context.TODO(), ibgu)
@@ -349,7 +353,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 
 		reader := &fakeSeedImageReader{format: preBumpFormat}
 		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
 		err = reconciler.ensureManifests(context.TODO(), ibgu)
@@ -379,7 +383,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 
 		reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
 		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
 		err = reconciler.ensureManifests(context.TODO(), ibgu)
@@ -398,6 +402,29 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
 		assert.True(t, apierrors.IsNotFound(err))
 	})
+
+	t.Run("unreadable seed is terminal and takes precedence over the start deadline", func(t *testing.T) {
+		// The seed registry is unreachable, so the gate fails. This is terminal regardless
+		// of how long ago the IBGU was created: a failing gate records its own reason
+		// (SeedImageUnreadable), never the start-deadline reason, and creates no CGU — even
+		// when creation is already past the start deadline.
+		ibgu, reader, _, reconciler := newUnreadableSeedReconciler(t)
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-(preflightStartDeadline + time.Minute)))
+
+		err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.True(t, reader.called)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), progressingCondition(ibgu).Reason)
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
+	})
 }
 
 // newUnreadableSeedReconciler builds a backupContent Prep IBGU with a resolvable
@@ -414,65 +441,10 @@ func newUnreadableSeedReconciler(t *testing.T) (*ibguv1alpha1.ImageBasedGroupUpg
 	reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
 	recorder := record.NewFakeRecorder(10)
 	reconciler := IBGUReconciler{
-		Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 		Recorder: recorder, SeedImageReader: reader,
 	}
 	return ibgu, reader, recorder, reconciler
-}
-
-// TestSeedUnreadableIsTerminalImmediately proves AC 1: an unreadable seed registry
-// on the first reconcile blocks the IBGU terminally (Succeeded=False,
-// SeedImageUnreadable), creates no CGU, and does not requeue — there is no grace
-// window. It is terminal whether the IBGU was created just now or long ago.
-func TestSeedUnreadableIsTerminalImmediately(t *testing.T) {
-	for _, createdAgo := range []time.Duration{0, 10 * time.Minute} {
-		t.Run(fmt.Sprintf("created %s ago", createdAgo), func(t *testing.T) {
-			ibgu, reader, _, reconciler := newUnreadableSeedReconciler(t)
-			ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-createdAgo))
-
-			err := reconciler.ensureManifests(context.TODO(), ibgu)
-			assert.NoError(t, err)
-			assert.True(t, reader.called)
-
-			succeeded := succeededCondition(ibgu)
-			assert.NotNil(t, succeeded)
-			assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
-			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
-			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), progressingCondition(ibgu).Reason)
-
-			cgu := &v1alpha1.ClusterGroupUpgrade{}
-			err = reconciler.Get(context.TODO(),
-				types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
-			assert.True(t, apierrors.IsNotFound(err))
-		})
-	}
-}
-
-// TestRetryAnnotationHasNoEffect proves AC 5: the removed
-// lcm.openshift.io/ibgu-preflight-retry-seconds annotation is ignored. Whatever its
-// value, a pre-flight failure is terminal on the first reconcile and no
-// InvalidPreflightRetrySeconds event is raised.
-func TestRetryAnnotationHasNoEffect(t *testing.T) {
-	for _, value := range []string{"0", "600", "9999", "nope", "-5"} {
-		t.Run("annotation "+value, func(t *testing.T) {
-			ibgu, _, recorder, reconciler := newUnreadableSeedReconciler(t)
-			ibgu.CreationTimestamp = metav1.Now()
-			ibgu.SetAnnotations(map[string]string{"lcm.openshift.io/ibgu-preflight-retry-seconds": value})
-
-			err := reconciler.ensureManifests(context.TODO(), ibgu)
-			assert.NoError(t, err)
-			// Terminal on the first failure regardless of the annotation value.
-			succeeded := succeededCondition(ibgu)
-			assert.NotNil(t, succeeded)
-			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
-
-			// The annotation is not parsed, so no invalid-value Warning is ever raised.
-			for len(recorder.Events) > 0 {
-				e := <-recorder.Events
-				assert.NotContains(t, e, "InvalidPreflightRetrySeconds")
-			}
-		})
-	}
 }
 
 // TestBackupContentFoundViaUncachedReader proves AC 3: the pre-flight gates read
@@ -482,40 +454,40 @@ func TestRetryAnnotationHasNoEffect(t *testing.T) {
 // exercised directly because they are where the false block originates; the Prep-CGU
 // manifest builders read through the same uncached reader (see getBackupContentManifests
 // / getConfigMapManifests / getSecretManifest), so the pass path stays consistent
-// within the one reconcile the gate passed.
+// within the one reconcile the gate passed. Each control models the lag by passing a
+// deliberately stale fake (missing the object) as APIReader.
 func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 	t.Run("reference gate finds a cache-lagged BackupContent", func(t *testing.T) {
 		ibgu := backupContentIBGU() // Prep plan with backupContent bc1
 
-		// Cached client: bc1 absent (cache lag). Uncached reader: bc1 present.
-		cachedClient, err := getFakeClientFromObjects()
+		// Lagging reader: bc1 absent. Up-to-date reader: bc1 present.
+		laggingReader, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		uncachedReader, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		assert.NoError(t, uncachedReader.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
 
+		// resolvePrepReferences is the reference gate's core; reading through the
+		// up-to-date reader resolves bc1, so nothing is reported missing.
 		reconciler := IBGUReconciler{
-			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+			Client: uncachedReader, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
 		}
-		outcome, err := reconciler.ensurePrepReferencesResolve(context.TODO(), ibgu)
+		missing, err := reconciler.resolvePrepReferences(context.TODO(), reconciler.preflightReader(), ibgu)
 		assert.NoError(t, err)
-		// The gate passed via the uncached read: no false UnresolvableDenpendency block.
-		assert.Equal(t, preflightPass, outcome.class)
+		assert.Empty(t, missing)
 
-		// Control: with only the cached client (bc1 absent) the gate blocks terminally,
+		// Control: reading through the lagging reader (bc1 absent) reports it missing,
 		// confirming the uncached reader is what defeats the lag.
-		cachedOnly := IBGUReconciler{Client: cachedClient, Scheme: testscheme, Log: logr.Discard()}
-		cachedOutcome, err := cachedOnly.ensurePrepReferencesResolve(context.TODO(), ibgu)
+		missingCached, err := reconciler.resolvePrepReferences(context.TODO(), laggingReader, ibgu)
 		assert.NoError(t, err)
-		assert.Equal(t, preflightTerminal, cachedOutcome.class)
-		assert.Equal(t, utils.ConditionReasons.UnresolvableDenpendency, cachedOutcome.reason)
+		assert.Equal(t, []string{`BackupContent "bc1"`}, missingCached)
 	})
 
 	t.Run("empty-set gate finds a cache-lagged ManagedCluster", func(t *testing.T) {
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 
-		// Cached client: no ManagedCluster. Uncached reader: the matching cluster.
-		cachedClient, err := getFakeClientFromObjects()
+		// Lagging reader: no ManagedCluster. Up-to-date reader: the matching cluster.
+		laggingReader, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		uncachedReader, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -523,22 +495,22 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 		reconciler := IBGUReconciler{
-			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+			Client: uncachedReader, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
 		}
-		eligible, outcome, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		// The gate passed via the uncached read: no false NoClustersMatchSelector block.
-		assert.Equal(t, preflightPass, outcome.class)
+		assert.Nil(t, block)
 		// The gate returns the eligible set resolved via the uncached reader, which the
 		// first CGU is then created from.
 		assert.Equal(t, []string{"cluster1"}, eligible)
 
-		// Control: with only the cached client (no cluster) the gate blocks terminally.
-		cachedOnly := IBGUReconciler{Client: cachedClient, Scheme: testscheme, Log: logr.Discard()}
-		_, cachedOutcome, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		// Control: a lagging reader (no cluster) as APIReader blocks terminally.
+		cachedOnly := IBGUReconciler{Client: laggingReader, APIReader: laggingReader, Scheme: testscheme, Log: logr.Discard()}
+		_, cachedBlock, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		assert.Equal(t, preflightTerminal, cachedOutcome.class)
-		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedOutcome.reason)
+		assert.NotNil(t, cachedBlock)
+		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedBlock.reason)
 	})
 
 	t.Run("end-to-end: Prep CGU is created from uncached references under cache lag", func(t *testing.T) {
