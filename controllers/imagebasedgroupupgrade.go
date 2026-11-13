@@ -135,10 +135,13 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		// set, or an unreadable seed image) is still within its grace window and no CGU
 		// exists yet, so nothing the controller watches (the IBGU generation or its
 		// owned CGUs) will change if the cause clears. Requeue so the gate is
-		// re-evaluated: the IBGU proceeds if the cause clears within the window, or is
-		// blocked terminally once it expires. A terminal block sets the Succeeded
-		// condition and returns false, so Reconcile does not requeue it.
-		nextReconcile = requeueWithMediumInterval()
+		// re-evaluated before the grace deadline — at the earlier of one minute and the
+		// time left in the window (minus a small buffer) — so a window shorter than a
+		// minute still gets a re-check inside it rather than only after it has expired.
+		// The IBGU proceeds if the cause clears within the window, or is blocked
+		// terminally once it expires. A terminal block sets the Succeeded condition and
+		// returns false, so Reconcile does not requeue it.
+		nextReconcile = transientPreflightRequeueAfter(ibgu)
 	}
 
 	return
@@ -910,25 +913,26 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		case preflightTransient:
 			return r.handleTransientPreflight(ibgu, outcome), nil
 		case preflightPass:
-			// Honour the grace window on the passing path too: even when every gate
-			// passes, the first CGU must be created within the window measured from
-			// creationTimestamp. If TALM was down past the window and recovered, a
+			// Honour the start deadline on the passing path too: even when every gate
+			// passes, the first CGU must be created within a bounded window measured from
+			// creationTimestamp. If TALM was down past that window and recovered, a
 			// now-passing pre-flight must not start a rollout hours late (outside the
 			// chosen maintenance window); block it terminally instead. This applies only
 			// before the first CGU — appended items (CGUs already exist) are never gated
-			// on the window.
+			// on the deadline.
 			//
-			// A zero window (lcm.openshift.io/ibgu-preflight-retry-seconds: "0") is the
-			// documented exception: it disables transient retries (the first transient
-			// failure is terminal — see handleTransientPreflight) but must not block a
-			// rollout whose gates all pass. The start-too-late block is therefore
-			// enforced only for a positive window that has actually elapsed; with a zero
-			// window a passing pre-flight proceeds to create the first CGU.
-			grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
-			if grace > 0 && r.preflightWindowExpired(ibgu) {
+			// A zero window (lcm.openshift.io/ibgu-preflight-retry-seconds: "0") disables
+			// transient retries (the first transient failure is terminal — see
+			// handleTransientPreflight) but must NOT disable this start deadline: a
+			// pre-flight that only passes after a long outage would otherwise start a
+			// rollout arbitrarily late, the very thing the deadline prevents. A zero
+			// window therefore falls back to the default window as the start deadline
+			// here (preflightStartDeadlineSeconds).
+			startDeadline := time.Duration(r.preflightStartDeadlineSeconds(ibgu)) * time.Second
+			if metav1.Now().Sub(ibgu.GetCreationTimestamp().Time) >= startDeadline {
 				r.setTerminal(ibgu, utils.ConditionReasons.PreflightWindowExpired,
-					fmt.Sprintf("pre-flight checks passed but the %s grace window since creation has "+
-						"expired before the first CGU could be created; the IBGU started too late", grace))
+					fmt.Sprintf("pre-flight checks passed but the %s start deadline since creation has "+
+						"expired before the first CGU could be created; the IBGU started too late", startDeadline))
 				return false, nil
 			}
 		}
@@ -1010,15 +1014,19 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 		"Resuming: plan items were appended after completion")
 }
 
-// preflightWindowExpired reports whether the transient pre-flight grace window,
-// measured from metadata.creationTimestamp, has elapsed for this IBGU. A zero
-// window reports expired immediately (now is always at or after creationTimestamp);
-// the passing-pre-flight path in ensureManifests deliberately guards this call with
-// a positive-window check so a zero window does not block a rollout whose gates pass
-// (zero only makes the first transient failure terminal).
-func (r *IBGUReconciler) preflightWindowExpired(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
-	grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
-	return metav1.Now().Sub(ibgu.GetCreationTimestamp().Time) >= grace
+// preflightStartDeadlineSeconds returns the window, in seconds, within which the
+// first CGU must be created on the passing pre-flight path, measured from
+// metadata.creationTimestamp. It is the configured retry window
+// (preflightRetrySeconds), except that a zero window — which disables transient
+// retries — falls back to DefaultPreflightRetrySeconds here. A zero window must not
+// disable the start deadline: otherwise a pre-flight that only passes after a long
+// TALM outage would start a rollout arbitrarily late, the very thing the deadline
+// exists to prevent.
+func (r *IBGUReconciler) preflightStartDeadlineSeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
+	if seconds := r.preflightRetrySeconds(ibgu); seconds > 0 {
+		return seconds
+	}
+	return utils.DefaultPreflightRetrySeconds
 }
 
 // runPreflightGates runs the hub-side pre-flight gates in order — empty cluster

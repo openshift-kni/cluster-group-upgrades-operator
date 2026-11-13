@@ -549,3 +549,45 @@ func TestPreflightGraceWindow(t *testing.T) {
 		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
 	})
 }
+
+// TestTransientPreflightRequeueAfter verifies the Developer of Record's direction on
+// the CodeRabbit line-141 finding: a transient block requeues before the grace
+// deadline, so a window shorter than the one-minute default interval still gets a
+// re-check inside the window rather than only after it has expired.
+func TestTransientPreflightRequeueAfter(t *testing.T) {
+	newIBGU := func(window string, createdAgo time.Duration) *ibguv1alpha1.ImageBasedGroupUpgrade {
+		ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{}
+		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-createdAgo))
+		if window != "" {
+			ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: window})
+		}
+		return ibgu
+	}
+
+	t.Run("short window re-checks inside the window", func(t *testing.T) {
+		// 30s window, just created: the re-check must land before the 30s deadline (and
+		// comfortably above the 1s floor), so a cause that clears at ~20s is still seen.
+		got := transientPreflightRequeueAfter(newIBGU("30", 0)).RequeueAfter
+		assert.Less(t, got, 30*time.Second, "requeue must land inside the window")
+		assert.Greater(t, got, 20*time.Second, "requeue should be close to window minus the buffer")
+	})
+
+	t.Run("far deadline keeps the one-minute interval", func(t *testing.T) {
+		// 10m window, just created: the time left far exceeds a minute, so keep 60s.
+		got := transientPreflightRequeueAfter(newIBGU("600", 0)).RequeueAfter
+		assert.Equal(t, time.Minute, got)
+	})
+
+	t.Run("default window keeps the one-minute interval", func(t *testing.T) {
+		// No annotation (default 300s), just created: keep 60s.
+		got := transientPreflightRequeueAfter(newIBGU("", 0)).RequeueAfter
+		assert.Equal(t, time.Minute, got)
+	})
+
+	t.Run("near the deadline floors at one second", func(t *testing.T) {
+		// 30s window, created 28s ago: only ~2s remain, less than the 5s buffer, so the
+		// interval floors at 1s rather than going non-positive.
+		got := transientPreflightRequeueAfter(newIBGU("30", 28*time.Second)).RequeueAfter
+		assert.Equal(t, time.Second, got)
+	})
+}

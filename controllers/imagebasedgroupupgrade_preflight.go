@@ -27,6 +27,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 
+	ctrl "sigs.k8s.io/controller-runtime"
+
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
@@ -231,6 +233,25 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 	return format, "", nil
 }
 
+// parsePreflightRetrySeconds parses the lcm.openshift.io/ibgu-preflight-retry-seconds
+// annotation without side effects, returning the grace window in seconds and whether
+// the annotation value was valid. An absent annotation is valid and yields the
+// default; a non-integer or negative value is invalid and yields the default. The
+// side-effect-free form lets callers that run after the transient handler (which has
+// already warned about an invalid value this reconcile) reuse the value without
+// emitting a duplicate Warning event.
+func parsePreflightRetrySeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (seconds int, valid bool) {
+	raw, ok := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
+	if !ok {
+		return utils.DefaultPreflightRetrySeconds, true
+	}
+	n, err := strconv.Atoi(raw)
+	if err != nil || n < 0 {
+		return utils.DefaultPreflightRetrySeconds, false
+	}
+	return n, true
+}
+
 // preflightRetrySeconds returns the transient pre-flight grace window, in seconds,
 // for this IBGU: the value of the lcm.openshift.io/ibgu-preflight-retry-seconds
 // annotation when it parses as a non-negative integer, otherwise
@@ -238,21 +259,41 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 // back to the default and raises a Warning event so the operator notices the
 // typo, rather than silently using a window they did not intend.
 func (r *IBGUReconciler) preflightRetrySeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
-	raw, ok := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
-	if !ok {
-		return utils.DefaultPreflightRetrySeconds
-	}
-	seconds, err := strconv.Atoi(raw)
-	if err != nil || seconds < 0 {
+	seconds, valid := parsePreflightRetrySeconds(ibgu)
+	if !valid {
+		raw := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
 		msg := fmt.Sprintf("invalid %s value %q; using the default of %d seconds",
 			utils.IBGUPreflightRetrySecondsAnnotation, raw, utils.DefaultPreflightRetrySeconds)
 		r.Log.Info("IBGU " + msg)
 		if r.Recorder != nil {
 			r.Recorder.Event(ibgu, corev1.EventTypeWarning, "InvalidPreflightRetrySeconds", msg)
 		}
-		return utils.DefaultPreflightRetrySeconds
 	}
 	return seconds
+}
+
+// transientPreflightRequeueAfter returns how long to wait before re-evaluating a
+// transient pre-flight block. Nothing the controller watches changes while the block
+// is open — no CGU exists yet and the IBGU generation is unchanged — so the requeue is
+// what drives re-evaluation before the grace deadline. It requeues at the earlier of
+// one minute and the time remaining before the deadline (creationTimestamp + window)
+// minus a small buffer, with a floor of one second, so the last re-check lands inside
+// the window rather than just after it. Without the deadline-aware interval a window
+// shorter than a minute would requeue past its own deadline and block the IBGU
+// terminally even if the cause cleared in time.
+func transientPreflightRequeueAfter(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ctrl.Result {
+	const buffer = 5 * time.Second
+	const floor = 1 * time.Second
+	seconds, _ := parsePreflightRetrySeconds(ibgu)
+	deadline := ibgu.GetCreationTimestamp().Add(time.Duration(seconds) * time.Second)
+	interval := deadline.Sub(metav1.Now().Time) - buffer
+	if interval > time.Minute {
+		interval = time.Minute
+	}
+	if interval < floor {
+		interval = floor
+	}
+	return ctrl.Result{RequeueAfter: interval}
 }
 
 // handleTransientPreflight applies the grace window to a transient pre-flight
