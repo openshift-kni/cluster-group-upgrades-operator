@@ -241,8 +241,11 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 }
 
 // TestPreflightRetrySecondsParsing covers the annotation parser: a valid value is
-// used, an absent one yields the default, and an invalid/negative one falls back to
-// the default and raises a Warning event.
+// used, an absent one yields the default, and an invalid/negative/overflowing one
+// falls back to the default and raises a Warning event. The boundary cases guard the
+// time.Duration overflow: maxPreflightRetrySeconds is the largest value that survives
+// the ns conversion, and the next value up must be rejected rather than wrapping to a
+// negative (immediately terminal) grace window.
 func TestPreflightRetrySecondsParsing(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -255,6 +258,8 @@ func TestPreflightRetrySecondsParsing(t *testing.T) {
 		{name: "zero is used (terminal on first failure)", annotation: ptr("0"), expect: 0},
 		{name: "non-integer falls back to default with event", annotation: ptr("soon"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
 		{name: "negative falls back to default with event", annotation: ptr("-5"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
+		{name: "largest in-range value is used", annotation: ptr(fmt.Sprintf("%d", maxPreflightRetrySeconds)), expect: int(maxPreflightRetrySeconds)},
+		{name: "overflowing value falls back to default with event", annotation: ptr(fmt.Sprintf("%d", maxPreflightRetrySeconds+1)), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {

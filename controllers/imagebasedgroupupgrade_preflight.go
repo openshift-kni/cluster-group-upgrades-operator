@@ -19,6 +19,7 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -233,20 +234,28 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 	return format, "", nil
 }
 
+// maxPreflightRetrySeconds is the largest grace window, in seconds, that can be
+// converted to a time.Duration (nanoseconds) without overflowing int64. A value
+// above this would wrap to a negative duration when multiplied by time.Second,
+// turning the grace window into an immediate terminal block, so it is rejected as
+// invalid like any other out-of-range value.
+const maxPreflightRetrySeconds = math.MaxInt64 / int64(time.Second)
+
 // parsePreflightRetrySeconds parses the lcm.openshift.io/ibgu-preflight-retry-seconds
 // annotation without side effects, returning the grace window in seconds and whether
 // the annotation value was valid. An absent annotation is valid and yields the
-// default; a non-integer or negative value is invalid and yields the default. The
-// side-effect-free form lets callers that run after the transient handler (which has
-// already warned about an invalid value this reconcile) reuse the value without
-// emitting a duplicate Warning event.
+// default; a non-integer, negative, or overflowing value (one that would wrap
+// time.Duration past int64 when multiplied by time.Second) is invalid and yields the
+// default. The side-effect-free form lets callers that run after the transient handler
+// (which has already warned about an invalid value this reconcile) reuse the value
+// without emitting a duplicate Warning event.
 func parsePreflightRetrySeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (seconds int, valid bool) {
 	raw, ok := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
 	if !ok {
 		return utils.DefaultPreflightRetrySeconds, true
 	}
 	n, err := strconv.Atoi(raw)
-	if err != nil || n < 0 {
+	if err != nil || n < 0 || int64(n) > maxPreflightRetrySeconds {
 		return utils.DefaultPreflightRetrySeconds, false
 	}
 	return n, true
