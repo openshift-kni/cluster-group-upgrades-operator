@@ -144,8 +144,8 @@ github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJw
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
 github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2 h1:TnAEzv9F5x7IrDb5dQSVOIYzJu6QZ55DDFtFAFfcroc=
 github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2/go.mod h1:hi518zq7zc9lu10YR3P0XxGKgQFinr8RyiwXIDP6FRY=
-github.com/openshift/api v0.0.0-20261109202217-f6e8a0876ff9 h1:kMpI8KDdRUVg9+WweBahw3w5D0fRsURAkVZ50KttC90=
-github.com/openshift/api v0.0.0-20261109202217-f6e8a0876ff9/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
+github.com/openshift/api v0.0.0-20261112171031-b027bed8bb3f h1:zGE/h33E0MVf5FAdW8r0IJZss+wx3C9XMRiQF7NdTGg=
+github.com/openshift/api v0.0.0-20261112171031-b027bed8bb3f/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
 github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b h1:ErTc+6D1n/rpRaUYP++h0YlOzM+q7UaAdqDZrzhA0ho=
 github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b/go.mod h1:8jcm8UPtg2mCAsxfqKil1xrmRMI3a+XU2TZ9fF8A7TE=
 github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066 h1:dZ8exz2DPQdoQmjfb5p66b3hWwBrlbnMe0HifkouYgI=
