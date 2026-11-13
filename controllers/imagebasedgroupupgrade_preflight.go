@@ -19,89 +19,78 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"math"
-	"strconv"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
-	ctrl "sigs.k8s.io/controller-runtime"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 )
 
-// preflightClass is a pre-flight gate's verdict on whether the plan may proceed,
-// and if not, whether the failure is transient (retried within a grace window
-// before becoming terminal) or immediately terminal.
+// preflightClass is a pre-flight gate's verdict on whether the plan may proceed.
 type preflightClass int
 
 const (
 	// preflightPass means the gate found nothing wrong; the plan may proceed.
 	preflightPass preflightClass = iota
-	// preflightTransient means the failure could be GitOps-sync / propagation lag
-	// or a transient infrastructure fault: it is retried within the grace window
-	// (measured from metadata.creationTimestamp) and only becomes terminal once the
-	// window expires. The cached manager client can return NotFound for a
-	// BackupContent/ConfigMap or a ManagedCluster label that a single GitOps sync
-	// applied alongside the IBGU, so emptiness and reference-not-found are lag-prone
-	// rather than definitively wrong.
-	preflightTransient
-	// preflightTerminal means a definitive verdict on content actually read: the
-	// IBGU is blocked immediately with no grace window, creates no CGU, and is never
-	// revived. Recovery is delete-and-recreate.
+	// preflightTerminal means the IBGU is blocked immediately: it creates no CGU,
+	// records the terminal Succeeded condition, never requeues, and is never revived.
+	// Recovery is delete-and-recreate.
 	preflightTerminal
 )
 
 // preflightOutcome is the result a pre-flight gate returns to ensureManifests,
-// which owns the condition/requeue decision: a transient outcome requeues within
-// the grace window (handleTransientPreflight), a terminal outcome records the
-// terminal Succeeded condition (setTerminal), and a pass falls through to the
-// plan loop.
+// which owns the condition decision: a terminal outcome records the terminal
+// Succeeded condition (setTerminal), and a pass falls through to the plan loop.
 //
 // Classification contract (so a gate added later maps onto the same classes):
-//   - A failure that could be sync/propagation lag or a transient infrastructure
-//     fault is preflightTransient: an unresolvable reference (BackupContent /
+//   - Every pre-flight failure is preflightTerminal: the IBGU is blocked at once,
+//     with no retry. This covers an unresolvable reference (BackupContent /
 //     ConfigMap NotFound), an empty cluster set (NoClustersMatchSelector or
-//     NoEligibleClusters), and a seed image that cannot be read (registry
-//     unreachable, pull secret missing/unreadable, HTTPS/transport error,
-//     config-size-cap failure). For CNF-30039's spoke-side seed check: a spoke
-//     that is unavailable or whose read-only ManifestWork feedback has not yet
-//     returned is also preflightTransient.
-//   - A definitive verdict on content actually read is preflightTerminal:
-//     backupContent paired with a pre-bump seed, and (CNF-30039) a seed-format
-//     mismatch where both the seed and target values were actually read.
+//     NoEligibleClusters), a seed image that cannot be read (registry unreachable,
+//     pull secret missing/unreadable, HTTPS/transport error, config-size-cap
+//     failure), and a definitive content verdict (backupContent paired with a
+//     pre-bump seed). For CNF-30039's spoke-side seed check, a seed-format mismatch
+//     read from the LCA ClusterClaim is likewise terminal.
+//   - preflightPass is the only non-terminal class: the gate found nothing wrong.
+//
+// Pre-flight reads go through the manager's uncached API reader (preflightReader),
+// so informer-cache lag cannot produce a false block — which is what lets every
+// failure be terminal immediately, with no grace window (CNF-30176).
 type preflightOutcome struct {
 	class   preflightClass
 	reason  utils.ConditionReason
 	message string
 }
 
-// passOutcome, transientOutcome and terminalOutcome construct the three
-// preflightOutcome variants.
+// passOutcome and terminalOutcome construct the two preflightOutcome variants.
 func passOutcome() preflightOutcome {
 	return preflightOutcome{class: preflightPass}
-}
-
-func transientOutcome(reason utils.ConditionReason, message string) preflightOutcome {
-	return preflightOutcome{class: preflightTransient, reason: reason, message: message}
 }
 
 func terminalOutcome(reason utils.ConditionReason, message string) preflightOutcome {
 	return preflightOutcome{class: preflightTerminal, reason: reason, message: message}
 }
 
+// preflightStartDeadline bounds how long after metadata.creationTimestamp the
+// first CGU may be created on the passing pre-flight path. An IBGU whose first
+// reconcile lands after this window (for example because TALM was down when it was
+// created) is blocked with PreflightWindowExpired rather than starting a rollout
+// outside the chosen maintenance window. It is a fixed constant with no annotation
+// override, and applies only before the first CGU — appended items are never gated
+// on it (CNF-30176).
+const preflightStartDeadline = 5 * time.Minute
+
 // ensureSeedFormatCompatible runs the hub-side seed-format compatibility
 // pre-flight (CNF-29242, design D4 check 1). It returns a preflightOutcome:
 // terminal when backupContent is paired with a pre-bump seed (a definitive
-// verdict on the format label actually read), transient when the seed image
-// cannot be read (fail-closed, retried within the grace window), pass when the
-// plan may proceed, and an error only for a genuine infrastructure fault (so
-// Reconcile requeues with backoff rather than recording a misleading condition).
+// verdict on the format label actually read), terminal when the seed image
+// cannot be read (fail-closed), pass when the plan may proceed, and an error only
+// for a genuine infrastructure fault (so Reconcile requeues with backoff rather
+// than recording a misleading condition).
 //
 // This is the image side of the check: its only decision is the hub-only
 // backupContent safety rule, whose single input is the seed image's format
@@ -145,9 +134,10 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 
 	// Read the seed image's published format once. A failure to read it (reference
 	// empty, pull secret missing, registry unreachable, label absent or non-integer)
-	// is transient — fail-closed but retried within the grace window, since it can be
-	// a transient infrastructure fault. Only a genuine infrastructure fault reading
-	// the pull secret is returned as an error.
+	// is terminal — fail-closed, with no retry. The pull secret is read through the
+	// uncached reader (see readSeedImageFormat) so a cache-lagged secret cannot cause
+	// a false block. Only a genuine infrastructure fault reading the pull secret is
+	// returned as an error.
 	imageFormat, unreadableReason, err := r.readSeedImageFormat(ctx, ibgu)
 	if err != nil {
 		return preflightOutcome{}, err
@@ -155,7 +145,7 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 	if unreadableReason != "" {
 		msg := fmt.Sprintf("cannot read the seed image %s label: %s",
 			lcav1.SeedFormatOCILabel, unreadableReason)
-		return transientOutcome(utils.ConditionReasons.SeedImageUnreadable, msg), nil
+		return terminalOutcome(utils.ConditionReasons.SeedImageUnreadable, msg), nil
 	}
 
 	// Hub-only safety rule (D4 check 1): a backupContent IBGU paired with a seed
@@ -208,7 +198,10 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 	var dockerConfigJSON []byte
 	if pullSecretRef := ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef; pullSecretRef != nil {
 		secret := &corev1.Secret{}
-		if err := r.Get(ctx, types.NamespacedName{
+		// Pre-flight read: use the uncached reader so a pull secret applied alongside
+		// the IBGU (e.g. in the same GitOps sync) is not read as missing before the
+		// informer cache catches up and wrongly blocked as SeedImageUnreadable.
+		if err := r.preflightReader().Get(ctx, types.NamespacedName{
 			Name:      pullSecretRef.Name,
 			Namespace: ibgu.GetNamespace(),
 		}, secret); err != nil {
@@ -232,104 +225,4 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 		return 0, err.Error(), nil
 	}
 	return format, "", nil
-}
-
-// maxPreflightRetrySeconds is the largest grace window, in seconds, that can be
-// converted to a time.Duration (nanoseconds) without overflowing int64. A value
-// above this would wrap to a negative duration when multiplied by time.Second,
-// turning the grace window into an immediate terminal block, so it is rejected as
-// invalid like any other out-of-range value.
-const maxPreflightRetrySeconds = math.MaxInt64 / int64(time.Second)
-
-// parsePreflightRetrySeconds parses the lcm.openshift.io/ibgu-preflight-retry-seconds
-// annotation without side effects, returning the grace window in seconds and whether
-// the annotation value was valid. An absent annotation is valid and yields the
-// default; a non-integer, negative, or overflowing value (one that would wrap
-// time.Duration past int64 when multiplied by time.Second) is invalid and yields the
-// default. The side-effect-free form lets callers that run after the transient handler
-// (which has already warned about an invalid value this reconcile) reuse the value
-// without emitting a duplicate Warning event.
-func parsePreflightRetrySeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (seconds int, valid bool) {
-	raw, ok := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
-	if !ok {
-		return utils.DefaultPreflightRetrySeconds, true
-	}
-	n, err := strconv.Atoi(raw)
-	if err != nil || n < 0 || int64(n) > maxPreflightRetrySeconds {
-		return utils.DefaultPreflightRetrySeconds, false
-	}
-	return n, true
-}
-
-// preflightRetrySeconds returns the transient pre-flight grace window, in seconds,
-// for this IBGU: the value of the lcm.openshift.io/ibgu-preflight-retry-seconds
-// annotation when it parses as a non-negative integer, otherwise
-// DefaultPreflightRetrySeconds. An invalid value (non-integer or negative) falls
-// back to the default and raises a Warning event so the operator notices the
-// typo, rather than silently using a window they did not intend.
-func (r *IBGUReconciler) preflightRetrySeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
-	seconds, valid := parsePreflightRetrySeconds(ibgu)
-	if !valid {
-		raw := ibgu.GetAnnotations()[utils.IBGUPreflightRetrySecondsAnnotation]
-		msg := fmt.Sprintf("invalid %s value %q; using the default of %d seconds",
-			utils.IBGUPreflightRetrySecondsAnnotation, raw, utils.DefaultPreflightRetrySeconds)
-		r.Log.Info("IBGU " + msg)
-		if r.Recorder != nil {
-			r.Recorder.Event(ibgu, corev1.EventTypeWarning, "InvalidPreflightRetrySeconds", msg)
-		}
-	}
-	return seconds
-}
-
-// transientPreflightRequeueAfter returns how long to wait before re-evaluating a
-// transient pre-flight block. Nothing the controller watches changes while the block
-// is open — no CGU exists yet and the IBGU generation is unchanged — so the requeue is
-// what drives re-evaluation before the grace deadline. It requeues at the earlier of
-// one minute and the time remaining before the deadline (creationTimestamp + window)
-// minus a small buffer, with a floor of one second, so the last re-check lands inside
-// the window rather than just after it. Without the deadline-aware interval a window
-// shorter than a minute would requeue past its own deadline and block the IBGU
-// terminally even if the cause cleared in time.
-func transientPreflightRequeueAfter(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ctrl.Result {
-	const buffer = 5 * time.Second
-	const floor = 1 * time.Second
-	seconds, _ := parsePreflightRetrySeconds(ibgu)
-	deadline := ibgu.GetCreationTimestamp().Add(time.Duration(seconds) * time.Second)
-	interval := deadline.Sub(metav1.Now().Time) - buffer
-	if interval > time.Minute {
-		interval = time.Minute
-	}
-	if interval < floor {
-		interval = floor
-	}
-	return ctrl.Result{RequeueAfter: interval}
-}
-
-// handleTransientPreflight applies the grace window to a transient pre-flight
-// outcome. The window is measured from metadata.creationTimestamp — the moment
-// the operator acted — so it cannot be reset or lost, and a TALM outage that
-// delays the first reconcile past the window goes straight to terminal. While the
-// window is open it records a non-terminal Progressing=False "retrying" condition
-// (Succeeded is intentionally not set, so ensureManifests does not short-circuit)
-// and requeues; once the window has elapsed it records the terminal Succeeded
-// condition with the last reason and does not requeue. It returns true to requeue
-// (still within the window) and false once terminal.
-func (r *IBGUReconciler) handleTransientPreflight(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, outcome preflightOutcome) bool {
-	grace := time.Duration(r.preflightRetrySeconds(ibgu)) * time.Second
-	elapsed := metav1.Now().Sub(ibgu.GetCreationTimestamp().Time)
-	if elapsed < grace {
-		msg := fmt.Sprintf("Retrying pre-flight check within the %s grace window since creation: %s",
-			grace, outcome.message)
-		r.Log.Info("IBGU pre-flight check failed transiently, retrying within grace window",
-			"reason", outcome.reason, "elapsed", elapsed.String(), "grace", grace.String())
-		utils.SetStatusCondition(&ibgu.Status.Conditions,
-			utils.ConditionTypes.Progressing,
-			outcome.reason,
-			metav1.ConditionFalse,
-			msg)
-		return true
-	}
-	r.setTerminal(ibgu, outcome.reason,
-		fmt.Sprintf("%s; the %s pre-flight grace window since creation has expired", outcome.message, grace))
-	return false
 }

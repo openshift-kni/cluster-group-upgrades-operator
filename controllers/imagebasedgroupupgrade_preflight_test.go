@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"strings"
 	"testing"
 	"time"
 
@@ -99,9 +98,9 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			expectReadCall: true,
 		},
 		{
-			name:           "unreadable image label is transient (fail-closed)",
+			name:           "unreadable image label is terminal (fail-closed)",
 			reader:         &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")},
-			expectClass:    preflightTransient,
+			expectClass:    preflightTerminal,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: true,
 		},
@@ -116,12 +115,12 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			expectEvent:    true,
 		},
 		{
-			name: "missing pull secret is transient (unreadable)",
+			name: "missing pull secret is terminal (unreadable)",
 			mutate: func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) {
 				ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef = &lcav1.PullSecretRef{Name: "missing"}
 			},
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
-			expectClass:    preflightTransient,
+			expectClass:    preflightTerminal,
 			expectReason:   utils.ConditionReasons.SeedImageUnreadable,
 			expectReadCall: false,
 		},
@@ -240,56 +239,6 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 	assert.Nil(t, succeededCondition(ibgu))
 }
 
-// TestPreflightRetrySecondsParsing covers the annotation parser: a valid value is
-// used, an absent one yields the default, and an invalid/negative/overflowing one
-// falls back to the default and raises a Warning event. The boundary cases guard the
-// time.Duration overflow: maxPreflightRetrySeconds is the largest value that survives
-// the ns conversion, and the next value up must be rejected rather than wrapping to a
-// negative (immediately terminal) grace window.
-func TestPreflightRetrySecondsParsing(t *testing.T) {
-	tests := []struct {
-		name        string
-		annotation  *string
-		expect      int
-		expectEvent bool
-	}{
-		{name: "absent uses the default", annotation: nil, expect: utils.DefaultPreflightRetrySeconds},
-		{name: "valid value is used", annotation: ptr("120"), expect: 120},
-		{name: "zero is used (terminal on first failure)", annotation: ptr("0"), expect: 0},
-		{name: "non-integer falls back to default with event", annotation: ptr("soon"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
-		{name: "negative falls back to default with event", annotation: ptr("-5"), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
-		{name: "largest in-range value is used", annotation: ptr(fmt.Sprintf("%d", maxPreflightRetrySeconds)), expect: int(maxPreflightRetrySeconds)},
-		{name: "overflowing value falls back to default with event", annotation: ptr(fmt.Sprintf("%d", maxPreflightRetrySeconds+1)), expect: utils.DefaultPreflightRetrySeconds, expectEvent: true},
-	}
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
-			if test.annotation != nil {
-				ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: *test.annotation})
-			}
-			recorder := record.NewFakeRecorder(10)
-			reconciler := IBGUReconciler{Scheme: testscheme, Log: logr.Discard(), Recorder: recorder}
-
-			assert.Equal(t, test.expect, reconciler.preflightRetrySeconds(ibgu))
-
-			if test.expectEvent {
-				select {
-				case e := <-recorder.Events:
-					assert.Contains(t, e, "Warning")
-					assert.Contains(t, e, "InvalidPreflightRetrySeconds")
-				default:
-					t.Fatal("expected a Warning event for the invalid annotation, got none")
-				}
-			} else {
-				assert.Len(t, recorder.Events, 0)
-			}
-		})
-	}
-}
-
-// ptr returns a pointer to v, for optional test fields.
-func ptr[T any](v T) *T { return &v }
-
 // TestEnsureManifestsSeedFormatGate verifies the seed-format gate as wired into
 // ensureManifests: with its references resolved it rejects a pre-bump seed
 // terminally before any CGU is created, it runs after the reference gate, and it
@@ -333,7 +282,6 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		// fail; the reference reason must win because the hub-only reference gate runs
 		// before the registry read, which must therefore not happen.
 		ibgu := backupContentIBGU()
-		ibgu.CreationTimestamp = metav1.Now() // within the grace window
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -343,21 +291,22 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		reader := &fakeSeedImageReader{format: preBumpFormat}
 		reconciler := IBGUReconciler{
 			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: reader,
 		}
 		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
 		assert.NoError(t, err)
-		// Reference is transient; within grace it requeues.
-		assert.True(t, blocked)
+		// The missing reference is terminal: no requeue.
+		assert.False(t, blocked)
 		// The seed gate never ran: no registry read.
 		assert.False(t, reader.called)
 
-		cond := progressingCondition(ibgu)
-		assert.NotNil(t, cond)
-		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), cond.Reason)
-		assert.NotEqual(t, string(utils.ConditionReasons.BackupContentUnsupportedSeed), cond.Reason)
-		// Transient within grace does not set Succeeded.
-		assert.Nil(t, succeededCondition(ibgu))
+		// The terminal block carries the reference reason, not the seed reason.
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), succeeded.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), progressingCondition(ibgu).Reason)
 	})
 
 	t.Run("compatible seed with resolved references creates a CGU", func(t *testing.T) {
@@ -458,141 +407,178 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 	})
 }
 
-// TestPreflightGraceWindow exercises the transient grace window end-to-end through
-// ensureManifests, using the seed-unreadable transient as the vehicle: within the
-// window the IBGU retries (requeue, no Succeeded); once the window has elapsed it
-// becomes terminal (Succeeded=False); the annotation changes the window; an invalid
-// annotation falls back to the default and raises a Warning event; and 0 is terminal
-// on the first failure.
-func TestPreflightGraceWindow(t *testing.T) {
-	// newUnreadableSeedIBGU builds a backupContent Prep IBGU with a resolvable
-	// reference and a matching cluster, so the empty-set and reference gates pass and
-	// the seed gate (unreadable) is the gate under test.
-	newUnreadableSeedIBGU := func(t *testing.T) (*ibguv1alpha1.ImageBasedGroupUpgrade, *fakeSeedImageReader, *record.FakeRecorder, IBGUReconciler) {
-		t.Helper()
-		ibgu := backupContentIBGU()
-		fakeClient, err := getFakeClientFromObjects()
-		assert.NoError(t, err)
-		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
-		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
-		reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
-		recorder := record.NewFakeRecorder(10)
-		reconciler := IBGUReconciler{
-			Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
-			Recorder: recorder, SeedImageReader: reader,
-		}
-		return ibgu, reader, recorder, reconciler
+// newUnreadableSeedReconciler builds a backupContent Prep IBGU with a resolvable
+// reference and a matching cluster, so the empty-set and reference gates pass and the
+// seed gate (unreadable registry) is the gate under test.
+func newUnreadableSeedReconciler(t *testing.T) (*ibguv1alpha1.ImageBasedGroupUpgrade, *fakeSeedImageReader, *record.FakeRecorder, IBGUReconciler) {
+	t.Helper()
+	ibgu := backupContentIBGU()
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	reader := &fakeSeedImageReader{err: fmt.Errorf("registry unreachable")}
+	recorder := record.NewFakeRecorder(10)
+	reconciler := IBGUReconciler{
+		Client: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+		Recorder: recorder, SeedImageReader: reader,
 	}
-
-	t.Run("within grace: retries without a terminal block", func(t *testing.T) {
-		ibgu, reader, _, reconciler := newUnreadableSeedIBGU(t)
-		ibgu.CreationTimestamp = metav1.Now()
-
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		assert.True(t, blocked) // requeue
-		assert.True(t, reader.called)
-		assert.Nil(t, succeededCondition(ibgu))
-		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), progressingCondition(ibgu).Reason)
-	})
-
-	t.Run("past grace: becomes terminal with the last reason", func(t *testing.T) {
-		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
-		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-10 * time.Minute))
-
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		assert.False(t, blocked) // no requeue
-		succeeded := succeededCondition(ibgu)
-		assert.NotNil(t, succeeded)
-		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
-		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
-	})
-
-	t.Run("annotation lengthens the window", func(t *testing.T) {
-		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
-		// Created 6 minutes ago: past the default 5m window, but within a 10m override.
-		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-6 * time.Minute))
-		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "600"})
-
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		assert.True(t, blocked) // still within the extended window
-		assert.Nil(t, succeededCondition(ibgu))
-	})
-
-	t.Run("invalid annotation falls back to default and warns", func(t *testing.T) {
-		ibgu, _, recorder, reconciler := newUnreadableSeedIBGU(t)
-		ibgu.CreationTimestamp = metav1.Now()
-		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "nope"})
-
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		assert.True(t, blocked) // within the default window
-		assert.Nil(t, succeededCondition(ibgu))
-
-		var sawWarning bool
-		for len(recorder.Events) > 0 {
-			if e := <-recorder.Events; strings.Contains(e, "InvalidPreflightRetrySeconds") {
-				sawWarning = true
-			}
-		}
-		assert.True(t, sawWarning, "expected a Warning event for the invalid annotation")
-	})
-
-	t.Run("zero is terminal on the first failure", func(t *testing.T) {
-		ibgu, _, _, reconciler := newUnreadableSeedIBGU(t)
-		ibgu.CreationTimestamp = metav1.Now()
-		ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: "0"})
-
-		blocked, err := reconciler.ensureManifests(context.TODO(), ibgu)
-		assert.NoError(t, err)
-		assert.False(t, blocked) // terminal immediately
-		succeeded := succeededCondition(ibgu)
-		assert.NotNil(t, succeeded)
-		assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
-	})
+	return ibgu, reader, recorder, reconciler
 }
 
-// TestTransientPreflightRequeueAfter verifies the Developer of Record's direction on
-// the CodeRabbit line-141 finding: a transient block requeues before the grace
-// deadline, so a window shorter than the one-minute default interval still gets a
-// re-check inside the window rather than only after it has expired.
-func TestTransientPreflightRequeueAfter(t *testing.T) {
-	newIBGU := func(window string, createdAgo time.Duration) *ibguv1alpha1.ImageBasedGroupUpgrade {
-		ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{}
-		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-createdAgo))
-		if window != "" {
-			ibgu.SetAnnotations(map[string]string{utils.IBGUPreflightRetrySecondsAnnotation: window})
-		}
-		return ibgu
+// TestSeedUnreadableIsTerminalImmediately proves AC 1: an unreadable seed registry
+// on the first reconcile blocks the IBGU terminally (Succeeded=False,
+// SeedImageUnreadable), creates no CGU, and does not requeue — there is no grace
+// window. It is terminal whether the IBGU was created just now or long ago.
+func TestSeedUnreadableIsTerminalImmediately(t *testing.T) {
+	for _, createdAgo := range []time.Duration{0, 10 * time.Minute} {
+		t.Run(fmt.Sprintf("created %s ago", createdAgo), func(t *testing.T) {
+			ibgu, reader, _, reconciler := newUnreadableSeedReconciler(t)
+			ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-createdAgo))
+
+			requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+			assert.NoError(t, err)
+			assert.False(t, requeue) // terminal: no requeue
+			assert.True(t, reader.called)
+
+			succeeded := succeededCondition(ibgu)
+			assert.NotNil(t, succeeded)
+			assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
+			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), progressingCondition(ibgu).Reason)
+
+			cgu := &v1alpha1.ClusterGroupUpgrade{}
+			err = reconciler.Get(context.TODO(),
+				types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
+			assert.True(t, apierrors.IsNotFound(err))
+		})
 	}
+}
 
-	t.Run("short window re-checks inside the window", func(t *testing.T) {
-		// 30s window, just created: the re-check must land before the 30s deadline (and
-		// comfortably above the 1s floor), so a cause that clears at ~20s is still seen.
-		got := transientPreflightRequeueAfter(newIBGU("30", 0)).RequeueAfter
-		assert.Less(t, got, 30*time.Second, "requeue must land inside the window")
-		assert.Greater(t, got, 20*time.Second, "requeue should be close to window minus the buffer")
+// TestRetryAnnotationHasNoEffect proves AC 5: the removed
+// lcm.openshift.io/ibgu-preflight-retry-seconds annotation is ignored. Whatever its
+// value, a pre-flight failure is terminal on the first reconcile and no
+// InvalidPreflightRetrySeconds event is raised.
+func TestRetryAnnotationHasNoEffect(t *testing.T) {
+	for _, value := range []string{"0", "600", "9999", "nope", "-5"} {
+		t.Run("annotation "+value, func(t *testing.T) {
+			ibgu, _, recorder, reconciler := newUnreadableSeedReconciler(t)
+			ibgu.CreationTimestamp = metav1.Now()
+			ibgu.SetAnnotations(map[string]string{"lcm.openshift.io/ibgu-preflight-retry-seconds": value})
+
+			requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+			assert.NoError(t, err)
+			// Terminal on the first failure regardless of the annotation value.
+			assert.False(t, requeue)
+			succeeded := succeededCondition(ibgu)
+			assert.NotNil(t, succeeded)
+			assert.Equal(t, string(utils.ConditionReasons.SeedImageUnreadable), succeeded.Reason)
+
+			// The annotation is not parsed, so no invalid-value Warning is ever raised.
+			for len(recorder.Events) > 0 {
+				e := <-recorder.Events
+				assert.NotContains(t, e, "InvalidPreflightRetrySeconds")
+			}
+		})
+	}
+}
+
+// TestBackupContentFoundViaUncachedReader proves AC 3: the pre-flight gates read
+// through the uncached APIReader, so a BackupContent (or a matching ManagedCluster)
+// that exists on the API server but has not yet landed in the cached client is found
+// and the gate passes instead of producing a false terminal block. The gates are
+// exercised directly because they are where the false block originates; the Prep-CGU
+// manifest builders read through the same uncached reader (see getBackupContentManifests
+// / getConfigMapManifests / getSecretManifest), so the pass path stays consistent
+// within the one reconcile the gate passed.
+func TestBackupContentFoundViaUncachedReader(t *testing.T) {
+	t.Run("reference gate finds a cache-lagged BackupContent", func(t *testing.T) {
+		ibgu := backupContentIBGU() // Prep plan with backupContent bc1
+
+		// Cached client: bc1 absent (cache lag). Uncached reader: bc1 present.
+		cachedClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		uncachedReader, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, uncachedReader.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+
+		reconciler := IBGUReconciler{
+			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+		}
+		outcome, err := reconciler.ensurePrepReferencesResolve(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		// The gate passed via the uncached read: no false UnresolvableDenpendency block.
+		assert.Equal(t, preflightPass, outcome.class)
+
+		// Control: with only the cached client (bc1 absent) the gate blocks terminally,
+		// confirming the uncached reader is what defeats the lag.
+		cachedOnly := IBGUReconciler{Client: cachedClient, Scheme: testscheme, Log: logr.Discard()}
+		cachedOutcome, err := cachedOnly.ensurePrepReferencesResolve(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.Equal(t, preflightTerminal, cachedOutcome.class)
+		assert.Equal(t, utils.ConditionReasons.UnresolvableDenpendency, cachedOutcome.reason)
 	})
 
-	t.Run("far deadline keeps the one-minute interval", func(t *testing.T) {
-		// 10m window, just created: the time left far exceeds a minute, so keep 60s.
-		got := transientPreflightRequeueAfter(newIBGU("600", 0)).RequeueAfter
-		assert.Equal(t, time.Minute, got)
+	t.Run("empty-set gate finds a cache-lagged ManagedCluster", func(t *testing.T) {
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+
+		// Cached client: no ManagedCluster. Uncached reader: the matching cluster.
+		cachedClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		uncachedReader, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, uncachedReader.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+		reconciler := IBGUReconciler{
+			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+		}
+		outcome, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		// The gate passed via the uncached read: no false NoClustersMatchSelector block.
+		assert.Equal(t, preflightPass, outcome.class)
+
+		// Control: with only the cached client (no cluster) the gate blocks terminally.
+		cachedOnly := IBGUReconciler{Client: cachedClient, Scheme: testscheme, Log: logr.Discard()}
+		cachedOutcome, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.Equal(t, preflightTerminal, cachedOutcome.class)
+		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedOutcome.reason)
 	})
 
-	t.Run("default window keeps the one-minute interval", func(t *testing.T) {
-		// No annotation (default 300s), just created: keep 60s.
-		got := transientPreflightRequeueAfter(newIBGU("", 0)).RequeueAfter
-		assert.Equal(t, time.Minute, got)
-	})
+	t.Run("end-to-end: Prep CGU is created from uncached references under cache lag", func(t *testing.T) {
+		// The whole pre-first-CGU path (gates AND Prep-manifest building) must read the
+		// uncached reader, so a BackupContent + ManagedCluster that exist only on the API
+		// server (cache still lagging) produce a Prep CGU on the first reconcile rather
+		// than a false block or a silently incomplete CGU.
+		ibgu := backupContentIBGU() // Prep plan with backupContent bc1
+		ibgu.CreationTimestamp = metav1.Now()
 
-	t.Run("near the deadline floors at one second", func(t *testing.T) {
-		// 30s window, created 28s ago: only ~2s remain, less than the 5s buffer, so the
-		// interval floors at 1s rather than going non-positive.
-		got := transientPreflightRequeueAfter(newIBGU("30", 28*time.Second)).RequeueAfter
-		assert.Equal(t, time.Second, got)
+		// Cached client is empty (cache lag); the uncached reader has both objects.
+		cachedClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		uncachedReader, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, uncachedReader.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+		assert.NoError(t, uncachedReader.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+		reconciler := IBGUReconciler{
+			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
+			Recorder:        record.NewFakeRecorder(10),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
+		}
+
+		requeue, err := reconciler.ensureManifests(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.False(t, requeue)
+		// No false terminal block.
+		assert.Nil(t, succeededCondition(ibgu))
+		// The Prep CGU is created on the frozen set resolved via the uncached reader.
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.NoError(t, reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
+		assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
 	})
 }
