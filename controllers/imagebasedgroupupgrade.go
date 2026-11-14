@@ -410,34 +410,6 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 	return nil
 }
 
-// missingPlanItemCGUs reports the plan items that have no owned CGU but precede the
-// highest plan index that does. When any owned CGU exists, every plan item up to the
-// highest one that has a CGU must also have a CGU — the controller creates them in
-// order and never deletes an owned CGU, so a gap means that item's CGU was deleted out
-// of band. Plan items beyond the highest existing CGU have simply not been created yet
-// and are not reported. Each missing item is named "N (actions)" for the block message.
-func missingPlanItemCGUs(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) []string {
-	present := make(map[string]bool, len(cguList.Items))
-	for i := range cguList.Items {
-		present[cguList.Items[i].GetName()] = true
-	}
-	has := make([]bool, len(ibgu.Spec.Plan))
-	highest := -1
-	for i := range ibgu.Spec.Plan {
-		if present[getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[i], i)] {
-			has[i] = true
-			highest = i
-		}
-	}
-	var missing []string
-	for i := 0; i < highest; i++ {
-		if !has[i] {
-			missing = append(missing, fmt.Sprintf("%d (%s)", i, strings.Join(ibgu.Spec.Plan[i].Actions, ", ")))
-		}
-	}
-	return missing
-}
-
 // effectiveActionLabels returns the ManagedCluster labels augmented with the IBGU
 // action completed/failed labels implied by this IBGU's freshly synced status for
 // the cluster. Plan-item eligibility for this IBGU's own progress is decided from
@@ -908,14 +880,12 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// is unaffected. On failure they create no CGU and block the IBGU terminally.
 	//
 	// The cached list above can lag behind an owned CGU this controller just created.
-	// Before any terminal check, re-read owned CGUs through the uncached reader when the
-	// cached list would trip one — it is empty, or it shows a gap in the plan's CGU
-	// sequence (see the gap gate below). A lag-free, gap-free list needs no confirmation,
-	// so an in-progress IBGU reconciles without the extra API read. Confirming uncached
-	// means an empty list really is empty (the first CGU has not raced the informer) and
-	// a sequence gap really is an out-of-band deletion, not cache lag, so neither records
-	// a false permanent block on an IBGU whose CGUs already exist.
-	if len(cguList.Items) == 0 || len(missingPlanItemCGUs(ibgu, cguList)) > 0 {
+	// Before the empty-set terminal check, re-read owned CGUs through the uncached reader
+	// when the cached list is empty. A non-empty cached list needs no confirmation, so an
+	// in-progress IBGU reconciles without the extra API read. Confirming uncached means an
+	// empty list really is empty (the first CGU has not raced the informer), so an IBGU
+	// whose first CGU already exists never records a false permanent block.
+	if len(cguList.Items) == 0 {
 		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
 		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
 			Namespace:     ibgu.Namespace,
@@ -924,23 +894,6 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
 		}
 		cguList = uncachedCGUList
-	}
-
-	// Gap gate (confirmed uncached above): an owned CGU exists but the CGU for an earlier
-	// plan item is missing. The controller creates plan-item CGUs in order and never
-	// deletes an owned one, so this is an out-of-band deletion. Block terminally and
-	// create nothing — never report completion: plan item 0's CGU carries the frozen
-	// cluster set, which is unrecoverable once gone, and a missing later item's CGU would
-	// otherwise be silently recreated and re-run against current labels rather than the
-	// frozen set. Recovery is delete-and-recreate.
-	if len(cguList.Items) > 0 {
-		if missing := missingPlanItemCGUs(ibgu, cguList); len(missing) > 0 {
-			r.setTerminal(ibgu, utils.ConditionReasons.PlanCGUMissing,
-				fmt.Sprintf("owned CGUs exist but the CGU(s) for earlier plan item(s) %s are missing "+
-					"(deleted out of band); the IBGU cannot safely resume because plan item 0's frozen "+
-					"cluster set may be unrecoverable", strings.Join(missing, "; ")))
-			return nil
-		}
 	}
 
 	if len(cguList.Items) == 0 {
