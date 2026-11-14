@@ -37,10 +37,12 @@ import (
 // records via setTerminal.
 //
 // Every pre-flight failure is a block: an unresolvable reference (BackupContent /
-// ConfigMap NotFound), an empty cluster set (NoClustersMatchSelector or
-// NoEligibleClusters), a seed image that cannot be read (registry unreachable, pull
-// secret missing/unreadable, HTTPS/transport error, config-size-cap failure), and a
-// definitive content verdict (backupContent paired with a pre-bump seed).
+// ConfigMap / pull Secret NotFound), an empty cluster set (NoClustersMatchSelector
+// or NoEligibleClusters), a seed image that cannot be read (registry unreachable,
+// pull secret missing/unreadable, HTTPS/transport error, config-size-cap failure),
+// and a definitive content verdict (backupContent paired with a pre-bump seed). The
+// start deadline (PreflightWindowExpired) is also terminal, but ensureManifests
+// records it directly through setTerminal rather than via a gate.
 //
 // Pre-flight reads go through the manager's uncached API reader (preflightReader),
 // so informer-cache lag cannot produce a false block.

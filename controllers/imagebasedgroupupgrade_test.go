@@ -659,11 +659,10 @@ func TestGetSecretManifest(t *testing.T) {
 	}
 }
 
-// TestGetSecretManifestErrors verifies that getSecretManifest no longer silently
-// drops the pull secret: with no pullSecretRef it returns (nil, nil), but a read
-// failure (the reference gate has already established the secret exists) is returned
-// as an error rather than producing a Prep CGU without the credentials a private seed
-// image needs.
+// TestGetSecretManifestErrors verifies getSecretManifest's error handling: with no
+// pullSecretRef it returns (nil, nil), but a read failure (the reference gate has
+// already established the secret exists) is returned as an error rather than producing
+// a Prep CGU without the credentials a private seed image needs.
 func TestGetSecretManifestErrors(t *testing.T) {
 	newIBGU := func(pullSecretRef *lcav1.PullSecretRef) *ibguv1alpha1.ImageBasedGroupUpgrade {
 		return &ibguv1alpha1.ImageBasedGroupUpgrade{
@@ -1909,9 +1908,10 @@ func TestMarkDroppedClustersDurableAndEventOnce(t *testing.T) {
 	assert.Len(t, recorder.Events, 0)
 }
 
-// TestEnsureManifestsNoEligibleClusters verifies that a plan item narrowing to
-// zero eligible clusters (e.g. AbortOnFailure when nothing failed) does not
-// create a CGU with an empty spec.clusters and is treated as completed.
+// TestEnsureManifestsNoEligibleClusters verifies that a later plan item (index > 0)
+// narrowing to zero eligible clusters (e.g. AbortOnFailure when nothing failed) does
+// not create a CGU with an empty spec.clusters and is treated as completed. (Plan
+// item 0 narrowing to zero is instead a terminal NoEligibleClusters block.)
 func TestEnsureManifestsNoEligibleClusters(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
@@ -2268,7 +2268,7 @@ func TestEmptySetGateIsTerminal(t *testing.T) {
 // changed: a completion whose ObservedGeneration equals the current generation, and
 // a permanent block, both short-circuit before any gate or the plan loop. (An
 // appended plan item bumps the generation and does resume a completion — see
-// TestAppendResumesCompletion — but never a block — see TestBlockedIBGUIgnoresAppend.)
+// TestResumesOnAppend — but never a block — see TestBlockedIBGUIgnoresAppend.)
 func TestSucceededPresenceIsNotRevived(t *testing.T) {
 	variants := []struct {
 		name   string
@@ -2339,11 +2339,11 @@ func TestCompletedWithFailuresAtEndOfPlan(t *testing.T) {
 	assert.Equal(t, string(utils.ConditionReasons.CompletedWithFailures), progressingCondition(ibgu).Reason)
 }
 
-// TestPlanItemCGUFailedIsCompletedWithFailures verifies CodeRabbit finding #4: a
-// plan-item CGU that ended with a terminal Succeeded=False condition but recorded no
-// per-cluster failed action (e.g. precaching with no available cluster, or a batch
-// timeout before any cluster started) still makes the plan completion
-// CompletedWithFailures rather than a clean Succeeded=True.
+// TestPlanItemCGUFailedIsCompletedWithFailures verifies that a plan-item CGU that
+// ended with a terminal Succeeded=False condition but recorded no per-cluster failed
+// action (e.g. precaching with no available cluster, or a batch timeout before any
+// cluster started) still makes the plan completion CompletedWithFailures rather than
+// a clean Succeeded=True.
 func TestPlanItemCGUFailedIsCompletedWithFailures(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 	// No failed action is recorded in the IBGU status; the failure lives only on the
@@ -2382,11 +2382,11 @@ func TestPlanItemCGUFailedIsCompletedWithFailures(t *testing.T) {
 }
 
 // TestEnsureCGUForPlanItemClusterSets verifies the cluster set each plan item's CGU
-// targets after the pre-flight was simplified (CNF-30176): plan item 0 is created
-// from the eligible set the empty-set gate already resolved — passed in verbatim and
-// never re-resolved, so the gate and the first CGU can never disagree and there is no
-// empty-set race to re-check — while a later plan item that legitimately narrows to no
-// eligible cluster is treated as a completion rather than creating an empty CGU.
+// targets: plan item 0 is created from the eligible set the empty-set gate already
+// resolved — passed in verbatim and never re-resolved, so the gate and the first CGU
+// can never disagree and there is no empty-set race to re-check — while a later plan
+// item that legitimately narrows to no eligible cluster is treated as a completion
+// rather than creating an empty CGU.
 func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 	t.Run("plan item 0 targets exactly the gate's eligible set", func(t *testing.T) {
 		// The gate resolved cluster1 as eligible for plan item 0; the CGU must be created
@@ -2417,7 +2417,7 @@ func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 		// The gate resolved cluster1, but it has since been deleted (absent from the
 		// client). ensureCGUForPlanItem must still create plan item 0's CGU from the
 		// gate's set verbatim — proving there is no second resolution or empty-set
-		// re-check that a deleted cluster could turn into a requeue or a terminal block.
+		// re-check that a deleted cluster could turn into a terminal block.
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
@@ -2569,13 +2569,13 @@ func TestUncachedCGUListDefeatsStaleTerminalBlock(t *testing.T) {
 	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
 }
 
-// TestSkippedMiddlePlanItemDoesNotBlock is a regression guard for the reverted plan-CGU
-// gap check: a plan item that legitimately narrows to zero clusters (an AbortOnFailure
-// step when nothing failed) creates no CGU, so once the next item's CGU exists the
-// owned-CGU sequence has a hole at the skipped index. That hole must not be mistaken for
-// an out-of-band deletion — the IBGU proceeds to create the Upgrade CGU and completes
-// normally rather than blocking terminally. Out-of-band deletion of an owned CGU is
-// unsupported tampering and gets no special handling (as on main).
+// TestSkippedMiddlePlanItemDoesNotBlock verifies that a plan item which legitimately
+// narrows to zero clusters (an AbortOnFailure step when nothing failed) creates no CGU,
+// so once the next item's CGU exists the owned-CGU sequence has a hole at the skipped
+// index. That hole must not be mistaken for an out-of-band deletion — the IBGU proceeds
+// to create the Upgrade CGU and completes normally rather than blocking terminally.
+// Out-of-band deletion of an owned CGU is unsupported tampering and gets no special
+// handling.
 func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
@@ -2610,7 +2610,7 @@ func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
 	assert.Equal(t, []string{"cluster1"}, upgradeCGU.Spec.Clusters)
 
 	// Second reconcile: owned CGUs are now {prep-0, upgrade-2} with a hole at the skipped
-	// AbortOnFailure index. The reverted gap check must not read that hole as a deletion:
+	// AbortOnFailure index. That hole must not be read as a deletion:
 	// the IBGU keeps waiting on the in-progress Upgrade CGU, not blocked.
 	assert.NoError(t, reconciler.ensureManifests(context.TODO(), ibgu))
 	assert.Nil(t, succeededCondition(ibgu))
@@ -2627,8 +2627,8 @@ func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
 	assert.Equal(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
 }
 
-// TestResumesOnAppend verifies the Developer of Record's append design: an IBGU whose
-// completion was recorded against an earlier generation resumes when a plan item is
+// TestResumesOnAppend verifies the append-resume behaviour: an IBGU whose completion
+// was recorded against an earlier generation resumes when a plan item is
 // appended (the generation bumps). The Succeeded condition is dropped, Progressing goes
 // InProgress, the appended item's CGU is created on the frozen cluster set, and the
 // pre-flight gates do not run again. It holds for both a clean Completed and a
@@ -2992,9 +2992,8 @@ func succeededCondition(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *metav1.Condi
 // TestEnsureManifestsPrepReferenceGate verifies the pre-flight reference-resolution
 // gate: a Prep plan with an unresolvable reference is blocked terminally before any
 // CGU is created, while resolvable references, Upgrade-only plans, and
-// already-in-progress IBGUs are not blocked. The BackupContent terminal arc is also
-// covered by TestMissingReferenceIsTerminalImmediately; the missing-ConfigMap subtest
-// here covers the oadpContent reference path.
+// already-in-progress IBGUs are not blocked. Subtests cover both reference kinds: a
+// missing BackupContent and a missing oadpContent ConfigMap.
 func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 	t.Run("prep plan with missing reference is terminal and creates no CGU", func(t *testing.T) {
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})

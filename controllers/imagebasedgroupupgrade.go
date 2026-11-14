@@ -369,9 +369,8 @@ const droppedClusterReason = "ManagedCluster no longer exists; dropped from roll
 // resolveBaseClusters returns the names of the ManagedClusters matching the
 // IBGU's clusterLabelSelectors. This is the base set that gets frozen at plan
 // item 0. Multiple selectors are unioned, mirroring CGU selector semantics. The
-// reader lets the caller choose the cached client (for appended plan items, once a
-// CGU exists) or the uncached pre-flight reader (before the first CGU, so cache lag
-// cannot drop a matching cluster and cause a false empty-set block).
+// reader is the uncached pre-flight reader, so cache lag cannot drop a matching
+// cluster and cause a false empty-set block.
 func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
 	set := make(map[string]struct{})
 	for i := range ibgu.Spec.ClusterLabelSelectors {
@@ -405,8 +404,8 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 			return cguList.Items[i].Spec.Clusters
 		}
 	}
-	// Plan item 0 completed without a CGU because it had no eligible clusters,
-	// so the frozen set is empty.
+	// Plan item 0's CGU is absent (only if it was deleted out of band, which is
+	// not detected), so there is no frozen set.
 	return nil
 }
 
@@ -679,12 +678,13 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		}
 	}
 	if len(selected) == 0 {
-		// Plan item 0 cannot reach here: the empty-set gate guaranteed item0Clusters is
-		// non-empty. A later plan item legitimately narrowing to zero (e.g. an
-		// AbortOnFailure step when nothing failed, or every frozen cluster has been
-		// deleted) has nothing to remediate, so skip creating a CGU — an empty
-		// spec.clusters would be rejected by the CGU controller — and treat the item as
-		// completed.
+		// On the normal path plan item 0 does not reach here (the gate guarantees a
+		// non-empty set); if its CGU was deleted out of band, item0Clusters is nil and
+		// the item counts as completed (unsupported, not detected). A later plan item
+		// legitimately narrowing to zero (e.g. an AbortOnFailure step when nothing
+		// failed, or every frozen cluster has been deleted) has nothing to remediate, so
+		// skip creating a CGU — an empty spec.clusters would be rejected by the CGU
+		// controller — and treat the item as completed.
 		r.Log.Info("No eligible clusters for plan item, skipping CGU creation",
 			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
 		return true, nil
@@ -880,10 +880,11 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// is unaffected. On failure they create no CGU and block the IBGU terminally.
 	//
 	// The cached list above can lag behind an owned CGU this controller just created.
-	// Before the empty-set terminal check, re-read owned CGUs through the uncached reader
-	// when the cached list is empty. A non-empty cached list needs no confirmation, so an
-	// in-progress IBGU reconciles without the extra API read. Confirming uncached means an
-	// empty list really is empty (the first CGU has not raced the informer), so an IBGU
+	// Before running any pre-flight gate or the start deadline, re-read owned CGUs through
+	// the uncached reader when the cached list is empty. A non-empty cached list needs no
+	// confirmation, so an in-progress IBGU reconciles without the extra API read. Confirming
+	// uncached means an empty list really is empty (the first CGU has not raced the
+	// informer), so an IBGU
 	// whose first CGU already exists never records a false permanent block.
 	if len(cguList.Items) == 0 {
 		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
@@ -985,7 +986,7 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // first non-pass outcome. Running the hub-only, deterministic checks before the
 // network read means a selector typo or a missing BackupContent is reported with
 // its own reason and does not trigger a registry read or block with the wrong
-// reason (review item 4). On the passing path it also returns plan item 0's
+// reason. On the passing path it also returns plan item 0's
 // eligible cluster set, resolved once by the empty-set gate, so the first CGU is
 // created from that same set.
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
@@ -1203,14 +1204,14 @@ func (r *IBGUReconciler) getSecretManifest(
 
 // getConfigMapManifests builds the manifests for the IBGU's oadpContent ConfigMaps.
 // It returns an error on any Get or convert failure rather than skipping silently,
-// since the pre-flight gate in ensureManifests has already validated every reference
-// before this Prep CGU is created (so a failure here is a genuine fault).
+// since the reference-resolution gate (runPreflightGates) has already validated every
+// reference before this Prep CGU is created (so a failure here is a genuine fault).
 func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
 	manifests := []mwv1.Manifest{}
 	// OADPContent is deprecated in favour of BackupContent (name-only references
 	// that LCA resolves on the spoke), but it remains honoured for backward
-	// compatibility until LCA removes it. Hub-side BackupContent handling is
-	// tracked separately (CNF-29240).
+	// compatibility until LCA removes it. Hub-side BackupContent references are
+	// handled by getBackupContentManifests.
 	//
 	// In every plan the CRD admits a Prep item is the first plan item, so the
 	// pre-flight reference gate has already validated every oadpContent reference
@@ -1311,7 +1312,8 @@ func (r *IBGUReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				// not metadata or status
 				oldGeneration := e.ObjectOld.GetGeneration()
 				newGeneration := e.ObjectNew.GetGeneration()
-				// spec update only for SeedGen
+				// a generation change means plan items were appended (the plan is
+				// the only mutable spec field)
 				return oldGeneration != newGeneration
 			},
 			CreateFunc:  func(ce event.CreateEvent) bool { return true },

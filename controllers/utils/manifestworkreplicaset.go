@@ -285,12 +285,12 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 
 // ClusterMatchesPlanItem reports whether a ManagedCluster carrying the given
 // labels is eligible for the plan item. IBGU resolves the cluster set once and
-// evaluates per-plan-item eligibility here, against the ManagedCluster labels
-// written by ensureClusterLabels, instead of handing a narrowed label selector
-// to each generated CGU. The narrowing mirrors what getLabelSelectorForPlanItem
-// used to express as extra selector requirements, keyed on the plan item's first
-// action. Composite or Prep-first items (and any unrecognised first action) match
-// the whole frozen base set.
+// evaluates per-plan-item eligibility here, against the labels the caller passes
+// via effectiveActionLabels(...) — the ManagedCluster labels merged with the
+// IBGU's freshly synced status — instead of handing a narrowed label selector to
+// each generated CGU. The narrowing is keyed on the plan item's first action (the
+// switch below). Prep-first items and any unrecognised first action match the
+// whole base set.
 func ClusterMatchesPlanItem(clusterLabels map[string]string, planItem *ibguv1alpha1.PlanItem) bool {
 	if len(planItem.Actions) == 0 {
 		return true
