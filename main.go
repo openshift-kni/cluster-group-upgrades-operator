@@ -193,8 +193,11 @@ func main() {
 
 	if err = (&controllers.IBGUReconciler{
 		Client: mgr.GetClient(),
-		Log:    ctrl.Log.WithName("controllers").WithName("ImageBasedGroupUpgrade"),
-		Scheme: mgr.GetScheme(),
+		// APIReader is the manager's uncached client, used for the IBGU pre-flight reads
+		// so informer-cache lag cannot produce a false terminal block (CNF-30176).
+		APIReader: mgr.GetAPIReader(),
+		Log:       ctrl.Log.WithName("controllers").WithName("ImageBasedGroupUpgrade"),
+		Scheme:    mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "ImageBasedGroupUpgrade")
 		os.Exit(1)

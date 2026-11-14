@@ -23,7 +23,6 @@ import (
 	"slices"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/go-logr/logr"
 	corev1 "k8s.io/api/core/v1"
@@ -58,11 +57,26 @@ type IBGUReconciler struct {
 	Log      logr.Logger
 	Scheme   *runtime.Scheme
 	Recorder record.EventRecorder
+	// APIReader is the manager's uncached client (mgr.GetAPIReader()). The pre-flight
+	// reads — ManagedClusters, BackupContent/ConfigMap references, and the seed pull
+	// secret — go through it so informer-cache lag cannot produce a false terminal
+	// block. It is required: production wires it from mgr.GetAPIReader(), and tests
+	// pass their fake client (or a deliberately lagging fake).
+	APIReader client.Reader
 	// SeedImageReader reads the seed format version label from a seed image for the
 	// seed-format compatibility pre-flight. It is an interface so tests can inject a
 	// fake and avoid real registry egress; when nil the default registry-backed
 	// reader is used.
 	SeedImageReader utils.SeedImageReader
+}
+
+// preflightReader returns the manager's uncached API reader, used for every
+// pre-flight read so a resource applied alongside the IBGU (for example in the same
+// GitOps sync) is not read as missing before the informer cache catches up and
+// wrongly blocked. APIReader is required (see the field doc); a nil reader is a
+// wiring error, not a supported fallback.
+func (r *IBGUReconciler) preflightReader() client.Reader {
+	return r.APIReader
 }
 
 const LcaAnnotationSuffix = "lca.openshift.io"
@@ -118,7 +132,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	blocked, err := r.ensureManifests(ctx, ibgu)
+	err = r.ensureManifests(ctx, ibgu)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
@@ -130,20 +144,12 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	if blocked {
-		// A transient pre-flight failure (an unresolvable reference, an empty cluster
-		// set, or an unreadable seed image) is still within its grace window and no CGU
-		// exists yet, so nothing the controller watches (the IBGU generation or its
-		// owned CGUs) will change if the cause clears. Requeue so the gate is
-		// re-evaluated before the grace deadline — at the earlier of one minute and the
-		// time left in the window (minus a small buffer) — so a window shorter than a
-		// minute still gets a re-check inside it rather than only after it has expired.
-		// The IBGU proceeds if the cause clears within the window, or is blocked
-		// terminally once it expires. A terminal block sets the Succeeded condition and
-		// returns false, so Reconcile does not requeue it.
-		nextReconcile = transientPreflightRequeueAfter(ibgu)
-	}
-
+	// The pre-flight never asks for a requeue: plan item 0's eligible cluster set is
+	// resolved once (by the empty-set gate) and the first CGU is created from that same
+	// set, so the gate and the CGU can never disagree and there is no empty-set race to
+	// re-check. Every pre-flight failure is terminal (sets Succeeded, no requeue); the
+	// plan loop otherwise waits on owned-CGU watches. A genuine API fault returns an
+	// error above and requeues with backoff, still bounded by the start deadline.
 	return
 }
 
@@ -362,8 +368,10 @@ const droppedClusterReason = "ManagedCluster no longer exists; dropped from roll
 
 // resolveBaseClusters returns the names of the ManagedClusters matching the
 // IBGU's clusterLabelSelectors. This is the base set that gets frozen at plan
-// item 0. Multiple selectors are unioned, mirroring CGU selector semantics.
-func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
+// item 0. Multiple selectors are unioned, mirroring CGU selector semantics. The
+// reader is the uncached pre-flight reader, so cache lag cannot drop a matching
+// cluster and cause a false empty-set block.
+func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
 	set := make(map[string]struct{})
 	for i := range ibgu.Spec.ClusterLabelSelectors {
 		selector, err := metav1.LabelSelectorAsSelector(&ibgu.Spec.ClusterLabelSelectors[i])
@@ -371,7 +379,7 @@ func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, ibgu *ibguv1al
 			return nil, fmt.Errorf("invalid cluster label selector: %w", err)
 		}
 		mcList := &clusterv1.ManagedClusterList{}
-		if err := r.List(ctx, mcList, &client.ListOptions{LabelSelector: selector}); err != nil {
+		if err := reader.List(ctx, mcList, &client.ListOptions{LabelSelector: selector}); err != nil {
 			return nil, fmt.Errorf("failed to list managed clusters: %w", err)
 		}
 		for _, mc := range mcList.Items {
@@ -396,27 +404,9 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 			return cguList.Items[i].Spec.Clusters
 		}
 	}
-	// Plan item 0 completed without a CGU because it had no eligible clusters,
-	// so the frozen set is empty.
+	// Plan item 0's CGU is absent (only if it was deleted out of band, which is
+	// not detected), so there is no frozen set.
 	return nil
-}
-
-// hasPlanItem0CGU reports whether plan item 0's CGU already exists in cguList.
-func hasPlanItem0CGU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) bool {
-	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
-	for i := range cguList.Items {
-		if cguList.Items[i].GetName() == cguName {
-			return true
-		}
-	}
-	return false
-}
-
-// ibguReportsCompletion reports whether the IBGU's Progressing condition records
-// that all plan steps have completed.
-func ibguReportsCompletion(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
-	cond := meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Progressing))
-	return cond != nil && cond.Reason == string(utils.ConditionReasons.Completed)
 }
 
 // effectiveActionLabels returns the ManagedCluster labels augmented with the IBGU
@@ -457,34 +447,23 @@ func effectiveActionLabels(clusterLabels map[string]string, state *ibguv1alpha1.
 	return merged
 }
 
-// resolveClustersForPlanItem determines the frozen base set for the plan item
-// (resolved live from the selector at plan item 0, read back from plan item 0's
-// CGU afterwards), intersects it with the ManagedClusters that still exist, and
-// narrows it to those eligible for the plan item. It returns the sorted list of
-// clusters the plan item's CGU should target; vanished clusters are reported
-// separately each reconcile by markDroppedClusters.
+// resolveClustersForPlanItem determines the cluster set for an appended plan item
+// (index > 0). The base set was frozen at plan item 0 and is read back from plan
+// item 0's CGU on the cached client; this intersects it with the ManagedClusters
+// that still exist and narrows it to those eligible for the plan item. It returns
+// the sorted list of clusters the plan item's CGU should target; vanished clusters
+// are reported separately each reconcile by markDroppedClusters.
+//
+// Plan item 0 does not go through here: its eligible set is resolved once by the
+// empty-set pre-flight gate (through the uncached reader) and passed straight to
+// ensureCGUForPlanItem, so the gate and the first CGU can never disagree.
 func (r *IBGUReconciler) resolveClustersForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
+	planItem *ibguv1alpha1.PlanItem,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) ([]string, error) {
-	var frozen []string
-	if planItemIndex == 0 {
-		// A finished IBGU (one carrying the terminal Succeeded condition, including a
-		// migrated empty-completed one) is short-circuited in ensureManifests before
-		// this runs, so a late-matching ManagedCluster cannot restart a completed,
-		// empty rollout. At plan item 0 the base set is therefore resolved live from
-		// the selector; the empty-set pre-flight gate has already guaranteed at least
-		// one eligible cluster before the plan loop is reached.
-		var err error
-		frozen, err = r.resolveBaseClusters(ctx, ibgu)
-		if err != nil {
-			return nil, err
-		}
-	} else {
-		frozen = getFrozenClusterSet(ibgu, cguList)
-	}
+	frozen := getFrozenClusterSet(ibgu, cguList)
 
 	// Index this IBGU's freshly synced per-cluster status so eligibility can be
 	// decided from the completed/failed actions it records as well as the
@@ -598,42 +577,31 @@ func (r *IBGUReconciler) markDroppedClusters(
 	return nil
 }
 
-// planItemResult is the outcome of reconciling a single plan item into its CGU.
-type planItemResult int
-
-const (
-	// planItemWaiting means the plan item's CGU exists but has not finished, or was
-	// just created this reconcile. The plan loop stops and waits.
-	planItemWaiting planItemResult = iota
-	// planItemCompleted means the plan item is done (its CGU carries the Succeeded
-	// condition, or a later plan item legitimately narrowed to no eligible cluster).
-	// The plan loop proceeds to the next item.
-	planItemCompleted
-	// planItemEmptyAtZero means plan item 0 resolved to no eligible cluster at
-	// first-CGU creation. This is the empty-set condition, not a completion: the
-	// empty-set pre-flight gate passed (at least one cluster was eligible), but the
-	// last one was deleted before its CGU could be created (a TOCTOU race). The plan
-	// loop must apply the transient-then-terminal empty-set block instead of reporting
-	// success, so a one-item plan never records Succeeded=True with no CGU.
-	planItemEmptyAtZero
-)
-
+// ensureCGUForPlanItem reconciles a single plan item into its CGU and reports whether
+// the item is completed: true when the item is done (its CGU carries the Succeeded
+// condition, or a later plan item legitimately narrowed to no eligible cluster), so the
+// plan loop proceeds to the next item; false when the item's CGU exists but has not
+// finished, or was just created this reconcile, so the plan loop stops and waits.
+//
+// For plan item 0 it targets item0Clusters — the eligible set the empty-set pre-flight
+// gate resolved once (guaranteed non-empty) — rather than re-resolving the selector, so
+// the gate and the first CGU can never disagree. item0Clusters is consulted only when
+// plan item 0's CGU does not yet exist; appended items (index > 0) resolve their set
+// from the frozen record in plan item 0's CGU.
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-) (planItemResult, error) {
+	item0Clusters []string,
+) (bool, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem, planItemIndex)
 
 	for _, cgu := range cguList.Items {
 		if cgu.GetName() == cguName {
 			completed := utils.IsStatusConditionPresent(cgu.Status.Conditions, string(utils.ConditionTypes.Succeeded))
 			r.Log.Info("CGU already exist for plan item", "cgu name", cguName, "completed", completed)
-			if completed {
-				return planItemCompleted, nil
-			}
-			return planItemWaiting, nil
+			return completed, nil
 		}
 	}
 
@@ -651,15 +619,19 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			var manifests []mwv1.Manifest
 			manifests, err = r.getConfigMapManifests(ctx, ibgu)
 			if err != nil {
-				return planItemWaiting, fmt.Errorf("error getting configmap manifests: %w", err)
+				return false, fmt.Errorf("error getting configmap manifests: %w", err)
 			}
 			var bcManifests []mwv1.Manifest
 			bcManifests, err = r.getBackupContentManifests(ctx, ibgu)
 			if err != nil {
-				return planItemWaiting, fmt.Errorf("error getting backupcontent manifests: %w", err)
+				return false, fmt.Errorf("error getting backupcontent manifests: %w", err)
 			}
 			manifests = append(manifests, bcManifests...)
-			secretManifest := r.getSecretManifest(ctx, ibgu)
+			var secretManifest *mwv1.Manifest
+			secretManifest, err = r.getSecretManifest(ctx, ibgu)
+			if err != nil {
+				return false, fmt.Errorf("error getting secret manifest: %w", err)
+			}
 			if secretManifest != nil {
 				manifests = append(manifests, *secretManifest)
 			}
@@ -685,38 +657,37 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			mwrs, err = utils.GenerateRollbackManifestWorkReplicaset(templateName, ibgu.GetNamespace(), ibu)
 		}
 		if err != nil {
-			return planItemWaiting, fmt.Errorf("error generating manifestworkreplicaset: %w", err)
+			return false, fmt.Errorf("error generating manifestworkreplicaset: %w", err)
 		}
 		manifestWorkReplicaSets = append(manifestWorkReplicaSets, mwrs)
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
 	}
 
-	// Resolve the frozen cluster set for this plan item: the base set is frozen at
-	// plan item 0, every later item is narrowed from that record and intersected
-	// with the ManagedClusters that still exist.
-	selected, err := r.resolveClustersForPlanItem(ctx, ibgu, planItem, planItemIndex, cguList)
-	if err != nil {
-		return planItemWaiting, fmt.Errorf("error resolving clusters for plan item: %w", err)
+	// Resolve the cluster set for this plan item. Plan item 0 reuses the eligible set
+	// the empty-set gate already resolved (item0Clusters), so the gate and the first
+	// CGU target exactly the same clusters. Appended items narrow the set frozen at
+	// plan item 0, intersected with the ManagedClusters that still exist.
+	var selected []string
+	if planItemIndex == 0 {
+		selected = item0Clusters
+	} else {
+		var err error
+		selected, err = r.resolveClustersForPlanItem(ctx, ibgu, planItem, cguList)
+		if err != nil {
+			return false, fmt.Errorf("error resolving clusters for plan item: %w", err)
+		}
 	}
 	if len(selected) == 0 {
-		if planItemIndex == 0 {
-			// Plan item 0 resolved to no eligible cluster at first-CGU creation. The
-			// empty-set pre-flight gate already passed (at least one cluster was
-			// eligible), so the last one was deleted in the race between the gate and
-			// here. Reporting completion would record Succeeded=True with no CGU for a
-			// rollout that never ran; signal the empty-set condition so the plan loop
-			// applies the transient-then-terminal empty-set block instead.
-			r.Log.Info("Plan item 0 resolved to no eligible cluster at CGU creation",
-				"planItem actions", planItem.Actions)
-			return planItemEmptyAtZero, nil
-		}
-		// A later plan item legitimately narrowing to zero (e.g. an AbortOnFailure
-		// step when nothing failed, or every frozen cluster has been deleted). There
-		// is nothing to remediate, so skip creating a CGU — an empty spec.clusters
-		// would be rejected by the CGU controller — and treat the item as completed.
+		// On the normal path plan item 0 does not reach here (the gate guarantees a
+		// non-empty set); if its CGU was deleted out of band, item0Clusters is nil and
+		// the item counts as completed (unsupported, not detected). A later plan item
+		// legitimately narrowing to zero (e.g. an AbortOnFailure step when nothing
+		// failed, or every frozen cluster has been deleted) has nothing to remediate, so
+		// skip creating a CGU — an empty spec.clusters would be rejected by the CGU
+		// controller — and treat the item as completed.
 		r.Log.Info("No eligible clusters for plan item, skipping CGU creation",
 			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
-		return planItemCompleted, nil
+		return true, nil
 	}
 
 	for _, mwrs := range manifestWorkReplicaSets {
@@ -728,14 +699,14 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			r.Log.Info("Creating ManifestWorkReplicaSet", "ManifestWorkReplicaSet", mwrs.Name)
 			err = ctrl.SetControllerReference(ibgu, mwrs, r.Scheme)
 			if err != nil {
-				return planItemWaiting, err
+				return false, err
 			}
 			err = r.Create(ctx, mwrs)
 			if err != nil {
-				return planItemWaiting, fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
+				return false, fmt.Errorf("error creating ManifestWorkReplicaSet: %w", err)
 			}
 		} else if err != nil {
-			return planItemWaiting, fmt.Errorf("error getting ManifestWorkReplicaSet: %w", err)
+			return false, fmt.Errorf("error getting ManifestWorkReplicaSet: %w", err)
 		} else {
 			// TODO: is it necessary to check if the two mwrs are different
 			r.Log.Info("ManifestWorkReplicaSet already exist", "ManifestWorkReplicaSet", mwrs.Name)
@@ -748,15 +719,15 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
 		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, selected, annotations, disableAutoImport)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
-	err = ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
+	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
-		return planItemWaiting, fmt.Errorf("error setting owner reference for cgu: %w", err)
+		return false, fmt.Errorf("error setting owner reference for cgu: %w", err)
 	}
 	err = r.Create(ctx, cgu)
 	if err != nil {
-		return planItemWaiting, fmt.Errorf("error creating CGU: %w", err)
+		return false, fmt.Errorf("error creating CGU: %w", err)
 	}
-	return planItemWaiting, nil
+	return false, nil
 }
 
 // countInProgressStageFailures returns the number of clusters that are still
@@ -797,15 +768,21 @@ func planHasPrep(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) bool {
 
 // resolvePrepReferences resolves every hub-side reference a Prep step copies to
 // the spoke: each ibuSpec.backupContent entry against a hub BackupContent in the
-// IBGU's namespace, and each ibuSpec.oadpContent entry against a ConfigMap in the
-// ref's own namespace. It returns the sorted, human-readable names of the
-// references that do not exist. Any error other than NotFound is returned so the
-// reconcile requeues rather than wrongly reporting a reference as missing.
-func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
+// IBGU's namespace, each ibuSpec.oadpContent entry against a ConfigMap in the ref's
+// own namespace, and — when seedImageRef.pullSecretRef is set — the pull secret in
+// the IBGU's namespace. It returns the sorted, human-readable names of the references
+// that do not exist. A pullSecretRef that is set but names a missing secret is a
+// misconfiguration reported here (terminally) so it is caught for every Prep plan,
+// not only backupContent ones the seed gate happens to read; a plan with no
+// pullSecretRef copies no secret and is exempt. Any error other than NotFound is
+// returned so the reconcile requeues rather than wrongly reporting a reference as
+// missing. The reader is the uncached pre-flight reader so a reference applied
+// alongside the IBGU is not read as NotFound under informer-cache lag.
+func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
 	var missing []string
 	for _, bcRef := range ibgu.Spec.IBUSpec.BackupContent {
 		bc := &ibguv1alpha1.BackupContent{}
-		if err := r.Get(ctx, types.NamespacedName{
+		if err := reader.Get(ctx, types.NamespacedName{
 			Name:      bcRef.Name,
 			Namespace: ibgu.GetNamespace(),
 		}, bc); err != nil {
@@ -818,7 +795,7 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, ibgu *ibguv1
 	}
 	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent { //nolint:staticcheck // SA1019: OADPContent is honoured for backward compatibility.
 		cm := &corev1.ConfigMap{}
-		if err := r.Get(ctx, types.NamespacedName{
+		if err := reader.Get(ctx, types.NamespacedName{
 			Name:      cmRef.Name,
 			Namespace: cmRef.Namespace,
 		}, cm); err != nil {
@@ -829,22 +806,35 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, ibgu *ibguv1
 			return nil, fmt.Errorf("failed to get ConfigMap %s/%s: %w", cmRef.Namespace, cmRef.Name, err)
 		}
 	}
+	if pullSecretRef := ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef; pullSecretRef != nil {
+		secret := &corev1.Secret{}
+		if err := reader.Get(ctx, types.NamespacedName{
+			Name:      pullSecretRef.Name,
+			Namespace: ibgu.GetNamespace(),
+		}, secret); err != nil {
+			if errors.IsNotFound(err) {
+				missing = append(missing, fmt.Sprintf("Secret %q", pullSecretRef.Name))
+			} else {
+				return nil, fmt.Errorf("failed to get pull secret %q: %w", pullSecretRef.Name, err)
+			}
+		}
+	}
 	sort.Strings(missing)
 	return missing, nil
 }
 
-// ensureManifests reconciles the plan into CGUs. Its boolean return means
-// "transient — requeue to re-evaluate within the grace window"; a terminal outcome
-// records the Succeeded condition and returns false so Reconcile does not requeue.
-// It returns an error for any genuine fault.
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (bool, error) {
+// ensureManifests reconciles the plan into CGUs. Every pre-flight failure is terminal
+// at once (records the Succeeded condition, creates no CGU); it never requeues. It
+// returns an error only for a genuine fault, which Reconcile requeues with backoff
+// (still bounded by the start deadline).
+func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
 	err := r.List(ctx, cguList, &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
 	})
 	if err != nil {
-		return false, fmt.Errorf("error listing cgus for ibgu: %w", err)
+		return fmt.Errorf("error listing cgus for ibgu: %w", err)
 	}
 
 	// The Succeeded condition records one of two terminal states, distinguished by
@@ -862,10 +852,10 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	//     field), so the IBGU resumes through the plan loop below.
 	if succeeded := meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)); succeeded != nil {
 		if !isPlanCompletion(succeeded.Reason) {
-			return false, nil
+			return nil
 		}
 		if succeeded.ObservedGeneration >= ibgu.Generation {
-			return false, nil
+			return nil
 		}
 		// Plan items were appended after completion: drop Succeeded and resume. Earlier
 		// plan items are already finished (their CGUs exist), the pre-flight gates do
@@ -875,66 +865,59 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		r.Log.Info("Plan items appended after completion, resuming IBGU", "ibgu", ibgu.GetName(),
 			"completionGeneration", succeeded.ObservedGeneration, "currentGeneration", ibgu.Generation)
 		r.resumeForAppend(ibgu)
-	} else if ibguReportsCompletion(ibgu) {
-		// An IBGU that finished under older code carries Progressing reason Completed but
-		// no Succeeded condition. Migrate it so it obeys the presence rules above. Run
-		// this only when there is no Succeeded condition (the resume path above handles
-		// an already-migrated IBGU) so a resumed IBGU is not migrated straight back to a
-		// completion.
-		//
-		//   - No plan-item-0 CGU: it completed empty (no cluster was ever eligible).
-		//     Migrate to a permanent empty-set block so a later-matching cluster cannot
-		//     revive it after a TALM upgrade (design D2).
-		//   - Has CGUs: fall through to the plan loop, which waits on any still-active
-		//     owned CGU and re-records the completion through setPlanCompleted stamped
-		//     with the current generation (so it stays appendable).
-		if !hasPlanItem0CGU(ibgu, cguList) {
-			r.Log.Info("Migrating an empty-completed IBGU (no CGU) to a terminal block", "ibgu", ibgu.GetName())
-			r.setTerminal(ibgu, utils.ConditionReasons.NoEligibleClusters,
-				"this IBGU completed with no CGU (no cluster was eligible for plan item 0); "+
-					"it no longer reports success")
-			return false, nil
-		}
 	}
+
+	// item0Clusters is plan item 0's eligible cluster set, resolved once by the
+	// empty-set gate (through the uncached reader) and reused verbatim when plan item
+	// 0's CGU is created, so the gate and the first CGU can never disagree about which
+	// clusters are eligible. It is populated only on the first-CGU path below; for an
+	// IBGU already in progress (an owned CGU exists) plan item 0's CGU already exists,
+	// so this set is never consulted.
+	var item0Clusters []string
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
-	// is unaffected. On failure they create no CGU and, per their classification,
-	// either retry within the grace window (transient) or block the IBGU terminally.
+	// is unaffected. On failure they create no CGU and block the IBGU terminally.
+	//
+	// The cached list above can lag behind an owned CGU this controller just created.
+	// Before running any pre-flight gate or the start deadline, re-read owned CGUs through
+	// the uncached reader when the cached list is empty. A non-empty cached list needs no
+	// confirmation, so an in-progress IBGU reconciles without the extra API read. Confirming
+	// uncached means an empty list really is empty (the first CGU has not raced the
+	// informer), so an IBGU
+	// whose first CGU already exists never records a false permanent block.
 	if len(cguList.Items) == 0 {
-		outcome, err := r.runPreflightGates(ctx, ibgu)
-		if err != nil {
-			return false, err
+		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
+		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
+			Namespace:     ibgu.Namespace,
+			LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
+		}); listErr != nil {
+			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
 		}
-		switch outcome.class {
-		case preflightTerminal:
-			r.setTerminal(ibgu, outcome.reason, outcome.message)
-			return false, nil
-		case preflightTransient:
-			return r.handleTransientPreflight(ibgu, outcome), nil
-		case preflightPass:
-			// Honour the start deadline on the passing path too: even when every gate
-			// passes, the first CGU must be created within a bounded window measured from
-			// creationTimestamp. If TALM was down past that window and recovered, a
-			// now-passing pre-flight must not start a rollout hours late (outside the
-			// chosen maintenance window); block it terminally instead. This applies only
-			// before the first CGU — appended items (CGUs already exist) are never gated
-			// on the deadline.
-			//
-			// A zero window (lcm.openshift.io/ibgu-preflight-retry-seconds: "0") disables
-			// transient retries (the first transient failure is terminal — see
-			// handleTransientPreflight) but must NOT disable this start deadline: a
-			// pre-flight that only passes after a long outage would otherwise start a
-			// rollout arbitrarily late, the very thing the deadline prevents. A zero
-			// window therefore falls back to the default window as the start deadline
-			// here (preflightStartDeadlineSeconds).
-			startDeadline := time.Duration(r.preflightStartDeadlineSeconds(ibgu)) * time.Second
-			if metav1.Now().Sub(ibgu.GetCreationTimestamp().Time) >= startDeadline {
-				r.setTerminal(ibgu, utils.ConditionReasons.PreflightWindowExpired,
-					fmt.Sprintf("pre-flight checks passed but the %s start deadline since creation has "+
-						"expired before the first CGU could be created; the IBGU started too late", startDeadline))
-				return false, nil
-			}
+		cguList = uncachedCGUList
+	}
+
+	if len(cguList.Items) == 0 {
+		var block *preflightBlock
+		item0Clusters, block, err = r.runPreflightGates(ctx, ibgu)
+		if err != nil {
+			return err
+		}
+		if block != nil {
+			r.setTerminal(ibgu, block.reason, block.message)
+			return nil
+		}
+		// Honour the start deadline on the passing path too: even when every gate
+		// passes, the first CGU must be created within preflightStartDeadline of
+		// creationTimestamp. If TALM was down past that window and recovered, a
+		// now-passing pre-flight must not start a rollout hours late (outside the
+		// chosen maintenance window); block it instead. This applies only before the
+		// first CGU — appended items (CGUs already exist) are never gated on the deadline.
+		if metav1.Now().Sub(ibgu.GetCreationTimestamp().Time) >= preflightStartDeadline {
+			r.setTerminal(ibgu, utils.ConditionReasons.PreflightWindowExpired,
+				fmt.Sprintf("pre-flight checks passed but the %s start deadline since creation has "+
+					"expired before the first CGU could be created; the IBGU started too late", preflightStartDeadline))
+			return nil
 		}
 	}
 
@@ -945,31 +928,16 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 	// reads, which would otherwise make the next plan item resolve empty against stale
 	// status, be skipped, and record a generation-final false success.
 	if err := r.syncStatusFromCGUList(ctx, ibgu, cguList); err != nil {
-		return false, fmt.Errorf("error syncing status from cgu list: %w", err)
+		return fmt.Errorf("error syncing status from cgu list: %w", err)
 	}
 
 	for i := range ibgu.Spec.Plan {
 		planItem := ibgu.Spec.Plan[i]
-		result, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList)
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, item0Clusters)
 		if err != nil {
-			return false, fmt.Errorf("error ensuring cgu for plan item: %w", err)
+			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
-		switch result {
-		case planItemEmptyAtZero:
-			// Plan item 0 resolved to no eligible cluster at CGU creation (the empty-set
-			// gate passed, then the last cluster was deleted). Apply the empty-set block:
-			// transient within the grace window, terminal after.
-			outcome, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
-			if err != nil {
-				return false, fmt.Errorf("error re-evaluating empty-set gate: %w", err)
-			}
-			if outcome.class == preflightPass {
-				// A cluster re-appeared between the resolution above and here; requeue to
-				// create the CGU on the next reconcile.
-				return true, nil
-			}
-			return r.handleTransientPreflight(ibgu, outcome), nil
-		case planItemWaiting:
+		if !completed {
 			r.Log.Info("CGU for plan item is not completed, delay creating next CGUs",
 				"planItem actions", planItem.Actions)
 			msg := fmt.Sprintf("Waiting for plan step %d to be completed", i)
@@ -984,14 +952,13 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 				utils.ConditionReasons.InProgress,
 				metav1.ConditionTrue,
 				msg)
-			return false, nil
-		case planItemCompleted:
-			// Proceed to the next plan item.
+			return nil
 		}
+		// Completed: proceed to the next plan item.
 	}
 
 	r.setPlanCompleted(ibgu, cguList)
-	return false, nil
+	return nil
 }
 
 // isPlanCompletion reports whether a Succeeded condition reason records a plan
@@ -1014,102 +981,103 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 		"Resuming: plan items were appended after completion")
 }
 
-// preflightStartDeadlineSeconds returns the window, in seconds, within which the
-// first CGU must be created on the passing pre-flight path, measured from
-// metadata.creationTimestamp. It is the configured retry window
-// (preflightRetrySeconds), except that a zero window — which disables transient
-// retries — falls back to DefaultPreflightRetrySeconds here. A zero window must not
-// disable the start deadline: otherwise a pre-flight that only passes after a long
-// TALM outage would start a rollout arbitrarily late, the very thing the deadline
-// exists to prevent.
-func (r *IBGUReconciler) preflightStartDeadlineSeconds(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) int {
-	if seconds := r.preflightRetrySeconds(ibgu); seconds > 0 {
-		return seconds
-	}
-	return utils.DefaultPreflightRetrySeconds
-}
-
 // runPreflightGates runs the hub-side pre-flight gates in order — empty cluster
 // set, then references, then the seed-format (registry) read — and returns the
 // first non-pass outcome. Running the hub-only, deterministic checks before the
 // network read means a selector typo or a missing BackupContent is reported with
-// its own reason and does not trigger a registry read or wait out the grace window
-// reporting the wrong reason (review item 4).
-func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (preflightOutcome, error) {
-	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible cluster.
-	if outcome, err := r.ensureNonEmptyClusterSet(ctx, ibgu); err != nil || outcome.class != preflightPass {
-		return outcome, err
+// its own reason and does not trigger a registry read or block with the wrong
+// reason. On the passing path it also returns plan item 0's
+// eligible cluster set, resolved once by the empty-set gate, so the first CGU is
+// created from that same set.
+func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
+	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
+	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
+	// cluster set.
+	item0Clusters, block, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
+	if err != nil || block != nil {
+		return nil, block, err
 	}
 
 	// 2. Reference-resolution gate: for a plan that contains a Prep item, every
-	// backupContent and oadpContent reference must resolve on the hub. An Upgrade-only
-	// follow-up plan (no Prep item) is exempt because it copies nothing — LCA fails
-	// such a plan terminally at pre-pivot if a spoke copy is missing. In every plan the
-	// CRD admits a Prep item is the first item (see the plan XValidation rule), so this
-	// validates the Prep references before any CGU that copies them is created.
-	if outcome, err := r.ensurePrepReferencesResolve(ctx, ibgu); err != nil || outcome.class != preflightPass {
-		return outcome, err
+	// backupContent and oadpContent reference (and the seed pull secret, if set) must
+	// resolve on the hub. An Upgrade-only follow-up plan (no Prep item) is exempt
+	// because it copies nothing — LCA fails such a plan at pre-pivot if a spoke copy is
+	// missing. In every plan the CRD admits a Prep item is the first item (see the plan
+	// XValidation rule), so this validates the Prep references before any CGU that
+	// copies them is created. References are read through the uncached pre-flight reader
+	// so one applied alongside the IBGU in the same GitOps sync is not read as NotFound
+	// under informer-cache lag. resolvePrepReferences stays pure (it only reports the
+	// missing names) so it can be unit-tested directly.
+	if planHasPrep(ibgu) {
+		missing, err := r.resolvePrepReferences(ctx, r.preflightReader(), ibgu)
+		if err != nil {
+			return nil, nil, fmt.Errorf("error resolving Prep references: %w", err)
+		}
+		if len(missing) > 0 {
+			return nil, &preflightBlock{utils.ConditionReasons.UnresolvableDenpendency,
+				fmt.Sprintf("unresolvable backup references: %s", strings.Join(missing, ", "))}, nil
+		}
 	}
 
 	// 3. Seed-format compatibility gate (CNF-29242): the network read, run last.
-	outcome, err := r.ensureSeedFormatCompatible(ctx, ibgu)
+	block, err = r.ensureSeedFormatCompatible(ctx, ibgu)
 	if err != nil {
-		return preflightOutcome{}, fmt.Errorf("error checking seed format compatibility: %w", err)
+		return nil, nil, fmt.Errorf("error checking seed format compatibility: %w", err)
 	}
-	return outcome, nil
+	return item0Clusters, block, nil
 }
 
-// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): plan item
-// 0 must resolve to at least one eligible cluster. It distinguishes two reasons,
-// both transient (the cached manager client can return an empty list under
-// single-sync GitOps lag, so a short grace absorbs that before the block becomes
-// terminal): no ManagedCluster matches the selector (NoClustersMatchSelector), or
-// the base set is non-empty but none is eligible for plan item 0's action
-// (NoEligibleClusters).
-func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (preflightOutcome, error) {
-	base, err := r.resolveBaseClusters(ctx, ibgu)
+// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
+// plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
+// returns that set so the first CGU is created from the very set the gate evaluated —
+// the gate and the CGU can never disagree, so there is no empty-set race to re-check.
+// When the set is empty it distinguishes two terminal reasons: no
+// ManagedCluster matches the selector (NoClustersMatchSelector), or the base set is
+// non-empty but none is eligible for plan item 0's action (NoEligibleClusters).
+// Reading through the uncached reader means a ManagedCluster or label applied
+// alongside the IBGU is not missed under informer-cache lag and wrongly reported as
+// empty. The returned set is meaningful only on a passing outcome.
+func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
+	reader := r.preflightReader()
+	base, err := r.resolveBaseClusters(ctx, reader, ibgu)
 	if err != nil {
-		return preflightOutcome{}, fmt.Errorf("error resolving base clusters: %w", err)
+		return nil, nil, fmt.Errorf("error resolving base clusters: %w", err)
 	}
 	if len(base) == 0 {
-		return transientOutcome(utils.ConditionReasons.NoClustersMatchSelector,
-			"no ManagedCluster matches the IBGU clusterLabelSelectors"), nil
+		return nil, &preflightBlock{utils.ConditionReasons.NoClustersMatchSelector,
+			"no ManagedCluster matches the IBGU clusterLabelSelectors"}, nil
+	}
+
+	// Index this IBGU's freshly synced per-cluster status so eligibility is decided
+	// from the completed/failed actions it records as well as the ManagedCluster labels
+	// (see effectiveActionLabels) — the same inputs the plan loop uses, so the set
+	// returned here is exactly the set plan item 0's CGU is created from. On the first
+	// reconcile no action has completed yet, so this reduces to the raw labels.
+	statusByName := make(map[string]*ibguv1alpha1.ClusterState, len(ibgu.Status.Clusters))
+	for i := range ibgu.Status.Clusters {
+		statusByName[ibgu.Status.Clusters[i].Name] = &ibgu.Status.Clusters[i]
 	}
 
 	planItem := &ibgu.Spec.Plan[0]
+	eligible := []string{}
 	for _, name := range base {
 		cluster := &clusterv1.ManagedCluster{}
-		if getErr := r.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
+		if getErr := reader.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
 			if errors.IsNotFound(getErr) {
 				continue
 			}
-			return preflightOutcome{}, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
+			return nil, nil, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
 		}
-		if utils.ClusterMatchesPlanItem(cluster.GetLabels(), planItem) {
-			return passOutcome(), nil
+		if utils.ClusterMatchesPlanItem(effectiveActionLabels(cluster.GetLabels(), statusByName[name]), planItem) {
+			eligible = append(eligible, name)
 		}
 	}
-	return transientOutcome(utils.ConditionReasons.NoEligibleClusters,
-		fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)), nil
-}
-
-// ensurePrepReferencesResolve is the reference-resolution pre-flight gate. A
-// missing BackupContent/ConfigMap is transient: the cached manager client can
-// return NotFound for a reference a single GitOps sync applied alongside the IBGU,
-// so a short grace absorbs that lag before the block becomes terminal.
-func (r *IBGUReconciler) ensurePrepReferencesResolve(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (preflightOutcome, error) {
-	if !planHasPrep(ibgu) {
-		return passOutcome(), nil
+	if len(eligible) == 0 {
+		return nil, &preflightBlock{utils.ConditionReasons.NoEligibleClusters,
+			fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)}, nil
 	}
-	missing, err := r.resolvePrepReferences(ctx, ibgu)
-	if err != nil {
-		return preflightOutcome{}, fmt.Errorf("error resolving Prep references: %w", err)
-	}
-	if len(missing) > 0 {
-		return transientOutcome(utils.ConditionReasons.UnresolvableDenpendency,
-			fmt.Sprintf("unresolvable backup references: %s", strings.Join(missing, ", "))), nil
-	}
-	return passOutcome(), nil
+	sort.Strings(eligible)
+	return eligible, nil, nil
 }
 
 // ibguHasFailedActions reports whether any cluster recorded a failed action in the
@@ -1196,54 +1164,65 @@ func (r *IBGUReconciler) setTerminal(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, 
 	}
 }
 
+// getSecretManifest builds the spoke pull-secret manifest for the IBGU's
+// seedImageRef.pullSecretRef. A plan with no pullSecretRef has nothing to copy and
+// returns (nil, nil). Otherwise the secret is read through the uncached pre-flight
+// reader during the first (Prep) CGU creation, in the same reconcile the reference
+// gate resolved it, so cache lag cannot turn a just-resolved secret into a NotFound
+// here. Because the reference gate has already established the secret exists, any read
+// failure — including NotFound — and any serialization failure
+// is a genuine fault and is returned as an error rather than silently dropped: a
+// dropped secret would create the Prep ManifestWorkReplicaSet (written once, never
+// updated) without the credentials a private seed image needs, on every batch of the
+// IBGU. This mirrors getConfigMapManifests.
 func (r *IBGUReconciler) getSecretManifest(
 	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-) *mwv1.Manifest {
+) (*mwv1.Manifest, error) {
 	if ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef == nil {
 		r.Log.Info("No PullSecretRef in IBGU. Skip adding secret to IBGU manifests")
-		return nil
+		return nil, nil
 	}
+	secretName := ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name
 	secret := &corev1.Secret{}
-	if err := r.Get(ctx, types.NamespacedName{
-		Name:      ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name,
+	if err := r.preflightReader().Get(ctx, types.NamespacedName{
+		Name:      secretName,
 		Namespace: ibgu.GetNamespace(),
 	}, secret); err != nil {
-		r.Log.Info("[WARN] pullsecret does not exist on hub. Skip adding it to manifests, secret name ",
-			ibgu.Spec.IBUSpec.SeedImageRef.PullSecretRef.Name, " namespace ", ibgu.GetNamespace())
-		return nil
+		return nil, fmt.Errorf("failed to get pull secret %q: %w", secretName, err)
 	}
 	secret.ResourceVersion = ""
 	secret.ManagedFields = []metav1.ManagedFieldsEntry{}
 	secret.CreationTimestamp = metav1.Time{}
 	secret.UID = ""
-	secret.Namespace = "openshift-lifecycle-agent"
+	secret.Namespace = lcav1.DefaultNamespace
 	secretBytes, err := utils.ObjectToByteArray(secret)
 	if err != nil {
-		r.Log.Info("[WARN] failed to convert secret to []bytes")
-		return nil
+		return nil, fmt.Errorf("failed to convert pull secret %q to []bytes: %w", secretName, err)
 	}
-	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}
+	return &mwv1.Manifest{RawExtension: runtime.RawExtension{Raw: secretBytes}}, nil
 }
 
 // getConfigMapManifests builds the manifests for the IBGU's oadpContent ConfigMaps.
 // It returns an error on any Get or convert failure rather than skipping silently,
-// since the pre-flight gate in ensureManifests has already validated every reference
-// before this Prep CGU is created (so a failure here is a genuine fault).
+// since the reference-resolution gate (runPreflightGates) has already validated every
+// reference before this Prep CGU is created (so a failure here is a genuine fault).
 func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
 	manifests := []mwv1.Manifest{}
 	// OADPContent is deprecated in favour of BackupContent (name-only references
 	// that LCA resolves on the spoke), but it remains honoured for backward
-	// compatibility until LCA removes it. Hub-side BackupContent handling is
-	// tracked separately (CNF-29240).
+	// compatibility until LCA removes it. Hub-side BackupContent references are
+	// handled by getBackupContentManifests.
 	//
 	// In every plan the CRD admits a Prep item is the first plan item, so the
-	// pre-flight gate in ensureManifests has already validated every oadpContent
-	// reference before this Prep CGU is created. A Get/convert failure here is
-	// therefore a genuine fault (e.g. an API error) rather than the expected
-	// missing-backup case: return the error instead of silently skipping it.
+	// pre-flight reference gate has already validated every oadpContent reference
+	// before this Prep CGU is created. The read goes through the uncached pre-flight
+	// reader — the same source the gate used, in the same reconcile — so cache lag
+	// cannot turn a reference the gate just resolved into a NotFound here.
+	// A Get/convert failure is therefore a genuine fault (e.g. an API error) rather
+	// than the expected missing-backup case: return the error instead of skipping it.
 	for _, cmRef := range ibgu.Spec.IBUSpec.OADPContent { //nolint:staticcheck // SA1019: OADPContent is honoured for backward compatibility.
 		cm := &corev1.ConfigMap{}
-		if err := r.Get(ctx, types.NamespacedName{
+		if err := r.preflightReader().Get(ctx, types.NamespacedName{
 			Name:      cmRef.Name,
 			Namespace: cmRef.Namespace,
 		}, cm); err != nil {
@@ -1273,14 +1252,16 @@ func (r *IBGUReconciler) getConfigMapManifests(ctx context.Context, ibgu *ibguv1
 // does not create that namespace, so a spoke whose LCA is installed elsewhere fails
 // loudly at apply time.
 //
-// As with getConfigMapManifests, a Get/convert failure is returned rather than skipped:
-// the pre-flight gate in ensureManifests has already validated every backupContent
-// reference before this Prep CGU is created, so a failure here is a genuine fault.
+// As with getConfigMapManifests, a Get/convert failure is returned rather than skipped,
+// and the read goes through the uncached pre-flight reader: the reference gate has
+// already validated every backupContent reference before this Prep CGU is created, in
+// the same reconcile and against the same uncached source, so cache lag cannot turn a
+// just-resolved reference into a NotFound here — a failure is a genuine fault.
 func (r *IBGUReconciler) getBackupContentManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]mwv1.Manifest, error) {
 	manifests := []mwv1.Manifest{}
 	for _, bcRef := range ibgu.Spec.IBUSpec.BackupContent {
 		hubBC := &ibguv1alpha1.BackupContent{}
-		if err := r.Get(ctx, types.NamespacedName{
+		if err := r.preflightReader().Get(ctx, types.NamespacedName{
 			Name:      bcRef.Name,
 			Namespace: ibgu.GetNamespace(),
 		}, hubBC); err != nil {
@@ -1331,7 +1312,8 @@ func (r *IBGUReconciler) SetupWithManager(mgr ctrl.Manager) error {
 				// not metadata or status
 				oldGeneration := e.ObjectOld.GetGeneration()
 				newGeneration := e.ObjectNew.GetGeneration()
-				// spec update only for SeedGen
+				// a generation change means plan items were appended (the plan is
+				// the only mutable spec field)
 				return oldGeneration != newGeneration
 			},
 			CreateFunc:  func(ce event.CreateEvent) bool { return true },
