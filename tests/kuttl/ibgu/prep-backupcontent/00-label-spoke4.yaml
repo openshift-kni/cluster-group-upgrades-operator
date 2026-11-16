@@ -1,7 +1,8 @@
 # Pre-stage spoke4 as already-Prepped for the step-01 Upgrade-only IBGU.
 #
 # The controller only selects a cluster for an Upgrade plan item once that cluster
-# carries the completed-Prep label (ClusterMatchesPlanItem -> hasCompleted(Prep)).
+# carries the completed-Prep label (the plan item's `name In (...)` selector also
+# requires ibgu-prep-completed).
 # There is no live spoke/LCA in kuttl to drive a real Prep completion, and the
 # plan-item-0 resolution is final once an IBGU resolves to zero eligible clusters
 # and reports completion, so the label must exist before the Upgrade-only IBGU is

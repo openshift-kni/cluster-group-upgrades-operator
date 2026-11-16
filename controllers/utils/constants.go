@@ -189,6 +189,12 @@ const (
 	IBGUActionFailedLabelTemplate    = "lcm.openshift.io/ibgu-%s-failed"
 )
 
+// ClusterNameLabel is the ManagedCluster label ACM reconciles to the cluster name and
+// restores if it is edited. IBGU freezes its cluster set with a `name In (...)` selector
+// on it, so a cluster removed after the freeze simply stops matching. Note that it is
+// not OCM's open-cluster-management.io/cluster-name: ACM does not set that key.
+const ClusterNameLabel = "name"
+
 // Seed image compatibility pre-flight (CNF-29242)
 const (
 	// IBGUSkipSeedCompatibilityAnnotation, when present on an IBGU, skips the

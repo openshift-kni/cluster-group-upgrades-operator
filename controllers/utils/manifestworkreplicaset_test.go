@@ -10,6 +10,7 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	"github.com/stretchr/testify/assert"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	mwv1 "open-cluster-management.io/api/work/v1"
 )
@@ -153,7 +154,8 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
 		},
 	}
 
-	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, []string{"cluster1", "cluster2"}, map[string]string{}, true)
+	clusterSelectors := PlanItemClusterSelectors([]string{"cluster1", "cluster2"}, &ibgu.Spec.Plan[0])
+	cgu := GenerateClusterGroupUpgradeForPlanItem("ibu-prep-upgrade-finalize", ibgu, &ibgu.Spec.Plan[0], []string{"ibu-prep", "ibu-upgrade", "ibu-finalize"}, clusterSelectors, map[string]string{}, true)
 
 	json, _ := ObjectToJSON(cgu)
 	expected := `
@@ -181,9 +183,19 @@ func TestGenerateCGUForPlanItem(t *testing.T) {
         }
       }
     },
-    "clusters": [
-      "cluster1",
-      "cluster2"
+    "clusterLabelSelectors": [
+      {
+        "matchExpressions": [
+          {
+            "key": "name",
+            "operator": "In",
+            "values": [
+              "cluster1",
+              "cluster2"
+            ]
+          }
+        ]
+      }
     ],
     "enable": true,
     "manifestWorkTemplates": [
@@ -1079,7 +1091,11 @@ func TestGetActionsFromCGU(t *testing.T) {
 	}
 }
 
-func TestClusterMatchesPlanItem(t *testing.T) {
+// TestPlanItemClusterSelectors pins the narrowing semantics a plan item's CGU applies:
+// every selector entry carries the frozen cluster set as a `name In (...)` requirement,
+// and the entry's own action requirement decides within it. A cluster outside the frozen
+// set never matches, whatever its labels say.
+func TestPlanItemClusterSelectors(t *testing.T) {
 	const (
 		prepCompleted     = "lcm.openshift.io/ibgu-prep-completed"
 		upgradeCompleted  = "lcm.openshift.io/ibgu-upgrade-completed"
@@ -1087,8 +1103,10 @@ func TestClusterMatchesPlanItem(t *testing.T) {
 		prepFailed        = "lcm.openshift.io/ibgu-prep-failed"
 		upgradeFailed     = "lcm.openshift.io/ibgu-upgrade-failed"
 	)
+	frozen := []string{"cluster1", "cluster2"}
 	tests := []struct {
 		name          string
+		clusterName   string
 		clusterLabels map[string]string
 		planItem      ibguv1alpha1.PlanItem
 		expected      bool
@@ -1189,11 +1207,44 @@ func TestClusterMatchesPlanItem(t *testing.T) {
 			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Upgrade}},
 			expected:      false,
 		},
+		{
+			name:          "a cluster outside the frozen set never matches",
+			clusterName:   "cluster3",
+			clusterLabels: map[string]string{prepCompleted: ""},
+			planItem:      ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Prep}},
+			expected:      false,
+		},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			got := ClusterMatchesPlanItem(test.clusterLabels, &test.planItem)
-			assert.Equal(t, test.expected, got)
+			selectors := PlanItemClusterSelectors(frozen, &test.planItem)
+			assert.NotEmpty(t, selectors)
+
+			clusterName := test.clusterName
+			if clusterName == "" {
+				clusterName = "cluster1"
+			}
+			clusterLabels := labels.Set{ClusterNameLabel: clusterName}
+			for key, value := range test.clusterLabels {
+				clusterLabels[key] = value
+			}
+
+			matched := false
+			for i := range selectors {
+				// Every entry must carry the frozen set, or the CGU's union of entries
+				// could select a cluster the IBGU never froze.
+				assert.Contains(t, selectors[i].MatchExpressions, v1.LabelSelectorRequirement{
+					Key:      ClusterNameLabel,
+					Operator: v1.LabelSelectorOpIn,
+					Values:   frozen,
+				})
+				selector, err := v1.LabelSelectorAsSelector(&selectors[i])
+				assert.NoError(t, err)
+				if selector.Matches(clusterLabels) {
+					matched = true
+				}
+			}
+			assert.Equal(t, test.expected, matched)
 		})
 	}
 }
