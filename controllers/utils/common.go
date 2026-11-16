@@ -142,8 +142,8 @@ func Contains(s []string, str string) bool {
 	return false
 }
 
-// SortCGUListByPlanIndex orders the CGUs by the last action in the name of cgu
-// with following order prep-upgrade-rollback-finalize-abort
+// SortCGUListByPlanIndex orders the CGUs by the trailing plan-index segment of
+// their names (compared as strings, so 10 sorts before 2).
 func SortCGUListByPlanIndex(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
 	sort.Slice(cguList.Items, func(i, j int) bool {
 		iSplitted := strings.Split(cguList.Items[i].GetName(), "-")

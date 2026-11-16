@@ -38,8 +38,8 @@ import (
 // but not ResponseHeaderTimeout, and controller-runtime sets no deadline on the
 // Reconcile context, so without this bound a registry that accepts the
 // connection and then stalls would hold the reconcile worker indefinitely. A
-// timeout instead surfaces as the expected SeedImageUnreadable block and the
-// IBGU requeues.
+// timeout instead surfaces as a terminal SeedImageUnreadable block rather than
+// hanging the reconcile worker.
 const seedImageReadTimeout = 30 * time.Second
 
 // maxSeedConfigSize caps the declared image-config blob size the default reader
