@@ -45,7 +45,7 @@ spec:
     - local-storage-operator:stable
     - ptp-operator:stable
     - sriov-network-operator:stable
-  spaceRequired: 30Gi # <2>
+  spaceRequired: 30GiB # <2>
   excludePrecachePatterns: # <3>
   - aws
   - vsphere
