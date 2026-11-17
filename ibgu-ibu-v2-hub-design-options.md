@@ -72,11 +72,17 @@ Code facts cited below are verified against this repo at `main`; see the appendi
 
 ### D2 — Cluster-list resolution: **2B for the base set, per-item narrowing back in the CGU — its own story, not on the OADP critical path**
 
-- **Outcome.** IBGU resolves the base selector once and freezes it at plan item 0. Each
-  plan item's CGU receives that frozen set as selector requirements on ACM's `name` label
-  (`name In (<values>)`), CNF-30180, plus that item's own action requirements — the
-  `getLabelSelectorForPlanItem` predicates on the frozen base, not on the user's
-  selectors. Where an item needs a disjunction (`AbortOnFailure`: `ibgu-prep-failed` OR
+- **Outcome.** IBGU resolves the base selector once, before the first CGU, and freezes
+  **plan item 0's eligible set** — the base set narrowed by plan item 0's action, i.e. the
+  clusters the IBGU starts on — not the base set itself. For an Upgrade-only IBGU that is
+  the matching clusters already carrying `ibgu-prep-completed`; freezing the un-narrowed
+  base would let a later `Abort` reach clusters that never prepped. Only plan item 0 is
+  evaluated up front, by the empty-set gate ("Empty set is terminal" below): a first step
+  that selects nothing is a spec error and a terminal block, while a later step that
+  selects nothing is a normal outcome. Each plan item's CGU receives the frozen set as
+  selector requirements on ACM's `name` label (`name In (<values>)`), CNF-30180, plus that
+  item's own action requirements — the `getLabelSelectorForPlanItem` predicates on the
+  frozen set, not on the user's selectors. Where an item needs a disjunction (`AbortOnFailure`: `ibgu-prep-failed` OR
   `ibgu-upgrade-failed`) it gets two selector entries, and CGU unions entries, so the
   invariant is **every entry carries the `name In` requirement**: union stays inside the
   frozen set. IBGU does not narrow per item — `resolveClustersForPlanItem`,
@@ -92,13 +98,18 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   `statusUpdateWaitInMilliSeconds` sleep at the top of every CGU reconcile
   (`clustergroupupgrade_controller.go:71,143`). A miss is possible rather than impossible
   — an informer re-list can outlast the sleep — but it acts on fewer frozen clusters,
-  never on clusters outside the set, and IBGU reports it in `Status.Clusters`. Accepted
+  never on clusters outside the set. Nothing flags a miss (the cluster simply has no entry
+  for that action), but it keeps its labels, so re-running the step picks it up. Accepted
   for a management-side component.
 - **Rejected.** 2A (keeps the race); 2C (does not remove drift, and needs a CGU change);
   deriving eligibility from `ibgu.Status.Clusters` (breaks cross-IBGU plans); an uncached
   ManagedCluster list at `SelectedClusters` (a quorum read on every validating CGU, for a
-  window the existing sleep already covers); a ManagedCluster watch in the CGU controller
-  (does not close it — an empty-selection CGU has already completed by then).
+  window the existing sleep already covers; deferred as the future improvement CNF-30251
+  under CNF-6791, since the CGU controller has the same race on policy-compliance updates
+  and handles both with the delay); a ManagedCluster watch in the CGU controller (does not
+  close it — an empty-selection CGU has already completed by then); pre-evaluating every
+  plan item in IBGU and skipping empty ones (brings back the second resolver and the
+  read-after-write race this design removes).
 - **Scope.** D4 does not depend on it (the base set is a superset of every item's set),
   so it ships separately.
 
