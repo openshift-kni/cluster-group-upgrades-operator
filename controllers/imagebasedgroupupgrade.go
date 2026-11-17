@@ -19,7 +19,6 @@ package controllers
 import (
 	"context"
 	"fmt"
-	"maps"
 	"regexp"
 	"slices"
 	"sort"
@@ -874,15 +873,10 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 
 	eligible := []string{}
 	for i := range base {
-		// The base set is already the universe of cluster names; carry the name as the
-		// label ACM maintains on the ManagedCluster so the same selector that the CGU
-		// receives decides eligibility here.
-		clusterLabels := maps.Clone(labels.Set(base[i].GetLabels()))
-		if clusterLabels == nil {
-			clusterLabels = labels.Set{}
-		}
-		clusterLabels[utils.ClusterNameLabel] = base[i].GetName()
-		if matchesAnySelector(parsed, clusterLabels) {
+		// Match each ManagedCluster's actual labels, exactly as the CGU will, so a
+		// cluster the CGU would not select (e.g. one missing ACM's name label) is not
+		// counted eligible here either.
+		if matchesAnySelector(parsed, labels.Set(base[i].GetLabels())) {
 			eligible = append(eligible, base[i].GetName())
 		}
 	}

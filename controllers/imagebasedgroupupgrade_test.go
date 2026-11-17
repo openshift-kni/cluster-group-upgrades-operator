@@ -1297,8 +1297,8 @@ func TestEnsureManifests(t *testing.T) {
 				},
 			},
 			managedClusters: []clusterv1.ManagedCluster{
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"common": "true"}}},
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}},
+				*managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
+				*managedClusterWithLabels("cluster2", map[string]string{"common": "true"}),
 			},
 			expectedMWRS:     []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
 			expectedCGUCount: 1,
@@ -1396,8 +1396,8 @@ func TestEnsureManifests(t *testing.T) {
 			expectedMWRS:     []string{"name-abort"},
 			expectedCGUCount: 2,
 			managedClusters: []clusterv1.ManagedCluster{
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"common": "true"}}},
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}},
+				*managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
+				*managedClusterWithLabels("cluster2", map[string]string{"common": "true"}),
 			},
 			expectedConditions: []metav1.Condition{
 				{
@@ -2196,6 +2196,28 @@ func TestReconcileLastBatchCompletesWithSucceeded(t *testing.T) {
 	assert.NoError(t, reconciler.Get(context.TODO(),
 		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
 	assert.Equal(t, []string{"cluster1", "cluster2"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
+}
+
+// TestEmptySetGateMatchesActualLabels verifies the empty-set gate evaluates each
+// ManagedCluster's actual labels, exactly as the CGU will: a cluster that matches the
+// IBGU's selectors but lacks ACM's name label would never be selected by the CGU's
+// `name In (...)` requirement, so the gate must not count it eligible either.
+func TestEmptySetGateMatchesActualLabels(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	// cluster1 carries the name label ACM maintains; cluster2 matches the IBGU's
+	// selector but has no name label.
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	assert.NoError(t, fakeClient.Create(context.TODO(), &clusterv1.ManagedCluster{
+		ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}}))
+	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+
+	eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.Nil(t, block)
+	assert.Equal(t, []string{"cluster1"}, eligible)
 }
 
 // TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate (design D2): on the
