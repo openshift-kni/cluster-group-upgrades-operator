@@ -370,7 +370,8 @@ func createIBU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *lcav1.ImageBasedUpgra
 }
 
 // resolveBaseClusters returns the ManagedClusters matching the IBGU's
-// clusterLabelSelectors. This is the base set that gets frozen at plan item 0.
+// clusterLabelSelectors: the base set the empty-set gate narrows to plan item 0's
+// eligible clusters, which is what gets frozen (not the base set itself).
 // Multiple selectors are unioned, mirroring CGU selector semantics. The reader is
 // the uncached pre-flight reader, so cache lag cannot drop a matching cluster and
 // cause a false empty-set block.
@@ -402,10 +403,10 @@ func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.
 	return clusters, nil
 }
 
-// getFrozenClusterSet returns the cluster set frozen at plan item 0, read back from
-// the `name In (...)` requirement in that CGU's clusterLabelSelectors. Every later plan
+// getFrozenClusterSet returns the frozen cluster set — the clusters plan item 0 acts on —
+// read back from the `name In (...)` requirement in plan item 0's CGU. Every later plan
 // item receives this record as the base of its own selector rather than re-resolving
-// the IBGU's selectors, so the set can only shrink.
+// the IBGU's selectors, so a later step can only act on clusters the IBGU started on.
 func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) []string {
 	if len(ibgu.Spec.Plan) == 0 {
 		return nil
@@ -703,10 +704,16 @@ func (r *IBGUReconciler) ensureManifests(
 		r.resumeForAppend(ibgu)
 	}
 
-	// frozen is the cluster set every plan item's CGU is confined to. Before the first CGU
-	// it comes from the empty-set gate (resolved once through the uncached reader), so the
-	// gate and the first CGU can never disagree; once an owned CGU exists it is read back
-	// from plan item 0's CGU, so appended items act on the same set and never re-resolve.
+	// frozen is the cluster set every plan item's CGU is confined to: the clusters plan
+	// item 0 acts on (the IBGU's selector result narrowed by plan item 0's action). Before
+	// the first CGU it comes from the empty-set gate, resolved once through the uncached
+	// reader, so the gate and the first CGU can never disagree; once an owned CGU exists it
+	// is read back from plan item 0's CGU, so later items never re-resolve.
+	//
+	// Only plan item 0 is evaluated up front. A first step that selects nothing is a spec
+	// error and blocks the IBGU terminally; a later step that selects nothing (e.g.
+	// AbortOnFailure when nothing failed) is a normal outcome, so its CGU is created anyway,
+	// narrows the frozen set by label itself, selects nothing and completes.
 	var frozen []string
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
@@ -797,9 +804,9 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // first non-pass outcome. Running the hub-only, deterministic checks before the
 // network read means a selector typo or a missing BackupContent is reported with
 // its own reason and does not trigger a registry read or block with the wrong
-// reason. On the passing path it also returns plan item 0's
-// eligible cluster set, resolved once by the empty-set gate, so the first CGU is
-// created from that same set.
+// reason. On the passing path it also returns plan item 0's eligible cluster set,
+// resolved once by the empty-set gate. That set is the IBGU's frozen cluster set: the
+// first CGU is created from it, and every later plan item is confined to it.
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
 	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
 	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
@@ -839,9 +846,11 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 }
 
 // ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
-// plan item 0's cluster set once, through the uncached pre-flight reader, and returns
-// that set so the first CGU is created from the very set the gate evaluated — the gate
-// and the CGU can never disagree, so there is no empty-set race to re-check. When the
+// plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
+// returns it as the IBGU's frozen cluster set, so the first CGU is created from the very
+// set the gate evaluated — the gate and the CGU can never disagree, so there is no
+// empty-set race to re-check. Later plan items are not evaluated here: a later step
+// that selects nothing is a normal outcome, not a pre-flight failure. When the
 // set is empty it distinguishes two terminal reasons: no ManagedCluster matches the
 // selector (NoClustersMatchSelector), or the base set is non-empty but none is eligible
 // for plan item 0's action (NoEligibleClusters). Eligibility is evaluated with the same
