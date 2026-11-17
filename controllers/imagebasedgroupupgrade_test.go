@@ -57,19 +57,25 @@ func frozenCGU(cgu v1alpha1.ClusterGroupUpgrade) v1alpha1.ClusterGroupUpgrade {
 	return cgu
 }
 
-// ensureManifestsForTest drives the plan the way Reconcile does: rebuild Status.Clusters,
-// write the labels it implies, then run ensureManifests.
+// ensureManifestsForTest takes the single CGU snapshot the way Reconcile does, rebuilds
+// Status.Clusters and the cluster labels from it, then runs the plan loop from that same
+// snapshot.
 func ensureManifestsForTest(t *testing.T, r *IBGUReconciler, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	t.Helper()
-	assert.NoError(t, r.syncStatusWithCGUs(context.TODO(), ibgu))
+	cguList, err := r.listOwnedCGUs(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	r.syncStatusFromCGUList(context.TODO(), ibgu, cguList)
 	assert.NoError(t, r.ensureClusterLabels(context.TODO(), ibgu))
-	return r.ensureManifests(context.TODO(), ibgu)
+	return r.ensureManifests(context.TODO(), ibgu, cguList)
 }
 
-// syncStatusForTest rebuilds Status.Clusters the way Reconcile does.
+// syncStatusForTest rebuilds Status.Clusters the way Reconcile does, from one snapshot.
 func syncStatusForTest(t *testing.T, r *IBGUReconciler, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
 	t.Helper()
-	return r.syncStatusWithCGUs(context.TODO(), ibgu)
+	cguList, err := r.listOwnedCGUs(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	r.syncStatusFromCGUList(context.TODO(), ibgu, cguList)
+	return nil
 }
 
 func TestSyncStatusWithCGUs(t *testing.T) {

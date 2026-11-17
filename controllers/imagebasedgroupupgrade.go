@@ -115,14 +115,19 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		r.Log.Error(err, "Failed to get IBGU")
 		return requeueWithError(err)
 	}
-	// Sync status from the owned CGUs and write the cluster labels they imply before the
-	// plan loop, so the labels a plan item's CGU selector depends on are as fresh as this
-	// reconcile's CGU snapshot allows.
-	err = r.syncStatusWithCGUs(ctx, ibgu)
+	// One CGU snapshot per reconcile. The status rebuild, the cluster labels derived
+	// from it and the plan loop all read this list, so a plan item completing in the
+	// same status write that sets its CGU's Succeeded condition is seen by the next
+	// item's decision rather than a reconcile later.
+	cguList, err := r.listOwnedCGUs(ctx, ibgu)
 	if err != nil {
-		r.Log.Error(err, "error syncing status with CGUs")
+		r.Log.Error(err, "error listing cgus for ibgu")
 		return requeueWithError(err)
 	}
+
+	// Rebuild Status.Clusters before ensureClusterLabels, so the labels that a plan
+	// item's CGU selector depends on are written as early as possible in the reconcile.
+	r.syncStatusFromCGUList(ctx, ibgu, cguList)
 
 	err = r.ensureClusterLabels(ctx, ibgu)
 	if err != nil {
@@ -130,7 +135,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	err = r.ensureManifests(ctx, ibgu)
+	err = r.ensureManifests(ctx, ibgu, cguList)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
@@ -236,26 +241,42 @@ func appendFailedActionOnce(state *ibguv1alpha1.ClusterState, failed ibguv1alpha
 	state.FailedActions = append(state.FailedActions, failed)
 }
 
-func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err := r.List(ctx, cguList, &client.ListOptions{
+// listOwnedCGUs returns the CGUs owned by this IBGU. The cached list is used unless it
+// is empty, and an empty one is confirmed through the uncached pre-flight reader: an
+// empty list is what runs the pre-flight gates and can record a permanent block, so a
+// first CGU this controller just created must not be missed under informer-cache lag.
+// A non-empty cached list needs no confirmation.
+func (r *IBGUReconciler) listOwnedCGUs(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+) (*ranv1alpha1.ClusterGroupUpgradeList, error) {
+	opts := &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get CGUs for the IBGU: %w", err)
 	}
-	return r.syncStatusFromCGUList(ctx, ibgu, cguList)
+	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
+	if err := r.List(ctx, cguList, opts); err != nil {
+		return nil, fmt.Errorf("failed to get CGUs for the IBGU: %w", err)
+	}
+	if len(cguList.Items) > 0 {
+		return cguList, nil
+	}
+	uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
+	if err := r.preflightReader().List(ctx, uncachedCGUList, opts); err != nil {
+		return nil, fmt.Errorf("failed to get CGUs for the IBGU through the uncached reader: %w", err)
+	}
+	return uncachedCGUList, nil
 }
 
 // syncStatusFromCGUList rebuilds Status.Clusters from the supplied CGU snapshot rather
-// than listing the CGUs itself.
+// than listing the CGUs itself. Reconcile passes the one snapshot it also hands to
+// ensureManifests, so the status the plan loop and the completion record read is the
+// same view the plan advances from.
 func (r *IBGUReconciler) syncStatusFromCGUList(
 	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-) error {
+) {
 	if len(cguList.Items) == 0 {
-		return nil
+		return
 	}
 	m := make(map[string]*ibguv1alpha1.ClusterState)
 	utils.SortCGUListByPlanIndex(cguList)
@@ -326,7 +347,6 @@ func (r *IBGUReconciler) syncStatusFromCGUList(
 		return clusters[i].Name < clusters[j].Name
 	})
 	ibgu.Status.Clusters = clusters
-	return nil
 }
 
 func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem, planItemIndex int) string {
@@ -659,16 +679,10 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader clien
 // at once (records the Succeeded condition, creates no CGU); it never requeues. It
 // returns an error only for a genuine fault, which Reconcile requeues with backoff
 // (still bounded by the start deadline).
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err := r.List(ctx, cguList, &client.ListOptions{
-		Namespace:     ibgu.Namespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-	})
-	if err != nil {
-		return fmt.Errorf("error listing cgus for ibgu: %w", err)
-	}
-
+func (r *IBGUReconciler) ensureManifests(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+) error {
 	// The Succeeded condition records one of two terminal states, distinguished by
 	// reason (design D4):
 	//
@@ -708,26 +722,10 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
-	// is unaffected. On failure they create no CGU and block the IBGU terminally.
-	//
-	// The cached list above can lag behind an owned CGU this controller just created.
-	// Before running any pre-flight gate or the start deadline, re-read owned CGUs through
-	// the uncached reader when the cached list is empty. A non-empty cached list needs no
-	// confirmation, so an in-progress IBGU reconciles without the extra API read. Confirming
-	// uncached means an empty list really is empty (the first CGU has not raced the
-	// informer), so an IBGU whose first CGU already exists never records a false permanent
-	// block.
-	if len(cguList.Items) == 0 {
-		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
-		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
-			Namespace:     ibgu.Namespace,
-			LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-		}); listErr != nil {
-			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
-		}
-		cguList = uncachedCGUList
-	}
-
+	// is unaffected. On failure they create no CGU and block the IBGU terminally. The
+	// list is the one Reconcile took, already confirmed uncached when empty, so an
+	// empty list really is empty and an IBGU whose first CGU exists never records a
+	// false permanent block.
 	if len(cguList.Items) == 0 {
 		var block *preflightBlock
 		var err error
@@ -751,13 +749,6 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 					"expired before the first CGU could be created; the IBGU started too late", preflightStartDeadline))
 			return nil
 		}
-	}
-
-	// Re-sync status from this same CGU snapshot before the plan loop, so the labels the
-	// CGUs' selectors depend on and the completion recorded at the end of the loop come
-	// from one snapshot.
-	if syncErr := r.syncStatusFromCGUList(ctx, ibgu, cguList); syncErr != nil {
-		return fmt.Errorf("error syncing status from cgu list: %w", syncErr)
 	}
 
 	for i := range ibgu.Spec.Plan {
