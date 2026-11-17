@@ -444,18 +444,15 @@ func frozenSetFromSelectors(selectors []metav1.LabelSelector) []string {
 // to the next item; false when the item's CGU exists but has not finished, or was just
 // created this reconcile, so the plan loop stops and waits.
 //
-// The cluster set is not resolved here. Plan item 0 is created from item0Clusters — the
-// frozen set the empty-set pre-flight gate resolved through the uncached reader, so the
-// gate and the first CGU cannot disagree — and appended items read the same record back
-// from plan item 0's CGU. Each CGU then narrows the set itself with the plan item's
-// action requirement, as it did before IBGU resolved cluster lists (see
-// utils.PlanItemClusterSelectors).
+// The cluster set is not resolved here: ensureManifests passes the frozen set, and the
+// CGU narrows it itself with the plan item's action requirement, as it did before IBGU
+// resolved cluster lists (see utils.PlanItemClusterSelectors).
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-	item0Clusters []string,
+	frozen []string,
 ) (bool, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem, planItemIndex)
 
@@ -465,6 +462,15 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			r.Log.Info("CGU already exist for plan item", "cgu name", cguName, "completed", completed)
 			return completed, nil
 		}
+	}
+
+	if len(frozen) == 0 {
+		// Only reachable when plan item 0's CGU is missing (deleted out of band, which is
+		// unsupported and undetected). An `In` requirement with no values is not a valid
+		// selector, so nothing can be targeted; treat the item as completed.
+		r.Log.Info("No frozen cluster set for plan item, skipping CGU creation",
+			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
+		return true, nil
 	}
 
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
@@ -525,21 +531,6 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
 	}
 
-	// The frozen cluster set this CGU is allowed to act on. Plan item 0 uses the eligible
-	// set the empty-set gate resolved, so the gate and the first CGU cannot disagree;
-	// appended items read the same record back from plan item 0's CGU.
-	frozen := item0Clusters
-	if planItemIndex > 0 {
-		frozen = getFrozenClusterSet(ibgu, cguList)
-	}
-	if len(frozen) == 0 {
-		// Only reachable when plan item 0's CGU is missing (deleted out of band, which is
-		// unsupported and undetected) or, for plan item 0, when the gate did not run.
-		// Nothing can be targeted, so treat the item as completed.
-		r.Log.Info("No frozen cluster set for plan item, skipping CGU creation",
-			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
-		return true, nil
-	}
 	clusterSelectors := utils.PlanItemClusterSelectors(frozen, planItem)
 
 	for _, mwrs := range manifestWorkReplicaSets {
@@ -713,12 +704,11 @@ func (r *IBGUReconciler) ensureManifests(
 		r.resumeForAppend(ibgu)
 	}
 
-	// item0Clusters is plan item 0's cluster set, resolved once by the empty-set gate
-	// (through the uncached reader) and handed to plan item 0's CGU as its frozen set, so
-	// the gate and the first CGU can never disagree. It is populated only on the
-	// first-CGU path below; for an IBGU already in progress (an owned CGU exists) plan
-	// item 0's CGU already exists, so this set is never consulted.
-	var item0Clusters []string
+	// frozen is the cluster set every plan item's CGU is confined to. Before the first CGU
+	// it comes from the empty-set gate (resolved once through the uncached reader), so the
+	// gate and the first CGU can never disagree; once an owned CGU exists it is read back
+	// from plan item 0's CGU, so appended items act on the same set and never re-resolve.
+	var frozen []string
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
@@ -729,7 +719,7 @@ func (r *IBGUReconciler) ensureManifests(
 	if len(cguList.Items) == 0 {
 		var block *preflightBlock
 		var err error
-		item0Clusters, block, err = r.runPreflightGates(ctx, ibgu)
+		frozen, block, err = r.runPreflightGates(ctx, ibgu)
 		if err != nil {
 			return err
 		}
@@ -749,11 +739,13 @@ func (r *IBGUReconciler) ensureManifests(
 					"expired before the first CGU could be created; the IBGU started too late", preflightStartDeadline))
 			return nil
 		}
+	} else {
+		frozen = getFrozenClusterSet(ibgu, cguList)
 	}
 
 	for i := range ibgu.Spec.Plan {
 		planItem := ibgu.Spec.Plan[i]
-		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, item0Clusters)
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, frozen)
 		if err != nil {
 			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}

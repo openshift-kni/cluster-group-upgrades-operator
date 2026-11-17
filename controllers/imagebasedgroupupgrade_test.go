@@ -2375,11 +2375,10 @@ func TestPlanItemCGUFailedIsCompletedWithFailures(t *testing.T) {
 }
 
 // TestEnsureCGUForPlanItemClusterSets verifies the cluster set each plan item's CGU
-// targets: plan item 0 is created from the eligible set the empty-set gate already
-// resolved — passed in verbatim and never re-resolved, so the gate and the first CGU
-// can never disagree and there is no empty-set race to re-check — while a later plan
-// item that legitimately narrows to no eligible cluster is treated as a completion
-// rather than creating an empty CGU.
+// targets: the frozen set it is handed is used verbatim and never re-resolved, so the
+// gate and the first CGU can never disagree and there is no empty-set race to re-check,
+// and a later plan item that narrows to no eligible cluster still gets a CGU whose
+// selector matches nothing.
 func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 	t.Run("plan item 0 targets exactly the gate's eligible set", func(t *testing.T) {
 		// The gate resolved cluster1 as eligible for plan item 0; the CGU must be created
@@ -2446,9 +2445,10 @@ func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 
 		cguList := &v1alpha1.ClusterGroupUpgradeList{}
 		assert.NoError(t, reconciler.List(context.TODO(), cguList))
-		// item0Clusters is nil: a later plan item never consults it, it reads the frozen
-		// set back from plan item 0's CGU.
-		completed, err := reconciler.ensureCGUForPlanItem(context.TODO(), ibgu, &ibgu.Spec.Plan[1], 1, cguList, nil)
+		// Once plan item 0's CGU exists, ensureManifests reads the frozen set back from it.
+		frozen := getFrozenClusterSet(ibgu, cguList)
+		assert.Equal(t, []string{"cluster1"}, frozen)
+		completed, err := reconciler.ensureCGUForPlanItem(context.TODO(), ibgu, &ibgu.Spec.Plan[1], 1, cguList, frozen)
 		assert.NoError(t, err)
 		assert.False(t, completed)
 
