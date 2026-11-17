@@ -683,27 +683,9 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 			}
 		} else {
 			// On last batch, check all batches
-			var isUpgradeComplete bool
-			isUpgradeComplete, err = r.remediateLastBatch(ctx, clusterGroupUpgrade, &nextReconcile)
+			err = r.reconcileLastBatch(ctx, clusterGroupUpgrade, &nextReconcile)
 			if err != nil {
 				return
-			}
-			if isUpgradeComplete {
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Progressing,
-					utils.ConditionReasons.Completed,
-					metav1.ConditionFalse,
-					utils.CompletedMessages[clusterGroupUpgrade.RolloutType()],
-				)
-				utils.SetStatusCondition(
-					&clusterGroupUpgrade.Status.Conditions,
-					utils.ConditionTypes.Succeeded,
-					utils.ConditionReasons.Completed,
-					metav1.ConditionTrue,
-					utils.CompletedMessages[clusterGroupUpgrade.RolloutType()],
-				)
-				nextReconcile = requeueImmediately()
 			}
 		}
 	}
@@ -711,6 +693,49 @@ func (r *ClusterGroupUpgradeReconciler) Reconcile(ctx context.Context, req ctrl.
 	// Update status
 	err = r.updateStatus(ctx, clusterGroupUpgrade)
 	return
+}
+
+// reconcileLastBatch remediates the last batch and, once the upgrade is
+// complete, sets the final conditions and requeues immediately so the
+// completion is processed.
+func (r *ClusterGroupUpgradeReconciler) reconcileLastBatch(
+	ctx context.Context, clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade, nextReconcile *ctrl.Result) error {
+	isUpgradeComplete, err := r.remediateLastBatch(ctx, clusterGroupUpgrade, nextReconcile)
+	if err != nil {
+		return err
+	}
+	if isUpgradeComplete {
+		setCompletionConditions(clusterGroupUpgrade)
+		*nextReconcile = requeueImmediately()
+	}
+	return nil
+}
+
+// setCompletionConditions sets the final Progressing and Succeeded conditions
+// once the last batch has finished. A ManifestWork rollout only re-checks its
+// last batch, so clusters that timed out in an earlier batch (BatchTimeoutAction
+// Continue) are only visible in status.clusters; if there are any, the CGU ends
+// TimedOut instead of Completed, as a policy rollout would.
+func setCompletionConditions(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) {
+	rolloutType := clusterGroupUpgrade.RolloutType()
+	reason, succeeded, message := utils.ConditionReasons.Completed, metav1.ConditionTrue, utils.CompletedMessages[rolloutType]
+	if rolloutType == ranv1alpha1.RolloutTypes.ManifestWork && hasTimedOutClusters(clusterGroupUpgrade) {
+		reason, succeeded, message = utils.ConditionReasons.TimedOut, metav1.ConditionFalse, utils.TimeoutMessages[rolloutType]+" on some clusters"
+	}
+	utils.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions,
+		utils.ConditionTypes.Progressing, reason, metav1.ConditionFalse, message)
+	utils.SetStatusCondition(&clusterGroupUpgrade.Status.Conditions,
+		utils.ConditionTypes.Succeeded, reason, succeeded, message)
+}
+
+// hasTimedOutClusters reports whether any cluster in status.clusters timed out.
+func hasTimedOutClusters(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) bool {
+	for _, cluster := range clusterGroupUpgrade.Status.Clusters {
+		if cluster.State == utils.ClusterRemediationTimedout {
+			return true
+		}
+	}
+	return false
 }
 
 func shouldDeleteObjects(clusterGroupUpgrade *ranv1alpha1.ClusterGroupUpgrade) bool {
