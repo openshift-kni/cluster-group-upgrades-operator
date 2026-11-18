@@ -399,6 +399,71 @@ func TestEvaluateSpokeFormats(t *testing.T) {
 	}
 }
 
+// TestRunPreflightGatesScopesSpokeCheckToEligibleSet verifies the spoke-side
+// seed-format check runs against plan item 0's eligible set, not the full base set
+// (the Developer-of-Record decision on CNF-30039): an unavailable spoke that matches
+// the IBGU selectors but is ineligible for the plan (no CGU can target it) must not
+// block, while an unavailable spoke that is eligible must still block. An Upgrade-only
+// plan is the case where the two sets differ — eligibility requires the Prep-completed
+// label — whereas a Prep plan's eligible set equals its base set.
+func TestRunPreflightGatesScopesSpokeCheckToEligibleSet(t *testing.T) {
+	prepCompleted := map[string]string{
+		"common": "true",
+		fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, "prep"): "true",
+	}
+	baseOnly := map[string]string{"common": "true"}
+
+	upgradeOnlyIBGU := func() *ibguv1alpha1.ImageBasedGroupUpgrade {
+		return newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Upgrade}}})
+	}
+	newReconciler := func(fakeClient client.Client) IBGUReconciler {
+		return IBGUReconciler{
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			Recorder:        record.NewFakeRecorder(10),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.SeedFormatVersion},
+		}
+	}
+
+	t.Run("an unavailable ineligible spoke does not block", func(t *testing.T) {
+		ibgu := upgradeOnlyIBGU()
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		// Eligible (Prep-completed), available, matching claim: the only spoke a CGU in
+		// this plan can target, and it passes.
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			availableClusterWithSeedFormat("eligible-ok", prepCompleted, lcav1.SeedFormatVersion)))
+		// Matches the IBGU selector but lacks the Prep-completed label, so no CGU targets
+		// it; it is unavailable, which would block the IBGU if the check used the base set.
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("ineligible-down", baseOnly)))
+
+		reconciler := newReconciler(fakeClient)
+		frozen, block, err := reconciler.runPreflightGates(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		// The ineligible unavailable spoke is outside the eligible set, so it does not block.
+		assert.Nil(t, block)
+		// Only the eligible spoke is frozen.
+		assert.Equal(t, []string{"eligible-ok"}, frozen)
+	})
+
+	t.Run("an unavailable eligible spoke still blocks", func(t *testing.T) {
+		ibgu := upgradeOnlyIBGU()
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		// Eligible (Prep-completed) but unavailable: a CGU would target it, so its
+		// unavailability must terminally block the IBGU.
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("eligible-down", prepCompleted)))
+
+		reconciler := newReconciler(fakeClient)
+		_, block, err := reconciler.runPreflightGates(context.TODO(), ibgu)
+		assert.NoError(t, err)
+		assert.NotNil(t, block)
+		assert.Equal(t, utils.ConditionReasons.SpokeClusterUnavailable, block.reason)
+		assert.Contains(t, block.message, "eligible-down")
+	})
+}
+
 // TestEnsureManifestsSeedFormatGate verifies the seed-format gate as wired into
 // ensureManifests: with its references resolved it rejects a pre-bump seed
 // terminally before any CGU is created, it runs after the reference gate, and it
@@ -717,17 +782,17 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 		reconciler := IBGUReconciler{
 			Client: uncachedReader, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
 		}
-		eligible, _, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		// The gate passed via the uncached read: no false NoClustersMatchSelector block.
 		assert.Nil(t, block)
-		// The gate returns the eligible set resolved via the uncached reader, which the
-		// first CGU is then created from.
-		assert.Equal(t, []string{"cluster1"}, eligible)
+		// The gate returns the eligible ManagedCluster objects resolved via the uncached
+		// reader, which the first CGU is then created from.
+		assert.Equal(t, []string{"cluster1"}, clusterNames(eligible))
 
 		// Control: a lagging reader (no cluster) as APIReader blocks terminally.
 		cachedOnly := IBGUReconciler{Client: laggingReader, APIReader: laggingReader, Scheme: testscheme, Log: logr.Discard()}
-		_, _, cachedBlock, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		_, cachedBlock, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.NotNil(t, cachedBlock)
 		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedBlock.reason)

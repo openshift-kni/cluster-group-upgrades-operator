@@ -77,10 +77,15 @@ const preflightStartDeadline = 5 * time.Minute
 // It reads the seed image format once for every in-scope IBGU — the spoke-side
 // comparison (D4 check 2) needs it on every IBGU, not only those that set
 // backupContent — and compares it against each spoke's expected format, resolved
-// from the LCA ClusterClaim (D3). The base ManagedCluster set is the one the
-// empty-set gate already resolved (threaded in as baseClusters), so the whole
-// pre-flight issues a single uncached List. No spoke ManifestWork is created.
-func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, baseClusters []clusterv1.ManagedCluster) (*preflightBlock, error) {
+// from the LCA ClusterClaim (D3). The spokes it checks are plan item 0's eligible
+// ManagedClusters — the frozen set the first CGU acts on — which the empty-set gate
+// already resolved (threaded in as eligibleClusters), so the whole pre-flight issues a
+// single uncached List. Scoping to the eligible set (not the full base set) means a
+// selector-matching but plan-ineligible spoke no CGU can target never terminally
+// blocks the IBGU; a targeted spoke that is unavailable or incompatible still blocks.
+// For a Prep plan the eligible set equals the base set, so Prep is unaffected. No
+// spoke ManifestWork is created.
+func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, eligibleClusters []clusterv1.ManagedCluster) (*preflightBlock, error) {
 	// The seed-format rule only applies to a plan that stages or applies the seed.
 	// A recovery-only plan (Abort, AbortOnFailure, Rollback, FinalizeUpgrade,
 	// FinalizeRollback) must never be blocked on the registry being readable: a
@@ -140,10 +145,11 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return &preflightBlock{utils.ConditionReasons.BackupContentUnsupportedSeed, msg}, nil
 	}
 
-	// Spoke-side check (D4 check 2): every spoke in the resolved base set must be
-	// available and expect the image's format. The comparison is a pure function of
-	// the already-listed ManagedClusters, so no additional read is issued here.
-	return evaluateSpokeFormats(imageFormat, baseClusters), nil
+	// Spoke-side check (D4 check 2): every eligible spoke (the frozen set the plan's
+	// CGUs act on) must be available and expect the image's format. The comparison is a
+	// pure function of the already-listed ManagedClusters, so no additional read is
+	// issued here.
+	return evaluateSpokeFormats(imageFormat, eligibleClusters), nil
 }
 
 // expectedSpokeFormat returns the seed format version a spoke expects (design D3),
@@ -172,7 +178,7 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 	return lcav1.SeedFormatVersion - 1, nil
 }
 
-// evaluateSpokeFormats compares every spoke in the resolved base set against the
+// evaluateSpokeFormats compares every spoke in plan item 0's eligible set against the
 // seed image's format (design D4 check 2) and returns a single terminal block, or
 // nil when every spoke is compatible. It issues no reads: the ManagedClusters were
 // listed once by the empty-set gate.

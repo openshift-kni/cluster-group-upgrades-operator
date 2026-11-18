@@ -1900,6 +1900,16 @@ func availableClusterWithSeedFormat(name string, clusterLabels map[string]string
 	return mc
 }
 
+// clusterNames extracts the names of a ManagedCluster slice, so a test can assert on
+// the eligible set ensureNonEmptyClusterSet returns as objects.
+func clusterNames(clusters []clusterv1.ManagedCluster) []string {
+	names := make([]string, 0, len(clusters))
+	for i := range clusters {
+		names = append(names, clusters[i].GetName())
+	}
+	return names
+}
+
 // TestEnsureManifestsFreezesClusterSet verifies that every CGU acts on a subset
 // of the set frozen at plan item 0, even when a new ManagedCluster that matches
 // the selector is added mid-rollout.
@@ -2241,10 +2251,10 @@ func TestEmptySetGateMatchesActualLabels(t *testing.T) {
 		ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}}))
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
-	eligible, _, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+	eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 	assert.NoError(t, err)
 	assert.Nil(t, block)
-	assert.Equal(t, []string{"cluster1"}, eligible)
+	assert.Equal(t, []string{"cluster1"}, clusterNames(eligible))
 }
 
 // TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate (design D2): on the
