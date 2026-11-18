@@ -142,8 +142,8 @@ github.com/opencontainers/go-digest v1.0.0 h1:apOUWs51W5PlhuyGyz9FCeeBIOUDA/6nW8
 github.com/opencontainers/go-digest v1.0.0/go.mod h1:0JzlMkj0TRzQZfJkVvzbP0HBR3IKzErnv2BNG4W4MAM=
 github.com/opencontainers/image-spec v1.1.1 h1:y0fUlFfIZhPF1W537XOLg0/fcx6zcHCJwooC2xJA040=
 github.com/opencontainers/image-spec v1.1.1/go.mod h1:qpqAh3Dmcf36wStyyWU+kCeDgrGnAve2nCC8+7h8Q0M=
-github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2 h1:TnAEzv9F5x7IrDb5dQSVOIYzJu6QZ55DDFtFAFfcroc=
-github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2/go.mod h1:hi518zq7zc9lu10YR3P0XxGKgQFinr8RyiwXIDP6FRY=
+github.com/openshift-kni/lifecycle-agent v0.0.0-20261117201240-bf328b716b70 h1:MRnekw5iq8ajW1kCixdoZJy+++bcHag6U2Rsp4ewSvc=
+github.com/openshift-kni/lifecycle-agent v0.0.0-20261117201240-bf328b716b70/go.mod h1:4DVWj3F52aUF9yKKi2Awr/65MicMebCZc8fO6n6J16c=
 github.com/openshift/api v0.0.0-20261123012947-9ac77f18ba5d h1:rDofH7OmoOmB6DSD94dz9VmzjSGtHZuOIYqzFSynC/A=
 github.com/openshift/api v0.0.0-20261123012947-9ac77f18ba5d/go.mod h1:2oI3aXQFDjjl7l4xA9ZPSkB+l+lyfWLg7P2sWg9yEvM=
 github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b h1:ErTc+6D1n/rpRaUYP++h0YlOzM+q7UaAdqDZrzhA0ho=

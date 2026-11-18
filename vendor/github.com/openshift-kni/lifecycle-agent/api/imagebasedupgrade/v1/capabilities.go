@@ -35,7 +35,7 @@ const (
 	// way. It must match the seed image's SeedFormatOCILabel; the spoke's own
 	// hard equality check in Prep (controllers/prep_handlers.go) rejects an
 	// incompatible seed regardless of what is published here.
-	SeedFormatVersion = 4
+	SeedFormatVersion = 5
 
 	// SeedFormatOCILabel is the OCI image label key that carries the seed format
 	// version on a seed image. lca-cli stamps SeedFormatVersion onto every seed
@@ -65,11 +65,10 @@ const (
 	SeedFormatVersionStatusField = "seedFormatVersion"
 
 	// BackupContentFirstSeedFormatVersion is the first seed format version that
-	// supports the IBU spec.backupContent reference field. It is intentionally
-	// not equal to SeedFormatVersion in this release: backupContent ships in the
-	// same backport unit as the format bump (CNF-28772), so the first format that
-	// supports it is one ahead of the current SeedFormatVersion until that bump
-	// lands.
+	// supports the IBU spec.backupContent reference field. It equals
+	// SeedFormatVersion as of this release: backupContent ships in the same
+	// backport unit as the format bump (CNF-28772), and that bump has now landed,
+	// so the current seed format is the first one that supports it.
 	//
 	// LCA itself never compares against this constant. It exists for the hub: it
 	// lets TALM reject an IBGU that sets backupContent against a pre-bump seed
