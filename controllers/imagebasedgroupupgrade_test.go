@@ -78,7 +78,10 @@ func syncStatusForTest(t *testing.T, r *IBGUReconciler, ibgu *ibguv1alpha1.Image
 	return nil
 }
 
-func TestSyncStatusWithCGUs(t *testing.T) {
+// TestSyncStatusFromCGUList verifies how Status.Clusters is rebuilt from a snapshot of
+// the owned CGUs: completed and timed-out clusters, in-progress actions, plan-index
+// ordering, and LCA-reported stage failures surfaced while a cluster is still in progress.
+func TestSyncStatusFromCGUList(t *testing.T) {
 	errorMsg := "error message"
 	cmw := &v1alpha1.ManifestWorkStatus{
 		Name: "ibu-finalizeupgrade",

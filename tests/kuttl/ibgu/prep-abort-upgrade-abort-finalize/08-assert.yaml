@@ -86,8 +86,16 @@ metadata:
     kind: ImageBasedGroupUpgrade
     name: upgrade-4.15.0
 spec:
-  clusters:
-  - spoke4
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    - key: lcm.openshift.io/ibgu-upgrade-completed
+      operator: Exists
   enable: true
   manifestWorkTemplates:
   - upgrade-4.15.0-finalizeupgrade
