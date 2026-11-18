@@ -29,6 +29,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/record"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
@@ -67,22 +68,29 @@ func backupContentIBGU() *ibguv1alpha1.ImageBasedGroupUpgrade {
 }
 
 func TestEnsureSeedFormatCompatible(t *testing.T) {
+	// bumpedImage is the current seed format (SeedFormatVersion); a spoke with no
+	// claim expects one less (SeedFormatVersion-1 == preBumpFormat), so it mismatches
+	// a bumped image and matches a pre-bump one.
+	const bumpedImage = lcav1.SeedFormatVersion
+
 	tests := []struct {
 		name           string
 		mutate         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade)
 		reader         *fakeSeedImageReader
 		pullSecret     *corev1.Secret
+		baseClusters   []clusterv1.ManagedCluster
 		expectBlock    bool
 		expectReason   utils.ConditionReason
 		expectReadCall bool
 		expectEvent    bool
 	}{
 		{
-			name:           "no backupContent passes through without reading the image",
+			name:           "no backupContent still reads the image and runs the spoke check",
 			mutate:         func(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) { ibgu.Spec.IBUSpec.BackupContent = nil },
 			reader:         &fakeSeedImageReader{format: preBumpFormat},
+			baseClusters:   []clusterv1.ManagedCluster{*availableClusterWithSeedFormat("cluster1", nil, preBumpFormat)},
 			expectBlock:    false,
-			expectReadCall: false,
+			expectReadCall: true,
 		},
 		{
 			name:           "backupContent with a pre-bump seed is terminal",
@@ -92,9 +100,26 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 			expectReadCall: true,
 		},
 		{
-			name:           "backupContent with a supported seed proceeds",
+			name:           "backupContent with a supported seed and matching spoke proceeds",
 			reader:         &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
+			baseClusters:   []clusterv1.ManagedCluster{*availableClusterWithSeedFormat("cluster1", nil, lcav1.BackupContentFirstSeedFormatVersion)},
 			expectBlock:    false,
+			expectReadCall: true,
+		},
+		{
+			name:           "spoke whose claim mismatches the image is terminal",
+			reader:         &fakeSeedImageReader{format: bumpedImage},
+			baseClusters:   []clusterv1.ManagedCluster{*availableClusterWithSeedFormat("cluster1", nil, preBumpFormat)},
+			expectBlock:    true,
+			expectReason:   utils.ConditionReasons.SeedFormatMismatch,
+			expectReadCall: true,
+		},
+		{
+			name:           "unavailable spoke is terminal",
+			reader:         &fakeSeedImageReader{format: bumpedImage},
+			baseClusters:   []clusterv1.ManagedCluster{*managedClusterWithLabels("cluster1", nil)},
+			expectBlock:    true,
+			expectReason:   utils.ConditionReasons.SpokeClusterUnavailable,
 			expectReadCall: true,
 		},
 		{
@@ -182,7 +207,7 @@ func TestEnsureSeedFormatCompatible(t *testing.T) {
 				SeedImageReader: test.reader,
 			}
 
-			block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+			block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu, test.baseClusters)
 			assert.NoError(t, err)
 			if test.expectBlock {
 				assert.NotNil(t, block)
@@ -234,13 +259,144 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 		SeedImageReader: reader,
 	}
 
-	block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu)
+	block, err := reconciler.ensureSeedFormatCompatible(context.TODO(), ibgu, nil)
 	assert.Error(t, err)
 	assert.Nil(t, block)
 	assert.False(t, reader.called)
 	// No condition is recorded for a transient fault.
 	assert.Nil(t, progressingCondition(ibgu))
 	assert.Nil(t, succeededCondition(ibgu))
+}
+
+// TestEvaluateSpokeFormats covers the pure spoke-side resolution (design D3) and
+// comparison (design D4 check 2): each branch of expectedSpokeFormat/evaluateSpokeFormats
+// with no I/O. preBumpFormat (== SeedFormatVersion-1) is the format a claimless spoke
+// expects.
+func TestEvaluateSpokeFormats(t *testing.T) {
+	const bumpedImage = lcav1.SeedFormatVersion      // current format
+	const preBumpImage = lcav1.SeedFormatVersion - 1 // == preBumpFormat
+
+	// available builds an Available=True ManagedCluster carrying the given raw
+	// seed-format claim value; an empty value means no claim is published.
+	available := func(name, claimValue string) clusterv1.ManagedCluster {
+		mc := clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{{
+					Type:               clusterv1.ManagedClusterConditionAvailable,
+					Status:             metav1.ConditionTrue,
+					Reason:             "ManagedClusterAvailable",
+					LastTransitionTime: metav1.Now(),
+				}},
+			},
+		}
+		if claimValue != "" {
+			mc.Status.ClusterClaims = []clusterv1.ManagedClusterClaim{
+				{Name: lcav1.SeedFormatClusterClaimName, Value: claimValue},
+			}
+		}
+		return mc
+	}
+	// unavailable builds a ManagedCluster with no Available=True condition.
+	unavailable := func(name string) clusterv1.ManagedCluster {
+		return clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: name}}
+	}
+
+	tests := []struct {
+		name         string
+		imageFormat  int
+		clusters     []clusterv1.ManagedCluster
+		expectBlock  bool
+		expectReason utils.ConditionReason
+		expectNames  []string // substrings the block message must contain
+		absentNames  []string // substrings the block message must not contain
+	}{
+		{
+			name:        "available spokes with a matching claim pass",
+			imageFormat: bumpedImage,
+			clusters:    []clusterv1.ManagedCluster{available("c1", "5"), available("c2", "5")},
+			expectBlock: false,
+		},
+		{
+			name:        "empty cluster set passes",
+			imageFormat: bumpedImage,
+			clusters:    nil,
+			expectBlock: false,
+		},
+		{
+			name:         "unavailable spoke blocks and is named",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{unavailable("c1")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SpokeClusterUnavailable,
+			expectNames:  []string{"c1"},
+		},
+		{
+			name:         "claim that mismatches the image blocks, naming the cluster and expected format",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{available("c1", "4")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SeedFormatMismatch,
+			expectNames:  []string{"c1", "expects 4"},
+		},
+		{
+			name:         "claim absent against a bumped image mismatches (expects pre-bump)",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{available("c1", "")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SeedFormatMismatch,
+			expectNames:  []string{"c1", fmt.Sprintf("expects %d", preBumpImage)},
+		},
+		{
+			name:        "claim absent against a pre-bump image passes",
+			imageFormat: preBumpImage,
+			clusters:    []clusterv1.ManagedCluster{available("c1", "")},
+			expectBlock: false,
+		},
+		{
+			name:         "non-integer claim mismatches (fail-closed)",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{available("c1", "not-a-number")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SeedFormatMismatch,
+			expectNames:  []string{"c1"},
+		},
+		{
+			name:         "multiple mismatched spokes are all named",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{available("c1", "4"), available("c2", "")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SeedFormatMismatch,
+			expectNames:  []string{"c1", "c2"},
+		},
+		{
+			name:         "unavailable takes precedence over mismatch; only unavailable spokes are named",
+			imageFormat:  bumpedImage,
+			clusters:     []clusterv1.ManagedCluster{available("bad-format", "4"), unavailable("down1"), unavailable("down2")},
+			expectBlock:  true,
+			expectReason: utils.ConditionReasons.SpokeClusterUnavailable,
+			expectNames:  []string{"down1", "down2"},
+			absentNames:  []string{"bad-format"},
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			block := evaluateSpokeFormats(test.imageFormat, test.clusters)
+			if !test.expectBlock {
+				assert.Nil(t, block)
+				return
+			}
+			assert.NotNil(t, block)
+			assert.Equal(t, test.expectReason, block.reason)
+			for _, name := range test.expectNames {
+				assert.Contains(t, block.message, name)
+			}
+			for _, name := range test.absentNames {
+				assert.NotContains(t, block.message, name)
+			}
+		})
+	}
 }
 
 // TestEnsureManifestsSeedFormatGate verifies the seed-format gate as wired into
@@ -309,14 +465,16 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		assert.Equal(t, string(utils.ConditionReasons.UnresolvableDenpendency), progressingCondition(ibgu).Reason)
 	})
 
-	t.Run("compatible seed with resolved references creates a CGU", func(t *testing.T) {
+	t.Run("compatible seed with an available matching spoke creates a CGU", func(t *testing.T) {
 		ibgu := backupContentIBGU()
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+		// An available spoke publishing the matching seed-format claim passes check 2.
 		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"},
+				lcav1.BackupContentFirstSeedFormatVersion)))
 
 		reader := &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}
 		reconciler := IBGUReconciler{
@@ -331,6 +489,68 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		err = reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)
 		assert.NoError(t, err)
+	})
+
+	t.Run("spoke whose claim mismatches the image is terminal before any CGU", func(t *testing.T) {
+		// No backupContent, so check 1 is skipped and the spoke comparison (check 2) is
+		// the gate under test: a claimless spoke expects the pre-bump format and so
+		// mismatches a bumped image.
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"}, preBumpFormat)))
+
+		reader := &fakeSeedImageReader{format: lcav1.SeedFormatVersion}
+		reconciler := IBGUReconciler{
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: reader,
+		}
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
+		assert.NoError(t, err)
+		assert.True(t, reader.called)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.SeedFormatMismatch), succeeded.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.SeedFormatMismatch), progressingCondition(ibgu).Reason)
+		assert.Contains(t, succeeded.Message, "cluster1")
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
+	})
+
+	t.Run("unavailable spoke is terminal before any CGU", func(t *testing.T) {
+		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+
+		fakeClient, err := getFakeClientFromObjects()
+		assert.NoError(t, err)
+		// managedClusterWithLabels sets no Available condition, so the spoke is unavailable.
+		assert.NoError(t, fakeClient.Create(context.TODO(),
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+		reader := &fakeSeedImageReader{format: lcav1.SeedFormatVersion}
+		reconciler := IBGUReconciler{
+			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: reader,
+		}
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
+		assert.NoError(t, err)
+		assert.True(t, reader.called)
+
+		succeeded := succeededCondition(ibgu)
+		assert.NotNil(t, succeeded)
+		assert.Equal(t, metav1.ConditionFalse, succeeded.Status)
+		assert.Equal(t, string(utils.ConditionReasons.SpokeClusterUnavailable), succeeded.Reason)
+		assert.Equal(t, string(utils.ConditionReasons.SpokeClusterUnavailable), progressingCondition(ibgu).Reason)
+		assert.Contains(t, succeeded.Message, "cluster1")
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu)))
 	})
 
 	t.Run("in-progress IBGU is not re-checked", func(t *testing.T) {
@@ -497,7 +717,7 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 		reconciler := IBGUReconciler{
 			Client: uncachedReader, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
 		}
-		eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		eligible, _, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		// The gate passed via the uncached read: no false NoClustersMatchSelector block.
 		assert.Nil(t, block)
@@ -507,7 +727,7 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 
 		// Control: a lagging reader (no cluster) as APIReader blocks terminally.
 		cachedOnly := IBGUReconciler{Client: laggingReader, APIReader: laggingReader, Scheme: testscheme, Log: logr.Discard()}
-		_, cachedBlock, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+		_, _, cachedBlock, err := cachedOnly.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 		assert.NoError(t, err)
 		assert.NotNil(t, cachedBlock)
 		assert.Equal(t, utils.ConditionReasons.NoClustersMatchSelector, cachedBlock.reason)
@@ -528,7 +748,8 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 		assert.NoError(t, err)
 		assert.NoError(t, uncachedReader.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
 		assert.NoError(t, uncachedReader.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"},
+				lcav1.BackupContentFirstSeedFormatVersion)))
 
 		reconciler := IBGUReconciler{
 			Client: cachedClient, APIReader: uncachedReader, Scheme: testscheme, Log: logr.Discard(),
