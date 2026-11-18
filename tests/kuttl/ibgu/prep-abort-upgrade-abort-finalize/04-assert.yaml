@@ -76,9 +76,16 @@ spec:
     beforeEnable:
       addClusterAnnotations:
         import.open-cluster-management.io/disable-auto-import: "true"
-  clusters:
-  - spoke1
-  - spoke4
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    - key: lcm.openshift.io/ibgu-prep-completed
+      operator: Exists
   enable: true
   manifestWorkTemplates:
   - upgrade-4.15.0-upgrade

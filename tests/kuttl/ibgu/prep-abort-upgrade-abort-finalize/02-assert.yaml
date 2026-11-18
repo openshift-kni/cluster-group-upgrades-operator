@@ -65,8 +65,25 @@ metadata:
     kind: ImageBasedGroupUpgrade
     name: upgrade-4.15.0
 spec:
-  clusters:
-  - spoke6
+  clusterLabelSelectors:
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    - key: lcm.openshift.io/ibgu-prep-failed
+      operator: Exists
+  - matchExpressions:
+    - key: name
+      operator: In
+      values:
+      - spoke1
+      - spoke4
+      - spoke6
+    - key: lcm.openshift.io/ibgu-upgrade-failed
+      operator: Exists
   enable: true
   manifestWorkTemplates:
   - upgrade-4.15.0-abortonfailure

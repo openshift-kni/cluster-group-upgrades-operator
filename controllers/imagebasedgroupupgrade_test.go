@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"testing"
 	"time"
 
@@ -21,7 +22,6 @@ import (
 	lcav1 "github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -44,7 +44,44 @@ func init() {
 	testscheme.AddKnownTypes(clusterv1.SchemeGroupVersion, &clusterv1.ManagedClusterList{})
 }
 
-func TestSyncStatusWithCGUs(t *testing.T) {
+// frozenCGU rewrites a test fixture CGU written as an explicit spec.clusters list into
+// the form the controller now produces: the frozen set as a `name In (...)` requirement
+// in clusterLabelSelectors.
+func frozenCGU(cgu v1alpha1.ClusterGroupUpgrade) v1alpha1.ClusterGroupUpgrade {
+	if len(cgu.Spec.Clusters) == 0 {
+		return cgu
+	}
+	cgu.Spec.ClusterLabelSelectors = utils.PlanItemClusterSelectors(cgu.Spec.Clusters,
+		&ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Prep}})
+	cgu.Spec.Clusters = nil
+	return cgu
+}
+
+// ensureManifestsForTest takes the single CGU snapshot the way Reconcile does, rebuilds
+// Status.Clusters and the cluster labels from it, then runs the plan loop from that same
+// snapshot.
+func ensureManifestsForTest(t *testing.T, r *IBGUReconciler, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	t.Helper()
+	cguList, err := r.listOwnedCGUs(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	r.syncStatusFromCGUList(context.TODO(), ibgu, cguList)
+	assert.NoError(t, r.ensureClusterLabels(context.TODO(), ibgu))
+	return r.ensureManifests(context.TODO(), ibgu, cguList)
+}
+
+// syncStatusForTest rebuilds Status.Clusters the way Reconcile does, from one snapshot.
+func syncStatusForTest(t *testing.T, r *IBGUReconciler, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
+	t.Helper()
+	cguList, err := r.listOwnedCGUs(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	r.syncStatusFromCGUList(context.TODO(), ibgu, cguList)
+	return nil
+}
+
+// TestSyncStatusFromCGUList verifies how Status.Clusters is rebuilt from a snapshot of
+// the owned CGUs: completed and timed-out clusters, in-progress actions, plan-index
+// ordering, and LCA-reported stage failures surfaced while a cluster is still in progress.
+func TestSyncStatusFromCGUList(t *testing.T) {
 	errorMsg := "error message"
 	cmw := &v1alpha1.ManifestWorkStatus{
 		Name: "ibu-finalizeupgrade",
@@ -507,7 +544,8 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 			objs := []client.Object{}
 			fakeClient, err := getFakeClientFromObjects(objs...)
 			for _, cgu := range test.CGUs {
-				err := fakeClient.Create(context.TODO(), &cgu)
+				fixture := frozenCGU(cgu)
+				err := fakeClient.Create(context.TODO(), &fixture)
 				if err != nil {
 					panic(err)
 				}
@@ -522,7 +560,7 @@ func TestSyncStatusWithCGUs(t *testing.T) {
 				t.Errorf("error in creating fake client")
 			}
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			err = reconciler.syncStatusWithCGUs(context.Background(), ibgu)
+			err = syncStatusForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
 		})
@@ -1262,8 +1300,8 @@ func TestEnsureManifests(t *testing.T) {
 				},
 			},
 			managedClusters: []clusterv1.ManagedCluster{
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"common": "true"}}},
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}},
+				*managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
+				*managedClusterWithLabels("cluster2", map[string]string{"common": "true"}),
 			},
 			expectedMWRS:     []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
 			expectedCGUCount: 1,
@@ -1312,9 +1350,19 @@ func TestEnsureManifests(t *testing.T) {
         }
       }
     },
-    "clusters": [
-      "cluster1",
-      "cluster2"
+    "clusterLabelSelectors": [
+      {
+        "matchExpressions": [
+          {
+            "key": "name",
+            "operator": "In",
+            "values": [
+              "cluster1",
+              "cluster2"
+            ]
+          }
+        ]
+      }
     ],
     "enable": true,
     "manifestWorkTemplates": [
@@ -1351,8 +1399,8 @@ func TestEnsureManifests(t *testing.T) {
 			expectedMWRS:     []string{"name-abort"},
 			expectedCGUCount: 2,
 			managedClusters: []clusterv1.ManagedCluster{
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster1", Labels: map[string]string{"common": "true"}}},
-				{ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}},
+				*managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
+				*managedClusterWithLabels("cluster2", map[string]string{"common": "true"}),
 			},
 			expectedConditions: []metav1.Condition{
 				{
@@ -1415,9 +1463,23 @@ func TestEnsureManifests(t *testing.T) {
       "afterCompletion": {},
       "beforeEnable": {}
     },
-    "clusters": [
-      "cluster1",
-      "cluster2"
+    "clusterLabelSelectors": [
+      {
+        "matchExpressions": [
+          {
+            "key": "name",
+            "operator": "In",
+            "values": [
+              "cluster1",
+              "cluster2"
+            ]
+          },
+          {
+            "key": "lcm.openshift.io/ibgu-upgrade-completed",
+            "operator": "DoesNotExist"
+          }
+        ]
+      }
     ],
     "enable": true,
     "manifestWorkTemplates": [
@@ -1627,9 +1689,23 @@ func TestEnsureManifests(t *testing.T) {
         }
       }
     },
-    "clusters": [
-      "cluster1",
-      "cluster2"
+    "clusterLabelSelectors": [
+      {
+        "matchExpressions": [
+          {
+            "key": "name",
+            "operator": "In",
+            "values": [
+              "cluster1",
+              "cluster2"
+            ]
+          },
+          {
+            "key": "lcm.openshift.io/ibgu-prep-completed",
+            "operator": "Exists"
+          }
+        ]
+      }
     ],
     "enable": true,
     "manifestWorkTemplates": [
@@ -1686,7 +1762,8 @@ func TestEnsureManifests(t *testing.T) {
 			objs := []client.Object{}
 			fakeClient, err := getFakeClientFromObjects(objs...)
 			for _, cgu := range test.CGUs {
-				err := fakeClient.Create(context.TODO(), &cgu)
+				fixture := frozenCGU(cgu)
+				err := fakeClient.Create(context.TODO(), &fixture)
 				if err != nil {
 					panic(err)
 				}
@@ -1701,7 +1778,7 @@ func TestEnsureManifests(t *testing.T) {
 			}
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 
-			err = reconciler.ensureManifests(context.TODO(), ibgu)
+			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 			list := &mwv1alpha1.ManifestWorkReplicaSetList{}
 			err = reconciler.List(context.TODO(), list)
@@ -1778,7 +1855,8 @@ func completedPrepCGU(clusters []string) v1alpha1.ClusterGroupUpgrade {
 			Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
 		},
 		Spec: v1alpha1.ClusterGroupUpgradeSpec{
-			Clusters:              clusters,
+			ClusterLabelSelectors: utils.PlanItemClusterSelectors(clusters,
+				&ibguv1alpha1.PlanItem{Actions: []string{ibguv1alpha1.Prep}}),
 			ManifestWorkTemplates: []string{"name-prep"},
 		},
 		Status: v1alpha1.ClusterGroupUpgradeStatus{
@@ -1787,7 +1865,14 @@ func completedPrepCGU(clusters []string) v1alpha1.ClusterGroupUpgrade {
 	}
 }
 
-func managedClusterWithLabels(name string, labels map[string]string) *clusterv1.ManagedCluster {
+// managedClusterWithLabels builds a ManagedCluster carrying the given labels plus the
+// `name` label ACM maintains on every ManagedCluster, which the frozen-set selectors
+// match on.
+func managedClusterWithLabels(name string, clusterLabels map[string]string) *clusterv1.ManagedCluster {
+	labels := map[string]string{utils.ClusterNameLabel: name}
+	for key, value := range clusterLabels {
+		labels[key] = value
+	}
 	return &clusterv1.ManagedCluster{ObjectMeta: v1.ObjectMeta{Name: name, Labels: labels}}
 }
 
@@ -1813,20 +1898,21 @@ func TestEnsureManifestsFreezesClusterSet(t *testing.T) {
 	}
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	err = reconciler.Get(context.TODO(), types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"cluster1", "cluster2"}, cgu.Spec.Clusters)
-	assert.Empty(t, cgu.Spec.ClusterLabelSelectors)
+	assert.Equal(t, []string{"cluster1", "cluster2"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
+	assert.Empty(t, cgu.Spec.Clusters)
 }
 
-// TestEnsureManifestsVanishedCluster verifies that deleting a ManagedCluster
-// mid-rollout does not block later plan items: the cluster is excluded from the
-// generated CGU (so validateCR does not hard-fail), reported in the IBGU status
-// by syncStatusWithCGUs, and a Warning event is emitted.
+// TestEnsureManifestsVanishedCluster verifies that deleting a ManagedCluster mid-rollout
+// does not block later plan items: the frozen set still lists it, but it no longer
+// matches the `name In (...)` selector, so the CGU simply never acts on it. No report,
+// filter or event is needed — the CGU target is a selector, not a names list that
+// validateCR would hard-fail on.
 func TestEnsureManifestsVanishedCluster(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
@@ -1844,74 +1930,28 @@ func TestEnsureManifestsVanishedCluster(t *testing.T) {
 		assert.NoError(t, fakeClient.Create(context.TODO(), mc))
 	}
 
-	recorder := record.NewFakeRecorder(10)
-	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(), Recorder: recorder}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
-	// The generated CGU acts only on the surviving clusters (not blocked).
+	// The CGU is created against the frozen set; cluster2 is still in the name list, and
+	// not existing is what excludes it at resolution time.
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	err = reconciler.Get(context.TODO(), types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"cluster1", "cluster3"}, cgu.Spec.Clusters)
+	assert.Equal(t, []string{"cluster1", "cluster2", "cluster3"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 
-	// syncStatusWithCGUs reports the vanished cluster as dropped and emits an event.
-	err = reconciler.syncStatusWithCGUs(context.TODO(), ibgu)
+	// The status rebuild reports only the clusters the CGUs actually saw.
+	err = syncStatusForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
-	droppedState := findClusterState(ibgu, "cluster2")
-	assert.NotNil(t, droppedState)
-	assert.True(t, droppedState.Dropped)
-	assert.Equal(t, droppedClusterReason, droppedState.DroppedReason)
-
-	select {
-	case event := <-recorder.Events:
-		assert.Contains(t, event, "Warning")
-		assert.Contains(t, event, "cluster2")
-	default:
-		t.Error("expected a Warning event for the dropped cluster")
-	}
-}
-
-// TestMarkDroppedClustersDurableAndEventOnce verifies the dropped marker is
-// re-applied on every reconcile (durable) and the Warning event fires only the
-// first time each cluster is observed as dropped.
-func TestMarkDroppedClustersDurableAndEventOnce(t *testing.T) {
-	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
-		{Actions: []string{ibguv1alpha1.Prep}},
-	})
-
-	fakeClient, err := getFakeClientFromObjects()
-	assert.NoError(t, err)
-	prepCGU := completedPrepCGU([]string{"cluster1", "cluster2"})
-	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-	// cluster2 does not exist; cluster1 does.
-	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
-
-	recorder := record.NewFakeRecorder(10)
-	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(), Recorder: recorder}
-	cguList := &v1alpha1.ClusterGroupUpgradeList{}
-	assert.NoError(t, reconciler.List(context.TODO(), cguList))
-
-	// First pass: nothing previously dropped -> mark + event.
-	assert.NoError(t, reconciler.markDroppedClusters(context.TODO(), ibgu, cguList, droppedClusterNames(ibgu)))
-	assert.True(t, findClusterState(ibgu, "cluster2").Dropped)
-	assert.Len(t, recorder.Events, 1)
-	<-recorder.Events
-
-	// Second pass simulating a later reconcile: syncStatusWithCGUs would have
-	// rebuilt Status.Clusters, so re-marking must restore Dropped but NOT re-emit.
-	ibgu.Status.Clusters = nil
-	prevDropped := map[string]bool{"cluster2": true}
-	assert.NoError(t, reconciler.markDroppedClusters(context.TODO(), ibgu, cguList, prevDropped))
-	assert.True(t, findClusterState(ibgu, "cluster2").Dropped)
-	assert.Len(t, recorder.Events, 0)
+	assert.Nil(t, findClusterState(ibgu, "cluster2"))
 }
 
 // TestEnsureManifestsNoEligibleClusters verifies that a later plan item (index > 0)
-// narrowing to zero eligible clusters (e.g. AbortOnFailure when nothing failed) does
-// not create a CGU with an empty spec.clusters and is treated as completed. (Plan
-// item 0 narrowing to zero is instead a terminal NoEligibleClusters block.)
+// narrowing to zero eligible clusters (e.g. AbortOnFailure when nothing failed) still
+// creates a CGU: the narrowing lives in the selector, so the CGU selects nothing,
+// completes, and the plan moves on. (Plan item 0 narrowing to zero is instead a
+// terminal NoEligibleClusters block.)
 func TestEnsureManifestsNoEligibleClusters(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
@@ -1927,23 +1967,16 @@ func TestEnsureManifestsNoEligibleClusters(t *testing.T) {
 		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
-	// No CGU is created for the AbortOnFailure item.
+	// A CGU is created for the AbortOnFailure item; it carries the frozen set plus the
+	// two failure requirements and simply resolves to no cluster.
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	err = reconciler.Get(context.TODO(), types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, cgu)
-	assert.True(t, apierrors.IsNotFound(err))
-
-	// The plan is reported as fully completed.
-	completed := false
-	for _, c := range ibgu.Status.Conditions {
-		if c.Type == string(utils.ConditionTypes.Progressing) &&
-			c.Reason == string(utils.ConditionReasons.Completed) {
-			completed = true
-		}
-	}
-	assert.True(t, completed)
+	assert.NoError(t, err)
+	assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
+	assert.Len(t, cgu.Spec.ClusterLabelSelectors, 2)
 }
 
 // TestEnsureClusterLabelsSkipsMissingCluster verifies that a cluster deleted
@@ -1972,7 +2005,9 @@ func TestEnsureClusterLabelsSkipsMissingCluster(t *testing.T) {
 
 // TestEnsureManifestsCrossIBGUPlan verifies that a standalone Abort IBGU narrows
 // its target set from the authoritative ManagedCluster labels written by a prior
-// IBGU, so cross-IBGU plans keep working.
+// IBGU, so cross-IBGU plans keep working. The empty-set gate resolves plan item 0 with
+// the same selector the CGU receives, so the frozen set is already narrowed to the
+// clusters without an upgrade-completed label.
 func TestEnsureManifestsCrossIBGUPlan(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Abort}},
@@ -1989,18 +2024,19 @@ func TestEnsureManifestsCrossIBGUPlan(t *testing.T) {
 			"common": "true", "lcm.openshift.io/ibgu-upgrade-completed": ""})))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	err = reconciler.Get(context.TODO(), types.NamespacedName{Name: "name-abort-0", Namespace: "namespace"}, cgu)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+	assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 }
 
-// TestReconcileVanishedClusterDoesNotBlock drives the full Reconcile loop to
-// verify end-to-end that deleting a ManagedCluster mid-rollout does not block
-// later plan items and that the dropped marker persists across reconciles.
+// TestReconcileVanishedClusterDoesNotBlock drives the full Reconcile loop to verify
+// end-to-end that deleting a ManagedCluster mid-rollout does not block later plan items:
+// the frozen selector still lists it, the cluster simply never matches, and no
+// dropped-cluster bookkeeping is involved.
 func TestReconcileVanishedClusterDoesNotBlock(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
@@ -2020,149 +2056,109 @@ func TestReconcileVanishedClusterDoesNotBlock(t *testing.T) {
 				"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})).
 		Build()
 
-	recorder := record.NewFakeRecorder(10)
-	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(), Recorder: recorder}
+	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
 	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: "name", Namespace: "namespace"}}
 
 	_, err := reconciler.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
 
-	// The Upgrade CGU for the surviving cluster was created despite cluster1 being gone.
+	// The Upgrade CGU is created from the frozen set despite cluster1 being gone; the
+	// selector keeps both names, and cluster1 simply stops matching.
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	assert.NoError(t, reconciler.Get(context.TODO(),
 		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
-	assert.Equal(t, []string{"cluster2"}, cgu.Spec.Clusters)
+	assert.Equal(t, []string{"cluster1", "cluster2"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 
-	// The dropped marker is persisted, and survives a second reconcile.
-	updated := &ibguv1alpha1.ImageBasedGroupUpgrade{}
-	assert.NoError(t, reconciler.Get(context.TODO(), req.NamespacedName, updated))
-	assert.True(t, findClusterState(updated, "cluster1").Dropped)
-
+	// A second reconcile is stable and still does not block.
 	_, err = reconciler.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
-	assert.NoError(t, reconciler.Get(context.TODO(), req.NamespacedName, updated))
-	assert.True(t, findClusterState(updated, "cluster1").Dropped)
 }
 
-// TestResolveClustersUsesSyncedStatus verifies that plan-item eligibility is
-// decided from the freshly synced IBGU status as well as the ManagedCluster
-// labels: a cluster whose completion was recorded in status (e.g. the final batch
-// completing in the same write that set the CGU's Succeeded condition) is eligible
-// for the next plan item even though its ManagedCluster label has not been written
-// yet.
+// TestResolveClustersUsesSyncedStatus verifies that the labels a plan item's selector
+// depends on are written from the freshly synced IBGU status, so a completion recorded
+// in the same status write that set plan item 0's Succeeded condition still reaches the
+// ManagedCluster in this reconcile. Eligibility itself is now evaluated by the CGU from
+// those labels; what IBGU owes it is the label write.
 func TestResolveClustersUsesSyncedStatus(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
 		{Actions: []string{ibguv1alpha1.Upgrade}},
 	})
 
-	fakeClient, err := getFakeClientFromObjects()
-	assert.NoError(t, err)
-	// The Prep CGU reports cluster1 complete, so ensureManifests' status sync records
-	// cluster1 as having completed Prep; its ManagedCluster label has not been written
-	// yet, so eligibility must come from the synced status.
+	// The Prep CGU reports cluster1 complete; its ManagedCluster label has not been
+	// written yet.
 	prepCGU := completedPrepCGU([]string{"cluster1"})
 	prepCGU.Status.Clusters = []v1alpha1.ClusterState{{Name: "cluster1", State: "complete"}}
-	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+
+	fakeClient := fake.NewClientBuilder().WithScheme(testscheme).
+		WithStatusSubresource(&ibguv1alpha1.ImageBasedGroupUpgrade{}).
+		WithObjects(ibgu, &prepCGU,
+			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})).
+		Build()
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	req := reconcile.Request{NamespacedName: types.NamespacedName{Name: "name", Namespace: "namespace"}}
+
+	_, err := reconciler.Reconcile(context.TODO(), req)
 	assert.NoError(t, err)
 
+	// The Upgrade CGU carries the frozen set plus the prep-completed requirement.
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	assert.NoError(t, reconciler.Get(context.TODO(),
 		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
-	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
-}
+	assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 
-// TestEnsureManifestsResyncsFromOwnSnapshot reproduces the race where a one-cluster
-// Prep CGU completes between Reconcile's status sync and ensureManifests' own CGU
-// list. The IBGU status entering ensureManifests is stale (it has no record of Prep
-// having completed) and the ManagedCluster has no prep-completed label yet, but the
-// CGU snapshot ensureManifests lists shows Prep done. Because ensureManifests
-// re-syncs status from that same snapshot before evaluating eligibility, the Upgrade
-// plan item still resolves cluster1 and its CGU is created — rather than resolving
-// empty against the stale status, being skipped, and recording a generation-final
-// false success that later reconciles can never undo.
-func TestEnsureManifestsResyncsFromOwnSnapshot(t *testing.T) {
-	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
-		{Actions: []string{ibguv1alpha1.Prep}},
-		{Actions: []string{ibguv1alpha1.Upgrade}},
-	})
-	// Stale snapshot: status synced before Prep completed records nothing for cluster1.
-	ibgu.Status.Clusters = nil
-
-	fakeClient, err := getFakeClientFromObjects()
-	assert.NoError(t, err)
-	// The CGU snapshot ensureManifests lists shows Prep completed for cluster1 (the
-	// batch that flipped to complete between the two reads).
-	prepCGU := completedPrepCGU([]string{"cluster1"})
-	prepCGU.Status.Clusters = []v1alpha1.ClusterState{{Name: "cluster1", State: "complete"}}
-	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-	// cluster1 carries no prep-completed label: ensureClusterLabels ran on the stale
-	// snapshot, so the completed action is only visible via the re-synced status.
-	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
-
-	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
-	assert.NoError(t, err)
-
-	// The Upgrade CGU is created for cluster1 and no false completion is recorded.
-	cgu := &v1alpha1.ClusterGroupUpgrade{}
-	assert.NoError(t, reconciler.Get(context.TODO(),
-		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
-	assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
-	assert.Nil(t, meta.FindStatusCondition(ibgu.Status.Conditions, string(utils.ConditionTypes.Succeeded)))
+	// The label the selector needs was written from the just-synced status, so the CGU
+	// resolves cluster1 even though the label was not on the cluster at the start.
+	managedCluster := &clusterv1.ManagedCluster{}
+	assert.NoError(t, reconciler.Get(context.TODO(), types.NamespacedName{Name: "cluster1"}, managedCluster))
+	assert.Contains(t, managedCluster.GetLabels(),
+		fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(ibguv1alpha1.Prep)))
 }
 
 // TestResolveClustersAbortedClusterNotReselected verifies that a cluster which has
-// already completed an Abort/Finalize is not re-selected by a later plan item even
-// though the synced IBGU status still records its earlier failed action. When the
-// abort completed, ensureClusterLabels cleared the cluster's IBGU action labels;
-// effectiveActionLabels must not resurrect them from the synced status, or a second
-// AbortOnFailure would re-abort a cluster that is already done.
+// already completed an Abort/Finalize is not re-selected by a later plan item: when the
+// abort completed, ensureClusterLabels cleared the cluster's IBGU action labels, and the
+// plan item's selector reads only those labels, so nothing resurrects the earlier
+// failure from the synced status.
 func TestResolveClustersAbortedClusterNotReselected(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
 		{Actions: []string{ibguv1alpha1.AbortOnFailure}},
 	})
-	// cluster1 failed Prep earlier and was already aborted (completed AbortOnFailure),
-	// so its ManagedCluster action labels have been cleared. cluster2 failed Upgrade
-	// and has not been aborted yet.
-	ibgu.Status.Clusters = []ibguv1alpha1.ClusterState{
-		{Name: "cluster1",
-			FailedActions:    []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Prep}},
-			CompletedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.AbortOnFailure}}},
-		{Name: "cluster2",
-			FailedActions: []ibguv1alpha1.ActionMessage{{Action: ibguv1alpha1.Upgrade}}},
-	}
 
 	fakeClient, err := getFakeClientFromObjects()
 	assert.NoError(t, err)
 	prepCGU := completedPrepCGU([]string{"cluster1", "cluster2"})
 	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
-	// Neither ManagedCluster carries IBGU action labels: cluster1's were cleared when
-	// its abort completed; cluster2's upgrade-failed label has not been written yet.
+	// cluster1 failed Prep earlier and was already aborted, so its IBGU action labels
+	// were cleared. cluster2 failed Upgrade and still carries its failed label.
 	assert.NoError(t, fakeClient.Create(context.TODO(),
 		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 	assert.NoError(t, fakeClient.Create(context.TODO(),
-		managedClusterWithLabels("cluster2", map[string]string{"common": "true"})))
+		managedClusterWithLabels("cluster2", map[string]string{
+			"common": "true", "lcm.openshift.io/ibgu-upgrade-failed": ""})))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	cguList := &v1alpha1.ClusterGroupUpgradeList{}
-	assert.NoError(t, reconciler.List(context.TODO(), cguList))
+	assert.NoError(t, ensureManifestsForTest(t, &reconciler, ibgu))
 
-	// Resolve the AbortOnFailure plan item directly from the injected status (the
-	// per-cluster state the in-reconcile sync would have produced from the owned CGUs),
-	// isolating the eligibility logic: the already-aborted cluster1 must not be
-	// re-selected, so only cluster2 is aborted.
-	selected, err := reconciler.resolveClustersForPlanItem(
-		context.TODO(), ibgu, &ibgu.Spec.Plan[1], cguList)
+	// The AbortOnFailure selector targets the frozen set by two failure predicates. Only
+	// cluster2 carries a failure label, so only cluster2 resolves — the already-aborted
+	// cluster1 is not re-selected.
+	cgu := &v1alpha1.ClusterGroupUpgrade{}
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, cgu))
+	parsed, err := parseLabelSelectors(cgu.Spec.ClusterLabelSelectors)
 	assert.NoError(t, err)
-	assert.Equal(t, []string{"cluster2"}, selected)
+	matched := []string{}
+	for _, name := range []string{"cluster1", "cluster2"} {
+		managedCluster := &clusterv1.ManagedCluster{}
+		assert.NoError(t, reconciler.Get(context.TODO(), types.NamespacedName{Name: name}, managedCluster))
+		if matchesAnySelector(parsed, managedCluster.GetLabels()) {
+			matched = append(matched, name)
+		}
+	}
+	assert.Equal(t, []string{"cluster2"}, matched)
 }
 
 // TestReconcileLastBatchCompletesWithSucceeded drives the full Reconcile loop to
@@ -2202,7 +2198,29 @@ func TestReconcileLastBatchCompletesWithSucceeded(t *testing.T) {
 	cgu := &v1alpha1.ClusterGroupUpgrade{}
 	assert.NoError(t, reconciler.Get(context.TODO(),
 		types.NamespacedName{Name: "name-upgrade-1", Namespace: "namespace"}, cgu))
-	assert.Equal(t, []string{"cluster1", "cluster2"}, cgu.Spec.Clusters)
+	assert.Equal(t, []string{"cluster1", "cluster2"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
+}
+
+// TestEmptySetGateMatchesActualLabels verifies the empty-set gate evaluates each
+// ManagedCluster's actual labels, exactly as the CGU will: a cluster that matches the
+// IBGU's selectors but lacks ACM's name label would never be selected by the CGU's
+// `name In (...)` requirement, so the gate must not count it eligible either.
+func TestEmptySetGateMatchesActualLabels(t *testing.T) {
+	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
+	fakeClient, err := getFakeClientFromObjects()
+	assert.NoError(t, err)
+	// cluster1 carries the name label ACM maintains; cluster2 matches the IBGU's
+	// selector but has no name label.
+	assert.NoError(t, fakeClient.Create(context.TODO(),
+		managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+	assert.NoError(t, fakeClient.Create(context.TODO(), &clusterv1.ManagedCluster{
+		ObjectMeta: v1.ObjectMeta{Name: "cluster2", Labels: map[string]string{"common": "true"}}}))
+	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+
+	eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
+	assert.NoError(t, err)
+	assert.Nil(t, block)
+	assert.Equal(t, []string{"cluster1"}, eligible)
 }
 
 // TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate (design D2): on the
@@ -2245,7 +2263,7 @@ func TestEmptySetGateIsTerminal(t *testing.T) {
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 				Recorder: record.NewFakeRecorder(10)}
 
-			err = reconciler.ensureManifests(context.TODO(), ibgu)
+			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 
 			succeeded := succeededCondition(ibgu)
@@ -2297,7 +2315,7 @@ func TestSucceededPresenceIsNotRevived(t *testing.T) {
 					"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
 
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			err = reconciler.ensureManifests(context.TODO(), ibgu)
+			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 
 			// No CGU is created for either plan item.
@@ -2329,7 +2347,7 @@ func TestCompletedWithFailuresAtEndOfPlan(t *testing.T) {
 	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	succeeded := succeededCondition(ibgu)
@@ -2372,7 +2390,7 @@ func TestPlanItemCGUFailedIsCompletedWithFailures(t *testing.T) {
 	assert.NoError(t, fakeClient.Create(context.TODO(), &failedPrepCGU))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	succeeded := succeededCondition(ibgu)
@@ -2382,11 +2400,10 @@ func TestPlanItemCGUFailedIsCompletedWithFailures(t *testing.T) {
 }
 
 // TestEnsureCGUForPlanItemClusterSets verifies the cluster set each plan item's CGU
-// targets: plan item 0 is created from the eligible set the empty-set gate already
-// resolved — passed in verbatim and never re-resolved, so the gate and the first CGU
-// can never disagree and there is no empty-set race to re-check — while a later plan
-// item that legitimately narrows to no eligible cluster is treated as a completion
-// rather than creating an empty CGU.
+// targets: the frozen set it is handed is used verbatim and never re-resolved, so the
+// gate and the first CGU can never disagree and there is no empty-set race to re-check,
+// and a later plan item that narrows to no eligible cluster still gets a CGU whose
+// selector matches nothing.
 func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 	t.Run("plan item 0 targets exactly the gate's eligible set", func(t *testing.T) {
 		// The gate resolved cluster1 as eligible for plan item 0; the CGU must be created
@@ -2410,7 +2427,7 @@ func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		assert.NoError(t, reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
-		assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+		assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 	})
 
 	t.Run("plan item 0 does not re-resolve: a cluster deleted after the gate is still targeted", func(t *testing.T) {
@@ -2432,12 +2449,13 @@ func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		assert.NoError(t, reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
-		assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+		assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 	})
 
-	t.Run("later plan item narrowing to zero is a completion", func(t *testing.T) {
+	t.Run("later plan item narrowing to zero still gets a CGU", func(t *testing.T) {
 		// Plan item 1 is AbortOnFailure; the frozen cluster completed Prep with no
-		// failure, so it is not eligible for AbortOnFailure and the item narrows to zero.
+		// failure, so the item resolves to no cluster — but the narrowing lives in the
+		// selector, so the item is not skipped: it gets a CGU that selects nothing.
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 			{Actions: []string{ibguv1alpha1.Prep}},
 			{Actions: []string{ibguv1alpha1.AbortOnFailure}},
@@ -2452,10 +2470,18 @@ func TestEnsureCGUForPlanItemClusterSets(t *testing.T) {
 
 		cguList := &v1alpha1.ClusterGroupUpgradeList{}
 		assert.NoError(t, reconciler.List(context.TODO(), cguList))
-		// item0Clusters is nil: a later plan item never consults it.
-		completed, err := reconciler.ensureCGUForPlanItem(context.TODO(), ibgu, &ibgu.Spec.Plan[1], 1, cguList, nil)
+		// Once plan item 0's CGU exists, ensureManifests reads the frozen set back from it.
+		frozen := getFrozenClusterSet(ibgu, cguList)
+		assert.Equal(t, []string{"cluster1"}, frozen)
+		completed, err := reconciler.ensureCGUForPlanItem(context.TODO(), ibgu, &ibgu.Spec.Plan[1], 1, cguList, frozen)
 		assert.NoError(t, err)
-		assert.True(t, completed)
+		assert.False(t, completed)
+
+		cgu := &v1alpha1.ClusterGroupUpgrade{}
+		assert.NoError(t, reconciler.Get(context.TODO(),
+			types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, cgu))
+		assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
+		assert.Len(t, cgu.Spec.ClusterLabelSelectors, 2)
 	})
 }
 
@@ -2486,7 +2512,7 @@ func TestStartDeadline(t *testing.T) {
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 				Recorder: record.NewFakeRecorder(10)}
 
-			err = reconciler.ensureManifests(context.TODO(), ibgu)
+			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 
 			cgu := &v1alpha1.ClusterGroupUpgrade{}
@@ -2503,7 +2529,7 @@ func TestStartDeadline(t *testing.T) {
 				// Not blocked: no Succeeded condition, and the first CGU was created.
 				assert.Nil(t, succeededCondition(ibgu))
 				assert.NoError(t, getErr)
-				assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+				assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 			}
 		})
 	}
@@ -2557,7 +2583,7 @@ func TestUncachedCGUListDefeatsStaleTerminalBlock(t *testing.T) {
 		Recorder: record.NewFakeRecorder(10), SeedImageReader: reader,
 	}
 
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	// No terminal block was recorded (neither PreflightWindowExpired nor an empty-set
@@ -2569,14 +2595,11 @@ func TestUncachedCGUListDefeatsStaleTerminalBlock(t *testing.T) {
 	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
 }
 
-// TestSkippedMiddlePlanItemDoesNotBlock verifies that a plan item which legitimately
-// narrows to zero clusters (an AbortOnFailure step when nothing failed) creates no CGU,
-// so once the next item's CGU exists the owned-CGU sequence has a hole at the skipped
-// index. That hole must not be mistaken for an out-of-band deletion — the IBGU proceeds
-// to create the Upgrade CGU and completes normally rather than blocking terminally.
-// Out-of-band deletion of an owned CGU is unsupported tampering and gets no special
-// handling.
-func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
+// TestEmptyMiddlePlanItemDoesNotBlock verifies that a plan item which legitimately
+// narrows to zero clusters (an AbortOnFailure step when nothing failed) still gets a CGU:
+// the narrowing lives in its selector, so the CGU selects nothing, completes, and the
+// plan moves on rather than being blocked or skipped.
+func TestEmptyMiddlePlanItemDoesNotBlock(t *testing.T) {
 	ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{
 		{Actions: []string{ibguv1alpha1.Prep}},
 		{Actions: []string{ibguv1alpha1.AbortOnFailure}},
@@ -2589,7 +2612,7 @@ func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
 	prepCGU := completedPrepCGU([]string{"cluster1"})
 	assert.NoError(t, fakeClient.Create(context.TODO(), &prepCGU))
 	// cluster1 finished Prep (eligible for Upgrade) and has no failed label, so plan
-	// item 1 (AbortOnFailure) narrows to nothing and is skipped without a CGU.
+	// item 1 (AbortOnFailure) resolves to no cluster.
 	assert.NoError(t, fakeClient.Create(context.TODO(),
 		managedClusterWithLabels("cluster1", map[string]string{
 			"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
@@ -2597,31 +2620,36 @@ func TestSkippedMiddlePlanItemDoesNotBlock(t *testing.T) {
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme,
 		Log: logr.Discard(), Recorder: record.NewFakeRecorder(10)}
 
-	// First reconcile: item 0 is complete, item 1 is skipped (no CGU), item 2's Upgrade
-	// CGU is created. No terminal block.
-	assert.NoError(t, reconciler.ensureManifests(context.TODO(), ibgu))
+	// First reconcile: item 0 is complete and item 1's AbortOnFailure CGU is created,
+	// carrying the frozen set and the two failure requirements.
+	assert.NoError(t, ensureManifestsForTest(t, &reconciler, ibgu))
 	assert.Nil(t, succeededCondition(ibgu))
 	abortCGU := &v1alpha1.ClusterGroupUpgrade{}
-	assert.True(t, apierrors.IsNotFound(reconciler.Get(context.TODO(),
-		types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, abortCGU)))
+	assert.NoError(t, reconciler.Get(context.TODO(),
+		types.NamespacedName{Name: "name-abortonfailure-1", Namespace: "namespace"}, abortCGU))
+	assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(abortCGU.Spec.ClusterLabelSelectors))
+	assert.Len(t, abortCGU.Spec.ClusterLabelSelectors, 2)
+
+	// The CGU selects nothing, so it completes; the plan then creates item 2's CGU and
+	// completes normally. No terminal block at any point.
+	abortCGU.Status.Conditions = []metav1.Condition{{
+		Type: string(utils.ConditionTypes.Succeeded), Status: metav1.ConditionTrue,
+		Reason: "Completed", LastTransitionTime: metav1.Now(), Message: "done"}}
+	assert.NoError(t, fakeClient.Update(context.TODO(), abortCGU))
+
+	assert.NoError(t, ensureManifestsForTest(t, &reconciler, ibgu))
+	assert.Nil(t, succeededCondition(ibgu))
 	upgradeCGU := &v1alpha1.ClusterGroupUpgrade{}
 	assert.NoError(t, reconciler.Get(context.TODO(),
 		types.NamespacedName{Name: "name-upgrade-2", Namespace: "namespace"}, upgradeCGU))
-	assert.Equal(t, []string{"cluster1"}, upgradeCGU.Spec.Clusters)
+	assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(upgradeCGU.Spec.ClusterLabelSelectors))
 
-	// Second reconcile: owned CGUs are now {prep-0, upgrade-2} with a hole at the skipped
-	// AbortOnFailure index. That hole must not be read as a deletion:
-	// the IBGU keeps waiting on the in-progress Upgrade CGU, not blocked.
-	assert.NoError(t, reconciler.ensureManifests(context.TODO(), ibgu))
-	assert.Nil(t, succeededCondition(ibgu))
-	assert.Equal(t, string(utils.ConditionReasons.InProgress), progressingCondition(ibgu).Reason)
-
-	// The Upgrade CGU completes; the plan then completes normally despite the hole.
+	// The Upgrade CGU completes; the plan completes.
 	upgradeCGU.Status.Conditions = []metav1.Condition{{
 		Type: string(utils.ConditionTypes.Succeeded), Status: metav1.ConditionTrue,
 		Reason: "Completed", LastTransitionTime: metav1.Now(), Message: "done"}}
 	assert.NoError(t, fakeClient.Update(context.TODO(), upgradeCGU))
-	assert.NoError(t, reconciler.ensureManifests(context.TODO(), ibgu))
+	assert.NoError(t, ensureManifestsForTest(t, &reconciler, ibgu))
 	succeeded := succeededCondition(ibgu)
 	assert.NotNil(t, succeeded)
 	assert.Equal(t, string(utils.ConditionReasons.Completed), succeeded.Reason)
@@ -2699,7 +2727,8 @@ func TestResumesOnAppend(t *testing.T) {
 						Conditions: []v1.Condition{{Type: string(utils.ConditionTypes.Succeeded)}},
 					},
 				}
-				assert.NoError(t, fakeClient.Create(context.TODO(), &prepUpgradeCGU))
+				prepUpgradeFixture := frozenCGU(prepUpgradeCGU)
+				assert.NoError(t, fakeClient.Create(context.TODO(), &prepUpgradeFixture))
 				// The cluster carries the failed-upgrade label, so it is eligible for AbortOnFailure.
 				assert.NoError(t, fakeClient.Create(context.TODO(), managedClusterWithLabels("cluster1",
 					map[string]string{"common": "true", "lcm.openshift.io/ibgu-upgrade-failed": ""})))
@@ -2713,7 +2742,7 @@ func TestResumesOnAppend(t *testing.T) {
 			ibgu, fakeClient := test.setup(t)
 
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-			err := reconciler.ensureManifests(context.TODO(), ibgu)
+			err := ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
 
 			// The completion Succeeded condition is dropped so the IBGU resumes.
@@ -2724,7 +2753,7 @@ func TestResumesOnAppend(t *testing.T) {
 			assert.NoError(t, reconciler.Get(context.TODO(),
 				types.NamespacedName{Name: test.appendedCGU, Namespace: "namespace"}, cgu))
 			if test.expectClusters != nil {
-				assert.Equal(t, test.expectClusters, cgu.Spec.Clusters)
+				assert.Equal(t, test.expectClusters, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 			}
 		})
 	}
@@ -2749,7 +2778,7 @@ func TestBlockedIBGUIgnoresAppend(t *testing.T) {
 		map[string]string{"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	// The block is unchanged and no CGU is created.
@@ -2782,7 +2811,7 @@ func TestCompletedRestartNoAppendStaysFinished(t *testing.T) {
 		map[string]string{"common": "true"})))
 
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	// Still finished; the Succeeded condition is unchanged.
@@ -2808,7 +2837,7 @@ func TestGateOrderEmptyBeforeReferenceBeforeSeed(t *testing.T) {
 	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 		Recorder: record.NewFakeRecorder(10), SeedImageReader: reader}
 
-	err = reconciler.ensureManifests(context.TODO(), ibgu)
+	err = ensureManifestsForTest(t, &reconciler, ibgu)
 	assert.NoError(t, err)
 
 	// The terminal block carries the empty-set reason, not the reference reason.
@@ -3009,7 +3038,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		succeeded := succeededCondition(ibgu)
@@ -3040,7 +3069,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		// this test continues to exercise the reference gate.
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		cond := progressingCondition(ibgu)
@@ -3064,7 +3093,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder: record.NewFakeRecorder(10)}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		succeeded := succeededCondition(ibgu)
@@ -3095,7 +3124,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		// reader to isolate the reference-gate behaviour under test.
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion}}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		cond := progressingCondition(ibgu)
@@ -3121,7 +3150,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		cond := progressingCondition(ibgu)
@@ -3147,7 +3176,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder: record.NewFakeRecorder(10)}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		succeeded := succeededCondition(ibgu)
@@ -3172,7 +3201,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
 
 		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		cond := progressingCondition(ibgu)
@@ -3204,7 +3233,7 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 
 		reconciler := IBGUReconciler{Client: faultyClient, APIReader: faultyClient, Scheme: testscheme, Log: logr.Discard(),
 			Recorder: record.NewFakeRecorder(10)}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.Error(t, err)
 
 		// No terminal block was recorded for a transient fault, and no CGU was created.

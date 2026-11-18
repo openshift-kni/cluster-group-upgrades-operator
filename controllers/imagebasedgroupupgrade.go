@@ -114,17 +114,19 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		r.Log.Error(err, "Failed to get IBGU")
 		return requeueWithError(err)
 	}
-	// Sync status from the owned CGUs first so plan-item eligibility in
-	// ensureManifests is resolved from the latest CGU status and the
-	// ManagedCluster labels it drives. This matters when the final batch of a plan
-	// item completes in the same status write that sets the CGU's Succeeded
-	// condition: syncing first makes that completion visible to the next plan item
-	// in the same reconcile, instead of a reconcile later.
-	err = r.syncStatusWithCGUs(ctx, ibgu)
+	// One CGU snapshot per reconcile. The status rebuild, the cluster labels derived
+	// from it and the plan loop all read this list, so a plan item completing in the
+	// same status write that sets its CGU's Succeeded condition is seen by the next
+	// item's decision rather than a reconcile later.
+	cguList, err := r.listOwnedCGUs(ctx, ibgu)
 	if err != nil {
-		r.Log.Error(err, "error syncing status with CGUs")
+		r.Log.Error(err, "error listing cgus for ibgu")
 		return requeueWithError(err)
 	}
+
+	// Rebuild Status.Clusters before ensureClusterLabels, so the labels that a plan
+	// item's CGU selector depends on are written as early as possible in the reconcile.
+	r.syncStatusFromCGUList(ctx, ibgu, cguList)
 
 	err = r.ensureClusterLabels(ctx, ibgu)
 	if err != nil {
@@ -132,7 +134,7 @@ func (r *IBGUReconciler) Reconcile(ctx context.Context, req ctrl.Request) (nextR
 		return requeueWithError(err)
 	}
 
-	err = r.ensureManifests(ctx, ibgu)
+	err = r.ensureManifests(ctx, ibgu, cguList)
 	if err != nil {
 		r.Log.Error(err, "error ensure manifests")
 		return requeueWithError(err)
@@ -238,36 +240,42 @@ func appendFailedActionOnce(state *ibguv1alpha1.ClusterState, failed ibguv1alpha
 	state.FailedActions = append(state.FailedActions, failed)
 }
 
-func (r *IBGUReconciler) syncStatusWithCGUs(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err := r.List(ctx, cguList, &client.ListOptions{
+// listOwnedCGUs returns the CGUs owned by this IBGU. The cached list is used unless it
+// is empty, and an empty one is confirmed through the uncached pre-flight reader: an
+// empty list is what runs the pre-flight gates and can record a permanent block, so a
+// first CGU this controller just created must not be missed under informer-cache lag.
+// A non-empty cached list needs no confirmation.
+func (r *IBGUReconciler) listOwnedCGUs(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+) (*ranv1alpha1.ClusterGroupUpgradeList, error) {
+	opts := &client.ListOptions{
 		Namespace:     ibgu.Namespace,
 		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-	})
-	if err != nil {
-		return fmt.Errorf("failed to get CGUs for the IBGU: %w", err)
 	}
-	return r.syncStatusFromCGUList(ctx, ibgu, cguList)
+	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
+	if err := r.List(ctx, cguList, opts); err != nil {
+		return nil, fmt.Errorf("failed to get CGUs for the IBGU: %w", err)
+	}
+	if len(cguList.Items) > 0 {
+		return cguList, nil
+	}
+	uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
+	if err := r.preflightReader().List(ctx, uncachedCGUList, opts); err != nil {
+		return nil, fmt.Errorf("failed to get CGUs for the IBGU through the uncached reader: %w", err)
+	}
+	return uncachedCGUList, nil
 }
 
-// syncStatusFromCGUList rebuilds Status.Clusters from the supplied CGU snapshot
-// rather than listing the CGUs itself. ensureManifests calls it with the same CGU
-// list it uses to advance the plan, so plan-item eligibility and the completion
-// record are decided from one snapshot: without this, a one-cluster plan item that
-// completes between Reconcile's status sync and ensureManifests' own CGU list would
-// let the plan loop see that item finished (its snapshot) while the next item is
-// evaluated against stale status — the next item resolves empty, is skipped, and
-// generation-final completion records a false success it can never undo.
+// syncStatusFromCGUList rebuilds Status.Clusters from the supplied CGU snapshot rather
+// than listing the CGUs itself. Reconcile passes the one snapshot it also hands to
+// ensureManifests, so the status the plan loop and the completion record read is the
+// same view the plan advances from.
 func (r *IBGUReconciler) syncStatusFromCGUList(
 	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-) error {
-	// Capture which clusters were already reported as dropped so markDroppedClusters
-	// can emit a Warning event only the first time each one is observed as dropped.
-	prevDropped := droppedClusterNames(ibgu)
-
+) {
 	if len(cguList.Items) == 0 {
-		return nil
+		return
 	}
 	m := make(map[string]*ibguv1alpha1.ClusterState)
 	utils.SortCGUListByPlanIndex(cguList)
@@ -320,9 +328,9 @@ func (r *IBGUReconciler) syncStatusFromCGUList(
 					} else if client.IgnoreNotFound(err) != nil {
 						// Report-only detection must not block the authoritative status
 						// sync: log and continue so a transient ManifestWork read error
-						// does not skip the Status.Clusters write and dropped-cluster
-						// bookkeeping below. A missing ManifestWork is expected (the stage
-						// is simply still being applied) and is ignored silently.
+						// does not skip the Status.Clusters write below. A missing
+						// ManifestWork is expected (the stage is simply still being
+						// applied) and is ignored silently.
 						r.Log.Error(err, "failed to read manifestwork for report-only failure detection",
 							"cluster", clusterName)
 					}
@@ -338,7 +346,6 @@ func (r *IBGUReconciler) syncStatusFromCGUList(
 		return clusters[i].Name < clusters[j].Name
 	})
 	ibgu.Status.Clusters = clusters
-	return r.markDroppedClusters(ctx, ibgu, cguList, prevDropped)
 }
 
 func getCGUNameForPlanItem(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem, planItemIndex int) string {
@@ -362,17 +369,15 @@ func createIBU(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) *lcav1.ImageBasedUpgra
 	return ibu
 }
 
-// droppedClusterReason is recorded on cluster states that were part of the
-// frozen cluster set but no longer exist as ManagedClusters.
-const droppedClusterReason = "ManagedCluster no longer exists; dropped from rollout"
-
-// resolveBaseClusters returns the names of the ManagedClusters matching the
-// IBGU's clusterLabelSelectors. This is the base set that gets frozen at plan
-// item 0. Multiple selectors are unioned, mirroring CGU selector semantics. The
-// reader is the uncached pre-flight reader, so cache lag cannot drop a matching
-// cluster and cause a false empty-set block.
-func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, error) {
-	set := make(map[string]struct{})
+// resolveBaseClusters returns the ManagedClusters matching the IBGU's
+// clusterLabelSelectors: the base set the empty-set gate narrows to plan item 0's
+// eligible clusters, which is what gets frozen (not the base set itself).
+// Multiple selectors are unioned, mirroring CGU selector semantics. The reader is
+// the uncached pre-flight reader, so cache lag cannot drop a matching cluster and
+// cause a false empty-set block.
+func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.Reader, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]clusterv1.ManagedCluster, error) {
+	byName := make(map[string]clusterv1.ManagedCluster)
+	names := []string{}
 	for i := range ibgu.Spec.ClusterLabelSelectors {
 		selector, err := metav1.LabelSelectorAsSelector(&ibgu.Spec.ClusterLabelSelectors[i])
 		if err != nil {
@@ -383,25 +388,33 @@ func (r *IBGUReconciler) resolveBaseClusters(ctx context.Context, reader client.
 			return nil, fmt.Errorf("failed to list managed clusters: %w", err)
 		}
 		for _, mc := range mcList.Items {
-			set[mc.GetName()] = struct{}{}
+			if _, exists := byName[mc.GetName()]; exists {
+				continue
+			}
+			byName[mc.GetName()] = mc
+			names = append(names, mc.GetName())
 		}
 	}
-	names := make([]string, 0, len(set))
-	for name := range set {
-		names = append(names, name)
-	}
 	sort.Strings(names)
-	return names, nil
+	clusters := make([]clusterv1.ManagedCluster, 0, len(names))
+	for _, name := range names {
+		clusters = append(clusters, byName[name])
+	}
+	return clusters, nil
 }
 
-// getFrozenClusterSet returns the cluster set frozen at plan item 0, read back
-// from plan item 0's CGU spec.clusters. Every later plan item is narrowed from
-// this record rather than re-resolving the selector.
+// getFrozenClusterSet returns the frozen cluster set — the clusters plan item 0 acts on —
+// read back from the `name In (...)` requirement in plan item 0's CGU. Every later plan
+// item receives this record as the base of its own selector rather than re-resolving
+// the IBGU's selectors, so a later step can only act on clusters the IBGU started on.
 func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ranv1alpha1.ClusterGroupUpgradeList) []string {
+	if len(ibgu.Spec.Plan) == 0 {
+		return nil
+	}
 	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
 	for i := range cguList.Items {
 		if cguList.Items[i].GetName() == cguName {
-			return cguList.Items[i].Spec.Clusters
+			return frozenSetFromSelectors(cguList.Items[i].Spec.ClusterLabelSelectors)
 		}
 	}
 	// Plan item 0's CGU is absent (only if it was deleted out of band, which is
@@ -409,191 +422,37 @@ func getFrozenClusterSet(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, cguList *ran
 	return nil
 }
 
-// effectiveActionLabels returns the ManagedCluster labels augmented with the IBGU
-// action completed/failed labels implied by this IBGU's freshly synced status for
-// the cluster. Plan-item eligibility for this IBGU's own progress is decided from
-// both sources: the synced status reflects the final batch even when its
-// completion landed in the same write that set the CGU's Succeeded condition
-// (before ensureClusterLabels has written the matching labels), while the
-// ManagedCluster labels remain the authoritative carrier for plans that span
-// IBGUs (e.g. a separate Abort IBGU acting on another IBGU's completed clusters).
-func effectiveActionLabels(clusterLabels map[string]string, state *ibguv1alpha1.ClusterState) map[string]string {
-	merged := make(map[string]string, len(clusterLabels))
-	for k, v := range clusterLabels {
-		merged[k] = v
-	}
-	if state == nil {
-		return merged
-	}
-	// A completed Abort/Finalize clears all IBGU action labels on the
-	// ManagedCluster (see ensureClusterLabels). Mirror that clearing here so the
-	// synced status does not resurrect action labels the ManagedCluster has had
-	// removed: otherwise a cluster that already completed an Abort/Finalize would
-	// still carry its earlier failed/completed actions in status and be re-selected
-	// by a later plan item (e.g. a second AbortOnFailure re-aborting a cluster that
-	// was already aborted for an earlier failure).
-	for _, action := range state.CompletedActions {
-		if slices.Contains([]string{ibguv1alpha1.AbortOnFailure, ibguv1alpha1.Abort,
-			ibguv1alpha1.FinalizeUpgrade, ibguv1alpha1.FinalizeRollback}, action.Action) {
-			return merged
-		}
-	}
-	for _, action := range state.CompletedActions {
-		merged[fmt.Sprintf(utils.IBGUActionCompletedLabelTemplate, strings.ToLower(action.Action))] = ""
-	}
-	for _, action := range state.FailedActions {
-		merged[fmt.Sprintf(utils.IBGUActionFailedLabelTemplate, strings.ToLower(action.Action))] = ""
-	}
-	return merged
-}
-
-// resolveClustersForPlanItem determines the cluster set for an appended plan item
-// (index > 0). The base set was frozen at plan item 0 and is read back from plan
-// item 0's CGU on the cached client; this intersects it with the ManagedClusters
-// that still exist and narrows it to those eligible for the plan item. It returns
-// the sorted list of clusters the plan item's CGU should target; vanished clusters
-// are reported separately each reconcile by markDroppedClusters.
-//
-// Plan item 0 does not go through here: its eligible set is resolved once by the
-// empty-set pre-flight gate (through the uncached reader) and passed straight to
-// ensureCGUForPlanItem, so the gate and the first CGU can never disagree.
-func (r *IBGUReconciler) resolveClustersForPlanItem(
-	ctx context.Context,
-	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-	planItem *ibguv1alpha1.PlanItem,
-	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-) ([]string, error) {
-	frozen := getFrozenClusterSet(ibgu, cguList)
-
-	// Index this IBGU's freshly synced per-cluster status so eligibility can be
-	// decided from the completed/failed actions it records as well as the
-	// ManagedCluster labels (see effectiveActionLabels).
-	statusByName := make(map[string]*ibguv1alpha1.ClusterState, len(ibgu.Status.Clusters))
-	for i := range ibgu.Status.Clusters {
-		statusByName[ibgu.Status.Clusters[i].Name] = &ibgu.Status.Clusters[i]
-	}
-
-	selected := []string{}
-	for _, name := range frozen {
-		cluster := &clusterv1.ManagedCluster{}
-		if getErr := r.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
-			if errors.IsNotFound(getErr) {
-				// Dropped from the rollout; excluded so the CGU is not created with a
-				// missing cluster (which validateCR would hard-fail on).
-				continue
-			}
-			return nil, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
-		}
-		if utils.ClusterMatchesPlanItem(effectiveActionLabels(cluster.GetLabels(), statusByName[name]), planItem) {
-			selected = append(selected, name)
-		}
-	}
-	sort.Strings(selected)
-	return selected, nil
-}
-
-// droppedClusterNames returns the set of cluster names currently marked as
-// dropped in the IBGU status.
-func droppedClusterNames(ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) map[string]bool {
-	dropped := make(map[string]bool)
-	for _, cs := range ibgu.Status.Clusters {
-		if cs.Dropped {
-			dropped[cs.Name] = true
-		}
-	}
-	return dropped
-}
-
-// markDroppedClusters re-derives, from the frozen set recorded in plan item 0's
-// CGU, which clusters no longer exist as ManagedClusters and marks them dropped
-// in the IBGU status. It runs every reconcile so the marker is durable (it is not
-// lost when syncStatusWithCGUs rebuilds Status.Clusters), and emits a Warning
-// event only for clusters not already reported as dropped (prevDropped).
-func (r *IBGUReconciler) markDroppedClusters(
-	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
-	cguList *ranv1alpha1.ClusterGroupUpgradeList, prevDropped map[string]bool,
-) error {
-	if len(ibgu.Spec.Plan) == 0 {
-		return nil
-	}
-	cguName := getCGUNameForPlanItem(ibgu, &ibgu.Spec.Plan[0], 0)
-	var frozen []string
-	found := false
-	for i := range cguList.Items {
-		if cguList.Items[i].GetName() == cguName {
-			frozen = cguList.Items[i].Spec.Clusters
-			found = true
-			break
-		}
-	}
-	if !found {
-		// Plan item 0's CGU does not exist yet, so nothing is frozen.
-		return nil
-	}
-
-	dropped := []string{}
-	for _, name := range frozen {
-		cluster := &clusterv1.ManagedCluster{}
-		err := r.Get(ctx, types.NamespacedName{Name: name}, cluster)
-		if err == nil {
-			continue
-		}
-		if !errors.IsNotFound(err) {
-			return fmt.Errorf("failed to get managed cluster %q: %w", name, err)
-		}
-		dropped = append(dropped, name)
-	}
-	if len(dropped) == 0 {
-		return nil
-	}
-
-	index := make(map[string]int, len(ibgu.Status.Clusters))
-	for i := range ibgu.Status.Clusters {
-		index[ibgu.Status.Clusters[i].Name] = i
-	}
-	for _, name := range dropped {
-		if i, exist := index[name]; exist {
-			ibgu.Status.Clusters[i].Dropped = true
-			ibgu.Status.Clusters[i].DroppedReason = droppedClusterReason
-		} else {
-			// A cluster dropped at plan item 0 appears in no CGU status.
-			ibgu.Status.Clusters = append(ibgu.Status.Clusters, ibguv1alpha1.ClusterState{
-				Name:          name,
-				Dropped:       true,
-				DroppedReason: droppedClusterReason,
-			})
-		}
-		if !prevDropped[name] {
-			r.Log.Info("ManagedCluster dropped from rollout", "cluster", name, "ibgu", ibgu.GetName())
-			if r.Recorder != nil {
-				r.Recorder.Event(ibgu, corev1.EventTypeWarning, "ClusterDropped",
-					fmt.Sprintf("ManagedCluster %q no longer exists and was dropped from the rollout", name))
+// frozenSetFromSelectors extracts the frozen cluster set from a CGU's selectors: the
+// values of its `name In (...)` requirement. Every entry carries the same values - a
+// plan item whose action requirement is disjunctive gets one entry per disjunct - so
+// the first one found is the set.
+func frozenSetFromSelectors(selectors []metav1.LabelSelector) []string {
+	for i := range selectors {
+		for j := range selectors[i].MatchExpressions {
+			requirement := selectors[i].MatchExpressions[j]
+			if requirement.Key == utils.ClusterNameLabel && requirement.Operator == metav1.LabelSelectorOpIn {
+				return requirement.Values
 			}
 		}
 	}
-	sort.Slice(ibgu.Status.Clusters, func(i, j int) bool {
-		return ibgu.Status.Clusters[i].Name < ibgu.Status.Clusters[j].Name
-	})
 	return nil
 }
 
 // ensureCGUForPlanItem reconciles a single plan item into its CGU and reports whether
 // the item is completed: true when the item is done (its CGU carries the Succeeded
-// condition, or a later plan item legitimately narrowed to no eligible cluster), so the
-// plan loop proceeds to the next item; false when the item's CGU exists but has not
-// finished, or was just created this reconcile, so the plan loop stops and waits.
+// condition, including when its selector matched no cluster), so the plan loop proceeds
+// to the next item; false when the item's CGU exists but has not finished, or was just
+// created this reconcile, so the plan loop stops and waits.
 //
-// For plan item 0 it targets item0Clusters — the eligible set the empty-set pre-flight
-// gate resolved once (guaranteed non-empty) — rather than re-resolving the selector, so
-// the gate and the first CGU can never disagree. item0Clusters is consulted only when
-// plan item 0's CGU does not yet exist; appended items (index > 0) resolve their set
-// from the frozen record in plan item 0's CGU.
+// The cluster set is not resolved here: ensureManifests passes the frozen set, and the
+// CGU narrows it itself with the plan item's action requirement, as it did before IBGU
+// resolved cluster lists (see utils.PlanItemClusterSelectors).
 func (r *IBGUReconciler) ensureCGUForPlanItem(
 	ctx context.Context,
 	ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
 	planItem *ibguv1alpha1.PlanItem, planItemIndex int,
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
-	item0Clusters []string,
+	frozen []string,
 ) (bool, error) {
 	cguName := getCGUNameForPlanItem(ibgu, planItem, planItemIndex)
 
@@ -603,6 +462,15 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 			r.Log.Info("CGU already exist for plan item", "cgu name", cguName, "completed", completed)
 			return completed, nil
 		}
+	}
+
+	if len(frozen) == 0 {
+		// Only reachable when plan item 0's CGU is missing (deleted out of band, which is
+		// unsupported and undetected). An `In` requirement with no values is not a valid
+		// selector, so nothing can be targeted; treat the item as completed.
+		r.Log.Info("No frozen cluster set for plan item, skipping CGU creation",
+			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
+		return true, nil
 	}
 
 	manifestWorkReplicaSets := []*mwv1alpha1.ManifestWorkReplicaSet{}
@@ -663,32 +531,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		manifestWorkReplicaSetsNames = append(manifestWorkReplicaSetsNames, templateName)
 	}
 
-	// Resolve the cluster set for this plan item. Plan item 0 reuses the eligible set
-	// the empty-set gate already resolved (item0Clusters), so the gate and the first
-	// CGU target exactly the same clusters. Appended items narrow the set frozen at
-	// plan item 0, intersected with the ManagedClusters that still exist.
-	var selected []string
-	if planItemIndex == 0 {
-		selected = item0Clusters
-	} else {
-		var err error
-		selected, err = r.resolveClustersForPlanItem(ctx, ibgu, planItem, cguList)
-		if err != nil {
-			return false, fmt.Errorf("error resolving clusters for plan item: %w", err)
-		}
-	}
-	if len(selected) == 0 {
-		// On the normal path plan item 0 does not reach here (the gate guarantees a
-		// non-empty set); if its CGU was deleted out of band, item0Clusters is nil and
-		// the item counts as completed (unsupported, not detected). A later plan item
-		// legitimately narrowing to zero (e.g. an AbortOnFailure step when nothing
-		// failed, or every frozen cluster has been deleted) has nothing to remediate, so
-		// skip creating a CGU — an empty spec.clusters would be rejected by the CGU
-		// controller — and treat the item as completed.
-		r.Log.Info("No eligible clusters for plan item, skipping CGU creation",
-			"planItem actions", planItem.Actions, "planItemIndex", planItemIndex)
-		return true, nil
-	}
+	clusterSelectors := utils.PlanItemClusterSelectors(frozen, planItem)
 
 	for _, mwrs := range manifestWorkReplicaSets {
 		foundMWRS := &mwv1alpha1.ManifestWorkReplicaSet{}
@@ -717,7 +560,7 @@ func (r *IBGUReconciler) ensureCGUForPlanItem(
 		annotations[utils.NameSuffixAnnotation] = suffix
 	}
 	cgu := utils.GenerateClusterGroupUpgradeForPlanItem(
-		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, selected, annotations, disableAutoImport)
+		cguName, ibgu, planItem, manifestWorkReplicaSetsNames, clusterSelectors, annotations, disableAutoImport)
 	r.Log.Info("Creating CGU for plan item", "ClusterGroupUpgrade", cgu.GetName())
 	err := ctrl.SetControllerReference(ibgu, cgu, r.Scheme)
 	if err != nil {
@@ -827,16 +670,10 @@ func (r *IBGUReconciler) resolvePrepReferences(ctx context.Context, reader clien
 // at once (records the Succeeded condition, creates no CGU); it never requeues. It
 // returns an error only for a genuine fault, which Reconcile requeues with backoff
 // (still bounded by the start deadline).
-func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) error {
-	cguList := &ranv1alpha1.ClusterGroupUpgradeList{}
-	err := r.List(ctx, cguList, &client.ListOptions{
-		Namespace:     ibgu.Namespace,
-		LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-	})
-	if err != nil {
-		return fmt.Errorf("error listing cgus for ibgu: %w", err)
-	}
-
+func (r *IBGUReconciler) ensureManifests(
+	ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade,
+	cguList *ranv1alpha1.ClusterGroupUpgradeList,
+) error {
 	// The Succeeded condition records one of two terminal states, distinguished by
 	// reason (design D4):
 	//
@@ -867,39 +704,28 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 		r.resumeForAppend(ibgu)
 	}
 
-	// item0Clusters is plan item 0's eligible cluster set, resolved once by the
-	// empty-set gate (through the uncached reader) and reused verbatim when plan item
-	// 0's CGU is created, so the gate and the first CGU can never disagree about which
-	// clusters are eligible. It is populated only on the first-CGU path below; for an
-	// IBGU already in progress (an owned CGU exists) plan item 0's CGU already exists,
-	// so this set is never consulted.
-	var item0Clusters []string
+	// frozen is the cluster set every plan item's CGU is confined to: the clusters plan
+	// item 0 acts on (the IBGU's selector result narrowed by plan item 0's action). Before
+	// the first CGU it comes from the empty-set gate, resolved once through the uncached
+	// reader, so the gate and the first CGU can never disagree; once an owned CGU exists it
+	// is read back from plan item 0's CGU, so later items never re-resolve.
+	//
+	// Only plan item 0 is evaluated up front. A first step that selects nothing is a spec
+	// error and blocks the IBGU terminally; a later step that selects nothing (e.g.
+	// AbortOnFailure when nothing failed) is a normal outcome, so its CGU is created anyway,
+	// narrows the frozen set by label itself, selects nothing and completes.
+	var frozen []string
 
 	// Pre-flight gates run once, before the first CGU is created, so an IBGU already
 	// in progress (an owned CGU exists) — including one resumed for an appended item —
-	// is unaffected. On failure they create no CGU and block the IBGU terminally.
-	//
-	// The cached list above can lag behind an owned CGU this controller just created.
-	// Before running any pre-flight gate or the start deadline, re-read owned CGUs through
-	// the uncached reader when the cached list is empty. A non-empty cached list needs no
-	// confirmation, so an in-progress IBGU reconciles without the extra API read. Confirming
-	// uncached means an empty list really is empty (the first CGU has not raced the
-	// informer), so an IBGU
-	// whose first CGU already exists never records a false permanent block.
-	if len(cguList.Items) == 0 {
-		uncachedCGUList := &ranv1alpha1.ClusterGroupUpgradeList{}
-		if listErr := r.preflightReader().List(ctx, uncachedCGUList, &client.ListOptions{
-			Namespace:     ibgu.Namespace,
-			LabelSelector: labels.SelectorFromSet(labels.Set{utils.CGUOwnerIBGULabel: ibgu.Name}),
-		}); listErr != nil {
-			return fmt.Errorf("error listing cgus for ibgu through the uncached reader: %w", listErr)
-		}
-		cguList = uncachedCGUList
-	}
-
+	// is unaffected. On failure they create no CGU and block the IBGU terminally. The
+	// list is the one Reconcile took, already confirmed uncached when empty, so an
+	// empty list really is empty and an IBGU whose first CGU exists never records a
+	// false permanent block.
 	if len(cguList.Items) == 0 {
 		var block *preflightBlock
-		item0Clusters, block, err = r.runPreflightGates(ctx, ibgu)
+		var err error
+		frozen, block, err = r.runPreflightGates(ctx, ibgu)
 		if err != nil {
 			return err
 		}
@@ -919,21 +745,13 @@ func (r *IBGUReconciler) ensureManifests(ctx context.Context, ibgu *ibguv1alpha1
 					"expired before the first CGU could be created; the IBGU started too late", preflightStartDeadline))
 			return nil
 		}
-	}
-
-	// Re-sync status from this same CGU snapshot before evaluating plan-item
-	// eligibility, so eligibility and the completion recorded at the end of the loop
-	// come from one snapshot. Reconcile already synced from an earlier list; re-syncing
-	// here closes the window where a one-cluster plan item completes between the two
-	// reads, which would otherwise make the next plan item resolve empty against stale
-	// status, be skipped, and record a generation-final false success.
-	if err := r.syncStatusFromCGUList(ctx, ibgu, cguList); err != nil {
-		return fmt.Errorf("error syncing status from cgu list: %w", err)
+	} else {
+		frozen = getFrozenClusterSet(ibgu, cguList)
 	}
 
 	for i := range ibgu.Spec.Plan {
 		planItem := ibgu.Spec.Plan[i]
-		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, item0Clusters)
+		completed, err := r.ensureCGUForPlanItem(ctx, ibgu, &planItem, i, cguList, frozen)
 		if err != nil {
 			return fmt.Errorf("error ensuring cgu for plan item: %w", err)
 		}
@@ -986,9 +804,9 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // first non-pass outcome. Running the hub-only, deterministic checks before the
 // network read means a selector typo or a missing BackupContent is reported with
 // its own reason and does not trigger a registry read or block with the wrong
-// reason. On the passing path it also returns plan item 0's
-// eligible cluster set, resolved once by the empty-set gate, so the first CGU is
-// created from that same set.
+// reason. On the passing path it also returns plan item 0's eligible cluster set,
+// resolved once by the empty-set gate. That set is the IBGU's frozen cluster set: the
+// first CGU is created from it, and every later plan item is confined to it.
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
 	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
 	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
@@ -1029,11 +847,14 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 
 // ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
 // plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
-// returns that set so the first CGU is created from the very set the gate evaluated —
-// the gate and the CGU can never disagree, so there is no empty-set race to re-check.
-// When the set is empty it distinguishes two terminal reasons: no
-// ManagedCluster matches the selector (NoClustersMatchSelector), or the base set is
-// non-empty but none is eligible for plan item 0's action (NoEligibleClusters).
+// returns it as the IBGU's frozen cluster set, so the first CGU is created from the very
+// set the gate evaluated — the gate and the CGU can never disagree, so there is no
+// empty-set race to re-check. Later plan items are not evaluated here: a later step
+// that selects nothing is a normal outcome, not a pre-flight failure. When the
+// set is empty it distinguishes two terminal reasons: no ManagedCluster matches the
+// selector (NoClustersMatchSelector), or the base set is non-empty but none is eligible
+// for plan item 0's action (NoEligibleClusters). Eligibility is evaluated with the same
+// selector the CGU receives, against the same uncached snapshot.
 // Reading through the uncached reader means a ManagedCluster or label applied
 // alongside the IBGU is not missed under informer-cache lag and wrongly reported as
 // empty. The returned set is meaningful only on a passing outcome.
@@ -1048,28 +869,24 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 			"no ManagedCluster matches the IBGU clusterLabelSelectors"}, nil
 	}
 
-	// Index this IBGU's freshly synced per-cluster status so eligibility is decided
-	// from the completed/failed actions it records as well as the ManagedCluster labels
-	// (see effectiveActionLabels) — the same inputs the plan loop uses, so the set
-	// returned here is exactly the set plan item 0's CGU is created from. On the first
-	// reconcile no action has completed yet, so this reduces to the raw labels.
-	statusByName := make(map[string]*ibguv1alpha1.ClusterState, len(ibgu.Status.Clusters))
-	for i := range ibgu.Status.Clusters {
-		statusByName[ibgu.Status.Clusters[i].Name] = &ibgu.Status.Clusters[i]
+	baseNames := make([]string, 0, len(base))
+	for i := range base {
+		baseNames = append(baseNames, base[i].GetName())
+	}
+	planItem := &ibgu.Spec.Plan[0]
+	selectors := utils.PlanItemClusterSelectors(baseNames, planItem)
+	parsed, err := parseLabelSelectors(selectors)
+	if err != nil {
+		return nil, nil, err
 	}
 
-	planItem := &ibgu.Spec.Plan[0]
 	eligible := []string{}
-	for _, name := range base {
-		cluster := &clusterv1.ManagedCluster{}
-		if getErr := reader.Get(ctx, types.NamespacedName{Name: name}, cluster); getErr != nil {
-			if errors.IsNotFound(getErr) {
-				continue
-			}
-			return nil, nil, fmt.Errorf("failed to get managed cluster %q: %w", name, getErr)
-		}
-		if utils.ClusterMatchesPlanItem(effectiveActionLabels(cluster.GetLabels(), statusByName[name]), planItem) {
-			eligible = append(eligible, name)
+	for i := range base {
+		// Match each ManagedCluster's actual labels, exactly as the CGU will, so a
+		// cluster the CGU would not select (e.g. one missing ACM's name label) is not
+		// counted eligible here either.
+		if matchesAnySelector(parsed, labels.Set(base[i].GetLabels())) {
+			eligible = append(eligible, base[i].GetName())
 		}
 	}
 	if len(eligible) == 0 {
@@ -1078,6 +895,30 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 	}
 	sort.Strings(eligible)
 	return eligible, nil, nil
+}
+
+// parseLabelSelectors converts API label selectors into their matcher form. CGUs union
+// their clusterLabelSelectors entries, so matching any one of them is eligibility.
+func parseLabelSelectors(selectors []metav1.LabelSelector) ([]labels.Selector, error) {
+	parsed := make([]labels.Selector, 0, len(selectors))
+	for i := range selectors {
+		selector, err := metav1.LabelSelectorAsSelector(&selectors[i])
+		if err != nil {
+			return nil, fmt.Errorf("invalid plan item cluster selector: %w", err)
+		}
+		parsed = append(parsed, selector)
+	}
+	return parsed, nil
+}
+
+// matchesAnySelector reports whether the cluster labels satisfy any of the selectors.
+func matchesAnySelector(selectors []labels.Selector, clusterLabels labels.Set) bool {
+	for _, selector := range selectors {
+		if selector.Matches(clusterLabels) {
+			return true
+		}
+	}
+	return false
 }
 
 // ibguHasFailedActions reports whether any cluster recorded a failed action in the

@@ -263,7 +263,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: &fakeSeedImageReader{format: preBumpFormat},
 		}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
 		// The terminal state is recorded on Succeeded (and mirrored onto Progressing).
@@ -296,7 +296,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Recorder:        record.NewFakeRecorder(10),
 			SeedImageReader: reader,
 		}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		// The seed gate never ran: no registry read.
 		assert.False(t, reader.called)
@@ -323,7 +323,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		assert.True(t, reader.called)
 
@@ -356,7 +356,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		assert.False(t, reader.called)
 
@@ -386,7 +386,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 			Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
 			SeedImageReader: reader,
 		}
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		// The short-circuit fires before any gate: no registry read.
 		assert.False(t, reader.called)
@@ -411,7 +411,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		ibgu, reader, _, reconciler := newUnreadableSeedReconciler(t)
 		ibgu.CreationTimestamp = metav1.NewTime(metav1.Now().Add(-(preflightStartDeadline + time.Minute)))
 
-		err := reconciler.ensureManifests(context.TODO(), ibgu)
+		err := ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		assert.True(t, reader.called)
 
@@ -536,7 +536,7 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 			SeedImageReader: &fakeSeedImageReader{format: lcav1.BackupContentFirstSeedFormatVersion},
 		}
 
-		err = reconciler.ensureManifests(context.TODO(), ibgu)
+		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 		// No false terminal block.
 		assert.Nil(t, succeededCondition(ibgu))
@@ -544,6 +544,6 @@ func TestBackupContentFoundViaUncachedReader(t *testing.T) {
 		cgu := &v1alpha1.ClusterGroupUpgrade{}
 		assert.NoError(t, reconciler.Get(context.TODO(),
 			types.NamespacedName{Name: "name-prep-0", Namespace: "namespace"}, cgu))
-		assert.Equal(t, []string{"cluster1"}, cgu.Spec.Clusters)
+		assert.Equal(t, []string{"cluster1"}, frozenSetFromSelectors(cgu.Spec.ClusterLabelSelectors))
 	})
 }

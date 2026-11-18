@@ -283,49 +283,81 @@ func ibuToBytes(ibu *lcav1.ImageBasedUpgrade) ([]byte, error) {
 	return dst.Bytes(), err
 }
 
-// ClusterMatchesPlanItem reports whether a ManagedCluster carrying the given
-// labels is eligible for the plan item. IBGU resolves the cluster set once and
-// evaluates per-plan-item eligibility here, against the labels the caller passes
-// via effectiveActionLabels(...) — the ManagedCluster labels merged with the
-// IBGU's freshly synced status — instead of handing a narrowed label selector to
-// each generated CGU. The narrowing is keyed on the plan item's first action (the
-// switch below). Prep-first items and any unrecognised first action match the
-// whole base set.
-func ClusterMatchesPlanItem(clusterLabels map[string]string, planItem *ibguv1alpha1.PlanItem) bool {
+// PlanItemClusterSelectors returns the clusterLabelSelectors a plan item's CGU
+// receives: the frozen cluster set as a `name In (...)` requirement, plus the plan
+// item's own action requirement. The CGU unions its selector entries, so every entry
+// carries the frozen set and the union can only select clusters inside it — a cluster
+// added after the freeze does not join, and a removed one simply stops matching.
+//
+// The action requirement is keyed on the plan item's first action, the same predicate
+// table the CGU used before IBGU resolved cluster lists itself. A disjunctive
+// requirement — AbortOnFailure targets clusters that failed Prep *or* Upgrade — needs
+// one entry per disjunct, because a single LabelSelector ANDs its requirements.
+//
+// frozenClusters must be non-empty: an `In` requirement with no values is not a valid
+// selector.
+func PlanItemClusterSelectors(frozenClusters []string, planItem *ibguv1alpha1.PlanItem) []metav1.LabelSelector {
+	frozen := metav1.LabelSelectorRequirement{
+		Key:      ClusterNameLabel,
+		Operator: metav1.LabelSelectorOpIn,
+		Values:   frozenClusters,
+	}
+	exists := func(key string) metav1.LabelSelectorRequirement {
+		return metav1.LabelSelectorRequirement{Key: key, Operator: metav1.LabelSelectorOpExists}
+	}
+	completed := func(action string) string {
+		return fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(action))
+	}
+	failed := func(action string) string {
+		return fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(action))
+	}
+
+	// One requirement group per disjunct; independent groups are unioned by the CGU.
+	var groups [][]metav1.LabelSelectorRequirement
 	if len(planItem.Actions) == 0 {
-		return true
+		groups = [][]metav1.LabelSelectorRequirement{{}}
+	} else {
+		switch planItem.Actions[0] {
+		case ibguv1alpha1.Abort:
+			groups = [][]metav1.LabelSelectorRequirement{{{
+				Key:      completed(ibguv1alpha1.Upgrade),
+				Operator: metav1.LabelSelectorOpDoesNotExist,
+			}}}
+		case ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeUpgrade:
+			groups = [][]metav1.LabelSelectorRequirement{{exists(completed(ibguv1alpha1.Upgrade))}}
+		case ibguv1alpha1.FinalizeRollback:
+			groups = [][]metav1.LabelSelectorRequirement{{exists(completed(ibguv1alpha1.Rollback))}}
+		case ibguv1alpha1.AbortOnFailure:
+			groups = [][]metav1.LabelSelectorRequirement{
+				{exists(failed(ibguv1alpha1.Prep))},
+				{exists(failed(ibguv1alpha1.Upgrade))},
+			}
+		case ibguv1alpha1.Upgrade:
+			groups = [][]metav1.LabelSelectorRequirement{{exists(completed(ibguv1alpha1.Prep))}}
+		default:
+			// Prep-first and composite items, and any unrecognised first action, act on
+			// the whole frozen set.
+			groups = [][]metav1.LabelSelectorRequirement{{}}
+		}
 	}
-	hasCompleted := func(action string) bool {
-		_, ok := clusterLabels[fmt.Sprintf(IBGUActionCompletedLabelTemplate, strings.ToLower(action))]
-		return ok
+
+	selectors := make([]metav1.LabelSelector, 0, len(groups))
+	for _, group := range groups {
+		requirements := make([]metav1.LabelSelectorRequirement, 0, len(group)+1)
+		requirements = append(requirements, frozen)
+		requirements = append(requirements, group...)
+		selectors = append(selectors, metav1.LabelSelector{MatchExpressions: requirements})
 	}
-	hasFailed := func(action string) bool {
-		_, ok := clusterLabels[fmt.Sprintf(IBGUActionFailedLabelTemplate, strings.ToLower(action))]
-		return ok
-	}
-	switch planItem.Actions[0] {
-	case ibguv1alpha1.Abort:
-		return !hasCompleted(ibguv1alpha1.Upgrade)
-	case ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeUpgrade:
-		return hasCompleted(ibguv1alpha1.Upgrade)
-	case ibguv1alpha1.FinalizeRollback:
-		return hasCompleted(ibguv1alpha1.Rollback)
-	case ibguv1alpha1.AbortOnFailure:
-		return hasFailed(ibguv1alpha1.Prep) || hasFailed(ibguv1alpha1.Upgrade)
-	case ibguv1alpha1.Upgrade:
-		return hasCompleted(ibguv1alpha1.Prep)
-	default:
-		return true
-	}
+	return selectors
 }
 
 // GenerateClusterGroupUpgradeForPlanItem returns a populated CGU for a PlanItem.
 // The cluster set is resolved and frozen by the IBGU reconciler and passed in as
-// an explicit clusters list, so the generated CGU targets spec.clusters rather
-// than a (per-plan-item narrowed) spec.clusterLabelSelectors.
+// clusterLabelSelectors that carry it — see PlanItemClusterSelectors — so the CGU
+// targets spec.clusterLabelSelectors rather than an explicit spec.clusters list.
 func GenerateClusterGroupUpgradeForPlanItem(
 	name string, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, planItem *ibguv1alpha1.PlanItem,
-	templateNames, clusters []string, annotations map[string]string, disableAutoImport bool,
+	templateNames []string, clusterSelectors []metav1.LabelSelector, annotations map[string]string, disableAutoImport bool,
 ) *ranv1alpha1.ClusterGroupUpgrade {
 	enable := true
 	beforeEnable := ranv1alpha1.BeforeEnable{}
@@ -351,7 +383,7 @@ func GenerateClusterGroupUpgradeForPlanItem(
 			Annotations: annotations,
 		},
 		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{
-			Clusters:              clusters,
+			ClusterLabelSelectors: clusterSelectors,
 			Enable:                &enable,
 			ManifestWorkTemplates: templateNames,
 			RemediationStrategy: &ranv1alpha1.RemediationStrategySpec{
