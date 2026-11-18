@@ -810,8 +810,9 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
 	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
 	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
-	// cluster set.
-	item0Clusters, block, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
+	// cluster set, along with the full base ManagedCluster set it listed (reused by
+	// the seed-format gate below, so the whole pre-flight issues one uncached List).
+	item0Clusters, baseClusters, block, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
 	if err != nil || block != nil {
 		return nil, block, err
 	}
@@ -837,8 +838,11 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 		}
 	}
 
-	// 3. Seed-format compatibility gate (CNF-29242): the network read, run last.
-	block, err = r.ensureSeedFormatCompatible(ctx, ibgu)
+	// 3. Seed-format compatibility gate (CNF-29242 image side, CNF-30039 spoke side):
+	// the network read, run last. It reuses the base ManagedCluster set resolved by
+	// the empty-set gate for its per-spoke format comparison, so no second List is
+	// issued.
+	block, err = r.ensureSeedFormatCompatible(ctx, ibgu, baseClusters)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error checking seed format compatibility: %w", err)
 	}
@@ -857,15 +861,21 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 // selector the CGU receives, against the same uncached snapshot.
 // Reading through the uncached reader means a ManagedCluster or label applied
 // alongside the IBGU is not missed under informer-cache lag and wrongly reported as
-// empty. The returned set is meaningful only on a passing outcome.
-func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
+// empty. The returned eligible set is meaningful only on a passing outcome.
+//
+// It also returns the full resolved base set (the ManagedClusters matching the
+// IBGU's clusterLabelSelectors, with their Status) so the whole pre-flight needs
+// only this one uncached List: the seed-format gate (ensureSeedFormatCompatible)
+// reuses the slice for its per-spoke format comparison instead of listing again.
+// The base set is returned only on a passing outcome.
+func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, []clusterv1.ManagedCluster, *preflightBlock, error) {
 	reader := r.preflightReader()
 	base, err := r.resolveBaseClusters(ctx, reader, ibgu)
 	if err != nil {
-		return nil, nil, fmt.Errorf("error resolving base clusters: %w", err)
+		return nil, nil, nil, fmt.Errorf("error resolving base clusters: %w", err)
 	}
 	if len(base) == 0 {
-		return nil, &preflightBlock{utils.ConditionReasons.NoClustersMatchSelector,
+		return nil, nil, &preflightBlock{utils.ConditionReasons.NoClustersMatchSelector,
 			"no ManagedCluster matches the IBGU clusterLabelSelectors"}, nil
 	}
 
@@ -877,7 +887,7 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 	selectors := utils.PlanItemClusterSelectors(baseNames, planItem)
 	parsed, err := parseLabelSelectors(selectors)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	eligible := []string{}
@@ -890,11 +900,11 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 		}
 	}
 	if len(eligible) == 0 {
-		return nil, &preflightBlock{utils.ConditionReasons.NoEligibleClusters,
+		return nil, nil, &preflightBlock{utils.ConditionReasons.NoEligibleClusters,
 			fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)}, nil
 	}
 	sort.Strings(eligible)
-	return eligible, nil, nil
+	return eligible, base, nil, nil
 }
 
 // parseLabelSelectors converts API label selectors into their matcher form. CGUs union

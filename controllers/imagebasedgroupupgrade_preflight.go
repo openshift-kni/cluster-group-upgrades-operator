@@ -19,11 +19,15 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/types"
+	clusterv1 "open-cluster-management.io/api/cluster/v1"
 
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ibguv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/imagebasedgroupupgrades/v1alpha1"
@@ -40,7 +44,9 @@ import (
 // ConfigMap / pull Secret NotFound), an empty cluster set (NoClustersMatchSelector
 // or NoEligibleClusters), a seed image that cannot be read (registry unreachable,
 // pull secret missing/unreadable, HTTPS/transport error, config-size-cap failure),
-// and a definitive content verdict (backupContent paired with a pre-bump seed). The
+// a definitive content verdict (backupContent paired with a pre-bump seed), a spoke
+// whose availability cannot be confirmed (SpokeClusterUnavailable), and a spoke
+// whose expected seed format differs from the image's (SeedFormatMismatch). The
 // start deadline (PreflightWindowExpired) is also terminal, but ensureManifests
 // records it directly through setTerminal rather than via a gate.
 //
@@ -60,26 +66,21 @@ type preflightBlock struct {
 const preflightStartDeadline = 5 * time.Minute
 
 // ensureSeedFormatCompatible runs the hub-side seed-format compatibility
-// pre-flight (CNF-29242, design D4 check 1). It returns a *preflightBlock:
-// a block when backupContent is paired with a pre-bump seed (a definitive
-// verdict on the format label actually read), a block when the seed image
-// cannot be read (fail-closed), nil when the plan may proceed, and an error only
-// for a genuine infrastructure fault (so Reconcile requeues with backoff rather
-// than recording a misleading condition).
+// pre-flight (CNF-29242 image side, design D4 check 1; CNF-30039 spoke side, design
+// D3 and D4 check 2). It returns a *preflightBlock: a block when the seed image
+// cannot be read (fail-closed), a block when backupContent is paired with a pre-bump
+// seed (a definitive verdict on the format label actually read), a block when a spoke
+// is unavailable or its expected format differs from the image's, nil when the plan
+// may proceed, and an error only for a genuine infrastructure fault (so Reconcile
+// requeues with backoff rather than recording a misleading condition).
 //
-// This is the image side of the check: its only decision is the hub-only
-// backupContent safety rule, whose single input is the seed image's format
-// label. An IBGU that does not set spec.ibuSpec.backupContent therefore has
-// nothing to verify here and is passed through untouched — the per-spoke format
-// comparison that reads the image format for every IBGU arrives with the
-// spoke-side part of the check (CNF-30039). Scoping the registry read to
-// backupContent IBGUs keeps this part from imposing hub→registry egress on
-// IBGUs that gain nothing from it yet.
-func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) (*preflightBlock, error) {
-	if len(ibgu.Spec.IBUSpec.BackupContent) == 0 {
-		return nil, nil
-	}
-
+// It reads the seed image format once for every in-scope IBGU — the spoke-side
+// comparison (D4 check 2) needs it on every IBGU, not only those that set
+// backupContent — and compares it against each spoke's expected format, resolved
+// from the LCA ClusterClaim (D3). The base ManagedCluster set is the one the
+// empty-set gate already resolved (threaded in as baseClusters), so the whole
+// pre-flight issues a single uncached List. No spoke ManifestWork is created.
+func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade, baseClusters []clusterv1.ManagedCluster) (*preflightBlock, error) {
 	// The seed-format rule only applies to a plan that stages or applies the seed.
 	// A recovery-only plan (Abort, AbortOnFailure, Rollback, FinalizeUpgrade,
 	// FinalizeRollback) must never be blocked on the registry being readable: a
@@ -107,12 +108,12 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return nil, nil
 	}
 
-	// Read the seed image's published format once. A failure to read it (reference
-	// empty, pull secret missing, registry unreachable, label absent or non-integer)
-	// blocks the IBGU — fail-closed. The pull secret is read through the uncached
-	// reader (see readSeedImageFormat) so a cache-lagged secret cannot cause a false
-	// block. Only a genuine infrastructure fault reading the pull secret is returned
-	// as an error.
+	// Read the seed image's published format once for every in-scope IBGU. A failure
+	// to read it (reference empty, pull secret missing, registry unreachable, label
+	// absent or non-integer) blocks the IBGU — fail-closed. The pull secret is read
+	// through the uncached reader (see readSeedImageFormat) so a cache-lagged secret
+	// cannot cause a false block. Only a genuine infrastructure fault reading the pull
+	// secret is returned as an error.
 	imageFormat, unreadableReason, err := r.readSeedImageFormat(ctx, ibgu)
 	if err != nil {
 		return nil, err
@@ -125,11 +126,13 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 
 	// Hub-only safety rule (D4 check 1): a backupContent IBGU paired with a seed
 	// image older than the first format that supports backupContent is rejected
-	// here, with no spoke read. This is a definitive verdict on the format label
-	// actually read. LCA's own Prep seed check is a hard equality that does not catch
-	// this pairing (the pruned field upgrades with no application backup), which is
-	// why the hub rejects it up front.
-	if imageFormat < lcav1.BackupContentFirstSeedFormatVersion {
+	// here, before any spoke comparison. This is a definitive verdict on the format
+	// label actually read. LCA's own Prep seed check is a hard equality that does not
+	// catch this pairing (the pruned field upgrades with no application backup), which
+	// is why the hub rejects it up front. It runs before check 2 so a backupContent
+	// IBGU on a pre-bump seed reports this specific reason rather than a per-spoke
+	// mismatch.
+	if len(ibgu.Spec.IBUSpec.BackupContent) > 0 && imageFormat < lcav1.BackupContentFirstSeedFormatVersion {
 		msg := fmt.Sprintf(
 			"spec.ibuSpec.backupContent is set but the seed image format version (%d) is older than "+
 				"the first version that supports backupContent (%d)",
@@ -137,7 +140,82 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return &preflightBlock{utils.ConditionReasons.BackupContentUnsupportedSeed, msg}, nil
 	}
 
-	return nil, nil
+	// Spoke-side check (D4 check 2): every spoke in the resolved base set must be
+	// available and expect the image's format. The comparison is a pure function of
+	// the already-listed ManagedClusters, so no additional read is issued here.
+	return evaluateSpokeFormats(imageFormat, baseClusters), nil
+}
+
+// expectedSpokeFormat returns the seed format version a spoke expects (design D3),
+// resolved solely from LCA's ClusterClaim (seedformatversion.lca.openshift.io). On
+// ACM 2.14+ the reserved-suffix claim is never truncated, so the claim is the one
+// definitive source: when it is present its value is the expected format; a
+// non-integer value is an anomaly and is returned as an error (callers fail closed).
+//
+// When the claim is absent the spoke's LCA predates the seed-format claim, so it
+// expects the pre-bump format: one less than SeedFormatVersion, the version a
+// claim-publishing LCA reports. (In this release SeedFormatVersion equals
+// BackupContentFirstSeedFormatVersion, so this also equals
+// BackupContentFirstSeedFormatVersion - 1.) There is no fallback read — absence is
+// definitive.
+func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
+	for _, claim := range mc.Status.ClusterClaims {
+		if claim.Name == lcav1.SeedFormatClusterClaimName {
+			format, err := strconv.Atoi(strings.TrimSpace(claim.Value))
+			if err != nil {
+				return 0, fmt.Errorf("ClusterClaim %q has a non-integer value %q: %w",
+					lcav1.SeedFormatClusterClaimName, claim.Value, err)
+			}
+			return format, nil
+		}
+	}
+	return lcav1.SeedFormatVersion - 1, nil
+}
+
+// evaluateSpokeFormats compares every spoke in the resolved base set against the
+// seed image's format (design D4 check 2) and returns a single terminal block, or
+// nil when every spoke is compatible. It issues no reads: the ManagedClusters were
+// listed once by the empty-set gate.
+//
+// For each cluster: an unconfirmed ManagedClusterConditionAvailable (false, unknown,
+// or absent) makes the spoke unavailable — its expected format cannot be determined;
+// otherwise the spoke's expected format (expectedSpokeFormat) is compared against the
+// image's, and a parse error counts as a mismatch (fail-closed).
+//
+// Precedence: any unavailable spoke yields one SpokeClusterUnavailable block naming
+// all unavailable clusters (unavailable wins, because an unavailable spoke's format
+// is unknown and could also mismatch); otherwise any mismatch yields one
+// SeedFormatMismatch block naming each mismatched cluster and the format it expects;
+// otherwise nil. Every block is terminal (no requeue); recovery is delete-and-recreate.
+func evaluateSpokeFormats(imageFormat int, clusters []clusterv1.ManagedCluster) *preflightBlock {
+	var unavailable []string
+	var mismatched []string
+	for i := range clusters {
+		mc := &clusters[i]
+		if !meta.IsStatusConditionTrue(mc.Status.Conditions, clusterv1.ManagedClusterConditionAvailable) {
+			unavailable = append(unavailable, mc.GetName())
+			continue
+		}
+		expected, err := expectedSpokeFormat(mc)
+		if err != nil {
+			mismatched = append(mismatched, fmt.Sprintf("%s (unreadable seed-format claim)", mc.GetName()))
+			continue
+		}
+		if expected != imageFormat {
+			mismatched = append(mismatched, fmt.Sprintf("%s (expects %d)", mc.GetName(), expected))
+		}
+	}
+	if len(unavailable) > 0 {
+		return &preflightBlock{utils.ConditionReasons.SpokeClusterUnavailable,
+			fmt.Sprintf("cannot verify seed-format compatibility: cluster(s) unavailable: %s",
+				strings.Join(unavailable, ", "))}
+	}
+	if len(mismatched) > 0 {
+		return &preflightBlock{utils.ConditionReasons.SeedFormatMismatch,
+			fmt.Sprintf("seed image format version (%d) does not match the expected format of cluster(s): %s",
+				imageFormat, strings.Join(mismatched, ", "))}
+	}
+	return nil
 }
 
 // planHasPrepOrUpgrade reports whether the IBGU plan contains a Prep or Upgrade
