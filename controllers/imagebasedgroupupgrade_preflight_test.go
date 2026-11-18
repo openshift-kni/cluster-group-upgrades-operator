@@ -399,6 +399,100 @@ func TestEvaluateSpokeFormats(t *testing.T) {
 	}
 }
 
+// TestEvaluateSpokeFormatsBoundsMessage verifies that on a large fleet the terminal
+// block message stays within the IBGU CRD's 32768-character condition-message limit:
+// summarizeClusters truncates the name list and appends a "(+N more)" suffix instead
+// of joining every name, so the status write that records the terminal reason is never
+// rejected for being too long. The first blocking cluster is still named so the message
+// remains actionable. Both terminal branches (unavailable and mismatch) are covered.
+func TestEvaluateSpokeFormatsBoundsMessage(t *testing.T) {
+	const crdConditionMessageLimit = 32768
+	const fleetSize = 5000
+
+	unavailableFleet := make([]clusterv1.ManagedCluster, 0, fleetSize)
+	mismatchedFleet := make([]clusterv1.ManagedCluster, 0, fleetSize)
+	for i := 0; i < fleetSize; i++ {
+		// Realistic DNS-subdomain-style spoke names so the joined list is long.
+		name := fmt.Sprintf("spoke-cluster-with-a-fairly-long-name-%05d.example.com", i)
+		unavailableFleet = append(unavailableFleet,
+			clusterv1.ManagedCluster{ObjectMeta: metav1.ObjectMeta{Name: name}})
+		mismatched := clusterv1.ManagedCluster{
+			ObjectMeta: metav1.ObjectMeta{Name: name},
+			Status: clusterv1.ManagedClusterStatus{
+				Conditions: []metav1.Condition{{
+					Type:               clusterv1.ManagedClusterConditionAvailable,
+					Status:             metav1.ConditionTrue,
+					Reason:             "ManagedClusterAvailable",
+					LastTransitionTime: metav1.Now(),
+				}},
+				// Claim value that mismatches the image format below.
+				ClusterClaims: []clusterv1.ManagedClusterClaim{
+					{Name: lcav1.SeedFormatClusterClaimName, Value: "4"},
+				},
+			},
+		}
+		mismatchedFleet = append(mismatchedFleet, mismatched)
+	}
+
+	tests := []struct {
+		name         string
+		clusters     []clusterv1.ManagedCluster
+		expectReason utils.ConditionReason
+	}{
+		{
+			name:         "unavailable branch is bounded",
+			clusters:     unavailableFleet,
+			expectReason: utils.ConditionReasons.SpokeClusterUnavailable,
+		},
+		{
+			name:         "mismatch branch is bounded",
+			clusters:     mismatchedFleet,
+			expectReason: utils.ConditionReasons.SeedFormatMismatch,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			block := evaluateSpokeFormats(lcav1.SeedFormatVersion, test.clusters)
+			assert.NotNil(t, block)
+			assert.Equal(t, test.expectReason, block.reason)
+			assert.LessOrEqual(t, len(block.message), crdConditionMessageLimit,
+				"terminal condition message must stay within the CRD limit")
+			// The message stays actionable: it names at least the first spoke and
+			// reports how many more were omitted.
+			assert.Contains(t, block.message, "spoke-cluster-with-a-fairly-long-name-00000.example.com")
+			assert.Contains(t, block.message, "more)")
+		})
+	}
+}
+
+// TestSummarizeClusters covers the bounded-sample helper directly: an empty list, a
+// short list that is reported in full, and a list long enough to be truncated with a
+// "(+N more)" suffix while staying within the sample budget.
+func TestSummarizeClusters(t *testing.T) {
+	assert.Equal(t, "", summarizeClusters(nil))
+	assert.Equal(t, "a, b, c", summarizeClusters([]string{"a", "b", "c"}))
+
+	// A pathologically long single name is still emitted in full (the message must
+	// always identify a blocking cluster).
+	long := make([]byte, clusterListSampleBudget+100)
+	for i := range long {
+		long[i] = 'x'
+	}
+	single := summarizeClusters([]string{string(long)})
+	assert.Equal(t, string(long), single)
+
+	// Many short names are truncated to a bounded sample with a "(+N more)" suffix.
+	many := make([]string, 10000)
+	for i := range many {
+		many[i] = fmt.Sprintf("cluster-%05d", i)
+	}
+	out := summarizeClusters(many)
+	assert.LessOrEqual(t, len(out), clusterListSampleBudget+32) // sample budget + short suffix
+	assert.Contains(t, out, "cluster-00000")
+	assert.Contains(t, out, "more)")
+}
+
 // TestRunPreflightGatesScopesSpokeCheckToEligibleSet verifies the spoke-side
 // seed-format check runs against plan item 0's eligible set, not the full base set
 // (the Developer-of-Record decision on CNF-30039): an unavailable spoke that matches

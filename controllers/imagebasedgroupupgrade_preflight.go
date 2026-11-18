@@ -189,10 +189,12 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 // image's, and a parse error counts as a mismatch (fail-closed).
 //
 // Precedence: any unavailable spoke yields one SpokeClusterUnavailable block naming
-// all unavailable clusters (unavailable wins, because an unavailable spoke's format
+// the unavailable clusters (unavailable wins, because an unavailable spoke's format
 // is unknown and could also mismatch); otherwise any mismatch yields one
-// SeedFormatMismatch block naming each mismatched cluster and the format it expects;
-// otherwise nil. Every block is terminal (no requeue); recovery is delete-and-recreate.
+// SeedFormatMismatch block naming the mismatched clusters and the format each expects;
+// otherwise nil. The name list in either message is bounded by summarizeClusters so a
+// large fleet cannot push the terminal condition message past the CRD limit. Every
+// block is terminal (no requeue); recovery is delete-and-recreate.
 func evaluateSpokeFormats(imageFormat int, clusters []clusterv1.ManagedCluster) *preflightBlock {
 	var unavailable []string
 	var mismatched []string
@@ -214,14 +216,56 @@ func evaluateSpokeFormats(imageFormat int, clusters []clusterv1.ManagedCluster) 
 	if len(unavailable) > 0 {
 		return &preflightBlock{utils.ConditionReasons.SpokeClusterUnavailable,
 			fmt.Sprintf("cannot verify seed-format compatibility: cluster(s) unavailable: %s",
-				strings.Join(unavailable, ", "))}
+				summarizeClusters(unavailable))}
 	}
 	if len(mismatched) > 0 {
 		return &preflightBlock{utils.ConditionReasons.SeedFormatMismatch,
 			fmt.Sprintf("seed image format version (%d) does not match the expected format of cluster(s): %s",
-				imageFormat, strings.Join(mismatched, ", "))}
+				imageFormat, summarizeClusters(mismatched))}
 	}
 	return nil
+}
+
+// clusterListSampleBudget caps the number of characters summarizeClusters spends on
+// the joined cluster-name sample. It is held well under the IBGU CRD's 32768-character
+// limit on a condition message (metadata.conditions[].message) so the surrounding
+// terminal-block text — the reason prefix, the seed format version, and the
+// "(+N more)" suffix — always fits alongside the sample. Without this bound a block
+// that names every spoke in a large fleet could exceed the CRD limit, the status
+// update that records the terminal reason would be rejected, and the IBGU would never
+// show why it blocked.
+const clusterListSampleBudget = 24000
+
+// summarizeClusters joins cluster identifiers into a comma-separated sample bounded to
+// clusterListSampleBudget characters, appending " (+N more)" when the sample does not
+// cover the whole list. It always emits at least one name (so the message still
+// identifies a blocking cluster even if that one name is pathologically long) and so
+// keeps the terminal condition message within the CRD limit for an arbitrarily large
+// fleet. An empty input yields an empty string.
+func summarizeClusters(names []string) string {
+	if len(names) == 0 {
+		return ""
+	}
+	var b strings.Builder
+	shown := 0
+	for i, name := range names {
+		sep := ""
+		if i > 0 {
+			sep = ", "
+		}
+		// Always include the first name; stop before the sample would exceed the
+		// budget once at least one name is shown.
+		if shown > 0 && b.Len()+len(sep)+len(name) > clusterListSampleBudget {
+			break
+		}
+		b.WriteString(sep)
+		b.WriteString(name)
+		shown++
+	}
+	if shown < len(names) {
+		fmt.Fprintf(&b, " (+%d more)", len(names)-shown)
+	}
+	return b.String()
 }
 
 // planHasPrepOrUpgrade reports whether the IBGU plan contains a Prep or Upgrade
