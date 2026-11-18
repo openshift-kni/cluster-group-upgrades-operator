@@ -36,11 +36,12 @@ that receives any of them. The unit is never split.
 | New hub CRD `BackupContent` (`lcm.openshift.io/v1alpha1`, namespaced): one curated backup definition per object, embedding LCA's BackupContent spec type. Same kind name as LCA's spoke CRD, different API group. Spec is immutable. | CNF-29240 |
 | TALM copies the referenced hub BackupContent entries to the spoke as LCA BackupContent objects, in the Prep manifestwork, into `ibuv1.DefaultNamespace` (`openshift-lifecycle-agent`, LCA's default install namespace), same name. Spokes with LCA installed elsewhere are not supported and fail loudly. | CNF-29241 |
 | Pre-flight, image side, before the first CGU: read the seed image's format label and reject `backupContent` with a pre-bump seed (hub-only safety rule). Today runs only for IBGUs that set `backupContent`. | CNF-29242 (PR #14404) |
-| Pre-flight, spoke side: per-cluster seed format from the LCA claim (no claim on an available cluster = pre-bump LCA; requires hub ACM 2.14+); compared with the image's format for every IBGU. | CNF-30039 |
+| Pre-flight, spoke side: per-cluster seed format from the LCA claim (no claim on an available cluster = pre-bump LCA; requires hub ACM 2.14+); compared with the image's format for every IBGU. Checks the frozen set (plan item 0's eligible set), not every cluster the selector matches. | CNF-30039 |
 | Pre-flight blocks never resume on their own; outcome on the `Succeeded` condition; appending to a completed IBGU still works. | CNF-30061 (merged) |
 | Simplification: every pre-flight failure is terminal at once (no retries, no annotation), a fixed 5-minute start deadline, uncached reads in the pre-flight. | CNF-30176 |
 | Unresolvable references (hub BackupContent or `oadpContent` ConfigMap) block the IBGU instead of being silently skipped. | CNF-29243 |
 | IBGU resolves the cluster list once (independent of OADP removal). | CNF-29244 |
+| The frozen set (plan item 0's eligible set) is passed to each CGU as a `name In (...)` selector on ACM's `name` label, plus that plan item's action requirement; the CGU narrows the set itself. No `spec.clusters`, no dropped-cluster reporting (`status.clusters[].dropped` removed). | CNF-30180 |
 | Condition types from LCA's API; LCA stage failures surfaced in IBGU status promptly (report only: the CGU state machine is unchanged, so a failed cluster still waits out its batch's timeout share). | CNF-29245 |
 | Upstream docs, samples, kuttl. | CNF-29247 |
 | Bounded per-cluster status on CGU timeout (pre-existing scale issue, found during this design). | CNF-29281 |
@@ -100,7 +101,8 @@ cluster and the reason.
 1. **Hub-only safety rule:** IBGU sets `backupContent` and the seed image's format (read from
    its OCI label on the registry) is older than the first format that supports
    `backupContent` → IBGU rejected. No spoke is read.
-2. Per cluster:
+2. Per cluster in the frozen set (plan item 0's eligible set; a cluster that matches the
+   selector but is not eligible for plan item 0 is not checked):
    1. `ManagedClusterConditionAvailable` not True → blocked, "cluster unavailable".
    2. LCA ClusterClaim present → use its seed format.
    3. Claim absent → the spoke's LCA predates the bump (pre-bump format). Definitive on
@@ -194,11 +196,11 @@ service-impacting, so no block ever clears on its own:
 | Copy to spoke | Spoke BackupContent created in `openshift-lifecycle-agent` (`ibuv1.DefaultNamespace`) with the entry's name and spec; pull secret still copied there; on a spoke without that namespace the Prep manifestwork reports the apply failure; metadata stripped (no `ownerReferences`, `uid`, hub labels); survives deletion of the Prep manifestwork; present at Upgrade pre-pivot | CNF-29241 |
 | Work-agent RBAC | first Prep after a TALM upgrade applies BackupContent objects without a lingering `Applied=False` (ClusterRole applied first; `backupcontents` rule for `lca.openshift.io` present) | CNF-29241 |
 | Reference resolution | Prep plan with a missing hub BackupContent → blocked with names, no CGU; same for a missing `oadpContent` ConfigMap (**behaviour change** from today's warn-and-skip); Upgrade-only plan not blocked by missing hub entries | CNF-29243 |
-| Pre-flight | each branch in §2.2, including: claim present and matching; claim present and mismatching; claim absent (pre-bump); cluster unavailable; image label unreadable; safety rule; opt-out annotation (skip recorded as an event) | CNF-29242, CNF-30039 |
-| Block behaviour | each terminal reason stays blocked after the cause is fixed, across a TALM restart and a plan append; recreating proceeds; every pre-flight failure (including an unreachable registry) blocks on the first reconcile with no requeue; a BackupContent that exists when the IBGU is first reconciled is found even if TALM's cache lags; an IBGU first reconciled more than 5 minutes after creation blocks with `PreflightWindowExpired` even when every gate passes; the retry annotation has no effect after CNF-30176; Progressing goes False with the reason; `Succeeded` is True/`Completed`, False/`CompletedWithFailures` or False/block reason as appropriate; an IBGU that never started before the TALM upgrade does not start afterwards (`PreflightWindowExpired`); appending to a completed IBGU (`[['Prep']]` then `['Upgrade']`, `CompletedWithFailures` then `['AbortOnFailure']`) resumes it on the frozen set and re-writes `Succeeded`; `[['Prep'], ['AbortOnFailure'], ['Upgrade']]` with nothing failed skips AbortOnFailure (no CGU) and still runs Upgrade; appending to a blocked IBGU does not revive it; a plan-item CGU that ended `Succeeded=False` with no per-cluster failure still yields `CompletedWithFailures` | CNF-30061, CNF-30176 |
+| Pre-flight | each branch in §2.2, including: claim present and matching; claim present and mismatching; claim absent (pre-bump); cluster unavailable; image label unreadable; safety rule; opt-out annotation (skip recorded as an event); an Upgrade-only IBGU is not blocked by an unavailable or mismatched spoke that matches the selector but lacks `ibgu-prep-completed`, and is blocked by one that has it | CNF-29242, CNF-30039 |
+| Block behaviour | each terminal reason stays blocked after the cause is fixed, across a TALM restart and a plan append; recreating proceeds; every pre-flight failure (including an unreachable registry) blocks on the first reconcile with no requeue; a BackupContent that exists when the IBGU is first reconciled is found even if TALM's cache lags; an IBGU first reconciled more than 5 minutes after creation blocks with `PreflightWindowExpired` even when every gate passes; the retry annotation has no effect after CNF-30176; Progressing goes False with the reason; `Succeeded` is True/`Completed`, False/`CompletedWithFailures` or False/block reason as appropriate; an IBGU that never started before the TALM upgrade does not start afterwards (`PreflightWindowExpired`); appending to a completed IBGU (`[['Prep']]` then `['Upgrade']`, `CompletedWithFailures` then `['AbortOnFailure']`) resumes it on the frozen set and re-writes `Succeeded`; `[['Prep'], ['AbortOnFailure'], ['Upgrade']]` with nothing failed creates an AbortOnFailure CGU that selects nothing and completes, then runs Upgrade; appending to a blocked IBGU does not revive it; a plan-item CGU that ended `Succeeded=False` with no per-cluster failure still yields `CompletedWithFailures` | CNF-30061, CNF-30176 |
 | Status | per-cluster failure messages in IBGU status for LCA stage failures, without waiting for timeout | CNF-29245 |
 | Plans | Prep → Upgrade → FinalizeUpgrade; Prep+Upgrade in one item; Rollback → FinalizeRollback; Abort; AbortOnFailure; follow-up Upgrade-only IBGU; separate Abort IBGU | existing + CNF-29241 |
-| Cluster list | frozen set; ManagedCluster deleted mid-rollout is dropped and reported, not blocking; a ManagedCluster labelled after the IBGU started is not picked up; plan item 0 with no eligible clusters → terminal block | CNF-29244, CNF-30061 |
+| Cluster list | frozen set is plan item 0's eligible set (an Upgrade-only IBGU freezes only the matching clusters that carry `ibgu-prep-completed`; a later Abort does not reach the others); every CGU carries `clusterLabelSelectors` with `name In (<frozen set>)` plus its action requirement and no `spec.clusters` (AbortOnFailure gets two entries: prep-failed, upgrade-failed); a ManagedCluster deleted mid-rollout just stops matching — not blocking, not reported; a ManagedCluster labelled after the IBGU started is not picked up; a ManagedCluster deleted and recreated with the same name during the rollout does join it; plan item 0 with no eligible clusters → terminal block | CNF-29244, CNF-30180, CNF-30061 |
 
 ### 3.3 Negative and failure injection
 
@@ -279,7 +281,7 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
 | Pre-flight, claims present | one List of ManagedClusters for the fleet | time to first CGU |
 | Seed label read | once per IBGU, not per cluster | single registry call |
 | BackupContent copies | small objects in the Prep manifestwork, one per referenced entry per spoke | manifestwork size with realistic entry counts |
-| CGU object size | normal rollout: well under the limit even with 2B's explicit list (~383 KiB at 3,500 clusters with 25-character names) | status size at end of rollout |
+| CGU object size | normal rollout: well under the limit with the frozen set carried as a `name In (...)` value list (~383 KiB at 3,500 clusters with 25-character names); AbortOnFailure CGUs carry the list twice (one selector entry per disjunct) | status size at end of rollout; spec size of an AbortOnFailure CGU |
 | **CGU object size on mass timeout** | today about 770–780 timed-out clusters in one CGU fill the ~1.5 MiB object (each carries ~1.2–2 KB of ManifestWork status); the CGU then cannot write status | reproduce with a fleet-wide timeout above that size; verify the fix in CNF-29281 |
 | Fleet-wide LCA stage failure (report only) | failure messages appear in IBGU status within a reconcile, but every batch still runs to its timeout share | time until the failure is visible; total wall-clock, as a baseline |
 
@@ -313,6 +315,13 @@ Rollback time is out of scope for the epic; record it, but it is not a pass/fail
   CNF-29901.
 - The spoke-side seed check requires hub ACM 2.14 or later: it relies on LCA's claim being
   exempt from the custom-claim cap, and has no fallback read.
+- A plan item's CGU narrows the frozen set by labels read from TALM's informer cache. If a
+  label IBGU has just written has not reached the cache when the CGU selects its clusters,
+  the step acts on fewer frozen clusters (never on clusters outside the set) and nothing
+  flags it; the cluster keeps its labels, so re-running the step picks it up. The CGU
+  controller's existing reconcile delay makes this unlikely; an uncached selection read is
+  a future improvement (CNF-30251). Not reliably reproducible; don't treat it as a
+  pass/fail test.
 
 ## Open items that affect the test plan
 
@@ -526,4 +535,4 @@ Reference to a missing hub entry — IBGU blocked before any CGU, condition name
 - LCA: CNF-22167 / PR#7818, CNF-26659 (API, PR #10403), CNF-29691 (engine integration), CNF-28671, CNF-28751, CNF-28926; backport and
   migration guide CNF-28772; reference CRs CNF-28676; upstream docs CNF-28679; downstream
   docs TELCODOCS-3009.
-- TALM: CNF-29239 – CNF-29245, CNF-29247, CNF-30039, CNF-30061, CNF-30176; future improvements under CNF-6791: CNF-29281, CNF-29901, CNF-29246, CNF-30062, CNF-30139.
+- TALM: CNF-29239 – CNF-29245, CNF-29247, CNF-30039, CNF-30061, CNF-30176, CNF-30180; future improvements under CNF-6791: CNF-29281, CNF-29901, CNF-29246, CNF-30062, CNF-30139, CNF-30251.

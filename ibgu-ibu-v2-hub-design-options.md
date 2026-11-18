@@ -211,9 +211,9 @@ Code facts cited below are verified against this repo at `main`; see the appendi
   1. **Hub-only rule.** If the IBGU sets `ibuSpec.backupContent` and the seed image's format
      is older than the first format that supports `backupContent`, reject the IBGU. An
      old-format seed can never work with `backupContent`, and this needs no spoke read.
-  2. **Per cluster, over the resolved base set:** block if the spoke's expected seed
-     format differs from the image's, or cannot be determined (cluster unavailable,
-     image label unreadable). Checked for every IBGU.
+  2. **Per cluster, over the frozen set (plan item 0's eligible set, D2):** block if the
+     spoke's expected seed format differs from the image's, or cannot be determined
+     (cluster unavailable, image label unreadable). Checked for every IBGU.
 
   Together these cover `backupContent`: a spoke that passes (2) expects the image's format,
   which (1) has already required to be one that supports `backupContent`. IBGUs that set
@@ -1111,6 +1111,15 @@ RBAC is already present.
 
 Under 2B the check is tidier still, because the set validated is byte-for-byte the set
 handed to each CGU rather than a superset of it.
+
+**Decided (2026-11-18, CNF-30039 review):** with D2 settled, the per-spoke check runs
+over the frozen set — plan item 0's eligible set, which the empty-set gate already
+resolves — not the base set. No CGU in the plan can act outside the frozen set, so the
+base set is no longer conservative, only over-blocking: because pre-flight blocks are
+terminal, an unavailable spoke that matches the selector but is not eligible for plan
+item 0 would permanently block an Upgrade-only follow-up it can never touch. For plans
+that start with Prep the two sets are equal. A targeted spoke that is unavailable or
+incompatible still blocks.
 
 - Run it during the IBGU's validation phase, ahead of `ensureCGUForPlanItem`
   (`imagebasedgroupupgrade.go:270`).
