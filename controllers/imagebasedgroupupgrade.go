@@ -852,12 +852,12 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 	// first CGU is created from it and every later plan item is confined to it. Derive
 	// it from the very objects the gates evaluated so the gate and the first CGU can
 	// never disagree.
-	baseClusterNames := make([]string, 0, len(eligibleClusters))
+	eligibleClusterNames := make([]string, 0, len(eligibleClusters))
 	for i := range eligibleClusters {
-		baseClusterNames = append(baseClusterNames, eligibleClusters[i].GetName())
+		eligibleClusterNames = append(eligibleClusterNames, eligibleClusters[i].GetName())
 	}
-	sort.Strings(baseClusterNames)
-	return baseClusterNames, block, nil
+	sort.Strings(eligibleClusterNames)
+	return eligibleClusterNames, block, nil
 }
 
 // ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
