@@ -2257,7 +2257,7 @@ func TestEmptySetGateMatchesActualLabels(t *testing.T) {
 	assert.Equal(t, []string{"cluster1"}, clusterNames(eligible))
 }
 
-// TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate (design D2): on the
+// TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate: on the
 // first reconcile it blocks the IBGU terminally (Succeeded=False, Progressing mirrored
 // with the same reason), creates no CGU, and returns no error — never a completion. It
 // distinguishes two reasons: no ManagedCluster matches the selector

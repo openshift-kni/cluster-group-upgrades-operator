@@ -675,7 +675,7 @@ func (r *IBGUReconciler) ensureManifests(
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) error {
 	// The Succeeded condition records one of two terminal states, distinguished by
-	// reason (design D4):
+	// reason:
 	//
 	//   - A pre-flight block (Succeeded=False with a block reason) is permanent: it is
 	//     never cleared by a restart or an appended plan item. The IBGU short-circuits
@@ -808,7 +808,7 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // resolved once by the empty-set gate. That set is the IBGU's frozen cluster set: the
 // first CGU is created from it, and every later plan item is confined to it.
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
-	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
+	// 1. Empty-set gate: plan item 0 must resolve to at least one eligible
 	// cluster. Its resolved eligible ManagedCluster set is reused twice — as the first
 	// CGU's frozen cluster set (its names, derived below) and by the seed-format gate
 	// for its per-spoke comparison — so the whole pre-flight issues one uncached List.
@@ -860,7 +860,7 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 	return eligibleClusterNames, block, nil
 }
 
-// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
+// ensureNonEmptyClusterSet is the empty-set pre-flight gate: it resolves
 // plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
 // returns it as the IBGU's frozen cluster set, so the first CGU is created from the very
 // set the gate evaluated — the gate and the CGU can never disagree, so there is no

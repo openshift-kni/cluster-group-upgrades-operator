@@ -268,8 +268,8 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 	assert.Nil(t, succeededCondition(ibgu))
 }
 
-// TestEvaluateSpokeFormats covers the pure spoke-side resolution (design D3) and
-// comparison (design D4 check 2): each branch of expectedSpokeFormat/evaluateSpokeFormats
+// TestEvaluateSpokeFormats covers the pure spoke-side resolution and
+// comparison: each branch of expectedSpokeFormat/evaluateSpokeFormats
 // with no I/O. preBumpFormat (== SeedFormatVersion-1) is the format a claimless spoke
 // expects.
 func TestEvaluateSpokeFormats(t *testing.T) {
@@ -630,7 +630,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
-		// An available spoke publishing the matching seed-format claim passes check 2.
+		// An available spoke publishing the matching seed-format claim passes the spoke comparison.
 		assert.NoError(t, fakeClient.Create(context.TODO(),
 			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"},
 				lcav1.BackupContentFirstSeedFormatVersion)))
@@ -651,7 +651,7 @@ func TestEnsureManifestsSeedFormatGate(t *testing.T) {
 	})
 
 	t.Run("spoke whose claim mismatches the image is terminal before any CGU", func(t *testing.T) {
-		// No backupContent, so check 1 is skipped and the spoke comparison (check 2) is
+		// No backupContent, so the hub-only safety rule is skipped and the spoke comparison is
 		// the gate under test: a claimless spoke expects the pre-bump format and so
 		// mismatches a bumped image.
 		ibgu := newIBGUForResolution([]ibguv1alpha1.PlanItem{{Actions: []string{ibguv1alpha1.Prep}}})
