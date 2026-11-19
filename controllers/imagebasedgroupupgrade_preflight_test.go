@@ -69,8 +69,8 @@ func backupContentIBGU() *ibguv1alpha1.ImageBasedGroupUpgrade {
 
 func TestEnsureSeedFormatCompatible(t *testing.T) {
 	// bumpedImage is the current seed format (SeedFormatVersion); a spoke with no
-	// claim expects one less (SeedFormatVersion-1 == preBumpFormat), so it mismatches
-	// a bumped image and matches a pre-bump one.
+	// claim expects the pre-bump format (preBumpFormat), so it mismatches a bumped
+	// image and matches a pre-bump one.
 	const bumpedImage = lcav1.SeedFormatVersion
 
 	tests := []struct {
@@ -270,11 +270,11 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 
 // TestEvaluateSpokeFormats covers the pure spoke-side resolution and
 // comparison: each branch of expectedSpokeFormat/evaluateSpokeAvailabilityAndFormat
-// with no I/O. preBumpFormat (== SeedFormatVersion-1) is the format a claimless spoke
-// expects.
+// with no I/O. preBumpFormat (BackupContentFirstSeedFormatVersion-1) is the format a
+// claimless spoke expects.
 func TestEvaluateSpokeFormats(t *testing.T) {
-	const bumpedImage = lcav1.SeedFormatVersion      // current format
-	const preBumpImage = lcav1.SeedFormatVersion - 1 // == preBumpFormat
+	const bumpedImage = lcav1.SeedFormatVersion                        // current format
+	const preBumpImage = lcav1.BackupContentFirstSeedFormatVersion - 1 // == preBumpFormat
 
 	// available builds an Available=True ManagedCluster carrying the given raw
 	// seed-format claim value; an empty value means no claim is published.
