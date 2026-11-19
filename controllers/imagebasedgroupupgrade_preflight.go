@@ -66,8 +66,8 @@ type preflightBlock struct {
 const preflightStartDeadline = 5 * time.Minute
 
 // ensureSeedFormatCompatible runs the hub-side seed-format compatibility
-// pre-flight (CNF-29242 image side, design D4 check 1; CNF-30039 spoke side, design
-// D3 and D4 check 2). It returns a *preflightBlock: a block when the seed image
+// pre-flight (CNF-29242 image side; CNF-30039 spoke side). It returns a
+// *preflightBlock: a block when the seed image
 // cannot be read (fail-closed), a block when backupContent is paired with a pre-bump
 // seed (a definitive verdict on the format label actually read), a block when a spoke
 // is unavailable or its expected format differs from the image's, nil when the plan
@@ -75,9 +75,9 @@ const preflightStartDeadline = 5 * time.Minute
 // requeues with backoff rather than recording a misleading condition).
 //
 // It reads the seed image format once for every in-scope IBGU — the spoke-side
-// comparison (D4 check 2) needs it on every IBGU, not only those that set
+// comparison needs it on every IBGU, not only those that set
 // backupContent — and compares it against each spoke's expected format, resolved
-// from the LCA ClusterClaim (D3). The spokes it checks are plan item 0's eligible
+// from the LCA ClusterClaim. The spokes it checks are plan item 0's eligible
 // ManagedClusters — the frozen set the first CGU acts on — which the empty-set gate
 // already resolved (threaded in as eligibleClusters), so the whole pre-flight issues a
 // single uncached List. Scoping to the eligible set (not the full base set) means a
@@ -129,12 +129,12 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return &preflightBlock{utils.ConditionReasons.SeedImageUnreadable, msg}, nil
 	}
 
-	// Hub-only safety rule (D4 check 1): a backupContent IBGU paired with a seed
+	// Hub-only safety rule: a backupContent IBGU paired with a seed
 	// image older than the first format that supports backupContent is rejected
 	// here, before any spoke comparison. This is a definitive verdict on the format
 	// label actually read. LCA's own Prep seed check is a hard equality that does not
 	// catch this pairing (the pruned field upgrades with no application backup), which
-	// is why the hub rejects it up front. It runs before check 2 so a backupContent
+	// is why the hub rejects it up front. It runs before the spoke comparison so a backupContent
 	// IBGU on a pre-bump seed reports this specific reason rather than a per-spoke
 	// mismatch.
 	if len(ibgu.Spec.IBUSpec.BackupContent) > 0 && imageFormat < lcav1.BackupContentFirstSeedFormatVersion {
@@ -145,14 +145,14 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 		return &preflightBlock{utils.ConditionReasons.BackupContentUnsupportedSeed, msg}, nil
 	}
 
-	// Spoke-side check (D4 check 2): every eligible spoke (the frozen set the plan's
+	// Spoke-side check: every eligible spoke (the frozen set the plan's
 	// CGUs act on) must be available and expect the image's format. The comparison is a
 	// pure function of the already-listed ManagedClusters, so no additional read is
 	// issued here.
 	return evaluateSpokeFormats(imageFormat, eligibleClusters), nil
 }
 
-// expectedSpokeFormat returns the seed format version a spoke expects (design D3),
+// expectedSpokeFormat returns the seed format version a spoke expects,
 // resolved solely from LCA's ClusterClaim (seedformatversion.lca.openshift.io). On
 // ACM 2.14+ the reserved-suffix claim is never truncated, so the claim is the one
 // definitive source: when it is present its value is the expected format; a
@@ -179,7 +179,7 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 }
 
 // evaluateSpokeFormats compares every spoke in plan item 0's eligible set against the
-// seed image's format (design D4 check 2) and returns a single terminal block, or
+// seed image's format and returns a single terminal block, or
 // nil when every spoke is compatible. It issues no reads: the ManagedClusters were
 // listed once by the empty-set gate.
 //
