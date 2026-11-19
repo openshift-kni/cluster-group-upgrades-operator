@@ -149,7 +149,7 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 	// CGUs act on) must be available and expect the image's format. The comparison is a
 	// pure function of the already-listed ManagedClusters, so no additional read is
 	// issued here.
-	return evaluateSpokeFormats(imageFormat, eligibleClusters), nil
+	return evaluateSpokeAvailabilityAndFormat(imageFormat, eligibleClusters), nil
 }
 
 // expectedSpokeFormat returns the seed format version a spoke expects,
@@ -178,7 +178,7 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 	return lcav1.SeedFormatVersion - 1, nil
 }
 
-// evaluateSpokeFormats compares every spoke in plan item 0's eligible set against the
+// evaluateSpokeAvailabilityAndFormat compares every spoke in plan item 0's eligible set against the
 // seed image's format and returns a single terminal block, or
 // nil when every spoke is compatible. It issues no reads: the ManagedClusters were
 // listed once by the empty-set gate.
@@ -195,7 +195,7 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 // otherwise nil. The name list in either message is bounded by summarizeClusters so a
 // large fleet cannot push the terminal condition message past the CRD limit. Every
 // block is terminal (no requeue); recovery is delete-and-recreate.
-func evaluateSpokeFormats(imageFormat int, clusters []clusterv1.ManagedCluster) *preflightBlock {
+func evaluateSpokeAvailabilityAndFormat(imageFormat int, clusters []clusterv1.ManagedCluster) *preflightBlock {
 	var unavailable []string
 	var mismatched []string
 	for i := range clusters {
