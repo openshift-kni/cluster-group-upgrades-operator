@@ -159,11 +159,11 @@ func (r *IBGUReconciler) ensureSeedFormatCompatible(ctx context.Context, ibgu *i
 // non-integer value is an anomaly and is returned as an error (callers fail closed).
 //
 // When the claim is absent the spoke's LCA predates the seed-format claim, so it
-// expects the pre-bump format: one less than SeedFormatVersion, the version a
-// claim-publishing LCA reports. (In this release SeedFormatVersion equals
-// BackupContentFirstSeedFormatVersion, so this also equals
-// BackupContentFirstSeedFormatVersion - 1.) There is no fallback read — absence is
-// definitive.
+// expects the pre-bump format: one less than BackupContentFirstSeedFormatVersion,
+// the last format before claim-publishing LCA. BackupContentFirstSeedFormatVersion
+// is used as the anchor because it is a fixed historical marker that never changes,
+// whereas SeedFormatVersion advances with each new LCA release. There is no fallback
+// read — absence is definitive.
 func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 	for _, claim := range mc.Status.ClusterClaims {
 		if claim.Name == lcav1.SeedFormatClusterClaimName {
@@ -175,7 +175,7 @@ func expectedSpokeFormat(mc *clusterv1.ManagedCluster) (int, error) {
 			return format, nil
 		}
 	}
-	return lcav1.SeedFormatVersion - 1, nil
+	return lcav1.BackupContentFirstSeedFormatVersion - 1, nil
 }
 
 // evaluateSpokeAvailabilityAndFormat compares every spoke in plan item 0's eligible set against the
