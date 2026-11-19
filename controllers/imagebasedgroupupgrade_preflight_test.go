@@ -269,7 +269,7 @@ func TestEnsureSeedFormatCompatibleInfraFault(t *testing.T) {
 }
 
 // TestEvaluateSpokeFormats covers the pure spoke-side resolution and
-// comparison: each branch of expectedSpokeFormat/evaluateSpokeFormats
+// comparison: each branch of expectedSpokeFormat/evaluateSpokeAvailabilityAndFormat
 // with no I/O. preBumpFormat (== SeedFormatVersion-1) is the format a claimless spoke
 // expects.
 func TestEvaluateSpokeFormats(t *testing.T) {
@@ -382,7 +382,7 @@ func TestEvaluateSpokeFormats(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			block := evaluateSpokeFormats(test.imageFormat, test.clusters)
+			block := evaluateSpokeAvailabilityAndFormat(test.imageFormat, test.clusters)
 			if !test.expectBlock {
 				assert.Nil(t, block)
 				return
@@ -453,7 +453,7 @@ func TestEvaluateSpokeFormatsBoundsMessage(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			block := evaluateSpokeFormats(lcav1.SeedFormatVersion, test.clusters)
+			block := evaluateSpokeAvailabilityAndFormat(lcav1.SeedFormatVersion, test.clusters)
 			assert.NotNil(t, block)
 			assert.Equal(t, test.expectReason, block.reason)
 			assert.LessOrEqual(t, len(block.message), crdConditionMessageLimit,
