@@ -204,7 +204,7 @@ IBGU goes through all plan items in the ibgu and generates the corresponding cgu
 - if the cgu does not exist, create the cgu
 ### Creating cgu for plan item
 for every action in the plan item, generate the corresponding IBU. Create a manifestworkreplicaset that contains the ibu and the clusterrole that allows manifestwork agent to modify ibu.
-For prep, the manifestworkreplicaset also conatins the manifests in the `oadpContent`. If `spec.ibuSpec.seedImageRef.pullSecretRef` is set, the controller copies that secret (read from the IBGU's namespace on the hub) into the manifest list; the secret is recreated on the spokes in the `openshift-lifecycle-agent` namespace. A set `pullSecretRef` that names a secret missing from the hub is a misconfiguration caught by the reference pre-flight gate as a terminal block (`UnresolvableDenpendency`) — the Prep cgu is never created without the secret. A plan with no `pullSecretRef` copies no secret.
+For prep, the manifestworkreplicaset also contains the manifests in the `oadpContent`. If `spec.ibuSpec.seedImageRef.pullSecretRef` is set, the controller copies that secret (read from the IBGU's namespace on the hub) into the manifest list; the secret is recreated on the spokes in the `openshift-lifecycle-agent` namespace. A set `pullSecretRef` that names a secret missing from the hub is a misconfiguration caught by the reference pre-flight gate as a terminal block (`UnresolvableDenpendency`) — the Prep cgu is never created without the secret. A plan with no `pullSecretRef` copies no secret.
 After creating all the manifestworkreplicasets create a cgu containing the manifestworkreplicasets. If the upgrade action is in the plan item, the cgu will disable auto import before start and re enables it after completion.
 
 ### Resolving the cluster set
@@ -288,7 +288,7 @@ Some ibgu actions only run on managed clusters that have certain labels
 
 Notice that Rollback only selects clusters that have upgrade completed label. If upgrade fails almost always the hub cluster and IBGU controller can not manage the spoke cluster. So we rely on the IBU autorollback to handle failed upgrades.
 
-`Abort` ibgu action only runs when `lcm.openshit.io/ibgu-upgrade-completed` is not present.
+`Abort` ibgu action only runs when `lcm.openshift.io/ibgu-upgrade-completed` is not present.
 
 IBGU applies these labels according to its current status. After a successful `Abort`, `FinalizeUpgrade`, `FinalizeRollback` or `AbortOnFailure` IBGU removes these labels from the respective managed cluster.
 
