@@ -81,6 +81,8 @@ func (r *ClusterGroupUpgradeReconciler) updateManifestWorkForCurrentBatch(
 			if err != nil {
 				return err
 			}
+		} else if err != nil {
+			return fmt.Errorf("failed to get manifestwork %d for cluster %s: %w", currentIndex, clusterName, err)
 		}
 	}
 	return nil
