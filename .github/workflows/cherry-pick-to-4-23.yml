@@ -1,0 +1,153 @@
+# Selective Cherry-Pick from release-5.0 to release-4.23
+#
+# This workflow triggers on every merged PR to release-5.0 and evaluates the
+# changed files. If the PR contains actual code changes (not just dependency
+# bumps, pipeline definitions, or Konflux metadata), it posts
+# a `/cherry-pick release-4.23` comment so the Prow cherry-pick bot can open
+# a backport PR against release-4.23.
+#
+# Exclusion patterns (PRs that ONLY touch these paths are skipped):
+#   - go.mod / go.sum              (dependency bumps)
+#   - vendor/                      (vendored dependencies)
+#   - .tekton/                     (Tekton / Konflux pipeline definitions)
+#   - renovate.json                (Renovate config)
+#   - .konflux/                    (Konflux config)
+#   - bundle/                      (operator bundle metadata)
+#   - telco5g-konflux              (submodule — updated independently via Mintmaker)
+#
+# If a PR touches BOTH excluded and non-excluded files, the cherry-pick
+# IS triggered — code changes are present alongside infra changes.
+
+name: Cherry-pick to release-4.23
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - release-5.0
+
+permissions:
+  pull-requests: write
+
+jobs:
+  cherry-pick:
+    name: Evaluate and cherry-pick to release-4.23
+    # Only run when the PR was actually merged (not just closed)
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Check for code changes and post cherry-pick comment
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            console.log(`Evaluating PR #${prNumber} for cherry-pick to release-4.23`);
+
+            // ---------------------------------------------------------------
+            // Step 1: Fetch all files changed in the merged PR
+            // ---------------------------------------------------------------
+            const files = [];
+            let page = 1;
+            while (true) {
+              const { data } = await github.rest.pulls.listFiles({
+                owner,
+                repo,
+                pull_number: prNumber,
+                per_page: 100,
+                page,
+              });
+              files.push(...data);
+              if (data.length < 100) break;
+              page++;
+            }
+
+            console.log(`PR #${prNumber} changed ${files.length} file(s)`);
+
+            // ---------------------------------------------------------------
+            // Step 2: Classify each file as "excluded" (infra-only) or "code"
+            //
+            // A file is excluded if it matches any of these patterns:
+            //   - go.mod or go.sum                  (dependency management)
+            //   - anything under vendor/            (vendored dependencies)
+            //   - anything under .tekton/           (Tekton pipelines)
+            //   - renovate.json                     (Renovate config)
+            //   - anything under .konflux/          (Konflux config)
+            //   - anything under bundle/            (operator bundle metadata)
+            //   - telco5g-konflux                   (submodule — Mintmaker per-branch)
+            // ---------------------------------------------------------------
+            const excludedPatterns = [
+              /^go\.(mod|sum)$/,
+              /^vendor\//,
+              /^\.tekton\//,
+              /^renovate\.json$/,
+              /^\.konflux\//,
+              /^bundle\//,
+              // Submodule pointer — updated independently via Mintmaker on each branch
+              /^telco5g-konflux$/,
+            ];
+
+            function isExcluded(filePath) {
+              return excludedPatterns.some((pattern) => pattern.test(filePath));
+            }
+
+            const codeFiles = files.filter((f) => !isExcluded(f.filename));
+
+            if (codeFiles.length > 0) {
+              console.log(`Found ${codeFiles.length} code-change file(s):`);
+              codeFiles.forEach((f) => console.log(`  ✓ ${f.filename}`));
+            } else {
+              console.log('All changed files are excluded (infra/dependency only). Skipping cherry-pick.');
+              const excluded = files.map((f) => f.filename);
+              excluded.forEach((f) => console.log(`  ✗ ${f}`));
+              return;
+            }
+
+            // ---------------------------------------------------------------
+            // Step 3: Idempotency — check if the comment already exists
+            // ---------------------------------------------------------------
+            const cherryPickCommand = '/cherry-pick release-4.23';
+            const comments = [];
+            let commentPage = 1;
+            while (true) {
+              const { data } = await github.rest.issues.listComments({
+                owner,
+                repo,
+                issue_number: prNumber,
+                per_page: 100,
+                page: commentPage,
+              });
+              comments.push(...data);
+              if (data.length < 100) break;
+              commentPage++;
+            }
+
+            const alreadyPosted = comments.some((c) =>
+              c.body.includes(cherryPickCommand)
+            );
+
+            if (alreadyPosted) {
+              console.log(`Cherry-pick comment already exists on PR #${prNumber}. Skipping.`);
+              return;
+            }
+
+            // ---------------------------------------------------------------
+            // Step 4: Post the cherry-pick command comment
+            // ---------------------------------------------------------------
+            await github.rest.issues.createComment({
+              owner,
+              repo,
+              issue_number: prNumber,
+              body: cherryPickCommand,
+            });
+
+            console.log(`Posted "${cherryPickCommand}" on PR #${prNumber}`);
