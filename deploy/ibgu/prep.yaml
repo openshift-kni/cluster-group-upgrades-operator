@@ -8,6 +8,13 @@ metadata:
     auto-rollback-on-failure.lca.openshift.io/post-reboot-config: Disabled
     auto-rollback-on-failure.lca.openshift.io/upgrade-completion: Disabled
     auto-rollback-on-failure.lca.openshift.io/init-monitor: Disabled
+    # The seed-format pre-flight (CNF-30039) now reads the seed image from the
+    # registry for every in-scope IBGU, not only backupContent ones. kuttl has no
+    # real registry and uses a placeholder seed reference, so the gate would
+    # fail-closed (SeedImageUnreadable) and no Prep ManifestWork would be
+    # generated. Opt out with the designed escape hatch so this test exercises the
+    # Prep/Upgrade/finalize flow it is about.
+    lcm.openshift.io/ibgu-skip-seed-compatibility-check: ""
 spec:
   clusterLabelSelectors:
     - matchExpressions:

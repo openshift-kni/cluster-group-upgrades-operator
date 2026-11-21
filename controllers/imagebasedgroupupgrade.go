@@ -675,7 +675,7 @@ func (r *IBGUReconciler) ensureManifests(
 	cguList *ranv1alpha1.ClusterGroupUpgradeList,
 ) error {
 	// The Succeeded condition records one of two terminal states, distinguished by
-	// reason (design D4):
+	// reason:
 	//
 	//   - A pre-flight block (Succeeded=False with a block reason) is permanent: it is
 	//     never cleared by a restart or an appended plan item. The IBGU short-circuits
@@ -808,10 +808,11 @@ func (r *IBGUReconciler) resumeForAppend(ibgu *ibguv1alpha1.ImageBasedGroupUpgra
 // resolved once by the empty-set gate. That set is the IBGU's frozen cluster set: the
 // first CGU is created from it, and every later plan item is confined to it.
 func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
-	// 1. Empty-set gate (D2): plan item 0 must resolve to at least one eligible
-	// cluster. Its resolved eligible set is returned for reuse as the first CGU's
-	// cluster set.
-	item0Clusters, block, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
+	// 1. Empty-set gate: plan item 0 must resolve to at least one eligible
+	// cluster. Its resolved eligible ManagedCluster set is reused twice — as the first
+	// CGU's frozen cluster set (its names, derived below) and by the seed-format gate
+	// for its per-spoke comparison — so the whole pre-flight issues one uncached List.
+	eligibleClusters, block, err := r.ensureNonEmptyClusterSet(ctx, ibgu)
 	if err != nil || block != nil {
 		return nil, block, err
 	}
@@ -837,15 +838,29 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 		}
 	}
 
-	// 3. Seed-format compatibility gate (CNF-29242): the network read, run last.
-	block, err = r.ensureSeedFormatCompatible(ctx, ibgu)
+	// 3. Seed-format compatibility gate (CNF-29242 image side, CNF-30039 spoke side):
+	// the network read, run last. It reuses the eligible ManagedCluster set resolved by
+	// the empty-set gate for its per-spoke format comparison, so no second List is
+	// issued, and only the spokes a CGU in this plan can target are checked — a
+	// selector-matching but plan-ineligible spoke never blocks an IBGU it cannot act on.
+	block, err = r.ensureSeedFormatCompatible(ctx, ibgu, eligibleClusters)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error checking seed format compatibility: %w", err)
 	}
-	return item0Clusters, block, nil
+
+	// The IBGU's frozen cluster set is plan item 0's eligible clusters, by name: the
+	// first CGU is created from it and every later plan item is confined to it. Derive
+	// it from the very objects the gates evaluated so the gate and the first CGU can
+	// never disagree.
+	eligibleClusterNames := make([]string, 0, len(eligibleClusters))
+	for i := range eligibleClusters {
+		eligibleClusterNames = append(eligibleClusterNames, eligibleClusters[i].GetName())
+	}
+	sort.Strings(eligibleClusterNames)
+	return eligibleClusterNames, block, nil
 }
 
-// ensureNonEmptyClusterSet is the empty-set pre-flight gate (design D2): it resolves
+// ensureNonEmptyClusterSet is the empty-set pre-flight gate: it resolves
 // plan item 0's eligible cluster set once, through the uncached pre-flight reader, and
 // returns it as the IBGU's frozen cluster set, so the first CGU is created from the very
 // set the gate evaluated — the gate and the CGU can never disagree, so there is no
@@ -857,8 +872,18 @@ func (r *IBGUReconciler) runPreflightGates(ctx context.Context, ibgu *ibguv1alph
 // selector the CGU receives, against the same uncached snapshot.
 // Reading through the uncached reader means a ManagedCluster or label applied
 // alongside the IBGU is not missed under informer-cache lag and wrongly reported as
-// empty. The returned set is meaningful only on a passing outcome.
-func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]string, *preflightBlock, error) {
+// empty. The returned eligible set is meaningful only on a passing outcome.
+//
+// It returns the eligible ManagedCluster objects themselves (plan item 0's cluster
+// set, with their Status), not the full base set, so the whole pre-flight needs only
+// this one uncached List: the caller derives the frozen names from them, and the
+// seed-format gate (ensureSeedFormatCompatible) reuses the same slice for its
+// per-spoke format comparison instead of listing again. Scoping the spoke check to
+// the eligible set — not the full base set — means a selector-matching but
+// plan-ineligible spoke (e.g. one already carrying a completion label, or one an
+// Upgrade-only follow-up cannot target) never terminally blocks an IBGU no CGU in the
+// plan would ever act on. The eligible set is returned only on a passing outcome.
+func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibguv1alpha1.ImageBasedGroupUpgrade) ([]clusterv1.ManagedCluster, *preflightBlock, error) {
 	reader := r.preflightReader()
 	base, err := r.resolveBaseClusters(ctx, reader, ibgu)
 	if err != nil {
@@ -880,20 +905,19 @@ func (r *IBGUReconciler) ensureNonEmptyClusterSet(ctx context.Context, ibgu *ibg
 		return nil, nil, err
 	}
 
-	eligible := []string{}
+	var eligible []clusterv1.ManagedCluster
 	for i := range base {
 		// Match each ManagedCluster's actual labels, exactly as the CGU will, so a
 		// cluster the CGU would not select (e.g. one missing ACM's name label) is not
 		// counted eligible here either.
 		if matchesAnySelector(parsed, labels.Set(base[i].GetLabels())) {
-			eligible = append(eligible, base[i].GetName())
+			eligible = append(eligible, base[i])
 		}
 	}
 	if len(eligible) == 0 {
 		return nil, &preflightBlock{utils.ConditionReasons.NoEligibleClusters,
 			fmt.Sprintf("no cluster is eligible for plan item 0 (actions %v)", planItem.Actions)}, nil
 	}
-	sort.Strings(eligible)
 	return eligible, nil, nil
 }
 

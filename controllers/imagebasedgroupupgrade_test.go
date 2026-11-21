@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -1299,9 +1300,11 @@ func TestEnsureManifests(t *testing.T) {
 					Actions: []string{ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade},
 				},
 			},
+			// Available spokes publishing the matching seed-format claim so the first-CGU
+			// seed-format gate (which now reads the image for every in-scope IBGU) passes.
 			managedClusters: []clusterv1.ManagedCluster{
-				*managedClusterWithLabels("cluster1", map[string]string{"common": "true"}),
-				*managedClusterWithLabels("cluster2", map[string]string{"common": "true"}),
+				*availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"}, lcav1.SeedFormatVersion),
+				*availableClusterWithSeedFormat("cluster2", map[string]string{"common": "true"}, lcav1.SeedFormatVersion),
 			},
 			expectedMWRS:     []string{"name-prep", "name-upgrade", "name-finalizeupgrade"},
 			expectedCGUCount: 1,
@@ -1776,7 +1779,8 @@ func TestEnsureManifests(t *testing.T) {
 			if err != nil {
 				t.Errorf("error in creating fake client")
 			}
-			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+				SeedImageReader: &fakeSeedImageReader{format: lcav1.SeedFormatVersion}}
 
 			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
@@ -1874,6 +1878,36 @@ func managedClusterWithLabels(name string, clusterLabels map[string]string) *clu
 		labels[key] = value
 	}
 	return &clusterv1.ManagedCluster{ObjectMeta: v1.ObjectMeta{Name: name, Labels: labels}}
+}
+
+// availableClusterWithSeedFormat builds a ManagedCluster that is Available=True and
+// publishes the LCA seed-format ClusterClaim with the given version — the shape the
+// spoke-side seed-format check (CNF-30039) reads to resolve a spoke's expected format.
+// The fake client persists the ManagedCluster Status because testscheme does not
+// register it with a status subresource, so the uncached List reads the claim back.
+func availableClusterWithSeedFormat(name string, clusterLabels map[string]string, format int) *clusterv1.ManagedCluster {
+	mc := managedClusterWithLabels(name, clusterLabels)
+	mc.Status.Conditions = []metav1.Condition{{
+		Type:               clusterv1.ManagedClusterConditionAvailable,
+		Status:             metav1.ConditionTrue,
+		Reason:             "ManagedClusterAvailable",
+		LastTransitionTime: metav1.Now(),
+	}}
+	mc.Status.ClusterClaims = []clusterv1.ManagedClusterClaim{{
+		Name:  lcav1.SeedFormatClusterClaimName,
+		Value: strconv.Itoa(format),
+	}}
+	return mc
+}
+
+// clusterNames extracts the names of a ManagedCluster slice, so a test can assert on
+// the eligible set ensureNonEmptyClusterSet returns as objects.
+func clusterNames(clusters []clusterv1.ManagedCluster) []string {
+	names := make([]string, 0, len(clusters))
+	for i := range clusters {
+		names = append(names, clusters[i].GetName())
+	}
+	return names
 }
 
 // TestEnsureManifestsFreezesClusterSet verifies that every CGU acts on a subset
@@ -2220,10 +2254,10 @@ func TestEmptySetGateMatchesActualLabels(t *testing.T) {
 	eligible, block, err := reconciler.ensureNonEmptyClusterSet(context.TODO(), ibgu)
 	assert.NoError(t, err)
 	assert.Nil(t, block)
-	assert.Equal(t, []string{"cluster1"}, eligible)
+	assert.Equal(t, []string{"cluster1"}, clusterNames(eligible))
 }
 
-// TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate (design D2): on the
+// TestEmptySetGateIsTerminal verifies the empty-set pre-flight gate: on the
 // first reconcile it blocks the IBGU terminally (Succeeded=False, Progressing mirrored
 // with the same reason), creates no CGU, and returns no error — never a completion. It
 // distinguishes two reasons: no ManagedCluster matches the selector
@@ -2506,11 +2540,14 @@ func TestStartDeadline(t *testing.T) {
 
 			fakeClient, err := getFakeClientFromObjects()
 			assert.NoError(t, err)
-			// A cluster eligible for Prep so all gates pass.
+			// An available cluster eligible for Prep, publishing the matching seed-format
+			// claim, so every pre-flight gate (including the seed-format gate) passes and
+			// the start-deadline check is the decision under test.
 			assert.NoError(t, fakeClient.Create(context.TODO(),
-				managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+				availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"}, lcav1.SeedFormatVersion)))
 			reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
-				Recorder: record.NewFakeRecorder(10)}
+				Recorder:        record.NewFakeRecorder(10),
+				SeedImageReader: &fakeSeedImageReader{format: lcav1.SeedFormatVersion}}
 
 			err = ensureManifestsForTest(t, &reconciler, ibgu)
 			assert.NoError(t, err)
@@ -3062,8 +3099,10 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
 		assert.NoError(t, fakeClient.Create(context.TODO(), hubBackupContent("bc1", "namespace")))
+		// An available spoke publishing the matching seed-format claim so the seed gate passes.
 		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"},
+				lcav1.BackupContentFirstSeedFormatVersion)))
 
 		// A compatible seed reader is injected so the seed-format gate passes and
 		// this test continues to exercise the reference gate.
@@ -3115,10 +3154,12 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
-		// cluster1 completed Prep in a prior IBGU, so it is eligible for Upgrade.
+		// cluster1 completed Prep in a prior IBGU, so it is eligible for Upgrade; it is
+		// available and publishes the matching seed-format claim so the seed gate passes.
 		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{
-				"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""})))
+			availableClusterWithSeedFormat("cluster1", map[string]string{
+				"common": "true", "lcm.openshift.io/ibgu-prep-completed": ""},
+				lcav1.BackupContentFirstSeedFormatVersion)))
 
 		// backupContent is set on this Upgrade-only plan, so inject a compatible seed
 		// reader to isolate the reference-gate behaviour under test.
@@ -3197,10 +3238,12 @@ func TestEnsureManifestsPrepReferenceGate(t *testing.T) {
 
 		fakeClient, err := getFakeClientFromObjects()
 		assert.NoError(t, err)
+		// Available spoke with the matching seed-format claim so the seed gate passes.
 		assert.NoError(t, fakeClient.Create(context.TODO(),
-			managedClusterWithLabels("cluster1", map[string]string{"common": "true"})))
+			availableClusterWithSeedFormat("cluster1", map[string]string{"common": "true"}, lcav1.SeedFormatVersion)))
 
-		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+		reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard(),
+			SeedImageReader: &fakeSeedImageReader{format: lcav1.SeedFormatVersion}}
 		err = ensureManifestsForTest(t, &reconciler, ibgu)
 		assert.NoError(t, err)
 
