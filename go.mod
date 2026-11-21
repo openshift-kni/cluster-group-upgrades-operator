@@ -26,7 +26,7 @@ require (
 	github.com/google/go-containerregistry v0.22.1
 	github.com/onsi/ginkgo/v2 v2.33.0
 	github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2
-	github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066
+	github.com/openshift/controller-runtime-common v0.0.0-20261026124434-bdfc411d93cd
 	github.com/stolostron/cluster-lifecycle-api v0.0.0-20261016140402-a0759edd9e0d
 	gopkg.in/yaml.v3 v3.0.1
 	k8s.io/code-generator v0.37.2
