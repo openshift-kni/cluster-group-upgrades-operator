@@ -1,11 +1,25 @@
 package utils
 
 import (
+	"context"
 	"testing"
 
+	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	mwv1 "open-cluster-management.io/api/work/v1"
+	mwv1alpha1 "open-cluster-management.io/api/work/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+func init() {
+	testscheme.AddKnownTypes(mwv1.SchemeGroupVersion, &mwv1.ManifestWork{}, &mwv1.ManifestWorkList{})
+	testscheme.AddKnownTypes(mwv1alpha1.SchemeGroupVersion, &mwv1alpha1.ManifestWorkReplicaSet{}, &mwv1alpha1.ManifestWorkReplicaSetList{})
+}
 
 var (
 	fieldValueBooleanTrue = true
@@ -374,4 +388,132 @@ func TestGetStageFailureFromManifestWork(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestGetFieldValue(t *testing.T) {
+	str, boolean, integer, raw := "True", false, int64(42), `{"a":1}`
+	mc := &mwv1.ManifestCondition{StatusFeedbacks: mwv1.StatusFeedbackResult{Values: []mwv1.FeedbackValue{
+		{Name: "str", Value: mwv1.FieldValue{Type: mwv1.String, String: &str}},
+		{Name: "bool", Value: mwv1.FieldValue{Type: mwv1.Boolean, Boolean: &boolean}},
+		{Name: "int", Value: mwv1.FieldValue{Type: mwv1.Integer, Integer: &integer}},
+		{Name: "raw", Value: mwv1.FieldValue{Type: mwv1.JsonRaw, JsonRaw: &raw}},
+	}}}
+	assert.Equal(t, "True", getFieldValue(mc, "str"))
+	assert.Equal(t, "false", getFieldValue(mc, "bool"))
+	assert.Equal(t, "42", getFieldValue(mc, "int"))
+	assert.Equal(t, `{"a":1}`, getFieldValue(mc, "raw"))
+	assert.Equal(t, "", getFieldValue(mc, "missing"))
+}
+
+const (
+	mwTestNamespace = "ztp-group"
+	mwTestTemplate  = "ibgu-prep"
+)
+
+func newMWTestCGU() *ranv1alpha1.ClusterGroupUpgrade {
+	return &ranv1alpha1.ClusterGroupUpgrade{
+		ObjectMeta: v1.ObjectMeta{
+			Name: "cgu", Namespace: mwTestNamespace,
+			Annotations: map[string]string{NameSuffixAnnotation: "abcde"},
+		},
+		Spec: ranv1alpha1.ClusterGroupUpgradeSpec{ManifestWorkTemplates: []string{mwTestTemplate}},
+	}
+}
+
+func newMWTestTemplate() *mwv1alpha1.ManifestWorkReplicaSet {
+	mwrs := &mwv1alpha1.ManifestWorkReplicaSet{ObjectMeta: v1.ObjectMeta{
+		Name: mwTestTemplate, Namespace: mwTestNamespace,
+		Annotations: map[string]string{manifestWorkExpectedValuesAnnotation: `[{"manifestIndex":0,"name":"isReady","value":"True"}]`},
+	}}
+	mwrs.Spec.ManifestWorkTemplate.Workload.Manifests = []mwv1.Manifest{{RawExtension: runtime.RawExtension{Raw: []byte(`{"kind":"ConfigMap"}`)}}}
+	return mwrs
+}
+
+func TestManifestWorkClientHelpers(t *testing.T) {
+	ctx := context.Background()
+	cgu := newMWTestCGU()
+	c, err := getFakeClientFromObjects(newMWTestTemplate())
+	require.NoError(t, err)
+
+	manifests, err := GetManifestsFromTemplate(ctx, c, types.NamespacedName{Name: mwTestTemplate, Namespace: mwTestNamespace})
+	require.NoError(t, err)
+	require.Len(t, manifests, 1)
+	assert.JSONEq(t, `{"kind":"ConfigMap"}`, string(manifests[0].Raw))
+
+	_, err = GetManifestsFromTemplate(ctx, c, types.NamespacedName{Name: "missing", Namespace: mwTestNamespace})
+	assert.True(t, apierrors.IsNotFound(err))
+
+	_, err = GetManifestWorkForCluster(ctx, c, cgu, 0, "spoke1")
+	assert.True(t, apierrors.IsNotFound(err))
+
+	require.NoError(t, CreateManifestWorkForCluster(ctx, c, cgu, 0, "spoke1"))
+	mw, err := GetManifestWorkForCluster(ctx, c, cgu, 0, "spoke1")
+	require.NoError(t, err)
+	assert.Equal(t, "ztp-group.ibgu-prep-abcde", mw.Name)
+	assert.Equal(t, "spoke1", mw.Namespace)
+	assert.Equal(t, map[string]string{
+		"openshift-cluster-group-upgrades/clusterGroupUpgrade":          "cgu",
+		"openshift-cluster-group-upgrades/clusterGroupUpgradeNamespace": mwTestNamespace,
+	}, mw.Labels)
+	assert.Equal(t, newMWTestTemplate().Annotations[manifestWorkExpectedValuesAnnotation], mw.Annotations[manifestWorkExpectedValuesAnnotation])
+	assert.Equal(t, newMWTestTemplate().Spec.ManifestWorkTemplate, mw.Spec)
+
+	// Creating it again surfaces the AlreadyExists error.
+	assert.True(t, apierrors.IsAlreadyExists(CreateManifestWorkForCluster(ctx, c, cgu, 0, "spoke1")))
+
+	// A missing template is an error and creates nothing.
+	missing := newMWTestCGU()
+	missing.Spec.ManifestWorkTemplates = []string{"missing"}
+	assert.True(t, apierrors.IsNotFound(CreateManifestWorkForCluster(ctx, c, missing, 0, "spoke2")))
+	list := &mwv1.ManifestWorkList{}
+	require.NoError(t, c.List(ctx, list, client.InNamespace("spoke2")))
+	assert.Empty(t, list.Items)
+}
+
+func TestCleanupManifestWorkForBatch(t *testing.T) {
+	ctx := context.Background()
+	newCGU := func() *ranv1alpha1.ClusterGroupUpgrade {
+		cgu := newMWTestCGU()
+		cgu.Status.RemediationPlan = [][]string{{"spoke1", "spoke2"}, {"spoke3"}}
+		return cgu
+	}
+	setup := func(t *testing.T) client.Client {
+		c, err := getFakeClientFromObjects(newMWTestTemplate())
+		require.NoError(t, err)
+		cgu := newCGU()
+		for _, cluster := range []string{"spoke1", "spoke2", "spoke3"} {
+			require.NoError(t, CreateManifestWorkForCluster(ctx, c, cgu, 0, cluster))
+		}
+		// Owned by another CGU in the same namespace: must survive.
+		require.NoError(t, c.Create(ctx, &mwv1.ManifestWork{ObjectMeta: v1.ObjectMeta{
+			Name: "other", Namespace: "spoke1",
+			Labels: map[string]string{"openshift-cluster-group-upgrades/clusterGroupUpgrade": "other-cgu"},
+		}}))
+		return c
+	}
+	remaining := func(t *testing.T, c client.Client) []string {
+		list := &mwv1.ManifestWorkList{}
+		require.NoError(t, c.List(ctx, list))
+		var out []string
+		for _, mw := range list.Items {
+			out = append(out, mw.Namespace+"/"+mw.Name)
+		}
+		return out
+	}
+
+	t.Run("deletes only the batch's owned manifestworks", func(t *testing.T) {
+		c := setup(t)
+		require.NoError(t, CleanupManifestWorkForBatch(ctx, c, newCGU(), 0))
+		assert.ElementsMatch(t, []string{"spoke1/other", "spoke3/ztp-group.ibgu-prep-abcde"}, remaining(t, c))
+		// Running it again is a no-op.
+		require.NoError(t, CleanupManifestWorkForBatch(ctx, c, newCGU(), 0))
+	})
+
+	t.Run("policy rollout is a no-op", func(t *testing.T) {
+		c := setup(t)
+		cgu := newCGU()
+		cgu.Spec.ManifestWorkTemplates = nil
+		require.NoError(t, CleanupManifestWorkForBatch(ctx, c, cgu, 0))
+		assert.Len(t, remaining(t, c), 4)
+	})
 }
