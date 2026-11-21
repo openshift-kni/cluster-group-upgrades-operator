@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -198,7 +199,7 @@ func TestSyncStatusFromCGUList(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep-upgrade-0	",
+						Name:      "name-prep-upgrade-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
@@ -565,6 +566,49 @@ func TestSyncStatusFromCGUList(t *testing.T) {
 			assert.ElementsMatch(t, test.expectedClustersStatus, ibgu.Status.Clusters)
 		})
 	}
+}
+
+// Verifies that syncStatusFromCGUList reports each cluster's completed actions
+// in plan order by comparing the numeric index suffix of each CGU name, so that
+// index 10 sorts after index 2 instead of before it lexically.
+//
+// The CGUs are created directly rather than derived from an IBGU: the CRD caps
+// spec.plan at six items, so an admitted IBGU cannot produce an index above 9.
+// This is a synthetic ordering test, not evidence that an IBGU with more than
+// six plan items is supported.
+func TestSyncStatusFromCGUListOrdersByNumericPlanIndex(t *testing.T) {
+	actions := []string{
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeRollback,
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.Rollback, ibguv1alpha1.FinalizeRollback,
+		ibguv1alpha1.Prep, ibguv1alpha1.Upgrade, ibguv1alpha1.FinalizeUpgrade,
+	}
+	fakeClient, err := getFakeClientFromObjects()
+	require.NoError(t, err)
+	var want []ibguv1alpha1.ActionMessage
+	for i, action := range actions {
+		cgu := &v1alpha1.ClusterGroupUpgrade{
+			ObjectMeta: v1.ObjectMeta{
+				Name:      fmt.Sprintf("name-%s-%d", strings.ToLower(action), i),
+				Namespace: "namespace",
+				Labels:    map[string]string{utils.CGUOwnerIBGULabel: "name"},
+			},
+			Spec: v1alpha1.ClusterGroupUpgradeSpec{
+				ManifestWorkTemplates: []string{"name-" + strings.ToLower(action)},
+			},
+			Status: v1alpha1.ClusterGroupUpgradeStatus{
+				Clusters: []v1alpha1.ClusterState{{Name: "spoke1", State: utils.ClusterRemediationComplete}},
+			},
+		}
+		require.NoError(t, fakeClient.Create(context.Background(), cgu))
+		want = append(want, ibguv1alpha1.ActionMessage{Action: action})
+	}
+	ibgu := &ibguv1alpha1.ImageBasedGroupUpgrade{ObjectMeta: v1.ObjectMeta{Name: "name", Namespace: "namespace"}}
+
+	reconciler := IBGUReconciler{Client: fakeClient, APIReader: fakeClient, Scheme: testscheme, Log: logr.Discard()}
+	require.NoError(t, syncStatusForTest(t, &reconciler, ibgu))
+
+	require.Len(t, ibgu.Status.Clusters, 1)
+	assert.Equal(t, want, ibgu.Status.Clusters[0].CompletedActions)
 }
 
 func TestCountInProgressStageFailures(t *testing.T) {
