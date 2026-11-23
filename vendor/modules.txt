@@ -269,7 +269,7 @@ github.com/opencontainers/go-digest
 ## explicit; go 1.18
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/openshift-kni/lifecycle-agent v0.0.0-20261110235249-3f5f571b68b2
+# github.com/openshift-kni/lifecycle-agent v0.0.0-20261117201240-bf328b716b70
 ## explicit; go 1.26.3
 github.com/openshift-kni/lifecycle-agent/api/backupcontent/v1
 github.com/openshift-kni/lifecycle-agent/api/imagebasedupgrade/v1
