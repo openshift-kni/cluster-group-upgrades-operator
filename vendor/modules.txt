@@ -292,7 +292,7 @@ github.com/openshift/controller-runtime-common/pkg/tls
 # github.com/openshift/library-go v0.0.0-20261021093739-9467096e1b0d
 ## explicit; go 1.26.0
 github.com/openshift/library-go/pkg/crypto
-# github.com/operator-framework/api v0.46.0
+# github.com/operator-framework/api v0.47.0
 ## explicit; go 1.26.3
 github.com/operator-framework/api/pkg/lib/release
 github.com/operator-framework/api/pkg/lib/version
