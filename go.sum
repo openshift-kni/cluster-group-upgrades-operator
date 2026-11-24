@@ -152,8 +152,8 @@ github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc84406
 github.com/openshift/controller-runtime-common v0.0.0-20261008111711-8ec0dc844066/go.mod h1:wRo2jx/+tZd6HnYYmKayArJgL3T6LLbovLr28DGukMg=
 github.com/openshift/library-go v0.0.0-20261021093739-9467096e1b0d h1:py6ET6AwPokSyila19g1458yzHm1XBPp/r5ic0ObFco=
 github.com/openshift/library-go v0.0.0-20261021093739-9467096e1b0d/go.mod h1:JOJKlqc8fqB/I632V61geb80zImgXC8FEQR3jn2/syI=
-github.com/operator-framework/api v0.47.0 h1:VWX8SkvPxx3JW/0lbnD0aB8IiXYBNIBBMAuzY/m98fM=
-github.com/operator-framework/api v0.47.0/go.mod h1:aocPGvG10JfwKk1UPzEpPAQtKidKB0Bgr8ckEy1elPA=
+github.com/operator-framework/api v0.47.1 h1:T6Zb6IFm3ATqNUKgVSd8XopJapJWtEaVldZA9XdMKm0=
+github.com/operator-framework/api v0.47.1/go.mod h1:aocPGvG10JfwKk1UPzEpPAQtKidKB0Bgr8ckEy1elPA=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 h1:Jamvg5psRIccs7FGNTlIRMkT8wgtp5eCXdBlqhYGL6U=
 github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
