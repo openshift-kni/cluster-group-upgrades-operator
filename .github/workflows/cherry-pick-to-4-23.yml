@@ -1,14 +1,13 @@
 ---
-name: Backport merged PRs
+name: Request backports for merged PRs
 
 on:  # yamllint disable-line rule:truthy
   push:
     branches: [release-5.0]
 
-# Repository settings must allow GitHub Actions to create pull requests.
+# BACKPORT_BOT_TOKEN must belong to an org member with Pull requests: write.
 permissions:
-  contents: write
-  pull-requests: write
+  contents: read
 
 env:
   TARGET_BRANCH: release-4.23
@@ -26,10 +25,12 @@ jobs:
         with:
           ref: ${{ github.event.after }}
           fetch-depth: 0
+          persist-credentials: false
 
-      - name: Cherry-pick eligible PRs and open backports
+      - name: Request cherry-picks for eligible PRs
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         with:
+          github-token: ${{ secrets.BACKPORT_BOT_TOKEN }}
           script: |
             const {execFileSync} = require('node:child_process');
             const git = (...args) => execFileSync('git', args, {
@@ -70,11 +71,6 @@ jobs:
               /^bundle\//,
               /^telco5g-konflux$/,
             ];
-            git('config', 'user.name', 'github-actions[bot]');
-            git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com');
-            git('fetch', '--no-tags', 'origin', `refs/heads/${target}`);
-            const targetSha = git('rev-parse', 'FETCH_HEAD').trim();
-
             for (const {pr, shas} of mergedPRs.values()) {
               const files = git('diff', '--no-renames', '--name-only', '-z', `${shas[0]}^`, shas.at(-1), '--')
                 .split('\0').filter(Boolean);
@@ -83,18 +79,9 @@ jobs:
                 continue;
               }
 
-              const branch = `backport/pr-${pr.number}-to-${target}`;
-              git('checkout', '-b', branch, targetSha);
-              for (const sha of shas) {
-                const parents = git('rev-list', '--parents', '-n', '1', sha).trim().split(' ').length - 1;
-                git('cherry-pick', '-x', ...(parents > 1 ? ['-m', '1'] : []), sha);
-              }
-              git('push', 'origin', `HEAD:refs/heads/${branch}`);
-              const {data: backport} = await github.rest.pulls.create({
-                owner, repo, head: branch, base: target,
-                title: `[${target}] ${pr.title}`.slice(0, 256),
-                body: `Backport of #${pr.number} to \`${target}\`.\n\n` +
-                  'Includes the complete PR, including excluded files in mixed changes.',
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number,
+                body: `/cherry-pick ${target}`,
               });
-              core.info(`Created ${backport.html_url}`);
+              core.info(`Requested cherry-pick of PR #${pr.number} to ${target}.`);
             }
