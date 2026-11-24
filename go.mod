@@ -8,7 +8,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/openshift/api v0.0.0-20261120191000-0e5fe796a10f
 	github.com/openshift/build-machinery-go v0.0.0-20260902143904-520f675c892b
-	github.com/operator-framework/api v0.47.0
+	github.com/operator-framework/api v0.47.1
 	github.com/sirupsen/logrus v1.10.2
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.12.1
