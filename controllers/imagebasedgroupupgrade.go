@@ -88,6 +88,11 @@ const LcaAnnotationSuffix = "lca.openshift.io"
 //+kubebuilder:rbac:groups="",resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups="",resources=secrets,verbs=get;list;watch
 //+kubebuilder:rbac:groups=cluster.open-cluster-management.io,resources=managedclusters,verbs=get;list;watch;update;patch
+// The cluster image config is read through the uncached pre-flight reader
+// (mgr.GetAPIReader()), which issues a single GET per call and starts no informer, so
+// get is enough. Reading it through the cached client would need list and watch for the
+// informer to start; this marker must stay in step with registryTrustBundle.
+//+kubebuilder:rbac:groups=config.openshift.io,resources=images,verbs=get
 //+kubebuilder:rbac:groups=work.open-cluster-management.io,resources=manifestworkreplicasets,verbs=create;get;list;watch;delete
 //+kubebuilder:rbac:groups="",resources=events,verbs=create;patch
 
