@@ -174,6 +174,12 @@ func (r *ClusterGroupUpgradeReconciler) extractPrecachingSpecFromPolicies(
 	return spec, nil
 }
 
+// asMap returns v as a map, or nil if it is not one.
+func asMap(v interface{}) map[string]interface{} {
+	m, _ := v.(map[string]interface{})
+	return m
+}
+
 // stripPolicy strips policy information and returns the underlying objects
 // filters objects with mustnothave compliance type
 // returns: []interface{} - list of the underlying objects in the policy
@@ -192,17 +198,21 @@ func stripPolicy(
 		return nil, fmt.Errorf("[stripPolicy] spec -> policy-templates not found")
 	}
 
-	for _, policyTemplate := range policyTemplates.([]interface{}) {
-
-		plcTmplDefSpec := policyTemplate.(map[string]interface {
-		})["objectDefinition"].(map[string]interface {
-		})["spec"].(map[string]interface{})
+	policyTemplateList, ok := policyTemplates.([]interface{})
+	if !ok {
+		return nil, fmt.Errorf("[stripPolicy] spec -> policy-templates is not a list")
+	}
+	for _, policyTemplate := range policyTemplateList {
+		plcTmplDefSpec, found, err := unstructured.NestedMap(asMap(policyTemplate), "objectDefinition", "spec")
+		if err != nil || !found {
+			return nil, fmt.Errorf("[stripPolicy] policy-templates -> objectDefinition.spec not found")
+		}
 
 		// One and only one of [object-templates, object-templates-raw] should be defined
 		objectTemplatePresent := plcTmplDefSpec[utils.ObjectTemplates] != nil
 		objectTemplateRawPresent := plcTmplDefSpec[utils.ObjectTemplatesRaw] != nil
 
-		var objTemplates interface{}
+		var objTemplates []interface{}
 
 		switch {
 		case objectTemplatePresent && objectTemplateRawPresent:
@@ -210,29 +220,41 @@ func stripPolicy(
 		case !objectTemplatePresent && !objectTemplateRawPresent:
 			return nil, fmt.Errorf("[stripPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
 		case objectTemplatePresent:
-			objTemplates = plcTmplDefSpec[utils.ObjectTemplates]
-		case objectTemplateRawPresent:
-			stringTemplate := utils.StripObjectTemplatesRaw(plcTmplDefSpec[utils.ObjectTemplatesRaw].(string))
-
-			var err error
-			objTemplates, err = utils.StringToYaml(stringTemplate)
+			if objTemplates, ok = plcTmplDefSpec[utils.ObjectTemplates].([]interface{}); !ok {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcObjTmplNotList)
+			}
+		default:
+			rawTemplate, ok := plcTmplDefSpec[utils.ObjectTemplatesRaw].(string)
+			if !ok {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+			}
+			parsed, err := utils.StringToYaml(utils.StripObjectTemplatesRaw(rawTemplate))
 			if err != nil {
 				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
 			}
-		default:
-			return nil, fmt.Errorf("[stripPolicy] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
-		}
-
-		for _, objTemplate := range objTemplates.([]interface{}) {
-			complianceType := objTemplate.(map[string]interface{})["complianceType"]
-			if complianceType == "mustnothave" {
+			if parsed == nil {
+				// Empty once its templates are stripped: nothing to inspect.
 				continue
 			}
-			spec := objTemplate.(map[string]interface{})["objectDefinition"]
-			if spec == nil {
+			if objTemplates, ok = parsed.([]interface{}); !ok {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+			}
+		}
+
+		for _, objTemplate := range objTemplates {
+			objTemplateMap := asMap(objTemplate)
+			if objTemplateMap["complianceType"] == "mustnothave" {
+				continue
+			}
+			objectDefinition, ok := objTemplateMap["objectDefinition"].(map[string]interface{})
+			if !ok {
+				// Match InspectPolicyObjects: object-templates-raw entries without an objectDefinition are skipped.
+				if objectTemplateRawPresent {
+					continue
+				}
 				return nil, fmt.Errorf("[stripPolicy] can't find any objectDefinition")
 			}
-			objects = append(objects, spec.(map[string]interface{}))
+			objects = append(objects, objectDefinition)
 		}
 	}
 	return objects, nil
