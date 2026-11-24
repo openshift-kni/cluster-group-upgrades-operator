@@ -169,20 +169,21 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		objectTemplatePresent := plcTmplDefSpec[ObjectTemplates] != nil
 		objectTemplateRawPresent := plcTmplDefSpec[ObjectTemplatesRaw] != nil
 
-		var configPlcTmpls interface{}
+		var configPlcTmpls []interface{}
 
 		switch {
 		case objectTemplatePresent && objectTemplateRawPresent:
 			return containsStatus, &PolicyErr{policyName, ConfigPlcHasBothObjTmpl}
 		case objectTemplatePresent:
-			configPlcTmpls = plcTmplDefSpec[ObjectTemplates].([]interface{})
+			var ok bool
+			if configPlcTmpls, ok = plcTmplDefSpec[ObjectTemplates].([]interface{}); !ok {
+				return containsStatus, &PolicyErr{policyName, ConfigPlcObjTmplNotList}
+			}
 		case objectTemplateRawPresent:
-			stringTemplate := StripObjectTemplatesRaw(plcTmplDefSpec[ObjectTemplatesRaw].(string))
-
-			var err error
-			configPlcTmpls, err = StringToYaml(stringTemplate)
-			if err != nil {
-				return containsStatus, &PolicyErr{policyName, ConfigPlcFailRawMarshal}
+			var policyErrMsg string
+			configPlcTmpls, policyErrMsg = parseObjectTemplatesRaw(plcTmplDefSpec[ObjectTemplatesRaw])
+			if policyErrMsg != "" {
+				return containsStatus, &PolicyErr{policyName, policyErrMsg}
 			}
 
 		default:
@@ -190,22 +191,46 @@ func InspectPolicyObjects(policy *unstructured.Unstructured) (bool, error) {
 		}
 
 		// Go through the ConfigurationPolicy object-templates.
-		for _, configPlcTmpl := range configPlcTmpls.([]interface{}) {
+		for _, configPlcTmpl := range configPlcTmpls {
 			// Make sure the objectDefinition of the ConfigurationPolicy object template exists.
-			if configPlcTmpl.(map[string]interface{})["objectDefinition"] == nil {
+			configPlcTmplMap, _ := configPlcTmpl.(map[string]interface{})
+			objectDefinition, ok := configPlcTmplMap["objectDefinition"].(map[string]interface{})
+			if !ok {
 				// No objectDefinition in the policy template, skipping.
 				if objectTemplateRawPresent {
 					continue
 				}
 				return containsStatus, &PolicyErr{policyName, ConfigPlcMissObjTmplDef}
 			}
-			objectDefinition := configPlcTmpl.(map[string]interface{})["objectDefinition"].(map[string]interface{})
 			if objectDefinition["status"] != nil {
 				containsStatus = true
 			}
 		}
 	}
 	return containsStatus, nil
+}
+
+// parseObjectTemplatesRaw parses an object-templates-raw value into its list of
+// object templates, after stripping the template expressions. It returns a
+// PolicyErr message instead of panicking when the value is not a string, is
+// empty once stripped, or is not a YAML list.
+func parseObjectTemplatesRaw(raw interface{}) ([]interface{}, string) {
+	rawString, ok := raw.(string)
+	if !ok {
+		return nil, ConfigPlcFailRawMarshal
+	}
+	parsed, err := StringToYaml(StripObjectTemplatesRaw(rawString))
+	if err != nil {
+		return nil, ConfigPlcFailRawMarshal
+	}
+	if parsed == nil {
+		return nil, ConfigPlcRawObjTmplErr
+	}
+	templates, ok := parsed.([]interface{})
+	if !ok {
+		return nil, ConfigPlcFailRawMarshal
+	}
+	return templates, ""
 }
 
 // ShouldSoak returns whether the reconciler should wait for some time before moving on from a policy after it is compliant
