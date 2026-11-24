@@ -5,6 +5,7 @@ on:  # yamllint disable-line rule:truthy
   push:
     branches: [release-5.0]
 
+# Repository settings must allow GitHub Actions to create pull requests.
 permissions:
   contents: write
   pull-requests: write
@@ -12,15 +13,11 @@ permissions:
 env:
   TARGET_BRANCH: release-4.23
 
-# Different pushes must not cancel or replace one another in a shared queue.
-# Deterministic branch names and create-only pushes handle duplicate attempts.
-concurrency:
-  group: backport-${{ github.run_id }}
-  cancel-in-progress: false
-
 jobs:
   backport:
-    if: github.repository == 'openshift-kni/cluster-group-upgrades-operator' && !github.event.deleted
+    if: >-
+      github.repository == 'openshift-kni/cluster-group-upgrades-operator' &&
+      !github.event.created && !github.event.deleted && !github.event.forced
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -29,12 +26,75 @@ jobs:
         with:
           ref: ${{ github.event.after }}
           fetch-depth: 0
-          # Git uses the job-scoped GITHUB_TOKEN to push backport branches.
-          persist-credentials: true
 
-      - name: Create backport branches and pull requests
+      - name: Cherry-pick eligible PRs and open backports
         uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         with:
           script: |
-            const {run} = require('./.github/scripts/backport.cjs');
-            await run({github, context, core});
+            const {execFileSync} = require('node:child_process');
+            const git = (...args) => execFileSync('git', args, {
+              cwd: process.env.GITHUB_WORKSPACE,
+              encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+            });
+            const {owner, repo} = context.repo;
+            const {before, after, ref} = context.payload;
+            const source = ref.replace('refs/heads/', '');
+            const target = process.env.TARGET_BRANCH;
+            const commits = git('rev-list', '--reverse', '--first-parent', `${before}..${after}`)
+              .trim().split('\n').filter(Boolean);
+            const positions = new Map(commits.map((sha, index) => [sha, index]));
+            const mergedPRs = new Map();
+
+            // Group commits by merged PR so separate PRs keep their own exclusions.
+            for (const sha of commits) {
+              const prs = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                owner, repo, commit_sha: sha, per_page: 100,
+              });
+              for (const pr of prs) {
+                if (!pr.merged_at || pr.base.ref !== source ||
+                    pr.base.repo.full_name !== `${owner}/${repo}` ||
+                    !positions.has(pr.merge_commit_sha) ||
+                    positions.get(sha) > positions.get(pr.merge_commit_sha)) continue;
+                if (!mergedPRs.has(pr.number)) mergedPRs.set(pr.number, {pr, shas: []});
+                mergedPRs.get(pr.number).shas.push(sha);
+              }
+            }
+
+            // Skip PRs that only change dependency or infrastructure paths.
+            const excludedPatterns = [
+              /^go\.(mod|sum)$/,
+              /^vendor\//,
+              /^\.tekton\//,
+              /^renovate\.json$/,
+              /^\.konflux\//,
+              /^bundle\//,
+              /^telco5g-konflux$/,
+            ];
+            git('config', 'user.name', 'github-actions[bot]');
+            git('config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com');
+            git('fetch', '--no-tags', 'origin', `refs/heads/${target}`);
+            const targetSha = git('rev-parse', 'FETCH_HEAD').trim();
+
+            for (const {pr, shas} of mergedPRs.values()) {
+              const files = git('diff', '--no-renames', '--name-only', '-z', `${shas[0]}^`, shas.at(-1), '--')
+                .split('\0').filter(Boolean);
+              if (files.every((file) => excludedPatterns.some((pattern) => pattern.test(file)))) {
+                core.info(`Skipping PR #${pr.number}: only excluded paths changed.`);
+                continue;
+              }
+
+              const branch = `backport/pr-${pr.number}-to-${target}`;
+              git('checkout', '-b', branch, targetSha);
+              for (const sha of shas) {
+                const parents = git('rev-list', '--parents', '-n', '1', sha).trim().split(' ').length - 1;
+                git('cherry-pick', '-x', ...(parents > 1 ? ['-m', '1'] : []), sha);
+              }
+              git('push', 'origin', `HEAD:refs/heads/${branch}`);
+              const {data: backport} = await github.rest.pulls.create({
+                owner, repo, head: branch, base: target,
+                title: `[${target}] ${pr.title}`.slice(0, 256),
+                body: `Backport of #${pr.number} to \`${target}\`.\n\n` +
+                  'Includes the complete PR, including excluded files in mixed changes.',
+              });
+              core.info(`Created ${backport.html_url}`);
+            }
