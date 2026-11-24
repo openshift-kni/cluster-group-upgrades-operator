@@ -1,153 +1,40 @@
-# Selective Cherry-Pick from release-5.0 to release-4.23
-#
-# This workflow triggers on every merged PR to release-5.0 and evaluates the
-# changed files. If the PR contains actual code changes (not just dependency
-# bumps, pipeline definitions, or Konflux metadata), it posts
-# a `/cherry-pick release-4.23` comment so the Prow cherry-pick bot can open
-# a backport PR against release-4.23.
-#
-# Exclusion patterns (PRs that ONLY touch these paths are skipped):
-#   - go.mod / go.sum              (dependency bumps)
-#   - vendor/                      (vendored dependencies)
-#   - .tekton/                     (Tekton / Konflux pipeline definitions)
-#   - renovate.json                (Renovate config)
-#   - .konflux/                    (Konflux config)
-#   - bundle/                      (operator bundle metadata)
-#   - telco5g-konflux              (submodule — updated independently via Mintmaker)
-#
-# If a PR touches BOTH excluded and non-excluded files, the cherry-pick
-# IS triggered — code changes are present alongside infra changes.
+---
+name: Backport merged PRs
 
-name: Cherry-pick to release-4.23
-
-on:
-  pull_request:
-    types:
-      - closed
-    branches:
-      - release-5.0
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [release-5.0]
 
 permissions:
+  contents: write
   pull-requests: write
 
+env:
+  TARGET_BRANCH: release-4.23
+
+# Different pushes must not cancel or replace one another in a shared queue.
+# Deterministic branch names and create-only pushes handle duplicate attempts.
+concurrency:
+  group: backport-${{ github.run_id }}
+  cancel-in-progress: false
+
 jobs:
-  cherry-pick:
-    name: Evaluate and cherry-pick to release-4.23
-    # Only run when the PR was actually merged (not just closed)
-    if: github.event.pull_request.merged == true
+  backport:
+    if: github.repository == 'openshift-kni/cluster-group-upgrades-operator' && !github.event.deleted
     runs-on: ubuntu-latest
-
+    timeout-minutes: 30
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Check out the pushed source history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
         with:
-          persist-credentials: false
+          ref: ${{ github.event.after }}
+          fetch-depth: 0
+          # Git uses the job-scoped GITHUB_TOKEN to push backport branches.
+          persist-credentials: true
 
-      - name: Check for code changes and post cherry-pick comment
-        uses: actions/github-script@v7
+      - name: Create backport branches and pull requests
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
         with:
           script: |
-            const prNumber = context.payload.pull_request.number;
-            const owner = context.repo.owner;
-            const repo = context.repo.repo;
-
-            console.log(`Evaluating PR #${prNumber} for cherry-pick to release-4.23`);
-
-            // ---------------------------------------------------------------
-            // Step 1: Fetch all files changed in the merged PR
-            // ---------------------------------------------------------------
-            const files = [];
-            let page = 1;
-            while (true) {
-              const { data } = await github.rest.pulls.listFiles({
-                owner,
-                repo,
-                pull_number: prNumber,
-                per_page: 100,
-                page,
-              });
-              files.push(...data);
-              if (data.length < 100) break;
-              page++;
-            }
-
-            console.log(`PR #${prNumber} changed ${files.length} file(s)`);
-
-            // ---------------------------------------------------------------
-            // Step 2: Classify each file as "excluded" (infra-only) or "code"
-            //
-            // A file is excluded if it matches any of these patterns:
-            //   - go.mod or go.sum                  (dependency management)
-            //   - anything under vendor/            (vendored dependencies)
-            //   - anything under .tekton/           (Tekton pipelines)
-            //   - renovate.json                     (Renovate config)
-            //   - anything under .konflux/          (Konflux config)
-            //   - anything under bundle/            (operator bundle metadata)
-            //   - telco5g-konflux                   (submodule — Mintmaker per-branch)
-            // ---------------------------------------------------------------
-            const excludedPatterns = [
-              /^go\.(mod|sum)$/,
-              /^vendor\//,
-              /^\.tekton\//,
-              /^renovate\.json$/,
-              /^\.konflux\//,
-              /^bundle\//,
-              // Submodule pointer — updated independently via Mintmaker on each branch
-              /^telco5g-konflux$/,
-            ];
-
-            function isExcluded(filePath) {
-              return excludedPatterns.some((pattern) => pattern.test(filePath));
-            }
-
-            const codeFiles = files.filter((f) => !isExcluded(f.filename));
-
-            if (codeFiles.length > 0) {
-              console.log(`Found ${codeFiles.length} code-change file(s):`);
-              codeFiles.forEach((f) => console.log(`  ✓ ${f.filename}`));
-            } else {
-              console.log('All changed files are excluded (infra/dependency only). Skipping cherry-pick.');
-              const excluded = files.map((f) => f.filename);
-              excluded.forEach((f) => console.log(`  ✗ ${f}`));
-              return;
-            }
-
-            // ---------------------------------------------------------------
-            // Step 3: Idempotency — check if the comment already exists
-            // ---------------------------------------------------------------
-            const cherryPickCommand = '/cherry-pick release-4.23';
-            const comments = [];
-            let commentPage = 1;
-            while (true) {
-              const { data } = await github.rest.issues.listComments({
-                owner,
-                repo,
-                issue_number: prNumber,
-                per_page: 100,
-                page: commentPage,
-              });
-              comments.push(...data);
-              if (data.length < 100) break;
-              commentPage++;
-            }
-
-            const alreadyPosted = comments.some((c) =>
-              c.body.includes(cherryPickCommand)
-            );
-
-            if (alreadyPosted) {
-              console.log(`Cherry-pick comment already exists on PR #${prNumber}. Skipping.`);
-              return;
-            }
-
-            // ---------------------------------------------------------------
-            // Step 4: Post the cherry-pick command comment
-            // ---------------------------------------------------------------
-            await github.rest.issues.createComment({
-              owner,
-              repo,
-              issue_number: prNumber,
-              body: cherryPickCommand,
-            });
-
-            console.log(`Posted "${cherryPickCommand}" on PR #${prNumber}`);
+            const {run} = require('./.github/scripts/backport.cjs');
+            await run({github, context, core});
