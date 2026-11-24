@@ -199,7 +199,7 @@ func TestSyncStatusFromCGUList(t *testing.T) {
 				},
 				{
 					ObjectMeta: v1.ObjectMeta{
-						Name:      "name-prep-upgrade-0	",
+						Name:      "name-prep-upgrade-0",
 						Namespace: "namespace",
 						Labels: map[string]string{
 							utils.CGUOwnerIBGULabel: "name",
