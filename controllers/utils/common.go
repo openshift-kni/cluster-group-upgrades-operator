@@ -142,14 +142,16 @@ func Contains(s []string, str string) bool {
 	return false
 }
 
-// SortCGUListByPlanIndex orders the CGUs by the trailing plan-index segment of
-// their names (compared as strings, so 10 sorts before 2).
+// SortCGUListByPlanIndex orders the CGUs by the plan item index at the end of
+// their name (<ibgu>-<actions>-<index>). The trailing segment is compared as a
+// string, which orders the index correctly because an admitted IBGU has at most
+// six plan items (the CRD caps spec.plan), so the index is always a single
+// digit. Sorting numerically would only matter for indices of 10 or more, which
+// the API does not accept.
 func SortCGUListByPlanIndex(cguList *ranv1alpha1.ClusterGroupUpgradeList) {
-	sort.Slice(cguList.Items, func(i, j int) bool {
-		iSplitted := strings.Split(cguList.Items[i].GetName(), "-")
-		jSplitted := strings.Split(cguList.Items[j].GetName(), "-")
-		iLast := iSplitted[len(iSplitted)-1]
-		jLast := jSplitted[len(jSplitted)-1]
-		return iLast < jLast
+	sort.SliceStable(cguList.Items, func(i, j int) bool {
+		iParts := strings.Split(cguList.Items[i].GetName(), "-")
+		jParts := strings.Split(cguList.Items[j].GetName(), "-")
+		return iParts[len(iParts)-1] < jParts[len(jParts)-1]
 	})
 }
