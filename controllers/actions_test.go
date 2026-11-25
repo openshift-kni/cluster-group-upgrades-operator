@@ -6,10 +6,14 @@ import (
 
 	"github.com/go-logr/logr"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes/scheme"
 	clusterv1 "open-cluster-management.io/api/cluster/v1"
+	clusterv1beta1 "open-cluster-management.io/api/cluster/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
@@ -154,4 +158,42 @@ func TestActions_manageClusterLabelsAndAnnotations(t *testing.T) {
 			assert.Equal(t, tc.expectedAnnotations, updatedCluster.Annotations)
 		})
 	}
+}
+
+// TestDeleteResourcesRecoversNamespacesFromSafeResourceNames covers a CGU whose
+// managed policies all became compliant while it waited to be enabled or for a
+// blocking CGU: status.managedPoliciesForUpgrade is refreshed to empty, but the
+// Placements and PlacementBindings created for the earlier entries still exist.
+func TestDeleteResourcesRecoversNamespacesFromSafeResourceNames(t *testing.T) {
+	ctx := context.Background()
+	cgu := newPolicyCGU("p1")
+	cgu.Status.Placements = []string{"cgu-p1-placement"}
+	cgu.Status.PlacementBindings = []string{"cgu-p1-placement"}
+	cgu.Status.SafeResourceNames = map[string]string{
+		plcNamespace + "/cgu-p1-placement": "cgu-p1-placement",
+		// Empty-namespace keys come from ManagedClusterViews and ManifestWorks and
+		// must be skipped rather than deleting in every namespace.
+		"/cgu-managedclusterview": "cgu-managedclusterview",
+	}
+
+	builder := newPolicyReconciler(t, nil)
+	placement := builder.newBatchPlacement(cgu, "p1", plcNamespace, "cgu-p1-placement", "cgu-p1-placement")
+	binding := builder.newBatchPlacementBinding(cgu, "p1", plcNamespace, "cgu-p1-placement", "cgu-p1-placement", "cgu-p1-placement")
+
+	c, err := getFakeClientFromObjects(placement, binding)
+	require.NoError(t, err)
+	r := newPolicyReconciler(t, c)
+
+	require.NoError(t, r.deleteResources(ctx, cgu))
+
+	key := types.NamespacedName{Name: "cgu-p1-placement", Namespace: plcNamespace}
+	assert.True(t, apierrors.IsNotFound(c.Get(ctx, key, &clusterv1beta1.Placement{})), "placement should be deleted")
+
+	gotBinding := &unstructured.Unstructured{}
+	gotBinding.SetGroupVersionKind(binding.GroupVersionKind())
+	assert.True(t, apierrors.IsNotFound(c.Get(ctx, key, gotBinding)), "placement binding should be deleted")
+
+	assert.Nil(t, cgu.Status.SafeResourceNames)
+	assert.Nil(t, cgu.Status.Placements)
+	assert.Nil(t, cgu.Status.PlacementBindings)
 }
