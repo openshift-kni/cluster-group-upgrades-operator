@@ -1,7 +1,7 @@
 # The opm image is expected to contain /bin/opm (with a serve subcommand) and /bin/grpc_health_probe
 ARG OPM_IMAGE=registry.redhat.io/openshift4/ose-operator-registry-rhel9:v4.21
 # CNF-18555: When there is a Konflux build available for this then we need to update from the brew image
-ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.24-rhel9@sha256:3bc38203ab4627012320b3b1da5a0a81cc6987afd0977e731b583db222e31d55
+ARG BUILDER_IMAGE=registry.redhat.io/openshift/golang-builder:golang-builder-v1.24-rhel9@sha256:1a24eea5f8fbba5f6a4b79b4e8af3f074f48579eb5bf9cf934b2c896ba16c8f4
 
 # fix the catalog (talm exclusive, naming issue)
 FROM ${BUILDER_IMAGE} AS builder
