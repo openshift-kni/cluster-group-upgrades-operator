@@ -86,6 +86,10 @@ spec:
     type: string
     default: 'false'
     description: When "true", omit the build history (history timestamps, layer metadata, etc.) from the resulting image.
+  - name: catalog-path
+    type: string
+    default: .konflux/catalog
+    description: Catalog directory relative to the build context containing the package subdirectory. Used by fbc-inject-lifecycle to bypass Dockerfile parsing for multi-stage builds.
   results:
   - description: ''
     name: IMAGE_URL
@@ -429,6 +433,8 @@ spec:
       value: $(params.dockerfile)
     - name: CONTEXT
       value: $(params.path-context)
+    - name: CATALOG_PATH
+      value: $(params.catalog-path)
     - name: SOURCE_ARTIFACT
       value: $(tasks.clone-repository.results.SOURCE_ARTIFACT)
     - name: ociStorage
