@@ -19,10 +19,12 @@ package controllers
 import (
 	"context"
 	"fmt"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
+	ocpv1 "github.com/openshift/api/config/v1"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -323,9 +325,85 @@ func (r *IBGUReconciler) readSeedImageFormat(ctx context.Context, ibgu *ibguv1al
 	if reader == nil {
 		reader = utils.NewSeedImageReader()
 	}
-	format, err := reader.ReadSeedFormatVersion(ctx, imageRef, dockerConfigJSON)
+	// Trust the same CAs the cluster uses for image pulls, so a seed image on a
+	// private registry the cluster trusts is readable here too.
+	clusterCAs, err := r.registryTrustBundle(ctx)
+	if err != nil {
+		return 0, "", err
+	}
+	format, err := reader.ReadSeedFormatVersion(ctx, imageRef, dockerConfigJSON, clusterCAs)
 	if err != nil {
 		return 0, err.Error(), nil
 	}
 	return format, "", nil
+}
+
+// registryTrustBundle returns the CAs the cluster trusts for image pulls, as a PEM
+// bundle to add to the system pool for the seed-image registry handshake. Two sources:
+//
+//   - image.config.openshift.io/cluster.spec.additionalTrustedCA: the ConfigMap in
+//     openshift-config whose keys are registry hosts, holding the CAs for image pulls;
+//   - openshift-config-managed/trusted-ca-bundle: the merged bundle the cluster network
+//     operator maintains from the system store plus proxy.spec.trustedCA.
+//
+// Together they cover a private seed-image registry whether its CA was delivered through
+// image.spec.additionalTrustedCA (the usual disconnected setup) or through the proxy
+// trust configuration. A cluster-scoped object that does not exist is not an error: a
+// non-OpenShift cluster, or a hub with no extra CAs, simply yields no bundle. A genuine
+// read failure is returned so Reconcile retries, because proceeding without the CAs
+// would turn a transient API error into a terminal SeedImageUnreadable block.
+func (r *IBGUReconciler) registryTrustBundle(ctx context.Context) ([]byte, error) {
+	reader := r.preflightReader()
+	var bundle []byte
+
+	image := &ocpv1.Image{}
+	err := reader.Get(ctx, types.NamespacedName{Name: "cluster"}, image)
+	switch {
+	case err == nil:
+		if name := image.Spec.AdditionalTrustedCA.Name; name != "" {
+			configMap := &corev1.ConfigMap{}
+			err := reader.Get(ctx, types.NamespacedName{Namespace: "openshift-config", Name: name}, configMap)
+			switch {
+			case err == nil:
+				// Every value is a CA for one registry host.
+				keys := make([]string, 0, len(configMap.Data))
+				for key := range configMap.Data {
+					keys = append(keys, key)
+				}
+				sort.Strings(keys)
+				for _, key := range keys {
+					bundle = append(bundle, []byte(configMap.Data[key])...)
+					bundle = append(bundle, '\n')
+				}
+			case apierrors.IsNotFound(err):
+				// Referenced but absent: nothing to add. The registry read below either
+				// works with the system pool or reports the failure per cluster.
+			default:
+				return nil, fmt.Errorf("failed to get image CA ConfigMap openshift-config/%s: %w", name, err)
+			}
+		}
+	case apierrors.IsNotFound(err), meta.IsNoMatchError(err):
+		// Not an OpenShift cluster, or no image config to read.
+	default:
+		return nil, fmt.Errorf("failed to get the cluster image config: %w", err)
+	}
+
+	trustedCABundle := &corev1.ConfigMap{}
+	err = reader.Get(ctx, types.NamespacedName{
+		Namespace: "openshift-config-managed",
+		Name:      "trusted-ca-bundle",
+	}, trustedCABundle)
+	switch {
+	case err == nil:
+		if data, ok := trustedCABundle.Data["ca-bundle.crt"]; ok {
+			bundle = append(bundle, []byte(data)...)
+			bundle = append(bundle, '\n')
+		}
+	case apierrors.IsNotFound(err), meta.IsNoMatchError(err):
+		// No merged bundle on this cluster.
+	default:
+		return nil, fmt.Errorf("failed to get the cluster trust bundle: %w", err)
+	}
+
+	return bundle, nil
 }

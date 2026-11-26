@@ -18,6 +18,8 @@ package utils
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -64,9 +66,12 @@ type SeedImageReader interface {
 	// ReadSeedFormatVersion resolves imageRef against its registry using the
 	// supplied .dockerconfigjson bytes (nil/empty means anonymous access) and
 	// returns the integer value of the lcav1.SeedFormatOCILabel on the image config.
+	// clusterCAs, when non-empty, is a PEM bundle of the CAs the cluster trusts for
+	// image pulls; it is added to the system pool used to verify the registry, so a
+	// private seed-image registry the cluster trusts is trusted here too.
 	// It returns an error when the reference is invalid, the image cannot be
 	// fetched, the label is absent, or its value is not an integer.
-	ReadSeedFormatVersion(ctx context.Context, imageRef string, dockerConfigJSON []byte) (int, error)
+	ReadSeedFormatVersion(ctx context.Context, imageRef string, dockerConfigJSON, clusterCAs []byte) (int, error)
 }
 
 // remoteSeedImageReader is the default SeedImageReader; it reads the image
@@ -80,7 +85,9 @@ func NewSeedImageReader() SeedImageReader {
 	return &remoteSeedImageReader{}
 }
 
-func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef string, dockerConfigJSON []byte) (int, error) {
+func (remoteSeedImageReader) ReadSeedFormatVersion(
+	ctx context.Context, imageRef string, dockerConfigJSON, clusterCAs []byte,
+) (int, error) {
 	ref, err := name.ParseReference(imageRef)
 	if err != nil {
 		return 0, fmt.Errorf("invalid seed image reference %q: %w", imageRef, err)
@@ -96,8 +103,10 @@ func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef
 	defer cancel()
 	// Refuse any non-HTTPS request so the pull-secret credentials are never sent
 	// in cleartext; a registry that would need plain HTTP surfaces as the expected
-	// SeedImageUnreadable block.
-	transport := httpsOnlyRoundTripper{base: remote.DefaultTransport}
+	// SeedImageUnreadable block. The transport also trusts the CAs the cluster uses for
+	// image pulls, so a private registry the spokes pull from is trusted here too, not
+	// only the CAs baked into the operator image.
+	transport := httpsOnlyRoundTripper{base: seedRegistryTransport(clusterCAs)}
 	img, err := remote.Image(ref,
 		remote.WithContext(readCtx),
 		remote.WithAuthFromKeychain(keychain),
@@ -122,6 +131,44 @@ func (remoteSeedImageReader) ReadSeedFormatVersion(ctx context.Context, imageRef
 		return 0, fmt.Errorf("failed to read seed image %q config: %w", imageRef, err)
 	}
 	return seedFormatFromConfig(imageRef, cfg)
+}
+
+// seedRegistryTransport returns the transport used for the seed-image read: the
+// go-containerregistry default, cloned so the TLS configuration can carry the CAs the
+// cluster trusts for image pulls. With no such CAs the pool is nil and verification
+// uses the operator image's system CAs, exactly as before.
+func seedRegistryTransport(clusterCAs []byte) http.RoundTripper {
+	pool := seedRootPool(clusterCAs)
+	if pool == nil {
+		return remote.DefaultTransport
+	}
+	baseTransport, ok := remote.DefaultTransport.(*http.Transport)
+	if !ok {
+		// Not the concrete transport this was written against; keep the default rather
+		// than lose connection pooling and timeouts.
+		return remote.DefaultTransport
+	}
+	transport := baseTransport.Clone()
+	transport.TLSClientConfig = &tls.Config{RootCAs: pool}
+	return transport
+}
+
+// seedRootPool returns the verification pool for the seed-image registry: the system
+// pool of the operator image plus the cluster's image-pull CAs. It returns nil when no
+// cluster CAs are supplied or none of them parse, which leaves the caller on Go's
+// default verification rather than failing closed for a cluster with no extra CAs.
+func seedRootPool(clusterCAs []byte) *x509.CertPool {
+	if len(clusterCAs) == 0 {
+		return nil
+	}
+	pool, err := x509.SystemCertPool()
+	if err != nil || pool == nil {
+		pool = x509.NewCertPool()
+	}
+	if !pool.AppendCertsFromPEM(clusterCAs) {
+		return nil
+	}
+	return pool
 }
 
 // checkSeedConfigSize rejects a manifest-declared image-config size that is

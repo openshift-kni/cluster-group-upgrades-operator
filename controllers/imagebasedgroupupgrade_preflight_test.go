@@ -50,7 +50,9 @@ type fakeSeedImageReader struct {
 	calledDockerConf []byte
 }
 
-func (f *fakeSeedImageReader) ReadSeedFormatVersion(_ context.Context, imageRef string, dockerConfigJSON []byte) (int, error) {
+func (f *fakeSeedImageReader) ReadSeedFormatVersion(
+	_ context.Context, imageRef string, dockerConfigJSON, clusterCAs []byte,
+) (int, error) {
 	f.called = true
 	f.calledImageRef = imageRef
 	f.calledDockerConf = dockerConfigJSON

@@ -24,6 +24,7 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/openshift-kni/cluster-group-upgrades-operator/controllers/utils"
 	ranv1alpha1 "github.com/openshift-kni/cluster-group-upgrades-operator/pkg/api/clustergroupupgrades/v1alpha1"
+	ocpv1 "github.com/openshift/api/config/v1"
 	"github.com/stretchr/testify/assert"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -51,6 +52,8 @@ func init() {
 	testscheme.AddKnownTypes(policiesv1.GroupVersion, &policiesv1.PolicyList{})
 	testscheme.AddKnownTypes(clusterv1beta1.SchemeGroupVersion, &clusterv1beta1.Placement{})
 	testscheme.AddKnownTypes(clusterv1beta1.SchemeGroupVersion, &clusterv1beta1.PlacementList{})
+	// The IBGU pre-flight reads image.config.openshift.io/cluster for the registry CAs.
+	testscheme.AddKnownTypes(ocpv1.GroupVersion, &ocpv1.Image{})
 }
 
 func getFakeClientFromObjects(objs ...client.Object) (client.WithWatch, error) {
