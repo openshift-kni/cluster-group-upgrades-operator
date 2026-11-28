@@ -84,10 +84,13 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 		case objectTemplatePresent:
 			marshalledObjectTemplates = specContent[utils.ObjectTemplates]
 		case objectTemplateRawPresent:
-			stringTemplate := utils.StripObjectTemplatesRaw(specContent[utils.ObjectTemplatesRaw].(string))
+			rawTemplate, ok := specContent[utils.ObjectTemplatesRaw].(string)
+			if !ok {
+				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+			}
 
 			var err error
-			marshalledObjectTemplates, err = utils.StringToYaml(stringTemplate)
+			marshalledObjectTemplates, err = utils.StringToYaml(utils.StripObjectTemplatesRaw(rawTemplate))
 			if err != nil {
 				return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
 			}
@@ -95,31 +98,45 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 			return nil, fmt.Errorf("[getMonitoredObjects] can't find %s or %s in policyTemplate", utils.ObjectTemplates, utils.ObjectTemplatesRaw)
 		}
 
-		objectTemplatesContent := marshalledObjectTemplates.([]interface{})
+		objectTemplatesContent, ok := marshalledObjectTemplates.([]interface{})
+		if !ok {
+			if marshalledObjectTemplates == nil {
+				// An object-templates-raw that is empty once its templates are stripped has no objects to monitor.
+				continue
+			}
+			return nil, fmt.Errorf("%s", utils.ConfigPlcFailRawMarshal)
+		}
 		for _, objectTemplate := range objectTemplatesContent {
-			objectTemplateContent := objectTemplate.(map[string]interface{})
+			objectTemplateContent, ok := objectTemplate.(map[string]interface{})
+			if !ok {
+				r.Log.Info(
+					"[getMonitoredObjects] skipping object template that is not a map",
+					"policyName", managedPolicyName)
+				continue
+			}
 			if objectTemplateContent["complianceType"] == "mustnothave" {
 				r.Log.Info(
 					"[getMonitoredObjects] skipping object because compliance type is mustnothave",
 					"policyName", managedPolicyName)
 				continue
 			}
-			innerObjectDefinition := objectTemplateContent["objectDefinition"]
-			if innerObjectDefinition == nil {
+			innerObjectDefinitionContent, ok := objectTemplateContent["objectDefinition"].(map[string]interface{})
+			if !ok {
+				// Match InspectPolicyObjects: object-templates-raw entries without an objectDefinition are skipped.
+				if objectTemplateRawPresent {
+					continue
+				}
 				return nil, fmt.Errorf("policy %s is missing its spec.policy-templates.objectDefinition.spec.object-templates.objectDefinition", managedPolicyName)
 			}
 
-			innerObjectDefinitionContent := innerObjectDefinition.(map[string]interface{})
 			// Get the object's metadata.
-			objectDefinitionMetadata := innerObjectDefinitionContent["metadata"]
-			if objectDefinitionMetadata == nil {
+			objectDefinitionMetadataContent, ok := innerObjectDefinitionContent["metadata"].(map[string]interface{})
+			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata",
 					"policyName", managedPolicyName)
 				continue
 			}
-
-			objectDefinitionMetadataContent := innerObjectDefinitionContent["metadata"].(map[string]interface{})
 
 			kind, ok := innerObjectDefinitionContent["kind"]
 			if !ok {
@@ -133,7 +150,7 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 				continue
 			}
 
-			_, ok = objectDefinitionMetadataContent["name"]
+			name, ok := objectDefinitionMetadataContent["name"].(string)
 			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.name",
@@ -141,7 +158,7 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 				continue
 			}
 
-			_, ok = objectDefinitionMetadataContent["namespace"]
+			namespace, ok := objectDefinitionMetadataContent["namespace"].(string)
 			if !ok {
 				r.Log.Info(
 					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.metadata.namespace",
@@ -149,13 +166,20 @@ func (r *ClusterGroupUpgradeReconciler) getMonitoredObjects(managedPolicy *unstr
 				continue
 			}
 
-			var object ConfigurationObject
-			object.Kind = innerObjectDefinitionContent["kind"].(string)
-			object.Name = objectDefinitionMetadataContent["name"].(string)
-			object.APIVersion = innerObjectDefinitionContent["apiVersion"].(string)
-			namespace := objectDefinitionMetadataContent["namespace"].(string)
-			object.Namespace = &namespace
+			apiVersion, ok := innerObjectDefinitionContent["apiVersion"].(string)
+			if !ok {
+				r.Log.Info(
+					"[getPolicyContent] Policy is missing its spec.policy-templates.objectDefinition.spec.object-templates.apiVersion",
+					"policyName", managedPolicyName)
+				continue
+			}
 
+			object := ConfigurationObject{
+				Kind:       kind.(string),
+				Name:       name,
+				APIVersion: apiVersion,
+				Namespace:  &namespace,
+			}
 			objects = append(objects, object)
 		}
 
