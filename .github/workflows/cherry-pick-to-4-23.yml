@@ -1,0 +1,87 @@
+---
+name: Request backports for merged PRs
+
+on:  # yamllint disable-line rule:truthy
+  push:
+    branches: [release-5.0]
+
+# BACKPORT_BOT_TOKEN must belong to an org member with Pull requests: write.
+permissions:
+  contents: read
+
+env:
+  TARGET_BRANCH: release-4.23
+
+jobs:
+  backport:
+    if: >-
+      github.repository == 'openshift-kni/cluster-group-upgrades-operator' &&
+      !github.event.created && !github.event.deleted && !github.event.forced
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out the pushed source history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4
+        with:
+          ref: ${{ github.event.after }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Request cherry-picks for eligible PRs
+        uses: actions/github-script@f28e40c7f34bde8b3046d885e986cb6290c5673b  # v7
+        with:
+          github-token: ${{ secrets.BACKPORT_BOT_TOKEN }}
+          script: |
+            const {execFileSync} = require('node:child_process');
+            const git = (...args) => execFileSync('git', args, {
+              cwd: process.env.GITHUB_WORKSPACE,
+              encoding: 'utf8', maxBuffer: 64 * 1024 * 1024,
+            });
+            const {owner, repo} = context.repo;
+            const {before, after, ref} = context.payload;
+            const source = ref.replace('refs/heads/', '');
+            const target = process.env.TARGET_BRANCH;
+            const commits = git('rev-list', '--reverse', '--first-parent', `${before}..${after}`)
+              .trim().split('\n').filter(Boolean);
+            const positions = new Map(commits.map((sha, index) => [sha, index]));
+            const mergedPRs = new Map();
+
+            // Group commits by merged PR so separate PRs keep their own exclusions.
+            for (const sha of commits) {
+              const prs = await github.paginate(github.rest.repos.listPullRequestsAssociatedWithCommit, {
+                owner, repo, commit_sha: sha, per_page: 100,
+              });
+              for (const pr of prs) {
+                if (!pr.merged_at || pr.base.ref !== source ||
+                    pr.base.repo.full_name !== `${owner}/${repo}` ||
+                    !positions.has(pr.merge_commit_sha) ||
+                    positions.get(sha) > positions.get(pr.merge_commit_sha)) continue;
+                if (!mergedPRs.has(pr.number)) mergedPRs.set(pr.number, {pr, shas: []});
+                mergedPRs.get(pr.number).shas.push(sha);
+              }
+            }
+
+            // Skip PRs that only change dependency or infrastructure paths.
+            const excludedPatterns = [
+              /^go\.(mod|sum)$/,
+              /^vendor\//,
+              /^\.tekton\//,
+              /^renovate\.json$/,
+              /^\.konflux\//,
+              /^bundle\//,
+              /^telco5g-konflux$/,
+            ];
+            for (const {pr, shas} of mergedPRs.values()) {
+              const files = git('diff', '--no-renames', '--name-only', '-z', `${shas[0]}^`, shas.at(-1), '--')
+                .split('\0').filter(Boolean);
+              if (files.every((file) => excludedPatterns.some((pattern) => pattern.test(file)))) {
+                core.info(`Skipping PR #${pr.number}: only excluded paths changed.`);
+                continue;
+              }
+
+              await github.rest.issues.createComment({
+                owner, repo, issue_number: pr.number,
+                body: `/cherry-pick ${target}`,
+              });
+              core.info(`Requested cherry-pick of PR #${pr.number} to ${target}.`);
+            }
